@@ -2808,7 +2808,7 @@
     },
     {
       "requirement": "completion/states/repeat/protocol",
-      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib/service named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions. Static service-call cases repeat full positional expression completions under complete, missing and ordinary same-name schema inputs, then apply exact UTF-16 edits and re-query.",
+      "assertion": "Repeat every request in the shared member/constructor, source/schema/stdlib/service named-argument and call-argument-context fixtures and assert identical full completion results before any edit. Independently check exact candidate sets under LF/CRLF; the call context fixture also checks signature repetition and the active parameter through encoded URI and UTF-16 positions. Static service-call cases repeat full positional expression completions under complete, missing and ordinary same-name schema inputs, then apply exact UTF-16 edits and re-query. Reserved Service path queries also repeat exact full results under all three schema modes, apply full-token edits without duplicating existing argument lists, resolve the exact service owner, and re-query after didChange.",
       "tests": [
         {
           "layer": "protocol",
@@ -2833,6 +2833,10 @@
         {
           "layer": "protocol",
           "name": "tests::service_calls::service_call_matrix_projects_positional_completion_edits_and_exact_signatures"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::service_paths::service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits"
         }
       ]
     },
@@ -2848,7 +2852,7 @@
     },
     {
       "requirement": "completion/states/unresolved/protocol",
-      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic. Service receiver cases check missing methods, unknown owners and dynamic receivers against exact empty sets. Static service calls with unknown or ambiguous targets expose no borrowed signatures; local value completion remains usable without inventing named-argument insertions.",
+      "assertion": "Unknown receiver hints and unhinted receivers, missing record constructors and a missing qualified schema constructor path produce exact empty completion sets. Nearby valid source/schema member and constructor queries prove the workspace remains usable; missing paths cannot fall back to unrelated short-name fields. Standard-library named argument queries also reject missing targets, ambiguous imports and unsupported grouped import syntax; the latter publishes an error diagnostic. Service receiver cases check missing methods, unknown owners and dynamic receivers against exact empty sets. Static service calls with unknown or ambiguous targets expose no borrowed signatures; local value completion remains usable without inventing named-argument insertions. Reserved Service paths reject missing/ambiguous owners, malformed paths, nested lambda/default bodies, imports and type sites without leaking colliding source or ordinary schema declarations; the pinned member namespace is set-owned.",
       "tests": [
         {
           "layer": "protocol",
@@ -2869,6 +2873,10 @@
         {
           "layer": "protocol",
           "name": "tests::service_calls::service_call_matrix_projects_positional_completion_edits_and_exact_signatures"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::service_paths::service_path_matrix_projects_owned_candidates_resolve_and_utf16_edits"
         }
       ]
     },

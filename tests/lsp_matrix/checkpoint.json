@@ -1100,10 +1100,19 @@
         "batch/B01/local-evidence"
       ],
       "summary": "Support user-authorized alternating Windows x64 and macOS ARM64 local development through checkpoint v2 registered profiles, shared batch/child progress and independent current-profile audits. Preserve original Mac B00-B02 validation; accepted-batch --accept re-audits all accepted scope without rewinding B03.12. Each strict invocation still needs one current source/profile/driver/fixture/VSIX/server evidence set. Add Windows test-window keyboard layout selection/restoration, Electron context-menu Peek, native shortcuts, explicit Windows listitem suggestion roles, .exe paths and canonical file-URI/relative artifact handling. Position the pointer before modifier-down to avoid a query against the previous route. Keep identical semantic/range/document/no-jump oracles. Retain initial dependency, focus, profile calibration, candidate-role and prior-pointer reproductions in ignored logs. Validation: Node 73 passed, service 592 passed plus two historical ignored, Windows protocol 579 passed, installed VSIX 9 passed, all 13 input proofs passed; cargo fmt and staged diff checks passed. Source-bound strict run-JzgMG5 reverified all 145 B00-B02 requirements using provider run-GoroNZ and input-uj7XJV. No Rust production changes. Windows evidence does not certify the changed Mac driver; recollect there on the next visit. Parent B03 remains open with 1332 requirements and B03.12 next; B16 remains deferred. Find this commit by LSP-Batch trailer."
+    },
+    {
+      "id": "B03.12",
+      "revision": null,
+      "requirements": [
+        "completion/states/repeat/protocol",
+        "completion/states/unresolved/protocol"
+      ],
+      "summary": "Complete reserved Service callee-path candidates using the same static owner resolution as positional calls. service::base methods require one reachable service origin; service::pinned members/methods use exact ServiceSet member identity. Missing/ambiguous owners, malformed shapes, imports/type sites and nested lambda/default bodies return no candidates without borrowing colliding source or ordinary schema declarations. Exact schema symbol identity and async parameter/return details survive lazy completion resolve. Full-token replacement fixes mid-identifier insertion; CST lookahead preserves an existing argument list, including trivia and incomplete calls. Thirty-one independently specified shared cases run in service and protocol layers under LF/CRLF and full/missing/ordinary-only schema modes (186 queries per layer), checking exact sets, detail/kind/identity, repeat, UTF-16 edits, parser-clean applied recovery and re-query. Preserve the initial missing Service method and prefix-only edit reproductions in b03-12-service-red.log and b03-12-edit-red.log. Focused matrix tests, relevant all-target Clippy, fmt and Node 73 passed. Final Windows source-bound audit run-12O9EE passed service 593 plus two historical ignored and protocol 580; installed VSIX run-E2SdeP passed 9 and native input-zzyTCR passed 13. Strict B02 regression refreshed all 145 accepted B00-B02 requirements without changing their historical acceptance records. B03 remains unaccepted; broad S5 stays unreviewed and whole pending-batch scope remains 1332. Continue B03.13 by independently testing unhinted service implementation parameters against the registered method contract and propagating their static facts through member/completion/call queries as needed; vela_analysis currently seeds local hints but has no ServiceSet/ServiceImpl parameter projection. Audit renamed/explicit/conflicting parameters, missing/invalid/ambiguous registrations, nested use, returned/view types and schema refresh. Remaining S5 also includes imported external callable lookup across signature/expected providers, name-aware occupied argument slots, provider/variable-arity contracts and root service namespace suggestions; lifecycle and UX04 remain open. macOS needs fresh proof after these changes when next used, B16 deferred. Find this commit by LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.12",
-  "nextTask": "B03.12",
+  "activeChild": "B03.13",
+  "nextTask": "B03.13",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -2709,7 +2718,21 @@
     "target/lsp-alternating-input-third.log",
     "target/lsp-alternating-input-fourth.log",
     "target/lsp-alternating-input-fifth.log",
-    "target/lsp-alternating-input-sixth.log"
+    "target/lsp-alternating-input-sixth.log",
+    "target/lsp-matrix/run-12O9EE/report.json",
+    "target/b03-12-baseline-service.log",
+    "target/b03-12-baseline-protocol.log",
+    "target/b03-12-service-red.log",
+    "target/b03-12-edit-red.log",
+    "target/b03-12-paths.log",
+    "target/b03-12-clippy.log",
+    "target/b03-12-node.log",
+    "target/b03-12-editor.log",
+    "target/b03-12-input.log",
+    "target/b03-12-accepted-regression.log",
+    "target/lsp-matrix/run-6jCSYW/report.json",
+    "editors/vscode/test-results/run-E2SdeP/results.json",
+    "editors/vscode/test-results/input-zzyTCR/results.json"
   ],
   "openIssues": [
     {
@@ -3335,8 +3358,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "449fbafdcb836325412cce725341c356e17f11fc",
-          "treeSha256": "f79ac1a9d5551d26ed641378082d694e75a7b4c1c447a1b3e72c0baf6c00cecb"
+          "revision": "99fd1143e59b45c03598245087b1b8c76f07fa91",
+          "treeSha256": "57f8ce6c2f95bb3a29a85fdbd595bd76413e8f3814b67c63917893bcac4e5866"
         },
         "profile": {
           "platform": "win32",
@@ -3344,11 +3367,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-JzgMG5/report.json"
+          "target/lsp-matrix/run-12O9EE/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-GoroNZ/results.json --local-results editors/vscode/test-results/input-uj7XJV/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-E2SdeP/results.json --local-results editors/vscode/test-results/input-zzyTCR/results.json",
             "exitCode": 0
           }
         ]

@@ -7,14 +7,22 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::service_impl::ServiceImpl;
 
 use super::QueryContext;
-use crate::LanguageServiceDatabases;
 use crate::callable_context::{CallableFacts, service_callable_fact};
+use crate::{LanguageServiceDatabases, SchemaServiceFact};
 
 pub(super) fn is_service_path(path: &[String]) -> bool {
     matches!(path, [root, namespace, ..] if root == "service" && matches!(namespace.as_str(), "base" | "pinned"))
 }
 
 impl QueryContext<'_> {
+    pub(crate) fn service_path_owner<'db>(
+        &self,
+        databases: &'db LanguageServiceDatabases,
+        path: &[&str],
+    ) -> Option<&'db SchemaServiceFact> {
+        resolve_service_owner(databases, self.body()?.id, path)
+    }
+
     pub(crate) fn is_service_call(&self) -> bool {
         self.call_argument_facts()
             .and_then(|call| call.callee_path())
@@ -52,28 +60,12 @@ impl QueryContext<'_> {
         graph
             .bindings_for_body(body.id)?
             .service_capability(callee)?;
-        let schema = databases.schema_db().service_set()?;
-        let (owner, method) = match path {
-            [_, namespace, method] if namespace == "base" => {
-                let origins = service_origins(databases, body.id);
-                let [owner] = origins.as_slice() else {
-                    return None;
-                };
-                let service = schema
-                    .services()
-                    .iter()
-                    .find(|service| service.path() == owner)?;
-                (service, method)
-            }
-            [_, namespace, member, method] if namespace == "pinned" => {
-                let service = schema
-                    .services()
-                    .iter()
-                    .find(|service| service.member() == member)?;
-                (service, method)
-            }
-            _ => return None,
-        };
+        let (method, owner_path) = path.split_last()?;
+        let owner = resolve_service_owner(
+            databases,
+            body.id,
+            &owner_path.iter().map(String::as_str).collect::<Vec<_>>(),
+        )?;
         owner
             .methods()
             .iter()
@@ -84,6 +76,31 @@ impl QueryContext<'_> {
             method,
             &path.join("::"),
         )
+    }
+}
+
+fn resolve_service_owner<'db>(
+    databases: &'db LanguageServiceDatabases,
+    body: HirBodyId,
+    path: &[&str],
+) -> Option<&'db SchemaServiceFact> {
+    let schema = databases.schema_db().service_set()?;
+    match path {
+        ["service", "base"] => {
+            let origins = service_origins(databases, body);
+            let [owner] = origins.as_slice() else {
+                return None;
+            };
+            schema
+                .services()
+                .iter()
+                .find(|service| service.path() == owner)
+        }
+        ["service", "pinned", member] => schema
+            .services()
+            .iter()
+            .find(|service| service.member() == *member),
+        _ => None,
     }
 }
 

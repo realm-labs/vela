@@ -35,6 +35,9 @@ mod record_field_tests;
 mod relevance;
 mod schema_function;
 mod schema_type;
+mod service_path;
+#[cfg(test)]
+mod service_path_tests;
 mod source_declaration;
 mod source_member;
 mod source_module;
@@ -118,27 +121,37 @@ impl LanguageServiceDatabases {
             context.kind = CompletionContextKind::Expression;
         }
         let analysis = completion_analysis(self, &query, &context);
-        let items = match analysis.context_kind() {
-            CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
-            CompletionContextKind::Item => self.item_completion_items(&context),
-            CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
-            CompletionContextKind::ModulePath => {
-                self.module_path_completion_items(&query, &context)
+        let items = if let Some(items) = service_path::completion_items(self, &query, &context) {
+            items
+        } else {
+            match analysis.context_kind() {
+                CompletionContextKind::Expression => {
+                    self.expression_completion_items(&query, &context)
+                }
+                CompletionContextKind::Item => self.item_completion_items(&context),
+                CompletionContextKind::Statement => {
+                    self.statement_completion_items(&query, &context)
+                }
+                CompletionContextKind::ModulePath => {
+                    self.module_path_completion_items(&query, &context)
+                }
+                CompletionContextKind::Member => self.member_completion_items(&query, &context),
+                CompletionContextKind::RecordField => self.record_field_completion_items(&context),
+                CompletionContextKind::StructFieldDeclaration => {
+                    self.struct_field_completion_items(&context)
+                }
+                CompletionContextKind::MapKey => self.map_key_completion_items(&context),
+                CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
+                CompletionContextKind::NamedArgument => {
+                    self.named_argument_completion_items(&query, &context)
+                }
+                CompletionContextKind::LambdaParameter => {
+                    self.lambda_parameter_completion_items(&query, &context)
+                }
+                CompletionContextKind::TypeHint => {
+                    self.type_hint_completion_items(&query, &context)
+                }
             }
-            CompletionContextKind::Member => self.member_completion_items(&query, &context),
-            CompletionContextKind::RecordField => self.record_field_completion_items(&context),
-            CompletionContextKind::StructFieldDeclaration => {
-                self.struct_field_completion_items(&context)
-            }
-            CompletionContextKind::MapKey => self.map_key_completion_items(&context),
-            CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
-            CompletionContextKind::NamedArgument => {
-                self.named_argument_completion_items(&query, &context)
-            }
-            CompletionContextKind::LambdaParameter => {
-                self.lambda_parameter_completion_items(&query, &context)
-            }
-            CompletionContextKind::TypeHint => self.type_hint_completion_items(&query, &context),
         };
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
