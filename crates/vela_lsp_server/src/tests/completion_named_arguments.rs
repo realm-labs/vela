@@ -159,6 +159,37 @@ fn verify_fixture(fixture_name: &str) {
                     })
                     .expect("parameter");
                 assert_eq!(item["kind"], 6);
+                assert!(
+                    item.get("documentation").is_none(),
+                    "lightweight parameter: {query}"
+                );
+                assert!(
+                    item["data"].get("resolve").is_none(),
+                    "no parameter lazy payload: {query}"
+                );
+                let before = server.snapshot();
+                for _ in 0..2 {
+                    let resolved = response_value(request::<r::ResolveCompletionItem>(
+                        &mut server,
+                        id,
+                        item.clone(),
+                    ));
+                    id += 1;
+                    assert!(resolved["error"].is_null(), "{resolved}");
+                    assert_eq!(
+                        resolved["result"], *item,
+                        "parameter resolve preserves every field: {query}"
+                    );
+                }
+                let after = server.snapshot();
+                assert_eq!(
+                    after.databases().parse_db().parse_count(),
+                    before.databases().parse_db().parse_count()
+                );
+                assert_eq!(
+                    after.databases().hir_db().rebuild_count(),
+                    before.databases().hir_db().rebuild_count()
+                );
                 assert_eq!(item["detail"], expected["detail"]);
                 assert_eq!(
                     item["textEdit"],

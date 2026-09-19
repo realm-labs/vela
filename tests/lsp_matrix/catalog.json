@@ -3181,6 +3181,478 @@
           "name": "tests::completion_type_ownership::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S5/positive/service",
+      "assertion": "Reviewed S5 partitions in reviews/completion-s5.md: source/imported/package functions and inherent/trait methods, schema and builtin functions/methods, callbacks/returned receivers, named/defaulted arguments and active parameter mapping. Shared LF/CRLF fixtures assert complete owner-specific candidate sets, kinds/details, independent byte/UTF-16 edits and applied source/signatures/targets; argument names remain distinct from expression values.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::stdlib_named_argument_matrix_checks_registered_names_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::service_named_argument_matrix_checks_projected_contracts_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::callable_hint_matrix_preserves_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_parameter_tests::call_parameter_mapping_matrix_checks_semantic_slots_without_changing_cst_indices"
+        },
+        {
+          "layer": "service",
+          "name": "completion::callable_import_tests::callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S5/positive/protocol",
+      "assertion": "Reviewed S5 partitions in reviews/completion-s5.md: source/imported/package functions and inherent/trait methods, schema and builtin functions/methods, callbacks/returned receivers, named/defaulted arguments and active parameter mapping. Shared LF/CRLF fixtures assert complete owner-specific candidate sets, kinds/details, independent byte/UTF-16 edits and applied source/signatures/targets; argument names remain distinct from expression values.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::callable_hint_matrix_projects_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::call_parameter_mapping::call_parameter_mapping_matrix_projects_named_slots_at_unicode_positions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::callable_imports::callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S5/negative/service",
+      "assertion": "Reviewed S5 negative partitions: occupied/unknown/duplicate argument slots, private/missing/ambiguous imports, wrong owner, unresolved/dynamic receivers and erased returns cannot acquire guessed parameters or members. Exact remaining expression candidates or empty sets are asserted; edits avoid duplicate equals/calls and lightweight lists contain no eager documentation.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::stdlib_named_argument_matrix_checks_registered_names_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::service_named_argument_matrix_checks_projected_contracts_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::callable_hint_matrix_preserves_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_parameter_tests::call_parameter_mapping_matrix_checks_semantic_slots_without_changing_cst_indices"
+        },
+        {
+          "layer": "service",
+          "name": "completion::callable_import_tests::callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S5/negative/protocol",
+      "assertion": "Reviewed S5 negative partitions: occupied/unknown/duplicate argument slots, private/missing/ambiguous imports, wrong owner, unresolved/dynamic receivers and erased returns cannot acquire guessed parameters or members. Exact remaining expression candidates or empty sets are asserted; edits avoid duplicate equals/calls and lightweight lists contain no eager documentation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::callable_hint_matrix_projects_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::call_parameter_mapping::call_parameter_mapping_matrix_projects_named_slots_at_unicode_positions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::callable_imports::callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S5/positive/service",
+      "assertion": "Reviewed S5 resolve partitions: actual schema function/method candidates resolve exact lazy docs; source and builtin callable items retain the supported no-source/no-builtin-doc contract and exact ownership. Parameter items have no lazy payload and two actual protocol resolves preserve every field and parse/HIR counters. Both layers assert lightweight items, with exact post-edit signatures and definitions in shared fixtures.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::stdlib_named_argument_matrix_checks_registered_names_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::service_named_argument_matrix_checks_projected_contracts_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::callable_hint_matrix_preserves_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S5/positive/protocol",
+      "assertion": "Reviewed S5 resolve partitions: actual schema function/method candidates resolve exact lazy docs; source and builtin callable items retain the supported no-source/no-builtin-doc contract and exact ownership. Parameter items have no lazy payload and two actual protocol resolves preserve every field and parse/HIR counters. Both layers assert lightweight items, with exact post-edit signatures and definitions in shared fixtures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::callable_hint_matrix_projects_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S5/negative/service",
+      "assertion": "Reviewed S5 resolve boundaries: actual source/builtin callable payloads cannot borrow colliding schema docs; schema replacement/removal cannot retain old docs; named parameters pass through unchanged; dynamic/unknown receivers produce no guessed item to resolve. Protocol additionally rejects malformed payloads and preserves every field for well-formed unknown symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::named_argument_matrix_checks_owner_sets_occupied_slots_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::stdlib_named_argument_matrix_checks_registered_names_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::service_named_argument_matrix_checks_projected_contracts_and_parseable_edits"
+        },
+        {
+          "layer": "service",
+          "name": "completion::named_argument_matrix_tests::callable_hint_matrix_preserves_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S5/negative/protocol",
+      "assertion": "Reviewed S5 resolve boundaries: actual source/builtin callable payloads cannot borrow colliding schema docs; schema replacement/removal cannot retain old docs; named parameters pass through unchanged; dynamic/unknown receivers produce no guessed item to resolve. Protocol additionally rejects malformed payloads and preserves every field for well-formed unknown symbol identities.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::named_argument_matrix_projects_exact_parameter_sets_and_parseable_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::stdlib_named_argument_matrix_projects_registered_names_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::service_named_argument_matrix_projects_contracts_and_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_named_arguments::callable_hint_matrix_projects_nested_types_and_registered_parameter_prefixes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_rejects_malformed_payloads_without_poisoning_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_unknown_symbols_preserve_every_existing_edit_and_label_field"
+        }
+      ]
     }
   ],
   "featureFiles": [

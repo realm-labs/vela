@@ -123,6 +123,14 @@ fn verify_fixture(fixture_name: &str) {
                     })
                     .expect("parameter");
                 assert_eq!(item.kind(), crate::CompletionKind::Parameter);
+                assert!(
+                    item.documentation().is_none(),
+                    "lightweight parameter: {query}"
+                );
+                assert!(
+                    item.resolve_payload().is_none(),
+                    "parameters have no lazy docs: {query}"
+                );
                 assert_eq!(
                     item.detail(),
                     expected["detail"].as_str().expect("detail"),

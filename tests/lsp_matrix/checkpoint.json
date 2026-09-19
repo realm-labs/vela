@@ -1860,10 +1860,25 @@
         "completion/states/recovery/protocol"
       ],
       "summary": "Six shared source recovery states cover normal disk, open, malformed neighboring declaration, repair, repeated damage and close restoration. Each Unicode LF/CRLF run checks 48 candidate queries, 72 applied edits and 24 unchanged-call signature/definition probes, comparing persistent service and real protocol sync against fresh disk-plus-overlay workspaces. Real E_PARSE diagnostics appear and clear on the dependency while retained source resolve items preserve their no-source-doc contract. New protocol regressions exposed negative version clamping and old/duplicate didChange acceptance. The server now rejects non-increasing signed versions before validating edits or publishing diagnostics, preserving current exact candidates, UTF-16 edits, analysis generation and parse/HIR counters. Lossless signed LSP conversion also preserves versioned rename edits from i32::MIN through negative/zero/positive to i32::MAX; close/reopen starts a new version lifetime. Deterministic task tests hold production results before publication: completion and resolve cancellation wins even when also stale, later requests return current facts, late/unknown cancels do not poison IDs, stale work retries once and a stale retry returns ContentModified. Resolve assertions compare the entire original item plus current docs; completion checks exact candidates and edits. The first server run found only a fixture field name violating the single-owner source guard; renaming that test wrapper keeps production dispatch and the guard intact. Three new catalog mappings cover completion recovery/stale_version/cancellation; resolve repeat/recovery mappings retain previous tests and add lifecycle proof without changing inventory scope. Feature audit: 166 verified, 1159 unreviewed, two N/A, no failed rows. Workspace 4515 passed, two historical ignored; fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-KafJ5V/results.json passed 9; native editors/vscode/test-results/input-wUPxSc/results.json passed 13; strict target/lsp-matrix/run-pr344h/report.json refreshed all 145 accepted B00-B02 requirements without changing their original snapshots. This is partial B03 progress. Resume B03.45 with remaining S5/semantic review, URI/client environments and UX04 proof. Fresh macOS evidence is required when used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.45",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol"
+      ],
+      "summary": "Reviewed every S5 call/argument partition and recorded fixture/assertion scope in tests/lsp_matrix/reviews/completion-s5.md. Eight new exact catalog mappings cover completion and resolve, positive and negative, at both service/protocol layers: source/imported/package callables, inherent/trait/default methods, schema and builtin callables, named/defaulted parameters, semantic active slots, argument expressions/callbacks and returned/dynamic/unresolved boundaries. The mappings bind multiple explicit existing tests rather than candidate prefixes. New assertions cover 104 actual named-parameter candidates across four shared fixtures: no eager documentation or lazy payload, two protocol resolves preserving every field, and unchanged parse/HIR counters; 208 resolves per LF/CRLF run. A new eleven-case shared builtin fixture covers eight function/method/alias candidates and three empty dynamic/unresolved/missing cases, independently checking exact sets, builtin ownership, byte/UTF-16 edits, applied signatures, null source targets and exclusion of colliding schema method docs. The initial protocol list is now explicitly lightweight throughout the type-ownership driver. Source and builtin documentation remain unsupported/empty; schema documentation remains lazy. No language-service or server behavior changed. Feature audit: 174 verified, 1151 unreviewed, two N/A, no failed rows. Full service 639 and protocol 628 library tests passed, with two historical service tests ignored in the audit; focused baseline/parameter/builtin tests, fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-2Gji99/results.json passed 9; native editors/vscode/test-results/input-KABcUB/results.json passed 13; strict target/lsp-matrix/run-atEEAV/report.json refreshed all 145 accepted B00-B02 requirements without changing their original snapshots. Whole-workspace tests were not repeated for this test/catalog-only change; B03.44 retains that prior checkpoint. B03 remains open. Resume B03.46 with S10 ownership/dynamic resolve, remaining semantic review and UX04. Fresh macOS evidence is required when used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.45",
-  "nextTask": "B03.45",
+  "activeChild": "B03.46",
+  "nextTask": "B03.46",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3999,7 +4014,19 @@
     "target/b03-44-input.log",
     "target/b03-44-accepted-regression.log",
     "editors/vscode/test-results/run-KafJ5V/results.json",
-    "editors/vscode/test-results/input-wUPxSc/results.json"
+    "editors/vscode/test-results/input-wUPxSc/results.json",
+    "target/lsp-matrix/run-atEEAV/report.json",
+    "target/b03-45-baseline.log",
+    "target/b03-45-parameters.log",
+    "target/b03-45-builtin.log",
+    "target/b03-45-fmt.log",
+    "target/b03-45-clippy.log",
+    "target/b03-45-node.log",
+    "target/b03-45-editor.log",
+    "target/b03-45-input.log",
+    "target/b03-45-accepted-regression.log",
+    "editors/vscode/test-results/run-2Gji99/results.json",
+    "editors/vscode/test-results/input-KABcUB/results.json"
   ],
   "openIssues": [
     {
@@ -4620,8 +4647,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7bf801033e0b2e228c6e284eef3819f0a2d38745",
-          "treeSha256": "6b39ecbcdb982914012ef07840e3d2dd163b2a803e632130ce63c323e9f4d539"
+          "revision": "46ff15d33b77ea8f81b32a224a87bfa22e14e19c",
+          "treeSha256": "064dcb2e8bc4da5cd304df77d6d3e1fad30a3436bcd317699fa43c35f5003963"
         },
         "profile": {
           "platform": "win32",
@@ -4629,11 +4656,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-pr344h/report.json"
+          "target/lsp-matrix/run-atEEAV/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-KafJ5V/results.json --local-results editors/vscode/test-results/input-wUPxSc/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-2Gji99/results.json --local-results editors/vscode/test-results/input-KABcUB/results.json",
             "exitCode": 0
           }
         ]

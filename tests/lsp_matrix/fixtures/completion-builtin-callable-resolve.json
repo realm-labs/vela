@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "id": "completion-builtin-callable-resolve",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.builtin_resolve\"\nname=\"builtin_resolve\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "scripts/string.vela": "fn main(value: String) { /* 中😀 */ value.[[replace:start]]replac[[cursor]][[replace:end]]; }\n",
+    "scripts/array.vela": "fn main(value: Array<i64>) { /* 中😀 */ value.[[replace:start]]inser[[cursor]][[replace:end]]; }\n",
+    "scripts/map.vela": "fn main(value: Map<String, i64>) { /* 中😀 */ value.[[replace:start]]inser[[cursor]][[replace:end]]; }\n",
+    "scripts/option.vela": "fn main(value: Option<i64>) { /* 中😀 */ value.[[replace:start]]is_som[[cursor]][[replace:end]]; }\n",
+    "scripts/result.vela": "fn main(value: Result<i64, String>) { /* 中😀 */ value.[[replace:start]]is_o[[cursor]][[replace:end]]; }\n",
+    "scripts/dynamic.vela": "fn main(value: Any) { /* 中😀 */ value.[[replace:start]]replac[[cursor]][[replace:end]]; }\n",
+    "scripts/unresolved.vela": "fn main() { /* 中😀 */ missing.[[replace:start]]inser[[cursor]][[replace:end]]; }\n",
+    "scripts/missing.vela": "fn main(value: String) { /* 中😀 */ value.[[replace:start]]absent[[cursor]][[replace:end]]; }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"methods\":[{\"owner\":\"String\",\"name\":\"replace\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema String.replace docs.\"},{\"owner\":\"Array(i64)\",\"name\":\"insert\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Array<i64>.insert docs.\"},{\"owner\":\"Map(String, i64)\",\"name\":\"insert\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Map<String, i64>.insert docs.\"},{\"owner\":\"Option(i64)\",\"name\":\"is_some\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Option<i64>.is_some docs.\"},{\"owner\":\"Result(i64, String)\",\"name\":\"is_ok\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Result<i64, String>.is_ok docs.\"}]}}",
+    "scripts/function.vela": "fn main() { /* 中😀 */ math::[[replace:start]]cla[[cursor]][[replace:end]]; }\n",
+    "scripts/alias.vela": "use option::some as selected;\nfn main() { /* 中😀 */ [[replace:start]]sele[[cursor]][[replace:end]]; }\n",
+    "scripts/namespace.vela": "use option as values;\nfn main() { /* 中😀 */ values::[[replace:start]]som[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "string",
+        "file": "scripts/string.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "replace",
+            "insert": "replace($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "String.replace",
+            "detail": "Function(String, String) -> String",
+            "signature": "String.replace(old: String, new: String) -> String",
+            "value": "\"a\", \"b\"",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "array",
+        "file": "scripts/array.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "insert",
+            "insert": "insert($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Array(i64).insert",
+            "detail": "Function(i64, i64) -> ()",
+            "signature": "Array(i64).insert(index: i64, value: i64) -> ()",
+            "value": "0, 1",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map",
+        "file": "scripts/map.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "insert",
+            "insert": "insert($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Map(String, i64).insert",
+            "detail": "Function(String, i64) -> Option(i64)",
+            "signature": "Map(String, i64).insert(key: String, value: i64) -> Option(i64)",
+            "value": "\"key\", 1",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "option",
+        "file": "scripts/option.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "is_some",
+            "insert": "is_some($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Option(i64).is_some",
+            "detail": "Function() -> bool",
+            "signature": "Option(i64).is_some() -> bool",
+            "value": "",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "result",
+        "file": "scripts/result.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "is_ok",
+            "insert": "is_ok($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Result(i64, String).is_ok",
+            "detail": "Function() -> bool",
+            "signature": "Result(i64, String).is_ok() -> bool",
+            "value": "",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "dynamic",
+        "file": "scripts/dynamic.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unresolved",
+        "file": "scripts/unresolved.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "function",
+        "file": "scripts/function.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "clamp",
+            "insert": "clamp($0)",
+            "kind": "Function",
+            "origin": "builtin",
+            "symbol": "math::clamp",
+            "detail": "Function(i64 | f64, i64 | f64, i64 | f64) -> i64 | f64",
+            "signature": "math::clamp(value: i64 | f64, min: i64 | f64, max: i64 | f64) -> i64 | f64",
+            "value": "1, 0, 2",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "alias",
+        "file": "scripts/alias.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "selected",
+            "insert": "selected($0)",
+            "kind": "Function",
+            "origin": "builtin",
+            "symbol": "option::some",
+            "detail": "Function(Any) -> Option(Any)",
+            "signature": "option::some(value: Any) -> Option(Any)",
+            "value": "1",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "namespace",
+        "file": "scripts/namespace.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "some",
+            "insert": "some($0)",
+            "kind": "Function",
+            "origin": "builtin",
+            "symbol": "option::some",
+            "detail": "Function(Any) -> Option(Any)",
+            "signature": "option::some(value: Any) -> Option(Any)",
+            "value": "1",
+            "docs": null
+          }
+        ]
+      }
+    ]
+  }
+}

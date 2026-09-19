@@ -102,6 +102,11 @@ fn source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts() {
     assert_type_ownership("completion-source-recovery");
 }
 
+#[test]
+fn builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs() {
+    assert_type_ownership("completion-builtin-callable-resolve");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -349,6 +354,10 @@ fn assert_type_ownership(fixture_id: &str) {
                     };
                     assert_eq!(item["kind"], kind);
                     assert_eq!(item["detail"], expected["detail"]);
+                    assert!(
+                        item.get("documentation").is_none(),
+                        "initial list stays lightweight: {case}"
+                    );
                     let symbol_name = expected["protocolSymbol"]
                         .as_str()
                         .unwrap_or(string(expected, "symbol"));
