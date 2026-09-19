@@ -27,7 +27,7 @@ use vela_language_service::{
 
 use self::{
     diagnostics::{publish_diagnostics_notification, with_work_done_progress},
-    documents::{apply_document_changes, snapshot_document_text, source_version},
+    documents::{apply_document_changes, snapshot_document_text},
     project_state::ProjectState,
     request_queue::RequestQueue,
     responses::{
@@ -35,7 +35,7 @@ use self::{
         ok_typed as response_ok_typed_messages,
     },
 };
-use crate::lsp::{from_proto, to_proto};
+use crate::lsp::{document_version, from_proto, to_proto};
 use crate::{
     ErrorCode, LaunchConfiguration,
     capabilities::initialize_result,
@@ -1063,7 +1063,7 @@ impl GlobalState {
     pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
-        let version = source_version(params.text_document.version);
+        let version = document_version::from_lsp(params.text_document.version);
         self.project.workspace.open_document(
             document_id.clone(),
             params.text_document.text,
@@ -1075,6 +1075,18 @@ impl GlobalState {
     }
 
     pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> Vec<Message> {
+        let document_id = DocumentId::from(params.text_document.uri.to_string());
+        if self.project.open_documents.contains(&document_id)
+            && self
+                .project
+                .workspace
+                .document(&document_id)
+                .is_some_and(|document| {
+                    params.text_document.version <= document_version::to_lsp(document.version())
+                })
+        {
+            return Vec::new();
+        }
         if params.content_changes.is_empty() {
             return vec![publish_diagnostics_notification(
                 params.text_document.uri.as_str(),
@@ -1084,8 +1096,7 @@ impl GlobalState {
         }
 
         let uri = params.text_document.uri.to_string();
-        let document_id = DocumentId::from(uri.clone());
-        let version = source_version(params.text_document.version);
+        let version = document_version::from_lsp(params.text_document.version);
         let current_text = self
             .project
             .workspace

@@ -784,8 +784,16 @@ Dirty dependency edits, external disk writes/deletion, save and close/reopen now
 have shared disk/overlay oracles and fresh-workspace comparisons. Document sync
 also republishes diagnostics for affected open importers; closing a deleted
 dependency no longer leaves their old diagnostics visible.
-Resume B03.44 with recovery and stale-version/cancellation behavior, remaining
-S5/semantic review and UX04 interaction proof. B00-B02 acceptance snapshots stay
+Six source recovery states now retain neighboring completion/signature/definition
+facts through malformed declarations, repair and close restoration, with fresh
+service/protocol comparisons and real syntax diagnostic publication/clearing.
+The protocol rejects old/duplicate didChange versions before applying edits or
+publishing diagnostics, preserves signed versions in workspace edits, and resets
+the version lifetime on close/open. Deterministic completion/resolve task tests
+cover cancellation before publication, current-generation retry, bounded stale
+retry failure and successful subsequent requests without stale metadata.
+Resume B03.45 with remaining S5/semantic review, URI/client environments and
+UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,

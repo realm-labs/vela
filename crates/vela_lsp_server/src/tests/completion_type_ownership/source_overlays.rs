@@ -89,6 +89,24 @@ impl State {
             _ => panic!("unsupported source action"),
         };
         let messages = notification_values(messages);
+        if let Some(expected) = phase["overlayParseErrors"].as_bool() {
+            let publications: Vec<_> = messages
+                .iter()
+                .filter(|m| {
+                    m["method"] == "textDocument/publishDiagnostics"
+                        && m["params"]["uri"] == uri.as_str()
+                })
+                .collect();
+            assert_eq!(publications.len(), 1, "overlay publication: {phase}");
+            let diagnostics = publications[0]["params"]["diagnostics"]
+                .as_array()
+                .expect("overlay diagnostics");
+            assert_eq!(
+                diagnostics.iter().any(|d| d["code"] == "E_PARSE"),
+                expected,
+                "{phase}: {diagnostics:?}"
+            );
+        }
         let uri =
             lsp_types::Url::from_file_path(root.join(&self.diagnostic_file)).expect("control URI");
         let publications = messages

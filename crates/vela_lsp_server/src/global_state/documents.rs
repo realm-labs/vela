@@ -1,4 +1,4 @@
-use vela_language_service::{DocumentId, SourceVersion};
+use vela_language_service::DocumentId;
 
 use crate::{line_index::LineIndex, protocol::LspPosition};
 
@@ -28,12 +28,6 @@ impl super::GlobalState {
     ) -> Vec<lsp_server::Message> {
         Vec::new()
     }
-}
-
-pub(super) fn source_version(version: i32) -> SourceVersion {
-    u64::try_from(version)
-        .ok()
-        .map_or(SourceVersion::INITIAL, SourceVersion::new)
 }
 
 pub(super) fn apply_document_changes(

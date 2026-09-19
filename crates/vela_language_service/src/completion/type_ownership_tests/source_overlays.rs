@@ -60,5 +60,22 @@ impl State {
             }
         }
         update_with_workspace(db, &self.fixture, layout, &self.workspace);
+        if let Some(expected) = phase["overlayParseErrors"].as_bool() {
+            let file = phase["overlayFile"].as_str().expect("diagnostic file");
+            let diagnostics = db.diagnostics_for_document(&layout.uri(file));
+            assert_eq!(
+                diagnostics
+                    .diagnostics()
+                    .iter()
+                    .any(|d| d.code() == Some("E_PARSE")),
+                expected,
+                "{phase}: {diagnostics:?}"
+            );
+            let syntax = db
+                .parse_db()
+                .parse_diagnostics(&layout.uri(file))
+                .expect("parsed overlay");
+            assert_eq!(!syntax.is_empty(), expected, "recovery syntax: {syntax:?}");
+        }
     }
 }

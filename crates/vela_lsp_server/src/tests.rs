@@ -179,6 +179,7 @@ mod completion_call_expressions;
 mod completion_enum_aliases;
 mod completion_expression_ownership;
 mod completion_import_aliases;
+mod completion_lifecycle;
 mod completion_map;
 mod completion_member;
 mod completion_members;

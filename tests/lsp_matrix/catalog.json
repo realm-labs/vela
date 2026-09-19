@@ -2608,11 +2608,19 @@
     },
     {
       "requirement": "completion-resolve/states/repeat/protocol",
-      "assertion": "Two resolutions of the same actual schema candidate return exact equal content, with unchanged parser and HIR counters.",
+      "assertion": "Two resolutions of the same actual schema candidate return exact equal content, with unchanged parser and HIR counters. Cancelled and stale queued resolve tasks cannot publish old metadata; a bounded retry and later requests preserve the original item with current documentation.",
       "tests": [
         {
           "layer": "protocol",
           "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::cancelled_completion_and_resolve_publish_only_errors_and_allow_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::stale_completion_and_resolve_retry_current_facts_and_bound_repeated_changes"
         }
       ]
     },
@@ -2646,7 +2654,7 @@
     },
     {
       "requirement": "completion-resolve/states/recovery/protocol",
-      "assertion": "After invalid schema and deletion, a created valid schema restores exact documentation on the original resolve payload; malformed payloads reject without poisoning a subsequent well-formed request.",
+      "assertion": "After invalid schema and deletion, a created valid schema restores exact documentation on the original resolve payload; malformed payloads reject without poisoning a subsequent well-formed request. A malformed neighboring source declaration preserves retained source items without colliding schema documentation; repair and close compare fresh source facts.",
       "tests": [
         {
           "layer": "protocol",
@@ -2655,6 +2663,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_resolve::completion_resolve_rejects_malformed_payloads_without_poisoning_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
         }
       ]
     },
@@ -3133,6 +3145,40 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/stale_version/protocol",
+      "assertion": "Older and duplicate signed document versions cannot alter current exact candidates, UTF-16 edits, parse/HIR counts or analysis generations; close/reopen resets version lifetime. Delayed completion results retry against current schema facts once and return ContentModified if the retry is stale.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::old_and_duplicate_versions_preserve_completion_and_signed_edit_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::stale_completion_and_resolve_retry_current_facts_and_bound_repeated_changes"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/cancellation/protocol",
+      "assertion": "Cancellation before result collection or after computation suppresses success even if also stale. Later completion/resolve requests publish exact current facts; late/unknown cancellations do not poison later IDs.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::cancelled_completion_and_resolve_publish_only_errors_and_allow_later_requests"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/recovery/protocol",
+      "assertion": "Malformed neighboring dependency syntax retains exact owned candidates, applied edits, signatures and definitions; repair clears real syntax diagnostics and matches a fresh workspace, repeated damage/close restores disk. Shared service/protocol fixtures run LF and CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
         }
       ]
     }

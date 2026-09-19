@@ -4634,3 +4634,12 @@ invalidated. Closing a missing disk file still clears its own diagnostics.
 This keeps importer diagnostics current when dependency overlays replace or
 restore declarations, without a second dependency graph or an unconditional
 workspace-wide diagnostic sweep. Unchanged documents need not be republished.
+
+LSP document versions belong to an open-document lifetime. The protocol layer
+ignores didChange versions less than or equal to the current signed version
+before validating or applying changes, so rejected notifications cannot clear
+diagnostics or advance analysis generations. A close/open starts a new lifetime.
+The server preserves all 32 signed version bits in the service's opaque u64
+SourceVersion and reverses that conversion for versioned workspace edits;
+positive versions retain their existing representation. Signed ordering stays
+at the protocol boundary; service analysis ordering uses workspace generations.

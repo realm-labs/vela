@@ -605,9 +605,9 @@ fn text_document_edit(document_edit: &DocumentTextEdit) -> lsp_types::TextDocume
         text_document: lsp_types::OptionalVersionedTextDocumentIdentifier {
             uri: lsp_types::Url::parse(document_edit.document_id().as_str())
                 .expect("workspace edit document id should be a valid LSP URI"),
-            version: document_edit.document_version().map(|version| {
-                i32::try_from(version.get()).expect("document version should fit in i32")
-            }),
+            version: document_edit
+                .document_version()
+                .map(super::document_version::to_lsp),
         },
         edits: document_edit
             .edits()

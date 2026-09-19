@@ -98,6 +98,11 @@ fn source_overlay_lifecycle_preserves_dirty_owners_save_and_close_restoration() 
     assert_type_ownership("completion-source-overlay-lifecycle");
 }
 
+#[test]
+fn source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts() {
+    assert_type_ownership("completion-source-recovery");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

@@ -12,7 +12,7 @@ use serde::{Serialize, de::DeserializeOwned};
 use crate::{
     LaunchConfiguration,
     global_state::{GlobalState, GlobalStateSnapshot},
-    task::TaskResult,
+    task::{TaskOutcome, TaskResult},
 };
 
 const TASK_TIMEOUT: Duration = Duration::from_secs(5);
@@ -127,6 +127,33 @@ impl TestServer {
 
     pub(crate) fn snapshot(&self) -> GlobalStateSnapshot {
         self.state.snapshot()
+    }
+
+    // Separate scheduling from publication so lifecycle tests can interleave
+    // real notifications deterministically, without timing-dependent sleeps.
+    pub(crate) fn queue_request(&mut self, id: i32, method: &str, params: serde_json::Value) {
+        let messages = self.process(
+            Message::Request(ServerRequest {
+                id: RequestId::from(id),
+                method: method.to_owned(),
+                params,
+            }),
+            None,
+        );
+        assert!(
+            messages.is_empty(),
+            "queued request published early: {messages:?}"
+        );
+    }
+
+    pub(crate) fn receive_task(&self) -> TaskResult {
+        self.recv_task()
+            .expect("queued task must finish within five seconds")
+    }
+
+    pub(crate) fn publish_task(&mut self, task: TaskResult) -> (TaskOutcome, Vec<Message>) {
+        let summary = self.state.send_task_result(task).expect("task publication");
+        (summary.outcome(), self.collect_outbound())
     }
 
     fn next_id(&mut self) -> RequestId {
