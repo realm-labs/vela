@@ -4676,3 +4676,12 @@ the label's colon retains ordinary enum-pattern completion. Field completion
 metadata identifies the declared field; definition on a completed shorthand
 pattern identifies the local binding introduced by that shorthand. These are
 distinct authoring identities and do not change grammar or binding semantics.
+
+Language-service queries prefer the selected HIR body's canonical binding map,
+including initializer bodies. When the cursor is at a body's half-open end, the
+current identifier can anchor that body; incomplete calls retain their callee
+anchor. Required trait methods have no executable body, so direct parameter
+authoring in a signature default reads existing HIR parameter metadata. Its
+visible-name set also governs completion shadow checks; parameter references
+and explicitly qualified globals retain separate definition targets. This does
+not add a runtime body or infer unhinted declaration types from initializers.

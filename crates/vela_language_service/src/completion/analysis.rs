@@ -192,10 +192,7 @@ pub(super) fn completion_analysis(
         context_kind: context.kind(),
         expected_type,
         expected_name,
-        visible_scope: query
-            .local_bindings_before_cursor()
-            .map(|binding| binding.name.clone())
-            .collect(),
+        visible_scope: query.visible_scope_names(),
     }
 }
 

@@ -18,6 +18,11 @@ fn visible_binding_matrix_projects_loop_pattern_and_initializer_scopes() {
 }
 
 #[test]
+fn declaration_context_matrix_projects_initializer_and_parameter_owners() {
+    assert_type_ownership("completion-declaration-contexts");
+}
+
+#[test]
 fn package_type_ownership_projects_exact_dependency_targets_and_edits() {
     assert_type_ownership("completion-package-type-ownership");
 }

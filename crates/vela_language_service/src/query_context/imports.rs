@@ -5,10 +5,7 @@ impl QueryContext<'_> {
     /// ambiguous binding or a local that owns the path's first segment.
     pub(crate) fn expand_import_path(&self, path: &[String]) -> Option<Vec<String>> {
         let first = path.first()?;
-        if self
-            .local_bindings_before_cursor()
-            .any(|binding| binding.name == *first)
-        {
+        if self.visible_scope_names().contains(first) {
             return None;
         }
         let graph = self.graph?;

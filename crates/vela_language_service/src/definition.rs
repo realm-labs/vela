@@ -57,6 +57,23 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let target = SymbolTarget::from_query(self, &query)?;
 
+        if query.cursor().module_base().is_none()
+            && query.member_receiver_range().is_none()
+            && let Some(parameter) = query
+                .signature_parameters()
+                .into_iter()
+                .find(|parameter| parameter.name == target.text())
+        {
+            return self.definition_from_span_with_symbol(
+                parameter.span,
+                Some(SymbolRef::local_at(
+                    &parameter.name,
+                    document_id.clone(),
+                    TextRange::new(parameter.span.start as usize, parameter.span.end as usize),
+                )),
+            );
+        }
+
         if target.is_module_symbol(self) {
             return self.schema_definition_for_target(&target);
         }
@@ -119,6 +136,17 @@ impl LanguageServiceDatabases {
                 definition_from_resolution_at_target(bindings, &target, self, &query)
         {
             return Some(definition);
+        }
+
+        if query.bindings().is_none()
+            && !query.signature_parameters().is_empty()
+            && matches!(target.symbol(), Some(SymbolRef::Source(_)))
+        {
+            let mut path = query.cursor().module_base().map_or_else(Vec::new, |base| {
+                base.split("::").map(ToOwned::to_owned).collect()
+            });
+            path.push(target.text().to_owned());
+            return self.definition_from_scoped_path(&query, &path);
         }
 
         if target.is_schema_symbol() {

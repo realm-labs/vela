@@ -123,6 +123,11 @@ fn visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes() {
     assert_type_ownership("completion-visible-bindings");
 }
 
+#[test]
+fn declaration_context_matrix_preserves_initializer_and_parameter_owners() {
+    assert_type_ownership("completion-declaration-contexts");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

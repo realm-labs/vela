@@ -1,0 +1,454 @@
+{
+  "version": 1,
+  "id": "completion-declaration-contexts",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.declaration_contexts\"\nname=\"declaration_contexts\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/constant.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/unhinted_constant.vela": "const [[decl:start]]zz_pick[[decl:end]] = true; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/state.vela": "state [[decl:start]]zz_pick[[decl:end]]: i64 = 1; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/extern_state.vela": "extern state [[decl:start]]zz_pick[[decl:end]]: i64; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/constant_initializer.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; const result = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]];\n",
+    "scripts/state_initializer.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; state result: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]];\n",
+    "scripts/field_default.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; struct Record { value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }\n",
+    "scripts/parameter.vela": "fn main([[decl:start]]zz_pick[[decl:end]]: i64) { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/parameter_default.vela": "fn main([[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) {}\n",
+    "scripts/default_lambda_capture.vela": "fn main([[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/later_parameter.vela": "fn main(value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]], [[decl:start]]zz_pick[[decl:end]]: i64 = 1) {}\n",
+    "scripts/body_local_in_default.vela": "fn main(value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) { let [[decl:start]]zz_pick[[decl:end]] = 1; }\n",
+    "scripts/trait_default_body.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64) -> i64 { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }\n",
+    "scripts/trait_parameter_default.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) -> i64 { value } }\n",
+    "scripts/trait_required_default.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) -> i64; }\n",
+    "scripts/trait_required_unknown.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]], value = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]); }\n",
+    "scripts/trait_required_later.vela": "trait Reader { fn read(self, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]], [[decl:start]]zz_pick[[decl:end]]: i64 = 1); }\n",
+    "scripts/trait_required_sibling.vela": "trait Reader { fn first(self, [[decl:start]]zz_pick[[decl:end]]: i64); fn second(self, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]); }\n",
+    "scripts/trait_required_shadow.vela": "const [[global:start]]zz_pick[[global:end]]: bool = true; trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]); }\n",
+    "scripts/api.vela": "pub fn zz_target() -> i64 { 1 }\n",
+    "scripts/trait_required_alias_shadow.vela": "use api as zz_pick; trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = /* 中😀 */ zz_pick::[[replace:start]]zz_t[[cursor]][[replace:end]]); }\n",
+    "scripts/inherent_body.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64) -> i64 { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }\n",
+    "scripts/inherent_default.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) -> i64 { value } }\n",
+    "scripts/trait_impl_body.vela": "struct Record {} trait Reader { fn read(self, value: i64) -> i64; } impl Reader for Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64) -> i64 { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }\n",
+    "scripts/trait_impl_default.vela": "struct Record {} trait Reader { fn read(self, input: i64, value: i64 = 1) -> i64; } impl Reader for Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) -> i64 { value } }\n",
+    "scripts/closed_method.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64) {} } fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/sibling_default.vela": "fn first([[decl:start]]zz_pick[[decl:end]]: i64) {} fn second(value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "constant",
+        "file": "scripts/constant.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "constant::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "unhinted_constant",
+        "file": "scripts/unhinted_constant.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "unknown",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "unhinted_constant::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "state",
+        "file": "scripts/state.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "state::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "extern_state",
+        "file": "scripts/extern_state.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "extern_state::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "constant_initializer",
+        "file": "scripts/constant_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "constant_initializer::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "state_initializer",
+        "file": "scripts/state_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "state_initializer::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "field_default",
+        "file": "scripts/field_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "docs": null,
+            "target": "self",
+            "marker": "decl",
+            "symbol": "field_default::zz_pick"
+          }
+        ]
+      },
+      {
+        "id": "parameter",
+        "file": "scripts/parameter.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "parameter_default",
+        "file": "scripts/parameter_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_lambda_capture",
+        "file": "scripts/default_lambda_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "later_parameter",
+        "file": "scripts/later_parameter.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "body_local_in_default",
+        "file": "scripts/body_local_in_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "trait_default_body",
+        "file": "scripts/trait_default_body.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "trait_parameter_default",
+        "file": "scripts/trait_parameter_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "trait_required_default",
+        "file": "scripts/trait_required_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ],
+        "visibleScope": [
+          "self",
+          "value",
+          "zz_pick"
+        ]
+      },
+      {
+        "id": "trait_required_unknown",
+        "file": "scripts/trait_required_unknown.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "unknown",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "trait_required_later",
+        "file": "scripts/trait_required_later.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "trait_required_sibling",
+        "file": "scripts/trait_required_sibling.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "trait_required_shadow",
+        "file": "scripts/trait_required_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          },
+          {
+            "label": "zz_pick",
+            "insert": "trait_required_shadow::zz_pick",
+            "kind": "Const",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "trait_required_shadow::zz_pick",
+            "docs": null,
+            "target": "self",
+            "marker": "global"
+          }
+        ]
+      },
+      {
+        "id": "trait_required_alias_shadow",
+        "file": "scripts/trait_required_alias_shadow.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "inherent_body",
+        "file": "scripts/inherent_body.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_default",
+        "file": "scripts/inherent_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "trait_impl_body",
+        "file": "scripts/trait_impl_body.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "trait_impl_default",
+        "file": "scripts/trait_impl_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "closed_method",
+        "file": "scripts/closed_method.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "sibling_default",
+        "file": "scripts/sibling_default.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      }
+    ]
+  }
+}

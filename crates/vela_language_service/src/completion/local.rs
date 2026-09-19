@@ -14,7 +14,7 @@ pub(super) fn local_completion_items(
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
     let facts = databases.schema_analysis_facts();
-    let items = query
+    let mut items = query
         .local_bindings_before_cursor()
         .filter(|local| local.name.starts_with(context.prefix()))
         .map(|local| {
@@ -26,20 +26,45 @@ pub(super) fn local_completion_items(
                 | LocalBindingKind::Pattern => CompletionKind::Binding,
             };
             let fact = facts.local(local.id).cloned().unwrap_or(TypeFact::Unknown);
-            let detail_parts = display_type_detail_parts(fact.display_name());
-            CompletionItem {
-                sort_text: Some(completion_sort_text(kind, &local.name, "")),
-                metadata: Default::default(),
-                label: local.name.clone(),
-                kind,
-                detail: detail_parts.render(),
-                insert_text: Some(local.name.clone()),
-                insert_format: CompletionInsertFormat::PlainText,
-            }
-            .with_detail_parts(detail_parts)
+            binding_item(&local.name, kind, &fact)
         })
         .collect::<Vec<_>>();
+    for parameter in query
+        .signature_parameters()
+        .into_iter()
+        .filter(|parameter| parameter.name.starts_with(context.prefix()))
+    {
+        let fact = parameter
+            .type_hint
+            .as_ref()
+            .map_or(TypeFact::Unknown, |hint| {
+                crate::callable_context::query_type_fact_from_hint(
+                    databases.hir_db().graph(),
+                    hint,
+                    databases.schema_db().facts(),
+                )
+            });
+        items.push(binding_item(
+            &parameter.name,
+            CompletionKind::Parameter,
+            &fact,
+        ));
+    }
     let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());
     accumulator.add_many(items);
     accumulator.into_items()
+}
+
+fn binding_item(name: &str, kind: CompletionKind, fact: &TypeFact) -> CompletionItem {
+    let detail_parts = display_type_detail_parts(fact.display_name());
+    CompletionItem {
+        sort_text: Some(completion_sort_text(kind, name, "")),
+        metadata: Default::default(),
+        label: name.to_owned(),
+        kind,
+        detail: detail_parts.render(),
+        insert_text: Some(name.to_owned()),
+        insert_format: CompletionInsertFormat::PlainText,
+    }
+    .with_detail_parts(detail_parts)
 }

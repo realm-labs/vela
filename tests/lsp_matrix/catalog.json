@@ -4751,6 +4751,158 @@
           "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S1/positive/service",
+      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and direct required-trait signature metadata. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::declaration_context_matrix_preserves_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S1/positive/protocol",
+      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and direct required-trait signature metadata. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::declaration_context_matrix_projects_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S1/negative/service",
+      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults remain S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::declaration_context_matrix_preserves_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S1/negative/protocol",
+      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults remain S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::declaration_context_matrix_projects_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

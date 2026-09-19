@@ -29,6 +29,7 @@ mod hir_cursor;
 mod imports;
 mod locals;
 mod service_call;
+mod signature_parameters;
 mod source_type;
 use hir_cursor::refine_cursor_with_hir;
 pub(crate) use source_type::source_origins_for_source_range;
@@ -177,6 +178,12 @@ impl<'a> QueryContext<'a> {
             .ok()
             .and_then(|offset| graph.body_containing_offset(source.source_id(), offset))
             .or_else(|| {
+                // A default consisting of one identifier ends at the cursor;
+                // its half-open body span still owns the identifier itself.
+                let offset = u32::try_from(cursor.identifier_range()?.start).ok()?;
+                graph.body_containing_offset(source.source_id(), offset)
+            })
+            .or_else(|| {
                 let offset = u32::try_from(cursor.call_callee()?.start).ok()?;
                 graph.body_containing_offset(source.source_id(), offset)
             });
@@ -191,7 +198,9 @@ impl<'a> QueryContext<'a> {
         }
         // Incomplete calls can extend beyond recovery HIR spans, particularly
         // at EOF. Their actual callee still identifies the lexical owner.
-        let bindings = query_bindings(databases, source, cursor.replace_range().end)
+        let bindings = body
+            .and_then(|body| graph.bindings_for_body(body.id))
+            .or_else(|| query_bindings(databases, source, cursor.replace_range().end))
             .or_else(|| query_bindings(databases, source, cursor.call_callee()?.start));
         Some(Self {
             document_id: document_id.clone(),

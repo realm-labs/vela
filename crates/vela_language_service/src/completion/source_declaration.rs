@@ -64,10 +64,7 @@ fn source_declaration_completion_items(
         return Vec::new();
     };
     let mut accumulator = CompletionAccumulator::new(replace_range, prefix);
-    let local_names = query
-        .local_bindings_before_cursor()
-        .map(|binding| binding.name.as_str())
-        .collect::<std::collections::BTreeSet<_>>();
+    let local_names = query.visible_scope_names();
     let declarations = graph.declarations_by_name_prefix(prefix);
     for declaration in declarations {
         if declaration.visibility != vela_hir::module_graph::Visibility::Public
@@ -90,7 +87,7 @@ fn source_declaration_completion_items(
             address.clone()
         };
         if accepts_kind(item.kind) && label_segment_matches(&item.label, prefix) {
-            let shadowed = local_names.contains(item.label.as_str());
+            let shadowed = local_names.contains(&item.label);
             let mut completion = if matches!(
                 item.kind,
                 AnalysisCompletionKind::Type | AnalysisCompletionKind::Trait
@@ -98,7 +95,7 @@ fn source_declaration_completion_items(
                 // A short label is presentation, not a reference to a type in
                 // another module. Keep current-module spelling only when a
                 // visible local does not own that name in expression scope.
-                let insertion = if local_names.contains(item.label.as_str()) {
+                let insertion = if local_names.contains(&item.label) {
                     address.clone()
                 } else {
                     item.label.clone()
