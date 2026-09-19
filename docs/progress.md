@@ -817,7 +817,11 @@ Type locations follow CST ownership and direct argument separators; loop/pattern
 bindings use their introduction boundaries; reordered named arguments keep their
 active parameter index aligned with expected name/type facts. Shared LF/CRLF
 fixtures assert exact scopes, candidates, edits and applied reference owners.
-Resume B03.51 with the remaining semantic review and UX04 interaction proof.
+S6 completion now has reviewed pattern/control-flow coverage. Record-pattern
+labels use their nearest source/schema owner, exclude used fields and preserve
+the current label's replacement range. Nested and colon-separated value patterns
+remain distinct; applied shorthand fields introduce exact local binding targets.
+Resume B03.52 with the remaining semantic review and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

@@ -11,6 +11,11 @@ fn enum_alias_matrix_preserves_candidates_and_applied_reference_owners() {
 }
 
 #[test]
+fn pattern_field_matrix_preserves_owned_labels_and_binding_boundaries() {
+    assert_enum_alias("completion-pattern-fields");
+}
+
+#[test]
 fn enum_alias_overlay_transitions_match_fresh_owner_facts() {
     let spec = load("completion-enum-aliases");
     let lifecycle = &spec.oracle["lifecycle"];
@@ -178,7 +183,26 @@ fn assert_enum_alias(fixture_id: &str) {
                     }
                 }
                 let start = range.start.byte + insertion.rfind("::").map_or(0, |i| i + 2);
-                if let Some(target) = expected["target"].as_str() {
+                if case["introducedBinding"] == true {
+                    let end = range.start.byte + string(expected, "label").len();
+                    let definition = fresh
+                        .definition(&uri(file), position(&edited, range.start.byte + 1))
+                        .expect("introduced shorthand binding");
+                    assert_eq!(definition.document_id(), &uri(file));
+                    assert_eq!(
+                        definition.range().start(),
+                        position(&edited, range.start.byte)
+                    );
+                    assert_eq!(definition.range().end(), position(&edited, end));
+                    assert_eq!(
+                        definition.symbol(),
+                        Some(&SymbolRef::local_at(
+                            string(expected, "label"),
+                            uri(file),
+                            TextRange::new(range.start.byte, end)
+                        ))
+                    );
+                } else if let Some(target) = expected["target"].as_str() {
                     let target = if target == "self" { file } else { target };
                     let definition = fresh
                         .definition(&uri(file), position(&edited, start + 1))

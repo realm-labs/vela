@@ -4668,3 +4668,11 @@ shadowing and guard visibility without exposing bindings in their own source
 expression or pattern. Resolved call analysis obtains expected name, type and
 active parameter index from the same parameter selection, including reordered
 named arguments; unresolved selections keep only available syntax facts.
+
+Record-pattern field completion uses the nearest CST record's direct labels and
+the existing source/schema field provider. It excludes other present fields but
+keeps the current label replaceable, including mid-token queries. A pattern after
+the label's colon retains ordinary enum-pattern completion. Field completion
+metadata identifies the declared field; definition on a completed shorthand
+pattern identifies the local binding introduced by that shorthand. These are
+distinct authoring identities and do not change grammar or binding semantics.

@@ -9,6 +9,11 @@ fn enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates() 
 }
 
 #[test]
+fn pattern_field_matrix_projects_owned_labels_and_binding_boundaries() {
+    assert_enum_alias("completion-pattern-fields");
+}
+
+#[test]
 fn enum_alias_overlay_transitions_replace_field_owner_metadata() {
     let spec = load("completion-enum-aliases");
     let fixture = FixtureWorkspace::new(&spec).expect("enum fixture invariant");
@@ -214,7 +219,18 @@ fn assert_enum_alias(fixture_id: &str) {
                     json!({"textDocument":{"uri":uri(file)},"position":{"line":range.start.line,"character":range.start.character+start+1}}),
                 ));
                 id += 1;
-                if let Some(target) = expected["target"].as_str() {
+                if case["introducedBinding"] == true {
+                    let end =
+                        range.start.character + string(expected, "label").encode_utf16().count();
+                    assert_eq!(
+                        definition["result"],
+                        json!({"uri":uri(file),"range":{
+                            "start":{"line":range.start.line,"character":range.start.character},
+                            "end":{"line":range.start.line,"character":end}
+                        }}),
+                        "{case}"
+                    );
+                } else if let Some(target) = expected["target"].as_str() {
                     let target = if target == "self" { file } else { target };
                     let marker = fixture.document(target).expect("target").markers
                         [string(expected, "marker")];

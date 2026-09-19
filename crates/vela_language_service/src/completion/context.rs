@@ -110,7 +110,8 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
         };
     }
 
-    if cursor.kind() == CursorContextKind::Pattern {
+    let pattern_record = super::pattern_field::record_pattern_at(query);
+    if cursor.kind() == CursorContextKind::Pattern || pattern_record.is_some() {
         return CompletionContext {
             kind: CompletionContextKind::Pattern,
             prefix: prefix.to_owned(),
@@ -119,7 +120,7 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
                 .unwrap_or(TextRange::new(prefix_start, offset)),
             module_base: cursor.module_base().map(ToOwned::to_owned),
             member_receiver: None,
-            record_constructor: None,
+            record_constructor: pattern_record,
             map_key: None,
             call_arguments: None,
             lambda_parameter: None,

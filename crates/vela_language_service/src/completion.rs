@@ -48,6 +48,7 @@ mod named_argument;
 #[cfg(test)]
 mod named_argument_matrix_tests;
 mod pattern;
+mod pattern_field;
 mod record_field;
 mod record_field_source;
 #[cfg(test)]

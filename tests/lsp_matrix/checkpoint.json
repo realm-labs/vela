@@ -1939,10 +1939,21 @@
         "completion/syntax/S14/negative/protocol"
       ],
       "summary": "Reviewed S14 authoring-core partitions in tests/lsp_matrix/reviews/completion-s14.md and added four exact service/protocol mappings. Shared LF/CRLF Unicode fixtures cover 15 structured-context queries, 26 type positions and 13 local-visibility cases; four additional service queries cover empty builtin argument slots. Service asserts analysis variants, qualifier/receiver range/fact, expected name/type, active parameter, exact visible scopes, editor-neutral details and byte edits. Actual protocol independently asserts complete candidate sets, details, resolve preservation and UTF-16 edits with explicit fixture fills, surrounding-text preservation and parsed applied source. Shared binding cases retain exact definition targets and requery ownership. Existing unified-index/member/package/authoring tests cover source/schema/inherent/trait/default/builtin members and owned projection. Fixed CST type-location ownership and direct separator counting, HIR loop/pattern introduction boundaries, and consistency of resolved active parameter with expected name/type after named argument reordering. Dynamic/missing contexts and ambiguous calls retain explicit exclusions. Workspace 4533 passed with two historical ignored; full service 649 and protocol 634 passed; focused analysis/type/binding/projection, fmt/Clippy and Node 73 passed. Feature audit: 203 verified, 1122 unreviewed, two N/A, no failed rows. Windows VSIX editors/vscode/test-results/run-N6n8ef/results.json passed 9; native editors/vscode/test-results/input-ZbTLJ0/results.json passed 13; strict target/lsp-matrix/run-9srtRR/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. B03 remains open. Resume B03.51 with remaining semantic review and UX04. No generated-partition, scale or UX04 acceptance is inferred. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.51",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S6/positive/service",
+        "completion/syntax/S6/positive/protocol",
+        "completion/syntax/S6/negative/service",
+        "completion/syntax/S6/negative/protocol"
+      ],
+      "summary": "Reviewed S6 pattern/control-flow partitions in tests/lsp_matrix/reviews/completion-s6.md and added four exact service/protocol mappings. Thirty new shared LF/CRLF Unicode queries independently assert source/schema pattern-field ownership, direct/namespace aliases, explicit labels/shorthand, empty/mid-token ranges, for/indexed-for, used-field exclusion, nested nearest-owner boundaries and colon-separated value patterns. Nine cases have exact empty sets. Both layers assert symbols/details/resolve/edits and parse applied source; explicit labels retain field definition or metadata-only null, while shorthand definition targets the new local binding at an independent expected range. Actual protocol didChange and restoration preserve original results. Fixed missing record-pattern field completion by querying nearest CST record labels and reusing the source/schema field provider; enum patterns after colons retain their own candidates. Existing enum-alias, visible-binding, loop/match, abrupt/local-exit and authoring matrices cover variants, guards, captures, reachable receiver facts and control keywords. Workspace 4535 passed with two historical ignored; full service 650 and protocol 635 passed; focused pattern tests, fmt/Clippy and Node 73 passed. Feature audit: 207 verified, 1118 unreviewed, two N/A, no failed rows. Windows VSIX editors/vscode/test-results/run-1IZs1o/results.json passed 9; native editors/vscode/test-results/input-sAA8Cv/results.json passed 13; strict target/lsp-matrix/run-429VAX/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. B03 remains open. Resume B03.52 with remaining semantic review and UX04. No generated-partition, compiler-legality, runtime, scale or UX04 acceptance is inferred. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.51",
-  "nextTask": "B03.51",
+  "activeChild": "B03.52",
+  "nextTask": "B03.52",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4155,7 +4166,20 @@
     "target/b03-50-input.log",
     "target/b03-50-accepted-regression.log",
     "editors/vscode/test-results/run-N6n8ef/results.json",
-    "editors/vscode/test-results/input-ZbTLJ0/results.json"
+    "editors/vscode/test-results/input-ZbTLJ0/results.json",
+    "target/lsp-matrix/run-429VAX/report.json",
+    "target/b03-51-baseline.log",
+    "target/b03-51-repro.log",
+    "target/b03-51-patterns.log",
+    "target/b03-51-workspace.log",
+    "target/b03-51-fmt.log",
+    "target/b03-51-clippy.log",
+    "target/b03-51-node.log",
+    "target/b03-51-editor.log",
+    "target/b03-51-input.log",
+    "target/b03-51-accepted-regression.log",
+    "editors/vscode/test-results/run-1IZs1o/results.json",
+    "editors/vscode/test-results/input-sAA8Cv/results.json"
   ],
   "openIssues": [
     {
@@ -4776,8 +4800,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b7470052d6a6666f7d6900ef1f3e8fefeec61fea",
-          "treeSha256": "2b03aa2bf502aaa4b350be92a0f24ac68bba75949f116873e7a91bf925d24706"
+          "revision": "24999355fd0b6831a2ed44c75e5d212228a4622e",
+          "treeSha256": "9431b52ff28bbba8be829d6487ec481fd8ff5081c03516d7bf412b861c094890"
         },
         "profile": {
           "platform": "win32",
@@ -4785,11 +4809,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-9srtRR/report.json"
+          "target/lsp-matrix/run-429VAX/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-N6n8ef/results.json --local-results editors/vscode/test-results/input-ZbTLJ0/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-1IZs1o/results.json --local-results editors/vscode/test-results/input-sAA8Cv/results.json",
             "exitCode": 0
           }
         ]

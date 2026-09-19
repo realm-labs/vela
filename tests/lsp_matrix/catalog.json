@@ -4615,6 +4615,142 @@
           "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S6/positive/service",
+      "assertion": "Reviewed S6 partitions in reviews/completion-s6.md. Thirty shared LF/CRLF Unicode pattern-field queries independently assert source/schema and alias ownership, label/shorthand/empty/mid-token/for/indexed-for/nested contexts, details, resolve, byte/UTF-16 edits and applied definitions. Explicit labels retain field ownership; completed shorthand targets the new local binding. Existing enum, binding, loop/match, abrupt/local-exit and authoring matrices cover variant forms, guards, iteration, reachable owners, control-flow keywords and applied snippets.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::pattern_field_matrix_preserves_owned_labels_and_binding_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::loop_match_matrix_preserves_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::abrupt_flow_matrix_preserves_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::local_exit_matrix_preserves_reachable_assignment_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S6/positive/protocol",
+      "assertion": "Reviewed S6 partitions in reviews/completion-s6.md. Thirty shared LF/CRLF Unicode pattern-field queries independently assert source/schema and alias ownership, label/shorthand/empty/mid-token/for/indexed-for/nested contexts, details, resolve, byte/UTF-16 edits and applied definitions. Explicit labels retain field ownership; completed shorthand targets the new local binding. Existing enum, binding, loop/match, abrupt/local-exit and authoring matrices cover variant forms, guards, iteration, reachable owners, control-flow keywords and applied snippets.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::pattern_field_matrix_projects_owned_labels_and_binding_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::loop_match_matrix_projects_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::abrupt_flow_matrix_projects_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::local_exit_matrix_projects_reachable_assignment_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S6/negative/service",
+      "assertion": "Used pattern fields, private/missing/non-enum/duplicate owners and variant names at field-label positions have exact exclusions; nine new queries are empty. Nested patterns cannot borrow outer labels, while colon-separated value patterns retain their own enum candidates. Iterator sources, binding patterns and later arms exclude premature/expired locals. Break/return exits and irrefutable match arms exclude unreachable owners, and operands cannot gain statement keywords. No compiler-legality, runtime, UX04 or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::pattern_field_matrix_preserves_owned_labels_and_binding_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::loop_match_matrix_preserves_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::abrupt_flow_matrix_preserves_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::local_exit_matrix_preserves_reachable_assignment_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S6/negative/protocol",
+      "assertion": "Used pattern fields, private/missing/non-enum/duplicate owners and variant names at field-label positions have exact exclusions; nine new queries are empty. Nested patterns cannot borrow outer labels, while colon-separated value patterns retain their own enum candidates. Iterator sources, binding patterns and later arms exclude premature/expired locals. Break/return exits and irrefutable match arms exclude unreachable owners, and operands cannot gain statement keywords. No compiler-legality, runtime, UX04 or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::pattern_field_matrix_projects_owned_labels_and_binding_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::loop_match_matrix_projects_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::abrupt_flow_matrix_projects_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::local_exit_matrix_projects_reachable_assignment_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
     }
   ],
   "featureFiles": [

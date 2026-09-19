@@ -10,6 +10,13 @@ pub(super) fn pattern_completion_items(
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
     let graph = databases.hir_db().graph();
+    if context.record_constructor.is_some() {
+        return super::record_field::record_field_completion_items(
+            graph,
+            databases.schema_db().facts(),
+            context,
+        );
+    }
     let Some(module) = query.module_key().and_then(|key| graph.module_id(key)) else {
         return Vec::new();
     };

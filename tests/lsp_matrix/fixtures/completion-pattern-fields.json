@@ -1,0 +1,785 @@
+{
+  "version": 1,
+  "id": "completion-pattern-fields",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.enum_aliases\"\nname = \"enum_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Choice\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\"\n        }\n      },\n      {\n        \"name\": \"api::Choice\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Choice\"\n        }\n      },\n      {\n        \"name\": \"api::Hidden\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Hidden\"\n        }\n      },\n      {\n        \"name\": \"api::Mask\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Mask\"\n        }\n      }\n    ],\n    \"variants\": [\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Ready\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Ready\"\n        },\n        \"docs\": \"host::Choice::Ready docs 中😀.\"\n      },\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Pair\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Pair\"\n        },\n        \"docs\": \"host::Choice::Pair docs 中😀.\"\n      },\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Data\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Data\"\n        },\n        \"docs\": \"host::Choice::Data docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Choice\",\n        \"name\": \"Ready\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Choice\",\n          \"variant\": \"Ready\"\n        },\n        \"docs\": \"api::Choice::Ready docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Choice\",\n        \"name\": \"Pair\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Choice\",\n          \"variant\": \"Pair\"\n        },\n        \"docs\": \"api::Choice::Pair docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Choice\",\n        \"name\": \"Data\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Choice\",\n          \"variant\": \"Data\"\n        },\n        \"docs\": \"api::Choice::Data docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Hidden\",\n        \"name\": \"Ready\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Hidden\",\n          \"variant\": \"Ready\"\n        },\n        \"docs\": \"api::Hidden::Ready docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Hidden\",\n        \"name\": \"Pair\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Hidden\",\n          \"variant\": \"Pair\"\n        },\n        \"docs\": \"api::Hidden::Pair docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Hidden\",\n        \"name\": \"Data\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Hidden\",\n          \"variant\": \"Data\"\n        },\n        \"docs\": \"api::Hidden::Data docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Mask\",\n        \"name\": \"Ready\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Mask\",\n          \"variant\": \"Ready\"\n        },\n        \"docs\": \"api::Mask::Ready docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Mask\",\n        \"name\": \"Pair\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Mask\",\n          \"variant\": \"Pair\"\n        },\n        \"docs\": \"api::Mask::Pair docs 中😀.\"\n      },\n      {\n        \"owner\": \"api::Mask\",\n        \"name\": \"Data\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"api::Mask\",\n          \"variant\": \"Data\"\n        },\n        \"docs\": \"api::Mask::Data docs 中😀.\"\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Choice::Pair\",\n        \"name\": \"0\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"host::Choice::Data\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Choice::Pair\",\n        \"name\": \"0\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Choice::Data\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Hidden::Pair\",\n        \"name\": \"0\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Hidden::Data\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Mask::Pair\",\n        \"name\": \"0\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      },\n      {\n        \"owner\": \"api::Mask::Data\",\n        \"name\": \"tag\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "pub enum [[choice:start]]Choice[[choice:end]] { [[ready:start]]Ready[[ready:end]], [[pair:start]]Pair[[pair:end]](value: i64), [[data:start]]Data[[data:end]] { [[tag:start]]tag[[tag:end]]: i64 } }\nenum Hidden { Ready }\nstruct Mask {}\npub enum Wrap { [[outer:start]]Outer[[outer:end]] { [[inner:start]]inner[[inner:end]]: Choice, [[flag:start]]flag[[flag:end]]: bool } }\n",
+    "scripts/source_alias_label.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/source_alias_shorthand.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/source_namespace_label.vela": "use api as Space;\n/* 中😀 */ fn run(value) { match value { Space::Choice::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/source_namespace_shorthand.vela": "use api as Space;\n/* 中😀 */ fn run(value) { match value { Space::Choice::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/source_empty.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]][[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/source_used.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { tag: local, [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/source_binding.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { tag: [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/source_for.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { for Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } in value {} }\n",
+    "scripts/source_indexed_for.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { for index, Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } in value {} }\n",
+    "scripts/source_mid_token.vela": "use api::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]t[[cursor]]ag[[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/source_nested.vela": "use api::Choice as Alias; use api::Wrap;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { inner: Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local }, flag } => {}, _ => {} } }\n",
+    "scripts/schema_alias_label.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/schema_alias_shorthand.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/schema_namespace_label.vela": "use host as Space;\n/* 中😀 */ fn run(value) { match value { Space::Choice::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/schema_namespace_shorthand.vela": "use host as Space;\n/* 中😀 */ fn run(value) { match value { Space::Choice::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/schema_empty.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]][[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/schema_used.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { tag: local, [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/schema_binding.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { tag: [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/schema_for.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { for Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local } in value {} }\n",
+    "scripts/schema_indexed_for.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { for index, Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } in value {} }\n",
+    "scripts/schema_mid_token.vela": "use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]t[[cursor]]ag[[replace:end]]: local } => {}, _ => {} } }\n",
+    "scripts/schema_nested.vela": "use host::Choice as Alias; use api::Wrap;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { inner: Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]]: local }, flag } => {}, _ => {} } }\n",
+    "scripts/after_nested.vela": "use api::Wrap; use api::Choice;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { inner: Choice::Data { tag: local }, [[replace:start]]fl[[cursor]][[replace:end]]: condition } => {}, _ => {} } }\n",
+    "scripts/after_nested_empty.vela": "use api::Wrap; use api::Choice;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { inner: Choice::Data { tag: local }, [[replace:start]][[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/field_not_variant.vela": "use api::Wrap;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { [[replace:start]]Re[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/empty_value_pattern.vela": "use api::Wrap;\n/* 中😀 */ fn run(value) { match value { Wrap::Outer { inner: [[replace:start]][[cursor]][[replace:end]], flag: condition } => {}, _ => {} } }\n",
+    "scripts/private.vela": "use api::Hidden as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/missing.vela": "use absent::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/non_enum.vela": "use api::Mask as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n",
+    "scripts/duplicate.vela": "use api::Choice as Alias; use host::Choice as Alias;\n/* 中😀 */ fn run(value) { match value { Alias::Data { [[replace:start]]ta[[cursor]][[replace:end]] } => {}, _ => {} } }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "source_alias_label",
+        "file": "scripts/source_alias_label.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_alias_shorthand",
+        "file": "scripts/source_alias_shorthand.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_namespace_label",
+        "file": "scripts/source_namespace_label.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_namespace_shorthand",
+        "file": "scripts/source_namespace_shorthand.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_empty",
+        "file": "scripts/source_empty.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_used",
+        "file": "scripts/source_used.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "source_binding",
+        "file": "scripts/source_binding.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "source_for",
+        "file": "scripts/source_for.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_indexed_for",
+        "file": "scripts/source_indexed_for.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_mid_token",
+        "file": "scripts/source_mid_token.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source_nested",
+        "file": "scripts/source_nested.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Choice::Data.tag",
+            "target": "scripts/api.vela",
+            "marker": "tag",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_alias_label",
+        "file": "scripts/schema_alias_label.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_alias_shorthand",
+        "file": "scripts/schema_alias_shorthand.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_namespace_label",
+        "file": "scripts/schema_namespace_label.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_namespace_shorthand",
+        "file": "scripts/schema_namespace_shorthand.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_empty",
+        "file": "scripts/schema_empty.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_used",
+        "file": "scripts/schema_used.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "schema_binding",
+        "file": "scripts/schema_binding.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "schema_for",
+        "file": "scripts/schema_for.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_indexed_for",
+        "file": "scripts/schema_indexed_for.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_mid_token",
+        "file": "scripts/schema_mid_token.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "schema_nested",
+        "file": "scripts/schema_nested.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "tag",
+            "insert": "tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "schema",
+            "symbol": "host::Choice::Data.tag",
+            "target": null,
+            "marker": "tag",
+            "docs": null,
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "after_nested",
+        "file": "scripts/after_nested.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "flag",
+            "insert": "flag",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Wrap::Outer.flag",
+            "target": "scripts/api.vela",
+            "marker": "flag",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "after_nested_empty",
+        "file": "scripts/after_nested_empty.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": true,
+        "items": [
+          {
+            "label": "flag",
+            "insert": "flag",
+            "kind": "Field",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::Wrap::Outer.flag",
+            "target": "scripts/api.vela",
+            "marker": "flag",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "field_not_variant",
+        "file": "scripts/field_not_variant.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "empty_value_pattern",
+        "file": "scripts/empty_value_pattern.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": [
+          {
+            "label": "Ready",
+            "insert": "api::Choice::Ready",
+            "kind": "Variant",
+            "detail": "api::Choice",
+            "origin": "source",
+            "symbol": "api::Choice::Ready",
+            "target": "scripts/api.vela",
+            "marker": "ready",
+            "docs": null,
+            "receiver": "api::Choice::Ready",
+            "members": []
+          },
+          {
+            "label": "Pair",
+            "insert": "api::Choice::Pair",
+            "kind": "Variant",
+            "detail": "api::Choice",
+            "origin": "source",
+            "symbol": "api::Choice::Pair",
+            "target": "scripts/api.vela",
+            "marker": "pair",
+            "docs": null,
+            "receiver": "api::Choice::Pair",
+            "members": []
+          },
+          {
+            "label": "Data",
+            "insert": "api::Choice::Data",
+            "kind": "Variant",
+            "detail": "api::Choice",
+            "origin": "source",
+            "symbol": "api::Choice::Data",
+            "target": "scripts/api.vela",
+            "marker": "data",
+            "docs": null,
+            "receiver": "api::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          },
+          {
+            "label": "Ready",
+            "insert": "host::Choice::Ready",
+            "kind": "Variant",
+            "detail": "host::Choice",
+            "origin": "schema",
+            "symbol": "host::Choice::Ready",
+            "target": null,
+            "marker": "ready",
+            "docs": "host::Choice::Ready docs 中😀.",
+            "receiver": "host::Choice::Ready",
+            "members": []
+          },
+          {
+            "label": "Pair",
+            "insert": "host::Choice::Pair",
+            "kind": "Variant",
+            "detail": "host::Choice",
+            "origin": "schema",
+            "symbol": "host::Choice::Pair",
+            "target": null,
+            "marker": "pair",
+            "docs": "host::Choice::Pair docs 中😀.",
+            "receiver": "host::Choice::Pair",
+            "members": [
+              {
+                "label": "0",
+                "detail": "i64"
+              }
+            ]
+          },
+          {
+            "label": "Data",
+            "insert": "host::Choice::Data",
+            "kind": "Variant",
+            "detail": "host::Choice",
+            "origin": "schema",
+            "symbol": "host::Choice::Data",
+            "target": null,
+            "marker": "data",
+            "docs": "host::Choice::Data docs 中😀.",
+            "receiver": "host::Choice::Data",
+            "members": [
+              {
+                "label": "tag",
+                "detail": "i64"
+              }
+            ]
+          },
+          {
+            "label": "Outer",
+            "insert": "api::Wrap::Outer",
+            "kind": "Variant",
+            "detail": "api::Wrap",
+            "origin": "source",
+            "symbol": "api::Wrap::Outer",
+            "target": "scripts/api.vela",
+            "marker": "outer",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "non_enum",
+        "file": "scripts/non_enum.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      },
+      {
+        "id": "duplicate",
+        "file": "scripts/duplicate.vela",
+        "context": "Pattern",
+        "applySuffix": "",
+        "member": false,
+        "introducedBinding": false,
+        "items": []
+      }
+    ]
+  }
+}
