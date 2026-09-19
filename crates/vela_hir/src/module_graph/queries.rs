@@ -124,7 +124,7 @@ impl ModuleGraph {
     /// Returns the canonical binding map that owns a HIR body.
     ///
     /// Lambda and parameter-default bodies share the binding generation of
-    /// their nearest enclosing executable body. Keeping this lookup on the
+    /// their nearest enclosing root body. Keeping this lookup on the
     /// module graph prevents downstream consumers from rebuilding owner joins.
     #[must_use]
     pub fn bindings_for_body(&self, body: HirBodyId) -> Option<&BindingMap> {
@@ -138,6 +138,9 @@ impl ModuleGraph {
             }
             crate::body::HirBodyOwner::SchemaFieldDefault(_) => {
                 self.schema_field_default_bindings(body)
+            }
+            crate::body::HirBodyOwner::TraitSignatureDefault(_) => {
+                self.trait_signature_default_bindings.get(&body)
             }
             crate::body::HirBodyOwner::TraitDefaultMethod(method) => {
                 self.trait_default_method_bindings(method)
@@ -171,7 +174,12 @@ impl ModuleGraph {
     pub fn body_containing_offset(&self, source: SourceId, offset: u32) -> Option<&HirBody> {
         self.bodies_in_source(source)
             .filter(|body| body.origin.span.contains(offset))
-            .min_by_key(|body| body.origin.span.len())
+            .min_by_key(|body| {
+                (
+                    body.origin.span.len(),
+                    std::cmp::Reverse(self.body_and_ancestors(body.id).count()),
+                )
+            })
     }
 
     pub fn body_and_ancestors(&self, body: HirBodyId) -> impl Iterator<Item = &HirBody> {
@@ -183,6 +191,7 @@ impl ModuleGraph {
                 | crate::body::HirBodyOwner::ConstInitializer(_)
                 | crate::body::HirBodyOwner::StateInitializer(_)
                 | crate::body::HirBodyOwner::SchemaFieldDefault(_)
+                | crate::body::HirBodyOwner::TraitSignatureDefault(_)
                 | crate::body::HirBodyOwner::TraitDefaultMethod(_)
                 | crate::body::HirBodyOwner::ImplMethod(_) => return None,
             };
@@ -197,6 +206,7 @@ impl ModuleGraph {
             .chain(self.const_initializer_bindings.values())
             .chain(self.state_initializer_bindings.values())
             .chain(self.schema_field_default_bindings.values())
+            .chain(self.trait_signature_default_bindings.values())
             .chain(self.trait_default_method_bindings.values())
             .chain(self.impl_method_bindings.values())
             .find_map(|bindings| bindings.local(local))

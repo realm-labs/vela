@@ -23,3 +23,4 @@ mod bindings;
 mod ingestion;
 mod metadata;
 mod resolution;
+mod signature_defaults;

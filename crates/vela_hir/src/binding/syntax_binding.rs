@@ -61,6 +61,7 @@ pub(crate) struct SyntaxExpressionBindingInput<'a> {
     pub source: SourceId,
     pub declaration: HirDeclId,
     pub expression: SyntaxExpression,
+    pub params: &'a [ParamHint],
     pub module_declarations: Vec<(String, HirDeclId)>,
     pub qualified_declarations: Vec<(Vec<String>, HirDeclId)>,
     pub imports: Vec<ImportBinding>,
@@ -312,6 +313,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
             service_capabilities: BTreeMap::new(),
             task_capabilities: BTreeMap::new(),
         };
+        for param in input.params {
+            lowerer.declare_parameter(
+                param.name.clone(),
+                LocalBindingKind::Parameter,
+                param.type_hint.clone(),
+                param.span,
+            );
+        }
         let value = lowerer.bind_expr(&input.expression, PathUsage::Value);
         lowerer.body_mut(input.body_id).root = HirBodyRoot::Expr(value);
         lowerer

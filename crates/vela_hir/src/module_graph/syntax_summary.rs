@@ -319,6 +319,41 @@ impl SyntaxModuleSummary {
             .unwrap_or_default()
     }
 
+    pub(super) fn trait_signature_default_sources(
+        &self,
+        index: usize,
+    ) -> Vec<(usize, usize, SyntaxExpressionSourcePart)> {
+        let Some(item) = self
+            .item(index, SyntaxKind::TraitItem)
+            .and_then(|item| SyntaxTraitItem::cast(item.syntax().clone()))
+        else {
+            return Vec::new();
+        };
+        item.methods()
+            // Metadata omits nameless recovery nodes; keep the same indices.
+            .filter(|method| method.name_token().is_some())
+            .enumerate()
+            .filter(|(_, method)| method.body().is_none())
+            .flat_map(|(method_index, method)| {
+                method
+                    .param_list()
+                    .into_iter()
+                    .flat_map(|list| list.params().collect::<Vec<_>>())
+                    .filter(|param| param.name_token().is_some())
+                    .enumerate()
+                    .filter_map(move |(parameter, param)| {
+                        param.default_value().map(|expression| {
+                            (
+                                method_index,
+                                parameter,
+                                SyntaxExpressionSourcePart { expression },
+                            )
+                        })
+                    })
+            })
+            .collect()
+    }
+
     pub(super) fn impl_metadata_or(
         &self,
         index: usize,

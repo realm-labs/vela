@@ -6,6 +6,41 @@ use vela_registry::{DefinitionRegistry, TypeDef, TypeKindDef};
 use super::{FixtureRoots, prepare_source, prepare_source_with_registry};
 
 #[test]
+fn required_signature_lambdas_do_not_enter_runtime_targets() {
+    use vela_hir::body::HirBodyOwner;
+
+    for roots in [FixtureRoots::Program, FixtureRoots::Function("main")] {
+        let fixture = prepare_source(
+            "trait Reader { fn read(self, callback = |unused: bool| unused); } fn main() { |active: i64| active }",
+            roots,
+        ).expect("required signature defaults remain analysis-only");
+        let signature = fixture
+            .graph
+            .bodies()
+            .find(|body| matches!(body.owner, HirBodyOwner::TraitSignatureDefault(_)))
+            .expect("signature default root");
+        let signature_lambdas = fixture.graph.bodies().filter(|body| matches!(body.owner, HirBodyOwner::Lambda { parent, .. } if parent == signature.id)).collect::<Vec<_>>();
+        assert_eq!(signature_lambdas.len(), 1, "the analysis lambda must exist");
+        let targets = fixture.input.targets();
+        let function = targets
+            .function_for_declaration(fixture.declarations["main"])
+            .expect("main function identity");
+        let scoped = targets
+            .function_targets(function)
+            .expect("main scoped targets");
+        let lambdas = scoped.lambdas().collect::<Vec<_>>();
+        assert_eq!(lambdas.len(), 1);
+        assert_eq!(lambdas[0].parameters[0].name, "active");
+        assert_ne!(lambdas[0].body, signature_lambdas[0].id);
+        assert!(
+            targets
+                .function_for_declaration(fixture.declarations["Reader"])
+                .is_none()
+        );
+    }
+}
+
+#[test]
 fn selected_root_owns_nested_script_and_primitive_lambda_contracts() {
     let fixture = prepare_source(
         r#"

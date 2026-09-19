@@ -651,6 +651,7 @@ fn main(fallback, value = fallback?) {
             HirBodyOwner::ConstInitializer(_)
             | HirBodyOwner::StateInitializer(_)
             | HirBodyOwner::SchemaFieldDefault(_)
+            | HirBodyOwner::TraitSignatureDefault(_)
             | HirBodyOwner::TraitDefaultMethod(_)
             | HirBodyOwner::ImplMethod(_) => None,
         },

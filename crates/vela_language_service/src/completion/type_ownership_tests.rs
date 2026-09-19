@@ -128,6 +128,11 @@ fn declaration_context_matrix_preserves_initializer_and_parameter_owners() {
     assert_type_ownership("completion-declaration-contexts");
 }
 
+#[test]
+fn signature_scope_matrix_preserves_nested_binding_owners() {
+    assert_type_ownership("completion-signature-scopes");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);

@@ -13,6 +13,7 @@ mod loops_builder;
 mod model;
 mod patterns_builder;
 mod reservations;
+mod signature_defaults;
 mod snapshot_validation;
 mod targets;
 mod try_builder;

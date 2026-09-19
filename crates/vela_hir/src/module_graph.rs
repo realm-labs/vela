@@ -68,6 +68,7 @@ pub struct ModuleGraph {
     const_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
     state_initializer_bindings: BTreeMap<HirDeclId, BindingMap>,
     schema_field_default_bindings: BTreeMap<HirBodyId, BindingMap>,
+    trait_signature_default_bindings: BTreeMap<HirBodyId, BindingMap>,
     function_signatures: BTreeMap<HirDeclId, FunctionSignature>,
     struct_shapes: BTreeMap<HirDeclId, StructShape>,
     enum_shapes: BTreeMap<HirDeclId, EnumShape>,
@@ -175,6 +176,7 @@ impl ModuleGraph {
         let mut schema_field_defaults = Vec::new();
         let mut function_declarations = Vec::new();
         let mut trait_default_method_declarations = Vec::new();
+        let mut trait_signature_defaults = Vec::new();
         let mut impl_method_declarations = Vec::new();
 
         for (item_index, item_kind) in syntax_summary.items() {
@@ -371,6 +373,16 @@ impl ModuleGraph {
                         item_index,
                         default_method_nodes.clone(),
                     );
+                    for (method, parameter, syntax) in
+                        syntax_summary.trait_signature_default_sources(item_index)
+                    {
+                        trait_signature_defaults.push((
+                            method,
+                            parameter,
+                            body_binding::ExpressionBodySource::new(declaration, syntax)
+                                .with_params(shape.methods[method].signature.params.clone()),
+                        ));
+                    }
                     self.validate_trait_shape(&shape);
                     self.declaration_attrs.insert(
                         declaration,
@@ -463,6 +475,9 @@ impl ModuleGraph {
         }
         for (node, source) in trait_default_method_declarations {
             self.bind_trait_default_method_body(&hir_module, node, source);
+        }
+        for (method, parameter, source) in trait_signature_defaults {
+            self.bind_trait_signature_default(&hir_module, source, method, parameter);
         }
         for (node, source) in impl_method_declarations {
             self.bind_impl_method_body(&hir_module, node, source);
@@ -678,10 +693,33 @@ impl ModuleGraph {
             }
         }
 
+        for bindings in self.trait_signature_default_bindings.values_mut() {
+            if let Some(module) = self
+                .declarations
+                .get(&bindings.declaration)
+                .map(|declaration| declaration.module)
+                && let Some(imports) = imports_by_module.get(&module)
+            {
+                bindings.resolve_import_declarations(imports);
+            }
+        }
         self.refresh_qualified_binding_resolutions();
     }
 
     fn refresh_qualified_binding_resolutions(&mut self) {
+        let signature_defaults = self
+            .trait_signature_default_bindings
+            .iter()
+            .filter_map(|(body, bindings)| {
+                let module = self.declarations.get(&bindings.declaration)?.module;
+                Some((*body, self.qualified_declarations_for(module)))
+            })
+            .collect::<Vec<_>>();
+        for (body, declarations) in signature_defaults {
+            if let Some(bindings) = self.trait_signature_default_bindings.get_mut(&body) {
+                bindings.resolve_qualified_declarations(&declarations);
+            }
+        }
         let function_bindings = self
             .bindings
             .keys()

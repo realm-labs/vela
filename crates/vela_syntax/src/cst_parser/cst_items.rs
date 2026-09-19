@@ -330,10 +330,8 @@ impl CstParser<'_, '_> {
         self.builder.start_node(SyntaxKind::Param);
         let default_start = self.find_root_kind_before(SyntaxKind::Equal, start, end);
 
-        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, end) {
-            let value_end = self
-                .find_root_kind_before(SyntaxKind::Equal, colon + 1, end)
-                .unwrap_or(end);
+        let value_end = default_start.unwrap_or(end);
+        if let Some(colon) = self.find_root_kind_before(SyntaxKind::Colon, start, value_end) {
             let type_start = self.skip_trivia(colon + 1);
             let type_end = self.trim_trailing_trivia(type_start, value_end);
             if type_start < type_end {

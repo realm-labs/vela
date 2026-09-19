@@ -1,0 +1,1597 @@
+{
+  "version": 1,
+  "id": "completion-signature-scopes",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.signature_scopes\"\nname=\"signature_scopes\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/lambda_shadow.vela": "trait Reader { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/lambda_capture.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/block_local.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/local_shadow.vela": "trait Reader { fn read(self, zz_pick: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/local_initializer.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { let zz_pick = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/closed_block.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { { let zz_pick = true; } /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/later_local.vela": "trait Reader { fn read(self, outer: i64, value = { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; let [[decl:start]]zz_pick[[decl:end]] = true; }); }\n",
+    "scripts/loop_binding.vela": "trait Reader { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }); }\n",
+    "scripts/after_loop.vela": "trait Reader { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }); }\n",
+    "scripts/pattern_guard.vela": "trait Reader { fn read(self, outer: i64, value = { match true { [[decl:start]]zz_pick[[decl:end]] if /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] => true, _ => false } }); }\n",
+    "scripts/nested_capture.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }); }\n",
+    "scripts/lambda_two_parameters.vela": "trait Reader { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool, other: i64| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/compound_add_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/compound_add_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/compound_subtract_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/compound_subtract_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/compound_multiply_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/compound_multiply_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/compound_divide_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/compound_divide_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/compound_remainder_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }); }\n",
+    "scripts/compound_remainder_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
+    "scripts/function_lambda_shadow.vela": "fn read(zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_lambda_shadow.vela": "trait Reader { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_lambda_shadow.vela": "struct Record {} impl Record { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_lambda_capture.vela": "fn read([[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_lambda_capture.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_lambda_capture.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_block_local.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_block_local.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_block_local.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_local_shadow.vela": "fn read(zz_pick: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_local_shadow.vela": "trait Reader { fn read(self, zz_pick: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_local_shadow.vela": "struct Record {} impl Record { fn read(self, zz_pick: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_local_initializer.vela": "fn read([[decl:start]]zz_pick[[decl:end]]: i64, value = { let zz_pick = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_local_initializer.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { let zz_pick = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_local_initializer.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { let zz_pick = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_closed_block.vela": "fn read([[decl:start]]zz_pick[[decl:end]]: i64, value = { { let zz_pick = true; } /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_closed_block.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { { let zz_pick = true; } /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_closed_block.vela": "struct Record {} impl Record { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = { { let zz_pick = true; } /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_later_local.vela": "fn read(outer: i64, value = { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; let [[decl:start]]zz_pick[[decl:end]] = true; }) {}\n",
+    "scripts/default_trait_later_local.vela": "trait Reader { fn read(self, outer: i64, value = { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; let [[decl:start]]zz_pick[[decl:end]] = true; }) {} }\n",
+    "scripts/inherent_later_local.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; let [[decl:start]]zz_pick[[decl:end]] = true; }) {} }\n",
+    "scripts/function_loop_binding.vela": "fn read(outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }) {}\n",
+    "scripts/default_trait_loop_binding.vela": "trait Reader { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }) {} }\n",
+    "scripts/inherent_loop_binding.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }) {} }\n",
+    "scripts/function_after_loop.vela": "fn read(outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }) {}\n",
+    "scripts/default_trait_after_loop.vela": "trait Reader { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }) {} }\n",
+    "scripts/inherent_after_loop.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { for [[decl:start]]zz_pick[[decl:end]] in [true] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }) {} }\n",
+    "scripts/function_pattern_guard.vela": "fn read(outer: i64, value = { match true { [[decl:start]]zz_pick[[decl:end]] if /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] => true, _ => false } }) {}\n",
+    "scripts/default_trait_pattern_guard.vela": "trait Reader { fn read(self, outer: i64, value = { match true { [[decl:start]]zz_pick[[decl:end]] if /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] => true, _ => false } }) {} }\n",
+    "scripts/inherent_pattern_guard.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { match true { [[decl:start]]zz_pick[[decl:end]] if /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] => true, _ => false } }) {} }\n",
+    "scripts/function_nested_capture.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }) {}\n",
+    "scripts/default_trait_nested_capture.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }) {} }\n",
+    "scripts/inherent_nested_capture.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] } }) {} }\n",
+    "scripts/function_lambda_two_parameters.vela": "fn read(zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool, other: i64| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_lambda_two_parameters.vela": "trait Reader { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool, other: i64| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_lambda_two_parameters.vela": "struct Record {} impl Record { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool, other: i64| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_compound_add_rhs.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_compound_add_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_compound_add_rhs.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_compound_add_after.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_compound_add_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_compound_add_after.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick += 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_compound_subtract_rhs.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_compound_subtract_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_compound_subtract_rhs.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_compound_subtract_after.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_compound_subtract_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_compound_subtract_after.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick -= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_compound_multiply_rhs.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_compound_multiply_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_compound_multiply_rhs.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_compound_multiply_after.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_compound_multiply_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_compound_multiply_after.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick *= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_compound_divide_rhs.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_compound_divide_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_compound_divide_rhs.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_compound_divide_after.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_compound_divide_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_compound_divide_after.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick /= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/function_compound_remainder_rhs.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {}\n",
+    "scripts/default_trait_compound_remainder_rhs.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/inherent_compound_remainder_rhs.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; zz_pick }) {} }\n",
+    "scripts/function_compound_remainder_after.vela": "fn read(outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {}\n",
+    "scripts/default_trait_compound_remainder_after.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n",
+    "scripts/inherent_compound_remainder_after.vela": "struct Record {} impl Record { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]]: i64 = 6; zz_pick %= 2; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }) {} }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "lambda_shadow",
+        "file": "scripts/lambda_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "lambda_capture",
+        "file": "scripts/lambda_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "block_local",
+        "file": "scripts/block_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "local_shadow",
+        "file": "scripts/local_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "local_initializer",
+        "file": "scripts/local_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "closed_block",
+        "file": "scripts/closed_block.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "later_local",
+        "file": "scripts/later_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "loop_binding",
+        "file": "scripts/loop_binding.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "after_loop",
+        "file": "scripts/after_loop.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "pattern_guard",
+        "file": "scripts/pattern_guard.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "nested_capture",
+        "file": "scripts/nested_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "lambda_two_parameters",
+        "file": "scripts/lambda_two_parameters.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_add_rhs",
+        "file": "scripts/compound_add_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_add_after",
+        "file": "scripts/compound_add_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_subtract_rhs",
+        "file": "scripts/compound_subtract_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_subtract_after",
+        "file": "scripts/compound_subtract_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_multiply_rhs",
+        "file": "scripts/compound_multiply_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_multiply_after",
+        "file": "scripts/compound_multiply_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_divide_rhs",
+        "file": "scripts/compound_divide_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_divide_after",
+        "file": "scripts/compound_divide_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_remainder_rhs",
+        "file": "scripts/compound_remainder_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "compound_remainder_after",
+        "file": "scripts/compound_remainder_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_lambda_shadow",
+        "file": "scripts/function_lambda_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_lambda_shadow",
+        "file": "scripts/default_trait_lambda_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_lambda_shadow",
+        "file": "scripts/inherent_lambda_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_lambda_capture",
+        "file": "scripts/function_lambda_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_lambda_capture",
+        "file": "scripts/default_trait_lambda_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_lambda_capture",
+        "file": "scripts/inherent_lambda_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_block_local",
+        "file": "scripts/function_block_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_block_local",
+        "file": "scripts/default_trait_block_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_block_local",
+        "file": "scripts/inherent_block_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_local_shadow",
+        "file": "scripts/function_local_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_local_shadow",
+        "file": "scripts/default_trait_local_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_local_shadow",
+        "file": "scripts/inherent_local_shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_local_initializer",
+        "file": "scripts/function_local_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_local_initializer",
+        "file": "scripts/default_trait_local_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_local_initializer",
+        "file": "scripts/inherent_local_initializer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_closed_block",
+        "file": "scripts/function_closed_block.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_closed_block",
+        "file": "scripts/default_trait_closed_block.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_closed_block",
+        "file": "scripts/inherent_closed_block.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_later_local",
+        "file": "scripts/function_later_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "default_trait_later_local",
+        "file": "scripts/default_trait_later_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "inherent_later_local",
+        "file": "scripts/inherent_later_local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "function_loop_binding",
+        "file": "scripts/function_loop_binding.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_loop_binding",
+        "file": "scripts/default_trait_loop_binding.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_loop_binding",
+        "file": "scripts/inherent_loop_binding.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_after_loop",
+        "file": "scripts/function_after_loop.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "default_trait_after_loop",
+        "file": "scripts/default_trait_after_loop.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "inherent_after_loop",
+        "file": "scripts/inherent_after_loop.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "function_pattern_guard",
+        "file": "scripts/function_pattern_guard.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_pattern_guard",
+        "file": "scripts/default_trait_pattern_guard.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_pattern_guard",
+        "file": "scripts/inherent_pattern_guard.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_nested_capture",
+        "file": "scripts/function_nested_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_nested_capture",
+        "file": "scripts/default_trait_nested_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_nested_capture",
+        "file": "scripts/inherent_nested_capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_lambda_two_parameters",
+        "file": "scripts/function_lambda_two_parameters.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_lambda_two_parameters",
+        "file": "scripts/default_trait_lambda_two_parameters.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_lambda_two_parameters",
+        "file": "scripts/inherent_lambda_two_parameters.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_add_rhs",
+        "file": "scripts/function_compound_add_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_add_rhs",
+        "file": "scripts/default_trait_compound_add_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_add_rhs",
+        "file": "scripts/inherent_compound_add_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_add_after",
+        "file": "scripts/function_compound_add_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_add_after",
+        "file": "scripts/default_trait_compound_add_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_add_after",
+        "file": "scripts/inherent_compound_add_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_subtract_rhs",
+        "file": "scripts/function_compound_subtract_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_subtract_rhs",
+        "file": "scripts/default_trait_compound_subtract_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_subtract_rhs",
+        "file": "scripts/inherent_compound_subtract_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_subtract_after",
+        "file": "scripts/function_compound_subtract_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_subtract_after",
+        "file": "scripts/default_trait_compound_subtract_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_subtract_after",
+        "file": "scripts/inherent_compound_subtract_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_multiply_rhs",
+        "file": "scripts/function_compound_multiply_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_multiply_rhs",
+        "file": "scripts/default_trait_compound_multiply_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_multiply_rhs",
+        "file": "scripts/inherent_compound_multiply_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_multiply_after",
+        "file": "scripts/function_compound_multiply_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_multiply_after",
+        "file": "scripts/default_trait_compound_multiply_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_multiply_after",
+        "file": "scripts/inherent_compound_multiply_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_divide_rhs",
+        "file": "scripts/function_compound_divide_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_divide_rhs",
+        "file": "scripts/default_trait_compound_divide_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_divide_rhs",
+        "file": "scripts/inherent_compound_divide_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_divide_after",
+        "file": "scripts/function_compound_divide_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_divide_after",
+        "file": "scripts/default_trait_compound_divide_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_divide_after",
+        "file": "scripts/inherent_compound_divide_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_remainder_rhs",
+        "file": "scripts/function_compound_remainder_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_remainder_rhs",
+        "file": "scripts/default_trait_compound_remainder_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_remainder_rhs",
+        "file": "scripts/inherent_compound_remainder_rhs.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "function_compound_remainder_after",
+        "file": "scripts/function_compound_remainder_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "default_trait_compound_remainder_after",
+        "file": "scripts/default_trait_compound_remainder_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inherent_compound_remainder_after",
+        "file": "scripts/inherent_compound_remainder_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      }
+    ]
+  }
+}

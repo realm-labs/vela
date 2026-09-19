@@ -4754,7 +4754,7 @@
     },
     {
       "requirement": "completion/syntax/S1/positive/service",
-      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and direct required-trait signature metadata. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
+      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and required-trait signature parameters. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
       "tests": [
         {
           "layer": "service",
@@ -4792,7 +4792,7 @@
     },
     {
       "requirement": "completion/syntax/S1/positive/protocol",
-      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and direct required-trait signature metadata. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
+      "assertion": "Reviewed S1 partitions in reviews/completion-s1.md. Twenty-six shared LF/CRLF Unicode queries assert const/state/extern-state references, const/state/field initializers, function/trait/inherent/trait-impl parameters/defaults and required-trait signature parameters. Complete candidates, details, identity, resolve, edits and applied definition targets are independent. Existing template/type/enum/import/package matrices cover declaration forms, fields, variants, visibility and callable ownership.",
       "tests": [
         {
           "layer": "protocol",
@@ -4830,7 +4830,7 @@
     },
     {
       "requirement": "completion/syntax/S1/negative/service",
-      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults remain S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
+      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults have a separate S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
       "tests": [
         {
           "layer": "service",
@@ -4868,7 +4868,7 @@
     },
     {
       "requirement": "completion/syntax/S1/negative/protocol",
-      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults remain S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
+      "assertion": "Seven declaration-context queries have exact empty sets for later parameters, body locals, sibling/closed methods and shadowed namespace aliases. Required-signature parameters and qualified same-name globals keep distinct insertion/definition owners. Unhinted const and parameter metadata remain unknown, and parameters never invent resolve docs. Existing matrices exclude private/missing/non-type/ambiguous owners and value fallback at item boundaries. Nested lexical bodies in required trait defaults have a separate S2 review; no runtime, UX04, generated or scale acceptance is inferred.",
       "tests": [
         {
           "layer": "protocol",
@@ -4901,6 +4901,222 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S2/positive/service",
+      "assertion": "Reviewed S2 partitions in reviews/completion-s2.md. Eighty-eight shared LF/CRLF Unicode queries cover nested scopes, typed/inferred locals, lambda parameters/captures, loops, guards and all five compound assignments across required signatures, function defaults, default trait and inherent methods. Both layers independently assert complete candidates, detail, identity/resolve, edits, parsed applied source and exact definition targets. Existing assignment/return/loop/callback/template matrices cover executable body flow and owned callback results.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::signature_scope_matrix_preserves_nested_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::declaration_context_matrix_preserves_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::abrupt_flow_matrix_preserves_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::local_exit_matrix_preserves_reachable_assignment_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::loop_match_matrix_preserves_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::callback_contract_results_preserve_direct_lambda_facts_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S2/positive/protocol",
+      "assertion": "Reviewed S2 partitions in reviews/completion-s2.md. Eighty-eight shared LF/CRLF Unicode queries cover nested scopes, typed/inferred locals, lambda parameters/captures, loops, guards and all five compound assignments across required signatures, function defaults, default trait and inherent methods. Both layers independently assert complete candidates, detail, identity/resolve, edits, parsed applied source and exact definition targets. Existing assignment/return/loop/callback/template matrices cover executable body flow and owned callback results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::signature_scope_matrix_projects_nested_binding_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::declaration_context_matrix_projects_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::receiver_assignment_flow_projects_possible_owners_and_rejects_stale_members"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::abrupt_flow_matrix_projects_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::local_exit_matrix_projects_reachable_assignment_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::loop_match_matrix_projects_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::callback_contract_results_project_direct_lambda_facts_and_erased_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::sync_callback_matrix_projects_owned_function_values_and_excludes_async_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S2/negative/service",
+      "assertion": "Eight new queries have exact empty sets for premature or expired locals. Shared scope matrices exclude later parameters, sibling methods, iterator-source bindings and subsequent arms, and restore outer shadows. Flow matrices exclude stale, unreachable, scalar, erased and ambiguous members; callback matrices exclude async-in-sync targets and invented Any/Closure result owners. Required-signature defaults use canonical analysis-only HIR roots, with direct HIR ownership/import tests and MIR runtime rejection. No S7, runtime, UX04, generated, scale or macOS acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::signature_scope_matrix_preserves_nested_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::declaration_context_matrix_preserves_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::receiver_assignment_flow_preserves_possible_owners_and_rejects_stale_members"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::returned_receiver_flow_preserves_owned_sets_signatures_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::abrupt_flow_matrix_preserves_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::local_exit_matrix_preserves_reachable_assignment_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::loop_match_matrix_preserves_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::callback_contract_results_preserve_direct_lambda_facts_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::sync_callback_matrix_inserts_owned_function_values_and_excludes_async_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::callback_contract_matrix_preserves_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S2/negative/protocol",
+      "assertion": "Eight new queries have exact empty sets for premature or expired locals. Shared scope matrices exclude later parameters, sibling methods, iterator-source bindings and subsequent arms, and restore outer shadows. Flow matrices exclude stale, unreachable, scalar, erased and ambiguous members; callback matrices exclude async-in-sync targets and invented Any/Closure result owners. Required-signature defaults use canonical analysis-only HIR roots, with direct HIR ownership/import tests and MIR runtime rejection. No S7, runtime, UX04, generated, scale or macOS acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::signature_scope_matrix_projects_nested_binding_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::declaration_context_matrix_projects_initializer_and_parameter_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::receiver_assignment_flow_projects_possible_owners_and_rejects_stale_members"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::returned_receiver_flow_projects_owned_sets_signatures_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::abrupt_flow_matrix_projects_reachable_receivers_and_explicit_lambda_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::local_exit_matrix_projects_reachable_assignment_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::loop_match_matrix_projects_backedge_owners_and_reachable_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::callback_contract_results_project_direct_lambda_facts_and_erased_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::sync_callback_matrix_projects_owned_function_values_and_excludes_async_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::callback_contract_matrix_projects_declared_signatures_and_dynamic_values"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
         }
       ]
     }

@@ -43,6 +43,7 @@ impl FunctionBodySource {
 pub(super) struct ExpressionBodySource {
     declaration: HirDeclId,
     syntax: SyntaxExpressionSourcePart,
+    params: Vec<ParamHint>,
 }
 
 impl ExpressionBodySource {
@@ -50,7 +51,13 @@ impl ExpressionBodySource {
         Self {
             declaration,
             syntax,
+            params: Vec::new(),
         }
+    }
+
+    pub(super) fn with_params(mut self, params: Vec<ParamHint>) -> Self {
+        self.params = params;
+        self
     }
 }
 
@@ -72,6 +79,33 @@ impl SchemaFieldDefaultBodySource {
 }
 
 impl ModuleGraph {
+    pub(super) fn bind_trait_signature_default(
+        &mut self,
+        module: &HirModule,
+        source: ExpressionBodySource,
+        method: usize,
+        parameter: usize,
+    ) {
+        let declaration = source.declaration;
+        let body = self.next_body_id();
+        let (bindings, diagnostics) = self.bind_expression_body(
+            module,
+            source,
+            body,
+            HirBodyOwner::TraitSignatureDefault(declaration),
+        );
+        self.trait_signature_default_bindings.insert(body, bindings);
+        if let Some(param) = self
+            .trait_shapes
+            .get_mut(&declaration)
+            .and_then(|shape| shape.methods.get_mut(method))
+            .and_then(|method| method.signature.params.get_mut(parameter))
+        {
+            param.default_body = Some(body);
+        }
+        self.diagnostics.extend(diagnostics);
+    }
+
     pub(super) fn bind_const_initializer_body(
         &mut self,
         module: &HirModule,
@@ -258,6 +292,7 @@ impl ModuleGraph {
                 source: module.source,
                 declaration: source.declaration,
                 expression: source.syntax.expression,
+                params: &source.params,
                 module_declarations,
                 qualified_declarations,
                 imports,

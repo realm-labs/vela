@@ -1111,14 +1111,34 @@ struct MemberDelimiterDepth {
     brace: u32,
     angle: u32,
     default_value: bool,
+    default_start: bool,
+    lambda_params: bool,
 }
 
 impl MemberDelimiterDepth {
     fn is_root(&self) -> bool {
-        self.paren == 0 && self.bracket == 0 && self.brace == 0 && self.angle == 0
+        self.paren == 0
+            && self.bracket == 0
+            && self.brace == 0
+            && self.angle == 0
+            && !self.lambda_params
     }
 
     fn bump(&mut self, kind: SyntaxKind) {
+        if kind.is_trivia() {
+            return;
+        }
+        if self.lambda_params && kind == SyntaxKind::Pipe {
+            self.lambda_params = false;
+            return;
+        }
+        if self.default_start {
+            self.default_start = false;
+            if kind == SyntaxKind::Pipe {
+                self.lambda_params = true;
+                return;
+            }
+        }
         match kind {
             SyntaxKind::LParen => self.paren = self.paren.saturating_add(1),
             SyntaxKind::RParen => self.paren = self.paren.saturating_sub(1),
@@ -1134,6 +1154,7 @@ impl MemberDelimiterDepth {
             }
             SyntaxKind::Equal if self.is_root() => {
                 self.default_value = true;
+                self.default_start = true;
             }
             _ => {}
         }
@@ -1142,3 +1163,5 @@ impl MemberDelimiterDepth {
 
 #[cfg(test)]
 mod method_recovery_tests;
+#[cfg(test)]
+mod parameter_default_tests;

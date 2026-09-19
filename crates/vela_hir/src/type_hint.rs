@@ -51,8 +51,8 @@ pub struct ParamHint {
     pub span: Span,
     pub type_hint: Option<HirTypeHint>,
     pub default_value_span: Option<Span>,
-    /// The bound HIR body for an enum tuple-field default. Function parameter
-    /// defaults are owned by [`crate::body::HirParam`] instead.
+    /// The bound HIR body for an enum tuple-field or required trait-signature
+    /// default. Executable function defaults belong to [`crate::body::HirParam`].
     pub default_body: Option<HirBodyId>,
 }
 

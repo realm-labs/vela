@@ -14,7 +14,7 @@ pub(super) fn local_completion_items(
     context: &CompletionContext,
 ) -> Vec<CompletionItem> {
     let facts = databases.schema_analysis_facts();
-    let mut items = query
+    let items = query
         .local_bindings_before_cursor()
         .filter(|local| local.name.starts_with(context.prefix()))
         .map(|local| {
@@ -29,27 +29,6 @@ pub(super) fn local_completion_items(
             binding_item(&local.name, kind, &fact)
         })
         .collect::<Vec<_>>();
-    for parameter in query
-        .signature_parameters()
-        .into_iter()
-        .filter(|parameter| parameter.name.starts_with(context.prefix()))
-    {
-        let fact = parameter
-            .type_hint
-            .as_ref()
-            .map_or(TypeFact::Unknown, |hint| {
-                crate::callable_context::query_type_fact_from_hint(
-                    databases.hir_db().graph(),
-                    hint,
-                    databases.schema_db().facts(),
-                )
-            });
-        items.push(binding_item(
-            &parameter.name,
-            CompletionKind::Parameter,
-            &fact,
-        ));
-    }
     let mut accumulator = CompletionAccumulator::new(context.replace_range(), context.prefix());
     accumulator.add_many(items);
     accumulator.into_items()

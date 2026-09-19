@@ -29,7 +29,6 @@ mod hir_cursor;
 mod imports;
 mod locals;
 mod service_call;
-mod signature_parameters;
 mod source_type;
 use hir_cursor::refine_cursor_with_hir;
 pub(crate) use source_type::source_origins_for_source_range;
@@ -280,6 +279,12 @@ impl<'a> QueryContext<'a> {
 
     pub fn local_bindings_before_cursor(&self) -> impl Iterator<Item = &LocalBinding> + '_ {
         self.visible_locals().into_iter()
+    }
+
+    pub(crate) fn visible_scope_names(&self) -> Vec<String> {
+        self.local_bindings_before_cursor()
+            .map(|binding| binding.name.clone())
+            .collect()
     }
 
     #[must_use]

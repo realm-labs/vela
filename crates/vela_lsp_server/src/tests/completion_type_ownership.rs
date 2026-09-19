@@ -23,6 +23,11 @@ fn declaration_context_matrix_projects_initializer_and_parameter_owners() {
 }
 
 #[test]
+fn signature_scope_matrix_projects_nested_binding_owners() {
+    assert_type_ownership("completion-signature-scopes");
+}
+
+#[test]
 fn package_type_ownership_projects_exact_dependency_targets_and_edits() {
     assert_type_ownership("completion-package-type-ownership");
 }

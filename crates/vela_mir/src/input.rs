@@ -499,6 +499,7 @@ impl<'a> MirLoweringInput<'a> {
         match &hir_body.owner {
             HirBodyOwner::ConstInitializer(_)
             | HirBodyOwner::SchemaFieldDefault(_)
+            | HirBodyOwner::TraitSignatureDefault(_)
             | HirBodyOwner::ParameterDefault { .. } => {
                 return Err(MirBuildError::NonRuntimeBody {
                     body,

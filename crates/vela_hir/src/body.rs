@@ -20,6 +20,8 @@ pub enum HirBodyOwner {
     ConstInitializer(HirDeclId),
     StateInitializer(HirDeclId),
     SchemaFieldDefault(HirDeclId),
+    /// Analysis of a required trait signature's default; not a callable body.
+    TraitSignatureDefault(HirDeclId),
     TraitDefaultMethod(HirNodeId),
     ImplMethod(HirNodeId),
     Lambda {

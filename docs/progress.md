@@ -823,10 +823,16 @@ the current label's replacement range. Nested and colon-separated value patterns
 remain distinct; applied shorthand fields introduce exact local binding targets.
 S1 completion now has reviewed declaration/default contexts. Queries use the
 current body's canonical bindings, including initializers, and retain a default
-body at an identifier's end boundary. Required trait signatures expose direct
-parameter metadata with owned edits and shadow checks; nested lexical bodies in
-those defaults remain part of the S2 review.
-Resume B03.53 with the remaining semantic review and UX04 interaction proof.
+body at an identifier's end boundary. Required trait defaults use canonical
+analysis-only HIR roots with owned parameter edits and shadow checks.
+S2 completion now has reviewed body/default scope coverage. Eighty-eight shared
+LF/CRLF Unicode queries cover nested bindings, captures, guards and all five
+compound assignments in four declaration forms. Existing matrices cover
+assignment/return/loop flow, callbacks and body templates. Equal-span body
+selection prefers inner lambdas; typed-lambda defaults preserve their own colon
+and comma boundaries. HIR ownership/import refresh and MIR runtime rejection
+have direct tests; required methods remain bodyless.
+Resume B03.54 with S7 semantic review and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

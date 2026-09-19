@@ -13,13 +13,22 @@ impl QueryContext<'_> {
         let Ok(offset) = u32::try_from(self.cursor.replace_range().end) else {
             return Vec::new();
         };
-        // The callee anchors incomplete calls whose recovery span ends at EOF.
+        // At a half-open body end, prefer its current identifier. An actual
+        // callee can also anchor an incomplete call, but a signature name
+        // outside this body must not displace the expression's own scope.
         let probe = if body.origin.span.contains(offset) {
             offset
         } else {
             self.cursor
-                .call_callee()
+                .identifier_range()
                 .and_then(|range| u32::try_from(range.start).ok())
+                .filter(|start| body.origin.span.contains(*start))
+                .or_else(|| {
+                    self.cursor
+                        .call_callee()
+                        .and_then(|range| u32::try_from(range.start).ok())
+                        .filter(|start| body.origin.span.contains(*start))
+                })
                 .unwrap_or(offset)
         };
         let mut visible: BTreeMap<&str, &LocalBinding> = BTreeMap::new();
