@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "id": "completion-visible-bindings",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.visible_bindings\"\nname=\"visible_bindings\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/for_body.vela": "fn main() { for [[local:start]]zz_pick[[local:end]] in [1] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }\n",
+    "scripts/for_index.vela": "fn main() { for zz_index, [[local:start]]zz_pick[[local:end]] in [1] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }\n",
+    "scripts/for_iterable.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = [1]; for zz_pick in /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] {} }\n",
+    "scripts/for_shadow.vela": "fn main() { let zz_pick = true; for [[local:start]]zz_pick[[local:end]] in [1] { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }\n",
+    "scripts/for_capture.vela": "fn main() { for [[local:start]]zz_pick[[local:end]] in [1] { let callback = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }; } }\n",
+    "scripts/after_for.vela": "fn main() { for zz_pick in [1] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/restored_after_for.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = true; for zz_pick in [1] {} /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/let_initializer.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = true; { let zz_pick = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }\n",
+    "scripts/pattern_body.vela": "enum Choice { Item(value: i64), Empty }\nfn main(choice: Choice) { match choice { Choice::Item([[local:start]]zz_pick[[local:end]]) => { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }, _ => {} } }\n",
+    "scripts/pattern_guard.vela": "enum Choice { Item(value: i64), Empty }\nfn main(choice: Choice) { match choice { Choice::Item([[local:start]]zz_pick[[local:end]]) if /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] > 0 => {}, _ => {} } }\n",
+    "scripts/pattern_capture.vela": "enum Choice { Item(value: i64), Empty }\nfn main(choice: Choice) { match choice { Choice::Item([[local:start]]zz_pick[[local:end]]) => { let callback = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }; }, _ => {} } }\n",
+    "scripts/next_arm.vela": "enum Choice { Item(value: i64), Empty }\nfn main(choice: Choice) { match choice { Choice::Item(zz_pick) => {}, _ => { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } } }\n",
+    "scripts/pattern_binding.vela": "enum Choice { Item(value: i64), Empty }\nfn main(choice: Choice) { match choice { Choice::Item(/* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]) => {}, _ => {} } }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "for_body",
+        "file": "scripts/for_body.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "for_index",
+        "file": "scripts/for_index.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_index",
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "for_iterable",
+        "file": "scripts/for_iterable.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Array(i64)",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "for_shadow",
+        "file": "scripts/for_shadow.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "for_capture",
+        "file": "scripts/for_capture.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "after_for",
+        "file": "scripts/after_for.vela",
+        "context": "Expression",
+        "visibleScope": [],
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "restored_after_for",
+        "file": "scripts/restored_after_for.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "let_initializer",
+        "file": "scripts/let_initializer.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "pattern_body",
+        "file": "scripts/pattern_body.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "choice",
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "pattern_guard",
+        "file": "scripts/pattern_guard.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "choice",
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "pattern_capture",
+        "file": "scripts/pattern_capture.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "choice",
+          "zz_pick"
+        ],
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "next_arm",
+        "file": "scripts/next_arm.vela",
+        "context": "Expression",
+        "visibleScope": [
+          "choice"
+        ],
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "pattern_binding",
+        "file": "scripts/pattern_binding.vela",
+        "context": "Pattern",
+        "visibleScope": [
+          "choice"
+        ],
+        "applySuffix": "",
+        "items": []
+      }
+    ]
+  }
+}

@@ -55,6 +55,36 @@ fn completion_analysis_classifies_type_argument_location() {
 }
 
 #[test]
+fn completion_analysis_keeps_empty_type_argument_slots_with_their_nearest_container() {
+    for (source, container, argument_index) in [
+        ("fn f(value: Array<@>) {}", "Array", 0),
+        ("fn f(value: Map<i64, @>) {}", "Map", 1),
+        ("fn f(value: Result<Map<String, i64>, @>) {}", "Result", 1),
+        ("fn f(value: Map<(i64, String), @>) {}", "Map", 1),
+    ] {
+        let offset = source.find('@').expect("cursor");
+        let text = source.replacen('@', "", 1);
+        let result = completions_for(
+            DocumentId::from("/workspace/scripts/main.vela"),
+            &text,
+            &text[..offset],
+        );
+        let CompletionAnalysisKind::Path(path) = result.analysis().kind() else {
+            panic!("{source}: {:?}", result.analysis());
+        };
+        assert_eq!(path.kind(), PathCompletionKind::Type, "{source}");
+        assert_eq!(
+            path.type_location(),
+            Some(&TypeLocation::BuiltinTypeArgument {
+                container: container.to_owned(),
+                argument_index
+            }),
+            "{source}"
+        );
+    }
+}
+
+#[test]
 fn completion_analysis_classifies_struct_field_declaration_body() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub struct Player {  }";
@@ -114,6 +144,133 @@ pub fn main(player: Player) {
         "{:?}",
         completions.analysis().visible_scope()
     );
+}
+
+#[test]
+fn completion_analysis_matrix_preserves_structured_contexts_and_current_expectations() {
+    use crate::matrix_fixture::{load, parse_markers};
+    use serde_json::json;
+    let spec = load("completion-analysis-contexts");
+    for crlf in [false, true] {
+        for case in spec.oracle["queries"].as_array().expect("queries") {
+            let source = parse_markers(
+                &spec.files[case["file"].as_str().expect("file")]
+                    .replace('\n', if crlf { "\r\n" } else { "\n" }),
+            )
+            .expect("source");
+            let document = DocumentId::from("/workspace/scripts/main.vela");
+            let project = assemble_project_sources(
+                &WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]),
+                &[SourceFileSnapshot::new(
+                    document.clone(),
+                    source.text.as_str(),
+                )],
+                &Workspace::new().snapshot(),
+            );
+            let mut db = LanguageServiceDatabases::new();
+            db.update(&project);
+            let byte = source.markers["cursor"].start.byte;
+            let position = crate::Position::new(
+                source.text[..byte].bytes().filter(|c| *c == b'\n').count(),
+                byte - source.text[..byte].rfind('\n').map_or(0, |i| i + 1),
+            );
+            let result = db.completion_items(&document, position);
+            assert_eq!(result, db.completion_items(&document, position));
+            assert_eq!(
+                serde_json::json!(
+                    result
+                        .items()
+                        .iter()
+                        .map(|item| item.label())
+                        .collect::<Vec<_>>()
+                ),
+                serde_json::json!(
+                    case["items"]
+                        .as_array()
+                        .expect("items")
+                        .iter()
+                        .map(|item| &item["label"])
+                        .collect::<Vec<_>>()
+                ),
+                "{case}"
+            );
+            for (item, expected) in result
+                .items()
+                .iter()
+                .zip(case["items"].as_array().expect("items"))
+            {
+                assert_eq!(item.detail(), expected["detail"], "{case}");
+                assert_eq!(item.detail_parts().render(), expected["detail"]);
+                assert_eq!(json!(item.label_details().detail()), expected["detail"]);
+                assert_eq!(json!(item.insert_text()), expected["insert"]);
+                let marker = source.markers["replace"];
+                let edit = item.text_edit().expect("explicit edit");
+                assert_eq!(
+                    edit.range(),
+                    crate::TextRange::new(marker.start.byte, marker.end.byte)
+                );
+                assert_eq!(edit.new_text(), expected["insert"]);
+                assert!(item.documentation().is_none());
+            }
+            let analysis = result.analysis();
+            let expected = &case["analysis"];
+            assert_eq!(
+                json!(analysis.expected_name()),
+                expected["expectedName"],
+                "{case}"
+            );
+            assert_eq!(
+                json!(analysis.expected_type().map(TypeFact::display_name)),
+                expected["expectedType"],
+                "{case}"
+            );
+            assert_eq!(json!(analysis.visible_scope()), expected["scope"], "{case}");
+            assert_eq!(
+                format!("{:?}", analysis.context_kind()),
+                expected["context"],
+                "{case}"
+            );
+            let kind = match analysis.kind() {
+                CompletionAnalysisKind::Path(path) => {
+                    assert_eq!(format!("{:?}", path.kind()), expected["pathKind"]);
+                    assert_eq!(json!(path.qualifier()), expected["qualifier"]);
+                    assert!(path.type_location().is_none());
+                    "Path"
+                }
+                CompletionAnalysisKind::DotAccess(dot) => {
+                    let marker = source.markers["receiver"];
+                    assert_eq!(
+                        dot.receiver_range(),
+                        Some(crate::TextRange::new(marker.start.byte, marker.end.byte))
+                    );
+                    assert_eq!(
+                        json!(dot.receiver_fact().map(TypeFact::display_name)),
+                        expected["receiverFact"]
+                    );
+                    "DotAccess"
+                }
+                CompletionAnalysisKind::Declaration(declaration) => {
+                    assert_eq!(format!("{:?}", declaration.kind()), expected["declaration"]);
+                    "Declaration"
+                }
+                CompletionAnalysisKind::CallArgument(call) => {
+                    assert_eq!(json!(call.active_parameter()), expected["active"], "{case}");
+                    "CallArgument"
+                }
+                CompletionAnalysisKind::RecordField(record) => {
+                    assert_eq!(json!(record.owner_type()), expected["owner"]);
+                    "RecordField"
+                }
+                CompletionAnalysisKind::Pattern(_) => "Pattern",
+                CompletionAnalysisKind::Statement(_) => "Statement",
+                other => panic!("unexpected analysis: {case}: {other:?}"),
+            };
+            assert_eq!(kind, expected["kind"], "{case}");
+            if expected["empty"] == true {
+                assert!(result.items().is_empty(), "{case}");
+            }
+        }
+    }
 }
 
 fn completions_for(document: DocumentId, text: &str, needle: &str) -> super::CompletionList {

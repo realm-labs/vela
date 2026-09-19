@@ -118,6 +118,11 @@ fn import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries() {
     assert_type_ownership("completion-import-sites");
 }
 
+#[test]
+fn visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes() {
+    assert_type_ownership("completion-visible-bindings");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -297,11 +302,19 @@ fn assert_type_ownership(fixture_id: &str) {
                         Some("ModulePath") => crate::CompletionContextKind::ModulePath,
                         Some("Member") => crate::CompletionContextKind::Member,
                         Some("RecordField") => crate::CompletionContextKind::RecordField,
+                        Some("Pattern") => crate::CompletionContextKind::Pattern,
                         _ => crate::CompletionContextKind::TypeHint,
                     },
                     "{case}"
                 );
                 assert_eq!(result, db.completion_items(&uri(file), pos));
+                if let Some(scope) = case.get("visibleScope") {
+                    assert_eq!(
+                        &serde_json::json!(result.analysis().visible_scope()),
+                        scope,
+                        "{case}"
+                    );
+                }
                 if let Some(receiver) = case["receiver"].as_str() {
                     let crate::CompletionAnalysisKind::DotAccess(dot) = result.analysis().kind()
                     else {

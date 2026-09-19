@@ -203,6 +203,7 @@ mod support;
 mod call_hierarchy;
 mod close_overlay;
 mod completion;
+mod completion_analysis;
 mod completion_authoring_surface;
 mod definition;
 mod file_watching_coalescing;

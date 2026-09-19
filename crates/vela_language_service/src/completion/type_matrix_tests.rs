@@ -33,6 +33,20 @@ fn assert_type_matrix(fixture_id: &str) {
             let point = source.markers["cursor"].start;
             let position = byte_position(&source.text, point.byte);
             let completion = databases.completion_items(&uri(file), position);
+            if let Some(expected) = query.get("typeLocation") {
+                let crate::CompletionAnalysisKind::Path(path) = completion.analysis().kind() else {
+                    panic!("expected type path: {query}: {:?}", completion.analysis());
+                };
+                assert_eq!(path.kind(), crate::PathCompletionKind::Type);
+                let location = match path.type_location().expect("type location") {
+                    crate::TypeLocation::BuiltinTypeArgument {
+                        container,
+                        argument_index,
+                    } => json!({"container":container,"argument":argument_index}),
+                    other => json!(format!("{other:?}")),
+                };
+                assert_eq!(&location, expected, "{query}");
+            }
             assert_eq!(
                 completion.context().kind(),
                 if query["context"] == "Member" {

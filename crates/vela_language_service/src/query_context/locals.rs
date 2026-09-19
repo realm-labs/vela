@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use vela_hir::binding::LocalBinding;
+use vela_hir::binding::{LocalBinding, LocalBindingKind};
+use vela_hir::body::{HirBody, HirScope, HirStmtKind};
 
 use super::QueryContext;
 
@@ -36,7 +37,7 @@ impl QueryContext<'_> {
                     let Some(local) = bindings.local(*id) else {
                         continue;
                     };
-                    if local.scope_span.unwrap_or(local.span).end > offset {
+                    if !visible_from(owner, scope, local).is_some_and(|start| start <= offset) {
                         continue;
                     }
                     let entry = visible.entry(local.name.as_str()).or_insert(local);
@@ -47,5 +48,30 @@ impl QueryContext<'_> {
             }
         }
         visible.into_values().collect()
+    }
+}
+
+fn visible_from(body: &HirBody, scope: &HirScope, local: &LocalBinding) -> Option<u32> {
+    match local.kind {
+        LocalBindingKind::For => body
+            .statements
+            .values()
+            .find(|statement| Some(statement.origin.span) == local.scope_span)
+            .and_then(|statement| match statement.kind {
+                HirStmtKind::For {
+                    body: Some(block), ..
+                } => body.blocks.get(&block),
+                _ => None,
+            })
+            .map(|block| block.origin.span.start),
+        LocalBindingKind::Pattern => body
+            .match_arms
+            .values()
+            .find(|arm| arm.scope == scope.id)
+            .and_then(|arm| arm.pattern)
+            .and_then(|pattern| body.patterns.get(&pattern))
+            .and_then(|pattern| pattern.origin.span.end.checked_add(1)),
+        LocalBindingKind::Let => Some(local.scope_span.unwrap_or(local.span).end),
+        LocalBindingKind::Parameter | LocalBindingKind::LambdaParameter => Some(local.span.end),
     }
 }

@@ -4658,3 +4658,13 @@ recognizes empty or statement-keyword prefixes at the first significant token of
 any nested statement, including method and lambda bodies. Ordinary expression
 prefixes retain their expression context, and operands after a statement's first
 token cannot become statement positions. These are editor-context rules only.
+
+Completion type locations follow CST type-hint ownership and the nearest type
+argument list's direct separators. Nested commas and comment punctuation cannot
+change the active builtin argument index. Completion local visibility uses HIR
+scope containment plus the binding's introduction point: loop body start, after
+the complete match pattern, or after a let initializer. This preserves captures,
+shadowing and guard visibility without exposing bindings in their own source
+expression or pattern. Resolved call analysis obtains expected name, type and
+active parameter index from the same parameter selection, including reordered
+named arguments; unresolved selections keep only available syntax facts.

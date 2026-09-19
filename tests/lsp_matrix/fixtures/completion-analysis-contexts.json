@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "id": "completion-analysis-contexts",
+  "files": {
+    "scripts/expression.vela": "/* 中😀 */ fn main(zz_value: i64) { [[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/module.vela": "/* 中😀 */ fn main() { option::[[replace:start]]so[[cursor]][[replace:end]]; }\n",
+    "scripts/missing_module.vela": "/* 中😀 */ fn main() { missing::[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/dot.vela": "struct Record { zz_count: i64 }\n/* 中😀 */ fn main(value: Record) { [[receiver:start]]value[[receiver:end]].[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/dynamic_dot.vela": "/* 中😀 */ fn main(value: Any) { [[receiver:start]]value[[receiver:end]].[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/item.vela": "/* 中😀 */ [[replace:start]]st[[cursor]][[replace:end]]\n",
+    "scripts/field.vela": "/* 中😀 */ struct Record { [[replace:start]]fi[[cursor]][[replace:end]] }\n",
+    "scripts/statement.vela": "/* 中😀 */ fn main() { for value in [1] { [[replace:start]]bre[[cursor]][[replace:end]]; } }\n",
+    "scripts/pattern.vela": "enum Choice { Ready }\n/* 中😀 */ fn main(choice: Choice) { match choice { [[replace:start]]Re[[cursor]][[replace:end]] => {} } }\n",
+    "scripts/record.vela": "struct Record { zz_count: i64 }\n/* 中😀 */ fn main() { Record { [[replace:start]]zz_[[cursor]][[replace:end]] }; }\n",
+    "scripts/call.vela": "fn take(zz_a: i64, zz_b: bool) {}\n/* 中😀 */ fn main() { take(1, [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/reordered_call.vela": "fn take(zz_a: i64, zz_b: bool) {}\n/* 中😀 */ fn main() { take(zz_b = true, [[replace:start]][[cursor]][[replace:end]]); }\n",
+    "scripts/ambiguous_reordered_call.vela": "fn take(zz_a: i64, zz_b: bool) {}\n/* 中😀 */ fn main() { take(zz_b = true, [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/named_value.vela": "fn take(zz_a: i64, zz_b: bool) {}\n/* 中😀 */ fn main() { take(zz_b = true, zz_a = [[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
+    "scripts/unknown_call.vela": "/* 中😀 */ fn main() { missing([[replace:start]]zz_[[cursor]][[replace:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "expression",
+        "file": "scripts/expression.vela",
+        "analysis": {
+          "kind": "Path",
+          "context": "Expression",
+          "scope": [
+            "zz_value"
+          ],
+          "expectedName": null,
+          "expectedType": null,
+          "pathKind": "Expression",
+          "qualifier": null
+        },
+        "items": [
+          {
+            "label": "zz_value",
+            "kind": 6,
+            "detail": "i64",
+            "insert": "zz_value",
+            "expanded": "zz_value",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "module",
+        "file": "scripts/module.vela",
+        "analysis": {
+          "kind": "Path",
+          "context": "ModulePath",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "pathKind": "Module",
+          "qualifier": "option"
+        },
+        "items": [
+          {
+            "label": "some",
+            "kind": 3,
+            "detail": "Function(Any) -> Option(Any)",
+            "insert": "some($0)",
+            "expanded": "some(1)",
+            "fill": [
+              [
+                "$0",
+                "1"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "missing_module",
+        "file": "scripts/missing_module.vela",
+        "analysis": {
+          "kind": "Path",
+          "context": "ModulePath",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "pathKind": "Module",
+          "qualifier": "missing",
+          "empty": true
+        },
+        "items": []
+      },
+      {
+        "id": "dot",
+        "file": "scripts/dot.vela",
+        "analysis": {
+          "kind": "DotAccess",
+          "context": "Member",
+          "scope": [
+            "value"
+          ],
+          "expectedName": null,
+          "expectedType": null,
+          "receiverFact": "main::Record"
+        },
+        "items": [
+          {
+            "label": "zz_count",
+            "kind": 5,
+            "detail": "i64",
+            "insert": "zz_count",
+            "expanded": "zz_count",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "dynamic_dot",
+        "file": "scripts/dynamic_dot.vela",
+        "analysis": {
+          "kind": "DotAccess",
+          "context": "Member",
+          "scope": [
+            "value"
+          ],
+          "expectedName": null,
+          "expectedType": null,
+          "receiverFact": "Any",
+          "empty": true
+        },
+        "items": []
+      },
+      {
+        "id": "item",
+        "file": "scripts/item.vela",
+        "analysis": {
+          "kind": "Declaration",
+          "context": "Item",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "declaration": "Item"
+        },
+        "items": [
+          {
+            "label": "state",
+            "kind": 15,
+            "detail": "per-Runtime VM state declaration",
+            "insert": "state ${1:name}: ${2:Type} = ${3:expression};",
+            "expanded": "state score: i64 = 1;",
+            "fill": [
+              [
+                "${1:name}",
+                "score"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:expression}",
+                "1"
+              ]
+            ]
+          },
+          {
+            "label": "struct",
+            "kind": 15,
+            "detail": "struct declaration",
+            "insert": "struct ${1:Name} {\n    $0\n}",
+            "expanded": "struct Record {\n    count: i64\n}",
+            "fill": [
+              [
+                "${1:Name}",
+                "Record"
+              ],
+              [
+                "$0",
+                "count: i64"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "field",
+        "file": "scripts/field.vela",
+        "analysis": {
+          "kind": "Declaration",
+          "context": "StructFieldDeclaration",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "declaration": "StructField"
+        },
+        "items": [
+          {
+            "label": "field",
+            "kind": 15,
+            "detail": "struct field",
+            "insert": "${1:name}: ${2:Type}",
+            "expanded": "count: i64",
+            "fill": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ]
+            ]
+          },
+          {
+            "label": "field default",
+            "kind": 15,
+            "detail": "struct field with default",
+            "insert": "${1:name}: ${2:Type} = ${3:value}",
+            "expanded": "count: i64 = 1",
+            "fill": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:value}",
+                "1"
+              ]
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement",
+        "file": "scripts/statement.vela",
+        "analysis": {
+          "kind": "Statement",
+          "context": "Statement",
+          "scope": [
+            "value"
+          ],
+          "expectedName": null,
+          "expectedType": null
+        },
+        "items": [
+          {
+            "label": "break",
+            "kind": 14,
+            "detail": "break statement",
+            "insert": "break",
+            "expanded": "break",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "pattern",
+        "file": "scripts/pattern.vela",
+        "analysis": {
+          "kind": "Pattern",
+          "context": "Pattern",
+          "scope": [
+            "choice"
+          ],
+          "expectedName": null,
+          "expectedType": null
+        },
+        "items": [
+          {
+            "label": "Ready",
+            "kind": 20,
+            "detail": "main::Choice",
+            "insert": "main::Choice::Ready",
+            "expanded": "main::Choice::Ready",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "record",
+        "file": "scripts/record.vela",
+        "analysis": {
+          "kind": "RecordField",
+          "context": "RecordField",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "owner": [
+            "Record"
+          ]
+        },
+        "items": [
+          {
+            "label": "zz_count",
+            "kind": 5,
+            "detail": "i64",
+            "insert": "zz_count",
+            "expanded": "zz_count: 1",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "call",
+        "file": "scripts/call.vela",
+        "analysis": {
+          "kind": "CallArgument",
+          "context": "NamedArgument",
+          "scope": [],
+          "expectedName": "zz_b",
+          "expectedType": "bool",
+          "active": 1
+        },
+        "items": [
+          {
+            "label": "zz_b",
+            "kind": 6,
+            "detail": "bool",
+            "insert": "zz_b = ",
+            "expanded": "zz_b = true",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "reordered_call",
+        "file": "scripts/reordered_call.vela",
+        "analysis": {
+          "kind": "CallArgument",
+          "context": "NamedArgument",
+          "scope": [],
+          "expectedName": "zz_a",
+          "expectedType": "i64",
+          "active": 0
+        },
+        "items": [
+          {
+            "label": "zz_a",
+            "kind": 6,
+            "detail": "i64",
+            "insert": "zz_a = ",
+            "expanded": "zz_a = 1",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "ambiguous_reordered_call",
+        "file": "scripts/ambiguous_reordered_call.vela",
+        "analysis": {
+          "kind": "CallArgument",
+          "context": "NamedArgument",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "active": 1
+        },
+        "items": [
+          {
+            "label": "zz_a",
+            "kind": 6,
+            "detail": "i64",
+            "insert": "zz_a = ",
+            "expanded": "zz_a = 1",
+            "fill": []
+          }
+        ]
+      },
+      {
+        "id": "named_value",
+        "file": "scripts/named_value.vela",
+        "analysis": {
+          "kind": "Path",
+          "context": "Expression",
+          "scope": [],
+          "expectedName": "zz_a",
+          "expectedType": "i64",
+          "pathKind": "Expression",
+          "qualifier": null
+        },
+        "items": []
+      },
+      {
+        "id": "unknown_call",
+        "file": "scripts/unknown_call.vela",
+        "analysis": {
+          "kind": "CallArgument",
+          "context": "NamedArgument",
+          "scope": [],
+          "expectedName": null,
+          "expectedType": null,
+          "active": 0,
+          "empty": true
+        },
+        "items": []
+      }
+    ]
+  }
+}

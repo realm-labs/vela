@@ -13,6 +13,11 @@ fn type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidate
 }
 
 #[test]
+fn visible_binding_matrix_projects_loop_pattern_and_initializer_scopes() {
+    assert_type_ownership("completion-visible-bindings");
+}
+
+#[test]
 fn package_type_ownership_projects_exact_dependency_targets_and_edits() {
     assert_type_ownership("completion-package-type-ownership");
 }

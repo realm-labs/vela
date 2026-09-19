@@ -4,6 +4,8 @@ use crate::{LanguageServiceDatabases, QueryContext, TextRange};
 
 use super::{CompletionContext, CompletionContextKind};
 
+mod type_location;
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CompletionAnalysis {
     kind: CompletionAnalysisKind,
@@ -184,9 +186,9 @@ pub(super) fn completion_analysis(
     query: &QueryContext<'_>,
     context: &CompletionContext,
 ) -> CompletionAnalysis {
-    let (expected_name, expected_type) = expected_call_argument(databases, query);
+    let (expected_name, expected_type, active_parameter) = expected_call_argument(databases, query);
     CompletionAnalysis {
-        kind: analysis_kind(databases, query, context),
+        kind: analysis_kind(databases, query, context, active_parameter),
         context_kind: context.kind(),
         expected_type,
         expected_name,
@@ -201,11 +203,14 @@ fn analysis_kind(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
     context: &CompletionContext,
+    active_parameter: Option<usize>,
 ) -> CompletionAnalysisKind {
     match context.kind() {
         CompletionContextKind::Expression if query.is_service_call() => {
             CompletionAnalysisKind::CallArgument(CompletionCallArgumentContext {
-                active_parameter: query.call_active_parameter_index().unwrap_or(0),
+                active_parameter: active_parameter
+                    .or_else(|| query.call_active_parameter_index())
+                    .unwrap_or(0),
             })
         }
         CompletionContextKind::Expression => CompletionAnalysisKind::Path(path_context(
@@ -243,9 +248,11 @@ fn analysis_kind(
         CompletionContextKind::Pattern => CompletionAnalysisKind::Pattern(PatternContext),
         CompletionContextKind::NamedArgument => {
             CompletionAnalysisKind::CallArgument(CompletionCallArgumentContext {
-                active_parameter: query
-                    .call_argument_facts()
-                    .map_or(0, |call| call.active_parameter()),
+                active_parameter: active_parameter.unwrap_or_else(|| {
+                    query
+                        .call_argument_facts()
+                        .map_or(0, |call| call.active_parameter())
+                }),
             })
         }
         CompletionContextKind::LambdaParameter => CompletionAnalysisKind::LambdaParameter,
@@ -263,8 +270,7 @@ fn path_context(
     PathCompletionCtx {
         kind,
         type_location: (kind == PathCompletionKind::Type)
-            .then(|| type_location(query.text(), context.replace_range().start))
-            .flatten(),
+            .then(|| type_location::type_location(query, context.replace_range().start)),
         qualifier: context.module_base().map(ToOwned::to_owned),
     }
 }
@@ -272,70 +278,17 @@ fn path_context(
 fn expected_call_argument(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
-) -> (Option<String>, Option<TypeFact>) {
+) -> (Option<String>, Option<TypeFact>, Option<usize>) {
     let callables = query.call_target_facts(databases);
-    let Some(param) = callables
-        .first()
-        .and_then(|callable| callable.params().get(query.call_parameter_index(callable)?))
-    else {
-        return (None, None);
+    let Some((index, param)) = callables.first().and_then(|callable| {
+        let index = query.call_parameter_index(callable)?;
+        Some((index, callable.params().get(index)?))
+    }) else {
+        return (None, None, None);
     };
     (
         Some(param.name().to_owned()),
         Some(param.type_fact().clone()),
+        Some(index),
     )
-}
-
-fn type_location(text: &str, prefix_start: usize) -> Option<TypeLocation> {
-    let before_prefix = text.get(..prefix_start)?.trim_end();
-    builtin_type_argument_location(before_prefix)
-        .or_else(|| type_annotation_location(before_prefix))
-        .or(Some(TypeLocation::Other))
-}
-
-fn builtin_type_argument_location(before_prefix: &str) -> Option<TypeLocation> {
-    let open = before_prefix.rfind('<')?;
-    if before_prefix[open + 1..].contains('>') {
-        return None;
-    }
-    let before_open = before_prefix[..open].trim_end();
-    let start = before_open
-        .char_indices()
-        .rev()
-        .find_map(|(index, ch)| (!is_identifier_continue(ch)).then_some(index + ch.len_utf8()))
-        .unwrap_or(0);
-    let container = &before_open[start..];
-    if !matches!(
-        container,
-        "Array" | "Set" | "Map" | "Iterator" | "Option" | "Result"
-    ) {
-        return None;
-    }
-    let argument_index = before_prefix[open + 1..]
-        .chars()
-        .filter(|ch| *ch == ',')
-        .count();
-    Some(TypeLocation::BuiltinTypeArgument {
-        container: container.to_owned(),
-        argument_index,
-    })
-}
-
-fn type_annotation_location(before_prefix: &str) -> Option<TypeLocation> {
-    if before_prefix.ends_with("->") {
-        return Some(TypeLocation::Return);
-    }
-    let before_colon = before_prefix.strip_suffix(':')?.trim_end();
-    if before_colon.rsplit_once('{').is_some_and(|(_, tail)| {
-        tail.trim()
-            .chars()
-            .all(|ch| is_identifier_continue(ch) || ch.is_whitespace())
-    }) {
-        return Some(TypeLocation::StructField);
-    }
-    Some(TypeLocation::Parameter)
-}
-
-fn is_identifier_continue(ch: char) -> bool {
-    ch == '_' || ch.is_ascii_alphanumeric()
 }

@@ -21,7 +21,15 @@
     "scripts/unknown_qualified.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: unknown::[[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
     "scripts/qualified_parameter.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: defs::[[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
     "scripts/qualified_enum.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value(value: defs::[[replace:start]]Pl[[cursor]][[replace:end]]) }\n",
-    "scripts/qualified_schema.vela": "/* 中😀 */ fn main(value: host::[[replace:start]]As[[cursor]][[replace:end]]) {}\n"
+    "scripts/qualified_schema.vela": "/* 中😀 */ fn main(value: host::[[replace:start]]As[[cursor]][[replace:end]]) {}\n",
+    "scripts/comment_parameter.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: /* 中😀 { < , */ [[replace:start]]Pl[[cursor]][[replace:end]]) {}\n",
+    "scripts/comment_return.vela": "use defs::Player;\nuse defs::Play;\nfn main() -> /* 中😀 < , */ [[replace:start]]Pl[[cursor]][[replace:end]] {}\n",
+    "scripts/comment_field.vela": "use defs::Player;\nuse defs::Play;\nstruct Holder { value: /* 中😀 ( < , */ [[replace:start]]Pl[[cursor]][[replace:end]] }\n",
+    "scripts/first_local.vela": "use defs::Player;\nuse defs::Play;\nfn main() { /* 中😀 */ let value: [[replace:start]]Pl[[cursor]][[replace:end]]; }\n",
+    "scripts/outer_nested_argument.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: Result<Map<String, i64>, /* 中😀 */ [[replace:start]]Pl[[cursor]][[replace:end]]>) {}\n",
+    "scripts/tuple_type_argument.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: Map<(i64, String), /* 中😀 */ [[replace:start]]Pl[[cursor]][[replace:end]]>) {}\n",
+    "scripts/comment_type_argument.vela": "use defs::Player;\nuse defs::Play;\nfn main(value: Map<String, /* 中😀 < , , */ [[replace:start]]Pl[[cursor]][[replace:end]]>) {}\n",
+    "scripts/return_nested_argument.vela": "use defs::Player;\nuse defs::Play;\nfn main() -> Result<Array<i64>, /* 中😀 */ [[replace:start]]Pl[[cursor]][[replace:end]]> {}\n"
   },
   "actions": [],
   "oracle": {
@@ -106,7 +114,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Parameter"
       },
       {
         "id": "return",
@@ -168,7 +177,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Return"
       },
       {
         "id": "local",
@@ -230,7 +240,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Other"
       },
       {
         "id": "field",
@@ -292,7 +303,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "StructField"
       },
       {
         "id": "enum-tuple",
@@ -354,7 +366,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "StructField"
       },
       {
         "id": "enum-record",
@@ -416,7 +429,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "StructField"
       },
       {
         "id": "trait-method",
@@ -478,7 +492,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Parameter"
       },
       {
         "id": "inherent-method",
@@ -540,7 +555,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Parameter"
       },
       {
         "id": "extern-state",
@@ -602,7 +618,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Other"
       },
       {
         "id": "state",
@@ -664,7 +681,8 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Other"
       },
       {
         "id": "nested-array",
@@ -726,7 +744,11 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Array",
+          "argument": 0
+        }
       },
       {
         "id": "nested-result",
@@ -788,7 +810,11 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Option",
+          "argument": 0
+        }
       },
       {
         "id": "tuple",
@@ -850,19 +876,22 @@
           "false",
           "true"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Parameter"
       },
       {
         "id": "unknown-type",
         "file": "scripts/unknown_type.vela",
         "items": [],
-        "empty": true
+        "empty": true,
+        "typeLocation": "Parameter"
       },
       {
         "id": "unknown-qualified",
         "file": "scripts/unknown_qualified.vela",
         "items": [],
-        "empty": true
+        "empty": true,
+        "typeLocation": "Parameter"
       },
       {
         "id": "qualified-parameter",
@@ -908,7 +937,8 @@
           "Pluto",
           "defs::Player"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "Parameter"
       },
       {
         "id": "qualified-enum",
@@ -954,7 +984,8 @@
           "Pluto",
           "defs::Player"
         ],
-        "apply": "Player"
+        "apply": "Player",
+        "typeLocation": "StructField"
       },
       {
         "id": "qualified-schema",
@@ -977,7 +1008,524 @@
           "Planet",
           "host::Astro"
         ],
-        "apply": "Astro"
+        "apply": "Astro",
+        "typeLocation": "Parameter"
+      },
+      {
+        "id": "comment-parameter",
+        "file": "scripts/comment_parameter.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": "Parameter"
+      },
+      {
+        "id": "comment-return",
+        "file": "scripts/comment_return.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": "Return"
+      },
+      {
+        "id": "comment-field",
+        "file": "scripts/comment_field.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": "StructField"
+      },
+      {
+        "id": "first-local",
+        "file": "scripts/first_local.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": "Other"
+      },
+      {
+        "id": "outer-nested-argument",
+        "file": "scripts/outer_nested_argument.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Result",
+          "argument": 1
+        }
+      },
+      {
+        "id": "tuple-type-argument",
+        "file": "scripts/tuple_type_argument.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Map",
+          "argument": 1
+        }
+      },
+      {
+        "id": "comment-type-argument",
+        "file": "scripts/comment_type_argument.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Map",
+          "argument": 1
+        }
+      },
+      {
+        "id": "return-nested-argument",
+        "file": "scripts/return_nested_argument.vela",
+        "items": [
+          {
+            "label": "Player",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Player",
+            "lookup": "defs::Player",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Player",
+            "docs": null
+          },
+          {
+            "label": "Play",
+            "kind": "Trait",
+            "lspKind": 8,
+            "detail": "defs::Play",
+            "lookup": "defs::Play",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Play",
+            "docs": null
+          },
+          {
+            "label": "Planet",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "Planet",
+            "lookup": "Planet",
+            "owner": null,
+            "symbolKind": "schema",
+            "symbol": "Planet",
+            "docs": "Planet type docs 中😀."
+          },
+          {
+            "label": "Plasma",
+            "kind": "Type",
+            "lspKind": 22,
+            "detail": "defs::Plasma",
+            "lookup": "defs::Plasma",
+            "owner": "defs",
+            "symbolKind": "source",
+            "symbol": "defs::Plasma",
+            "docs": null,
+            "insert": "defs::Plasma"
+          }
+        ],
+        "exclude": [
+          "Plague",
+          "defs::Plague",
+          "Pluto",
+          "defs::Pluto",
+          "defs::Player",
+          "defs::Play",
+          "false",
+          "true"
+        ],
+        "apply": "Player",
+        "typeLocation": {
+          "container": "Result",
+          "argument": 1
+        }
       }
     ]
   }

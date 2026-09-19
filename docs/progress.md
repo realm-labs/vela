@@ -812,7 +812,12 @@ task tests prove cancellation and bounded stale-generation retry at publication.
 S13 completion now has direct template/application and empty-dot inventory proof.
 Declaration completion survives preceding trivia; statement keyword prefixes work
 in nested blocks, methods and lambdas while operand positions stay expressions.
-Resume B03.50 with the remaining semantic review and UX04 interaction proof.
+S14 completion now has reviewed structured-context and item-projection coverage.
+Type locations follow CST ownership and direct argument separators; loop/pattern
+bindings use their introduction boundaries; reordered named arguments keep their
+active parameter index aligned with expected name/type facts. Shared LF/CRLF
+fixtures assert exact scopes, candidates, edits and applied reference owners.
+Resume B03.51 with the remaining semantic review and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

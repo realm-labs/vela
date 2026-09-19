@@ -4479,6 +4479,142 @@
           "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S14/positive/service",
+      "assertion": "Reviewed S14 partitions in reviews/completion-s14.md. Shared analysis, type-position and visible-binding fixtures assert structured path/type/dot/declaration/call/pattern/statement analysis, expected name/type and exact scopes in the service, then independent candidate/detail/edit projection over the actual protocol. CST ownership distinguishes nested and empty type arguments; resolved named arguments share one parameter selection. Loop/pattern scopes include guards and captures. Unified index/member/type matrices retain source/schema/trait/default/builtin ownership, rendering, applied edits and reference targets across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::analysis_tests::completion_analysis_matrix_preserves_structured_contexts_and_current_expectations"
+        },
+        {
+          "layer": "service",
+          "name": "completion::analysis_tests::completion_analysis_keeps_empty_type_argument_slots_with_their_nearest_container"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_index_tests::member_completion_index_unifies_source_schema_trait_and_builtin_members"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S14/positive/protocol",
+      "assertion": "Reviewed S14 partitions in reviews/completion-s14.md. Shared analysis, type-position and visible-binding fixtures assert structured path/type/dot/declaration/call/pattern/statement analysis, expected name/type and exact scopes in the service, then independent candidate/detail/edit projection over the actual protocol. CST ownership distinguishes nested and empty type arguments; resolved named arguments share one parameter selection. Loop/pattern scopes include guards and captures. Unified index/member/type matrices retain source/schema/trait/default/builtin ownership, rendering, applied edits and reference targets across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_analysis::structured_completion_contexts_project_exact_candidates_and_independent_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S14/negative/service",
+      "assertion": "Exact dynamic/missing candidate sets and absent unresolved call expectations prevent invented facts. Nested/comment commas cannot change type argument ownership. Iterator sources, let initializers, binding patterns, later scopes and other match arms cannot see premature or expired bindings; outer shadows are restored. Ambiguous partial named calls keep syntax facts without invented semantic parameters. Owned member matrices exclude private/missing/wrong-owner candidates. Protocol projection exposes no internal analysis and resolve cannot invent local/template documentation. No UX04, generated partition or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::analysis_tests::completion_analysis_matrix_preserves_structured_contexts_and_current_expectations"
+        },
+        {
+          "layer": "service",
+          "name": "completion::analysis_tests::completion_analysis_keeps_empty_type_argument_slots_with_their_nearest_container"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::visible_binding_matrix_preserves_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_index_tests::member_completion_index_unifies_source_schema_trait_and_builtin_members"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S14/negative/protocol",
+      "assertion": "Exact dynamic/missing candidate sets and absent unresolved call expectations prevent invented facts. Nested/comment commas cannot change type argument ownership. Iterator sources, let initializers, binding patterns, later scopes and other match arms cannot see premature or expired bindings; outer shadows are restored. Ambiguous partial named calls keep syntax facts without invented semantic parameters. Owned member matrices exclude private/missing/wrong-owner candidates. Protocol projection exposes no internal analysis and resolve cannot invent local/template documentation. No UX04, generated partition or scale acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_analysis::structured_completion_contexts_project_exact_candidates_and_independent_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::visible_binding_matrix_projects_loop_pattern_and_initializer_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
     }
   ],
   "featureFiles": [
