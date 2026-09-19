@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use super::{TestServer, request, response_value};
 
+mod coordinates;
 mod cross_file;
 mod degradation;
 mod highlight;

@@ -733,7 +733,8 @@ pub fn main(amount: i64) -> i64 {
         .prepare_rename(&document, position)
         .expect("local binding should prepare rename");
 
-    let response = prepare_rename(&prepare);
+    let response = prepare_rename(&prepare, &crate::line_index::LineIndex::new(source))
+        .expect("UTF-16 prepare range");
 
     assert_eq!(
         response,

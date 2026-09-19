@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "id": "reference-rename-coordinates",
+  "files": {
+    "vela.toml": "[package]\nid='dev.vela.references'\nname='references'\nversion='0.1.0'\n[source]\nroots=['scripts']\n",
+    "scripts/main.vela": "/* 中😀 */ use helpers::[[import:start]]grant[[import:end]];\nfn main([[param-decl:start]]amount[[param-decl:end]]: i64) -> i64 {\n    /* 中😀 */ let [[local-decl:start]]value[[local-decl:end]] = [[param-read:start]]amount[[param-read:end]];\n    /* 中😀 */ [[local-write:start]]value[[local-write:end]] += [[param-rhs:start]]amount[[param-rhs:end]];\n    { let [[shadow-decl:start]]value[[shadow-decl:end]] = 7; [[shadow-read:start]]value[[shadow-read:end]]; }\n    /* 中😀 */ [[call-one:start]]grant[[call-one:end]]([[local-read:start]]value[[local-read:end]]);\n    /* 中😀 */ return helpers::[[call-two:start]]grant[[call-two:end]]([[param-call:start]]amount[[param-call:end]]);\n}\nfn negative() { /* 中😀 */ [[unknown:start]]missing[[unknown:end]]; let note = \"[[literal:start]]grant[[literal:end]]\"; }\n// [[comment:start]]grant[[comment:end]]\n[[keyword:start]]fn[[keyword:end]] other() {}\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[function-decl:start]]grant[[function-decl:end]](seed: i64) -> i64 { return seed; }\n",
+    "scripts/consumer.vela": "/* 中😀 */ fn side() { helpers::[[call-other:start]]grant[[call-other:end]](0); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "parameter": {
+        "name": "amount",
+        "rename": "score",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "param-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "param-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "param-rhs",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "param-call",
+            "kind": "Read"
+          }
+        ]
+      },
+      "local": {
+        "name": "value",
+        "rename": "total",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-write",
+            "kind": "Write"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-read",
+            "kind": "Read"
+          }
+        ]
+      },
+      "shadow": {
+        "name": "value",
+        "rename": "inner",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "shadow-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "shadow-read",
+            "kind": "Read"
+          }
+        ]
+      },
+      "function": {
+        "name": "grant",
+        "rename": "award",
+        "origin": "source",
+        "qualified": "helpers::grant",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "function-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "call-one",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "call-two",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "call-other",
+            "kind": "Call"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "param-decl",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "param-read",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "param-rhs",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "param-call",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "local-decl",
+        "group": "local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "local-write",
+        "group": "local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "local-read",
+        "group": "local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "shadow-decl",
+        "group": "shadow"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "shadow-read",
+        "group": "shadow"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "function-decl",
+        "group": "function"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "import",
+        "group": "function"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call-one",
+        "group": "function"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call-two",
+        "group": "function"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "call-other",
+        "group": "function"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "keyword",
+        "group": null
+      }
+    ]
+  }
+}

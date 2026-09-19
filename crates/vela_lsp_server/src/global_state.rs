@@ -4,6 +4,7 @@ use std::sync::Arc;
 mod diagnostics;
 mod documents;
 mod project_state;
+mod reference_projection;
 mod request_queue;
 mod responses;
 mod watched_files;
@@ -459,9 +460,9 @@ impl GlobalStateSnapshot {
             params.context.include_declaration,
         );
 
-        response_ok_typed_messages(
+        reference_projection::respond(
             id,
-            to_proto::reference_locations(&references),
+            reference_projection::locations(&self, &references),
             "typed references response",
         )
     }
@@ -488,9 +489,9 @@ impl GlobalStateSnapshot {
             .databases
             .document_highlights(&input.document_id, input.position);
 
-        response_ok_typed_messages(
+        reference_projection::respond(
             id,
-            to_proto::document_highlights(&highlights),
+            reference_projection::highlights(&self, &input.document_id, &highlights),
             "typed documentHighlight response",
         )
     }
@@ -590,9 +591,12 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_rename(&input.document_id, input.position);
 
-        response_ok_typed_messages(
+        reference_projection::respond(
             id,
-            prepare.as_ref().map(to_proto::prepare_rename),
+            prepare
+                .as_ref()
+                .map(|rename| reference_projection::prepare(&self, rename))
+                .transpose(),
             "typed prepareRename response",
         )
     }
@@ -614,9 +618,11 @@ impl GlobalStateSnapshot {
             .databases
             .rename(&input.document_id, input.position, &params.new_name);
 
-        response_ok_typed_messages(
+        reference_projection::respond(
             id,
-            edit.as_ref().map(to_proto::workspace_edit),
+            edit.as_ref()
+                .map(|edit| reference_projection::edit(&self, edit))
+                .transpose(),
             "typed rename response",
         )
     }

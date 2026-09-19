@@ -246,6 +246,9 @@ impl LanguageServiceDatabases {
         if let Some(target) = modules::import_module_target(graph, source_id, &token) {
             return modules::import_module_references(self, &target);
         }
+        if let Some(target) = hir_path_sites::imported_declaration(graph, source_id, token.range) {
+            return self.declaration_references(target.id, include_declaration);
+        }
         if let Some(declaration) =
             type_hints::source_type_hint_reference_target(graph, source_id, source.text(), &token)
         {
@@ -639,6 +642,7 @@ impl LanguageServiceDatabases {
         let source = self.source_record_for_reference(span.source)?;
         let range = span_text_range(span)?;
         let kind = resolved_use_reference_kind(source.text(), range);
+        let range = hir_path_sites::resolved_use_range(self.hir_db().graph(), span)?;
         Some(Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), range),
@@ -1109,6 +1113,8 @@ fn is_builtin_type_name(name: &str) -> bool {
             | "u64"
     )
 }
+#[cfg(test)]
+mod coordinate_tests;
 #[cfg(test)]
 mod field_tests;
 #[cfg(test)]

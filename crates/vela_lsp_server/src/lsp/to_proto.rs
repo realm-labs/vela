@@ -242,20 +242,33 @@ pub(crate) fn semantic_tokens_delta(
     })
 }
 
-pub(crate) fn prepare_rename(rename: &PrepareRename) -> lsp_types::PrepareRenameResponse {
-    lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
-        range: diagnostic_range(rename.range()),
+pub(crate) fn prepare_rename(
+    rename: &PrepareRename,
+    index: &crate::line_index::LineIndex<'_>,
+) -> Result<lsp_types::PrepareRenameResponse, String> {
+    Ok(lsp_types::PrepareRenameResponse::RangeWithPlaceholder {
+        range: lsp_types::Range::new(
+            index.lsp_position(rename.range().start())?,
+            index.lsp_position(rename.range().end())?,
+        ),
         placeholder: rename.placeholder().to_owned(),
-    }
+    })
 }
 
 pub(crate) fn workspace_edit(edit: &WorkspaceEdit) -> lsp_types::WorkspaceEdit {
+    workspace_edit_with_versions(edit, |document| document.document_version())
+}
+
+pub(crate) fn workspace_edit_with_versions(
+    edit: &WorkspaceEdit,
+    version: impl Fn(&DocumentTextEdit) -> Option<vela_language_service::SourceVersion>,
+) -> lsp_types::WorkspaceEdit {
     lsp_types::WorkspaceEdit {
         changes: Some(workspace_edit_changes(edit)),
         document_changes: Some(lsp_types::DocumentChanges::Edits(
             edit.document_edits()
                 .iter()
-                .map(text_document_edit)
+                .map(|document| text_document_edit(document, version(document)))
                 .collect(),
         )),
         change_annotations: (!edit.risks().is_empty()).then(|| change_annotations(edit)),
@@ -600,14 +613,15 @@ const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {
     }
 }
 
-fn text_document_edit(document_edit: &DocumentTextEdit) -> lsp_types::TextDocumentEdit {
+fn text_document_edit(
+    document_edit: &DocumentTextEdit,
+    version: Option<vela_language_service::SourceVersion>,
+) -> lsp_types::TextDocumentEdit {
     lsp_types::TextDocumentEdit {
         text_document: lsp_types::OptionalVersionedTextDocumentIdentifier {
             uri: lsp_types::Url::parse(document_edit.document_id().as_str())
                 .expect("workspace edit document id should be a valid LSP URI"),
-            version: document_edit
-                .document_version()
-                .map(super::document_version::to_lsp),
+            version: version.map(super::document_version::to_lsp),
         },
         edits: document_edit
             .edits()

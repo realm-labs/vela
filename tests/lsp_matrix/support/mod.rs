@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 mod schema;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
+pub(crate) mod references;
 mod source;
 pub(crate) use source::{
     assert_source_overlay_state, source_lifecycle_action, source_lifecycle_spec,

@@ -325,7 +325,7 @@ impl LanguageServiceDatabases {
                 let Some(source) = self.source_record_for_rename(span.source) else {
                     continue;
                 };
-                let Some(range) = span_text_range(span) else {
+                let Some(range) = crate::hir_path_sites::resolved_use_range(graph, span) else {
                     continue;
                 };
                 if token_text(source.text(), range) != Some(declaration.name.as_str()) {
@@ -550,6 +550,15 @@ fn rename_target<'a>(
         return Some(RenameTarget::SchemaVariant(target));
     }
 
+    if let Some(declaration) =
+        crate::hir_path_sites::imported_declaration(graph, source_id, token.range)
+        && can_rename_declaration_target(declaration)
+    {
+        return Some(RenameTarget::Declaration(DeclarationRenameTarget {
+            declaration,
+            token,
+        }));
+    }
     for declaration in graph.declarations() {
         if declaration.span.source != source_id || !declaration.span.contains(offset) {
             continue;

@@ -2430,10 +2430,33 @@
         "vscode/UX04/dismiss-escape/render/local"
       ],
       "summary": "Close B03 with all 102 completion/completion-resolve and UX04 obligations verified by one fresh Windows x64 profile. Added independent input-completion fixture and installed-provider smoke: exact two schema candidates, lazy then owned documentation, function kinds/details, snippet strings and full UTF-16 replacement ranges on dirty Unicode LF/CRLF documents; provider queries preserve source. Native Enter/Tab routes type at mid-token coWrong after Chinese/emoji, select beta, expose its resolved docs, accept exact completion_beta() with caret inside parentheses and undo to comWrong with its original caret. Escape closes the visible list without completion edits and retains focus. External keyboard actions, complete label sets, exact document states and focus are checked independently; screenshots, accessibility snapshots and client/server traces are retained and hashed. Bounded contracts cover six Input/Render obligations; partial proof cannot certify other routes. Node 75 and workspace 4548 passed, two historical ignored; service 653, protocol 638; fmt/Clippy passed. Windows VSIX editors/vscode/test-results/run-AXeRrj/results.json passed 10; native editors/vscode/test-results/input-Ofjb8m/results.json passed 16. Strict target/lsp-matrix/run-zlghyq/report.json verifies 247 B00-B03 obligations without changing original B00-B02 acceptance snapshots. Feature audit: 220 verified, 1105 unreviewed, two N/A, zero failures. Whole-batch remaining: 1230. Resume B04.01 references/highlights and rename ownership. Fresh macOS evidence is required when used; generated/scale gates remain pending and B16 deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B04.01",
+      "revision": null,
+      "requirements": [
+        "references/environments/utf16/protocol",
+        "references/environments/crlf/protocol",
+        "references/environments/encoded_uri/protocol",
+        "references/states/repeat/protocol",
+        "highlight/environments/utf16/protocol",
+        "highlight/environments/crlf/protocol",
+        "highlight/environments/encoded_uri/protocol",
+        "highlight/states/repeat/protocol",
+        "prepare-rename/environments/utf16/protocol",
+        "prepare-rename/environments/crlf/protocol",
+        "prepare-rename/environments/encoded_uri/protocol",
+        "prepare-rename/states/repeat/protocol",
+        "rename/environments/utf16/protocol",
+        "rename/environments/crlf/protocol",
+        "rename/environments/encoded_uri/protocol",
+        "rename/states/repeat/protocol"
+      ],
+      "summary": "Add 16 exact protocol mappings for references/highlight/prepare-rename/rename UTF-16, CRLF, encoded URI and repeat cells. Shared independent fixture enumerates 18 query positions across parameter/local/shadow/source groups and four empty outcomes. Both layers compare complete references with/without declarations, active-document highlights and kinds, prepare token/placeholder, and every rename edit; service also checks symbol identity. Four groups undergo actual applied edits, exact whole-file comparison, parsing, repeated queries and restoration. Protocol sends actual didChange; validates both legacy/versioned edits against each file's UTF-16 markers and notification versions, including initially unopened and subsequently closed consumers. Fixed whole-path reference spans, omitted qualified rename uses and missing import-terminal query targets via canonical HIR segments/import declaration identities. Added snapshot-based UTF-16 projection for all four response families; retain risk annotations and use client versions only for open documents, never internal disk versions. Workspace 4550 passed, two historical ignored; service 654, protocol 639; focused matrix and existing reference/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-JPq3Cv/results.json passed 10 and native editors/vscode/test-results/input-Sx6zf8/results.json passed 16; strict target/lsp-matrix/run-5ZBG7z/report.json refreshes all 247 accepted B00-B03 obligations without changing original snapshots. Feature audit 236 verified, 1089 unreviewed, two N/A, no failures. Whole-batch remaining 1230; B04 stays open. Resume B04.02 semantic ownership/collision partitions and later required UX05/UX06 workflows. No whole-syntax/native-rename/scale/generated acceptance is inferred. Fresh macOS required when used; B16 deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.01",
-  "nextTask": "B04.01",
+  "activeChild": "B04.02",
+  "nextTask": "B04.02",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4611,7 +4634,21 @@
     "target/b03-55-input.log",
     "target/b03-55-acceptance.log",
     "editors/vscode/test-results/run-AXeRrj/results.json",
-    "editors/vscode/test-results/input-Ofjb8m/results.json"
+    "editors/vscode/test-results/input-Ofjb8m/results.json",
+    "target/lsp-matrix/run-5ZBG7z/report.json",
+    "target/b04-01-baseline.log",
+    "target/b04-01-focused.log",
+    "target/b04-01-references.log",
+    "target/b04-01-rename.log",
+    "target/b04-01-workspace.log",
+    "target/b04-01-fmt.log",
+    "target/b04-01-clippy.log",
+    "target/b04-01-node.log",
+    "target/b04-01-editor.log",
+    "target/b04-01-input.log",
+    "target/b04-01-accepted-regression.log",
+    "editors/vscode/test-results/run-JPq3Cv/results.json",
+    "editors/vscode/test-results/input-Sx6zf8/results.json"
   ],
   "openIssues": [
     {
@@ -5641,8 +5678,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4663597ef940602f2f4cb1dc1e93ecd41770ab67",
-          "treeSha256": "56387b304e9b82d9731320e9e152f14cc7db5dac8418acbff1ad0e6ac885f44b"
+          "revision": "2c6bc621332aae858a19f176e7e715d89b43ba7b",
+          "treeSha256": "2cc9eff38d74b7537d4d259f36df1356b366f1dbbb3a92fbadbaeea43aa3bf10"
         },
         "profile": {
           "platform": "win32",
@@ -5650,11 +5687,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-zlghyq/report.json"
+          "target/lsp-matrix/run-5ZBG7z/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-AXeRrj/results.json --local-results editors/vscode/test-results/input-Ofjb8m/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-JPq3Cv/results.json --local-results editors/vscode/test-results/input-Sx6zf8/results.json",
             "exitCode": 0
           }
         ]

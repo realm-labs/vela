@@ -617,7 +617,7 @@ success or failure. The execution checkpoint records fresh strict batch
 acceptance. B14 still owns the later semantic
 partition completeness review.
 
-B03 remains unaccepted. Current completion proof covers source/schema/stdlib
+B03 is accepted; B04 is active. Current completion proof covers source/schema/stdlib
 types and members, enum construction and patterns, named arguments, import and
 namespace aliases, direct dependency types, and compiler-owned Service paths.
 Shared service/protocol fixtures use frozen complete candidate sets, canonical
@@ -843,10 +843,15 @@ their existing logical-string semantics and null definition result.
 Completion-resolve editor smoke checks lazy owned documentation, snippets and
 whole-identifier edits on dirty Unicode LF/CRLF documents. UX04 separately checks
 actual Enter/Tab acceptance, resolved documentation, exact text/caret and undo;
-Escape closes suggestions without a completion edit. Resume B04.01 with exact
-reference/highlight sets and rename ownership after the B03 acceptance checkpoint.
-B00-B02 acceptance snapshots stay
-fixed; accepting B03 reduces the remaining whole-batch inventory to 1230 requirements.
+Escape closes suggestions without a completion edit. B03 is accepted.
+B04.01 adds an 18-position shared reference/highlight/rename coordinate matrix:
+complete sets, shadow separation, actual applied edits and repeated/restored queries
+on Unicode LF/CRLF sources. Qualified uses retain terminal-token ranges and are
+included in renames; import terminal queries resolve their declaration. Protocol
+results project to UTF-16 per document, with client versions only for open files.
+Resume B04.02 with reference and rename semantic ownership/collision partitions.
+B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
+1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
 exact Unicode targets and no-jump outcomes. The original macOS acceptance is
@@ -886,8 +891,8 @@ provides it.
 
 ## Next Up
 
-1. Continue LSP B03 completion semantics, lifecycle and workbench coverage from
-   the execution checkpoint; B00-B02 are accepted. Then complete B04-B15 and
+1. Continue LSP B04 references, highlights and rename coverage from
+   the execution checkpoint; B00-B03 are accepted. Then complete B05-B15 and
    B17-B19; B16 stays deferred.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.

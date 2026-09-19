@@ -5217,6 +5217,166 @@
           "name": "completion resolve preserves lazy owned documentation and Unicode LF CRLF replacement edits"
         }
       ]
+    },
+    {
+      "requirement": "references/environments/utf16/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/environments/crlf/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/environments/encoded_uri/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/states/repeat/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/environments/utf16/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/environments/crlf/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/environments/encoded_uri/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/repeat/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/environments/utf16/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/environments/crlf/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/environments/encoded_uri/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/repeat/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/environments/utf16/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/environments/crlf/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/environments/encoded_uri/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/repeat/protocol",
+      "assertion": "Shared marked fixture independently specifies complete reference sets with/without declarations, document-local highlight kinds, prepare range/placeholder and every rename edit. Eighteen query positions include parameter/local/shadow/source ownership and four empty outcomes. Repeat each query on Unicode LF/CRLF and encoded multi-file URIs; apply exact edits, parse and re-query four renamed groups, then restore. Compare legacy and versioned UTF-16 edits, including unopened and closed file versions. No whole syntax partition or native rename acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -4700,3 +4700,13 @@ suggestions reuse the enum path owner resolver, expand imports as type hints
 without value shadowing, exclude other present keys and replace the full current
 identifier. Suggestion metadata identifies an enum variant; the applied bare
 Map key remains a logical string key with no invented definition target.
+
+Reference and rename queries share the resolved HIR terminal-segment range for
+qualified uses and the import terminal's existing declaration identity. Service
+positions remain byte columns; references, highlights, prepare-rename and rename
+responses project their ranges against the corresponding immutable document
+snapshot into UTF-16. Rename edits retain internal service versions for analysis,
+but the LSP boundary assigns a client version only when that document is open.
+Unopened and closed disk files therefore carry null client versions. Projection
+preserves both edit forms and risk annotations without changing source ownership
+or runtime semantics.
