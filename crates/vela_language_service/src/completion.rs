@@ -27,6 +27,8 @@ mod expression_ownership_tests;
 #[cfg(test)]
 mod import_alias_tests;
 mod imports;
+#[cfg(test)]
+mod incremental_tests;
 mod item;
 mod lambda_parameter;
 mod local;

@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "id": "completion-incremental-ownership",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.incremental_ownership\"\nname=\"incremental_ownership\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n",
+    "scripts/api.vela": "pub struct First { [[first:start]]zz_first[[first:end]]: i64 }\npub struct Second { [[second:start]]zz_second[[second:end]]: bool }\npub fn make() -> First { First { zz_first: 1 } }\n",
+    "scripts/other.vela": "pub struct Third { [[third:start]]zz_third[[third:end]]: bool }\npub struct Fourth { [[fourth:start]]zz_fourth[[fourth:end]]: String }\npub fn make() -> Third { Third { zz_third: true } }\n",
+    "scripts/main.vela": "use api::make as choose;\npub fn main() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/relay.vela": "use main::main;\npub fn relay() { main(); }\n",
+    "scripts/unrelated.vela": "pub const anchor: i64 = 1;\n"
+  },
+  "actions": [],
+  "oracle": {
+    "initial": [
+      {
+        "label": "zz_first",
+        "detail": "i64",
+        "symbol": "api::First.zz_first",
+        "file": "scripts/api.vela",
+        "marker": "first"
+      }
+    ],
+    "steps": [
+      {
+        "id": "body_changes_receiver",
+        "file": "scripts/main.vela",
+        "source": "use api::make as choose;\npub fn main() { /* 中😀 */ let value = api::Second { zz_second: true }; value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+        "declarationChanged": false,
+        "importChanged": false,
+        "invalidated": [
+          "main"
+        ],
+        "items": [
+          {
+            "label": "zz_second",
+            "detail": "bool",
+            "symbol": "api::Second.zz_second",
+            "file": "scripts/api.vela",
+            "marker": "second"
+          }
+        ]
+      },
+      {
+        "id": "body_restores_receiver",
+        "file": "scripts/main.vela",
+        "source": "use api::make as choose;\npub fn main() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+        "declarationChanged": false,
+        "importChanged": false,
+        "invalidated": [
+          "main"
+        ],
+        "items": [
+          {
+            "label": "zz_first",
+            "detail": "i64",
+            "symbol": "api::First.zz_first",
+            "file": "scripts/api.vela",
+            "marker": "first"
+          }
+        ]
+      },
+      {
+        "id": "import_switches_owner",
+        "file": "scripts/main.vela",
+        "source": "use other::make as choose;\npub fn main() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "items": [
+          {
+            "label": "zz_third",
+            "detail": "bool",
+            "symbol": "other::Third.zz_third",
+            "file": "scripts/other.vela",
+            "marker": "third"
+          }
+        ]
+      },
+      {
+        "id": "declaration_changes_return",
+        "file": "scripts/other.vela",
+        "source": "pub struct Third { [[third:start]]zz_third[[third:end]]: bool }\npub struct Fourth { [[fourth:start]]zz_fourth[[fourth:end]]: String }\npub fn make() -> Fourth { Fourth { zz_fourth: \"fresh\" } }\n",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "main",
+          "other",
+          "relay"
+        ],
+        "items": [
+          {
+            "label": "zz_fourth",
+            "detail": "String",
+            "symbol": "other::Fourth.zz_fourth",
+            "file": "scripts/other.vela",
+            "marker": "fourth"
+          }
+        ]
+      },
+      {
+        "id": "missing_import_erases_members",
+        "file": "scripts/main.vela",
+        "source": "use missing::make as choose;\npub fn main() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "items": []
+      },
+      {
+        "id": "import_restores_owner",
+        "file": "scripts/main.vela",
+        "source": "use api::make as choose;\npub fn main() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "items": [
+          {
+            "label": "zz_first",
+            "detail": "i64",
+            "symbol": "api::First.zz_first",
+            "file": "scripts/api.vela",
+            "marker": "first"
+          }
+        ]
+      },
+      {
+        "id": "removed_declaration_erases_members",
+        "file": "scripts/api.vela",
+        "source": "pub struct First { [[first:start]]zz_first[[first:end]]: i64 }\npub struct Second { [[second:start]]zz_second[[second:end]]: bool }\npub fn make_deleted() -> First { First { zz_first: 1 } }\n",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "api",
+          "main",
+          "relay"
+        ],
+        "items": []
+      },
+      {
+        "id": "declaration_restores_owner",
+        "file": "scripts/api.vela",
+        "source": "pub struct First { [[first:start]]zz_first[[first:end]]: i64 }\npub struct Second { [[second:start]]zz_second[[second:end]]: bool }\npub fn make() -> First { First { zz_first: 1 } }\n",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "api",
+          "main",
+          "relay"
+        ],
+        "items": [
+          {
+            "label": "zz_first",
+            "detail": "i64",
+            "symbol": "api::First.zz_first",
+            "file": "scripts/api.vela",
+            "marker": "first"
+          }
+        ]
+      }
+    ]
+  }
+}

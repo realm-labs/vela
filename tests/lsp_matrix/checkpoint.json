@@ -1906,10 +1906,21 @@
         "completion/syntax/S9/negative/protocol"
       ],
       "summary": "Reviewed every S8 import and S9 recovery partition in tests/lsp_matrix/reviews/completion-import-recovery.md and added eight exact service/protocol catalog mappings. New 26-query shared fixture (20 candidate queries, six empty, LF/CRLF with Unicode; seven independently confirmed malformed inputs) checks source/schema/stdlib import paths, typed constant/state/extern-state imports, schema function/type alias source spans, plain import insertion versus expression call snippets, private/missing/unknown boundaries, and unfinished type/member/record contexts with parseable applied repair suffixes. Two exposed defects were fixed: qualified use paths previously inserted call snippets, and unfinished records at EOF lost field context. SyntaxUsePath now supplies a distinct Import role, consumed by callable insertion without changing expression-call policy. Record recovery admits the unfinished EOF boundary/trailing whitespace but rejects closed records. Dedicated tests distinguish import roles from later expression paths and prevent closed-record reuse. Existing schema-import navigation remains null inside use; source-backed schema aliases at actual use sites have exact targets, with marker-based source IDs/spans generated from the loaded workspace. Source/schema ownership, lazy documentation and protocol fields remain intact. Feature audit: 191 verified, 1134 unreviewed, two N/A, no failed rows. Full workspace 4523 passed with two historical service tests ignored; audit service 643 and protocol 630 passed. Focused baseline/import/context/record-boundary tests, fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-P8DXF5/results.json passed 9; native editors/vscode/test-results/input-CK1Y03/results.json passed 13; strict target/lsp-matrix/run-yatQzT/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. B03 remains open. Resume B03.48 with S11 and remaining semantic review/UX04. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.48",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S11/positive/service",
+        "completion/syntax/S11/positive/protocol",
+        "completion/syntax/S11/negative/service",
+        "completion/syntax/S11/negative/protocol"
+      ],
+      "summary": "Reviewed all S11 completion partitions in tests/lsp_matrix/reviews/completion-s11.md and added four exact service/protocol catalog mappings. New shared nine-state fixture (seven candidate states, two empty states, LF/CRLF with Unicode) links repeated whole completion results to parse/project/HIR counters, declaration/import fingerprints and exact direct/transitive invalidation sets. Body edits preserve project indexes; switching imports, changing return declarations, missing imports and removed/restored callables yield exact current owner sets equal to fresh analysis. Independently specified edits parse and navigate to marked field declarations, and subsequent completion retains owner/detail. Service rejects cancelled and stale tokens while preserving fresh queries. Protocol uses actual didOpen/didChange and completion/resolve/definition requests; existing deterministic lifecycle tests separately prove old/duplicate version rejection, cancellation before publication, current-generation retry, bounded repeated invalidation and successful subsequent requests. Source candidates remain lightweight and resolve unchanged. No production behavior changed. Feature audit: 195 verified, 1130 unreviewed, two N/A, no failed rows. Full service 644 and protocol 631 library tests passed with two historical service tests ignored; focused baseline/incremental/lifecycle tests, fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-lWbYrY/results.json passed 9; native editors/vscode/test-results/input-jATxfa/results.json passed 13; strict target/lsp-matrix/run-16sSK9/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. Whole-workspace tests were not repeated for this test/catalog-only change. B03 remains open. Resume B03.49 with remaining semantic review and UX04. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.48",
-  "nextTask": "B03.48",
+  "activeChild": "B03.49",
+  "nextTask": "B03.49",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4083,7 +4094,19 @@
     "target/b03-47-input.log",
     "target/b03-47-accepted-regression.log",
     "editors/vscode/test-results/run-P8DXF5/results.json",
-    "editors/vscode/test-results/input-CK1Y03/results.json"
+    "editors/vscode/test-results/input-CK1Y03/results.json",
+    "target/lsp-matrix/run-16sSK9/report.json",
+    "target/b03-48-baseline.log",
+    "target/b03-48-incremental.log",
+    "target/b03-48-lifecycle.log",
+    "target/b03-48-fmt.log",
+    "target/b03-48-clippy.log",
+    "target/b03-48-node.log",
+    "target/b03-48-editor.log",
+    "target/b03-48-input.log",
+    "target/b03-48-accepted-regression.log",
+    "editors/vscode/test-results/run-lWbYrY/results.json",
+    "editors/vscode/test-results/input-jATxfa/results.json"
   ],
   "openIssues": [
     {
@@ -4704,8 +4727,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "94350a7b38093a1bcd67691100d0df2dee87241c",
-          "treeSha256": "606cb8c78609c0ba7a398078c9d0ab2c2c3d2b9b380a58269e211aa4c8f3f36d"
+          "revision": "aea7ca343ff32a3b2b171d529cc38450c5107fd7",
+          "treeSha256": "2193dffb423ba30312e15f93c12ed9654f20c9841220b130e2496b18f70d4b80"
         },
         "profile": {
           "platform": "win32",
@@ -4713,11 +4736,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-yatQzT/report.json"
+          "target/lsp-matrix/run-16sSK9/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-P8DXF5/results.json --local-results editors/vscode/test-results/input-CK1Y03/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-lWbYrY/results.json --local-results editors/vscode/test-results/input-jATxfa/results.json",
             "exitCode": 0
           }
         ]

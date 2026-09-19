@@ -4295,6 +4295,78 @@
           "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S11/positive/service",
+      "assertion": "Reviewed all S11 partitions in reviews/completion-s11.md. Initial state plus eight LF/CRLF transitions link repeated whole completion lists, exact owned candidates and applied byte/UTF-16 edits/definitions to exact parse/project/HIR counts, declaration/import fingerprints and direct/transitive invalidation sets. Body-only edits preserve project indexes; imports, return types and restored declarations yield current candidates equal to fresh analysis. Current requests succeed after cancellation or stale generation rejection.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::incremental_tests::incremental_completion_links_fingerprints_invalidation_and_current_owned_edits"
+        },
+        {
+          "layer": "service",
+          "name": "incremental::tests::requests_in_one_generation_share_a_single_analysis_facts_build"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S11/positive/protocol",
+      "assertion": "Reviewed all S11 partitions in reviews/completion-s11.md. Initial state plus eight LF/CRLF transitions link repeated whole completion lists, exact owned candidates and applied byte/UTF-16 edits/definitions to exact parse/project/HIR counts, declaration/import fingerprints and direct/transitive invalidation sets. Body-only edits preserve project indexes; imports, return types and restored declarations yield current candidates equal to fresh analysis. Current requests succeed after cancellation or stale generation rejection.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_incremental::incremental_completion_links_fingerprints_invalidation_and_current_owned_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::old_and_duplicate_versions_preserve_completion_and_signed_edit_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::cancelled_completion_and_resolve_publish_only_errors_and_allow_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::stale_completion_and_resolve_retry_current_facts_and_bound_repeated_changes"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S11/negative/service",
+      "assertion": "Missing imports and removed callables produce exact empty sets and cannot retain old owner metadata. Body edits exclude unrelated invalidation and project rebuilds; repeated queries/resolve do not rebuild caches. Service rejects cancelled and old-generation tokens while preserving fresh requests. Protocol rejects old/duplicate document versions, publishes only cancellation errors, suppresses stale facts, bounds generation retry, and allows subsequent current requests. Separate deterministic task tests prove publication behavior; sequential fixture equality is not used as cancellation proof.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::incremental_tests::incremental_completion_links_fingerprints_invalidation_and_current_owned_edits"
+        },
+        {
+          "layer": "service",
+          "name": "incremental::tests::requests_in_one_generation_share_a_single_analysis_facts_build"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S11/negative/protocol",
+      "assertion": "Missing imports and removed callables produce exact empty sets and cannot retain old owner metadata. Body edits exclude unrelated invalidation and project rebuilds; repeated queries/resolve do not rebuild caches. Service rejects cancelled and old-generation tokens while preserving fresh requests. Protocol rejects old/duplicate document versions, publishes only cancellation errors, suppresses stale facts, bounds generation retry, and allows subsequent current requests. Separate deterministic task tests prove publication behavior; sequential fixture equality is not used as cancellation proof.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_incremental::incremental_completion_links_fingerprints_invalidation_and_current_owned_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::old_and_duplicate_versions_preserve_completion_and_signed_edit_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::cancelled_completion_and_resolve_publish_only_errors_and_allow_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_lifecycle::stale_completion_and_resolve_retry_current_facts_and_bound_repeated_changes"
+        }
+      ]
     }
   ],
   "featureFiles": [
