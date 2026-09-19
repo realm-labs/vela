@@ -840,10 +840,14 @@ closed interpolation expressions remain eligible. Unclosed Map CSTs retain their
 last value. Map-key suggestions use the existing enum owner resolver, preserve
 current-key eligibility and replace whole identifiers; applied bare keys retain
 their existing logical-string semantics and null definition result.
-Resume B03.55 with completion-resolve editor smoke and UX04 interaction proof.
+Completion-resolve editor smoke checks lazy owned documentation, snippets and
+whole-identifier edits on dirty Unicode LF/CRLF documents. UX04 separately checks
+actual Enter/Tab acceptance, resolved documentation, exact text/caret and undo;
+Escape closes suggestions without a completion edit. Resume B04.01 with exact
+reference/highlight sets and rename ownership after the B03 acceptance checkpoint.
 B00-B02 acceptance snapshots stay
-fixed, and the remaining whole-batch inventory stays at 1332 requirements.
-Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
+fixed; accepting B03 reduces the remaining whole-batch inventory to 1230 requirements.
+Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
 exact Unicode targets and no-jump outcomes. The original macOS acceptance is
 historical; fresh evidence is required when that machine is next used. The earlier

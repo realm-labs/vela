@@ -5207,6 +5207,16 @@
           "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
         }
       ]
+    },
+    {
+      "requirement": "completion-resolve/editor/smoke",
+      "assertion": "Installed VSIX queries dirty Unicode LF/CRLF sources: exact schema candidates, function kinds/details, full identifier replacement ranges and snippet insertions are preserved while explicit resolve supplies the owned lazy documentation. Queries leave source unchanged. UX04 separately proves native input and rendering.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "completion resolve preserves lazy owned documentation and Unicode LF CRLF replacement edits"
+        }
+      ]
     }
   ],
   "featureFiles": [

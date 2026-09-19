@@ -79,6 +79,7 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, document.text);
   }
+  require("../completion-fixture").materializeCompletion(workspace);
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(
     path.join(workspace, ".vscode/settings.json"),
@@ -377,15 +378,19 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-or-ux04-proof-id>");
       const id = process.argv[index + 1];
-      if (!id.startsWith("ux03-") || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux0[34]-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
     record("observation", "requested-proofs", { ids: requestedProofs.length ? requestedProofs : contracts.map((item) => item.id) });
     await require("./peek").runPeek({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts, until, pid: child.pid, platform: profile.platform, onProof: (proof) => proofs.push(proof),
+    });
+    await require("./completion").runCompletion({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: (proof) => proofs.push(proof),
     });
     restoreKeyboard();
     await bridge("finish");

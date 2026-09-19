@@ -27,6 +27,7 @@ async function main() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, parseMarkers(source).text);
   }
+  require("./completion-fixture").materializeCompletion(workspace);
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
     "vela.trace.server": "verbose",

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "ux04",
+  "files": {
+    "ux04-schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"ux04::completion_alpha\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"i64\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"i64\"\n          }\n        },\n        \"docs\": \"Alpha completion documentation.\"\n      },\n      {\n        \"name\": \"ux04::completion_beta\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"i64\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"i64\"\n          }\n        },\n        \"docs\": \"Beta completion documentation 中😀.\"\n      }\n    ]\n  }\n}\n",
+    "scripts/completion_accept_enter.vela": "/* 中😀 */ fn completion_accept_enter() { ux04::[[replace:start]]co[[cursor]]Wrong[[replace:end]]; }\n",
+    "scripts/completion_accept_tab.vela": "/* 中😀 */ fn completion_accept_tab() { ux04::[[replace:start]]co[[cursor]]Wrong[[replace:end]]; }\n",
+    "scripts/completion_dismiss_escape.vela": "/* 中😀 */ fn completion_dismiss_escape() { ux04::[[replace:start]]co[[cursor]]Wrong[[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "typedText": "m",
+    "labels": [
+      "completion_alpha",
+      "completion_beta"
+    ],
+    "documentation": "Beta completion documentation 中😀.",
+    "detail": "Function(i64) -> i64",
+    "insertText": "completion_beta($0)",
+    "acceptedText": "completion_beta()",
+    "routes": [
+      {
+        "id": "accept-enter",
+        "file": "scripts/completion_accept_enter.vela"
+      },
+      {
+        "id": "accept-tab",
+        "file": "scripts/completion_accept_tab.vela"
+      },
+      {
+        "id": "dismiss-escape",
+        "file": "scripts/completion_dismiss_escape.vela"
+      }
+    ]
+  }
+}

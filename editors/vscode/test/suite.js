@@ -149,6 +149,8 @@ async function run() {
       require("./navigation-providers").runNavigationProvider(vscode, workspace, "declaration"));
     await check("type definition provider preserves exact dirty Unicode LF CRLF targets and unknown nulls", () =>
       require("./navigation-providers").runNavigationProvider(vscode, workspace, "type"));
+    await check("completion resolve preserves lazy owned documentation and Unicode LF CRLF replacement edits", () =>
+      require("./completion-provider").runCompletionProvider(vscode, workspace));
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");
