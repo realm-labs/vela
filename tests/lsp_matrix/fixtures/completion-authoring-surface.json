@@ -1,0 +1,1591 @@
+{
+  "version": 1,
+  "id": "completion-authoring-surface",
+  "files": {
+    "scripts/items.vela": "struct Holder {}\n/* 中😀 */ [[replace:start]][[cursor]][[replace:end]]\n",
+    "scripts/item_prefix.vela": "/* 中😀 */ [[replace:start]]st[[cursor]][[replace:end]]\n",
+    "scripts/fields.vela": "struct Record {\n /* 中😀 */ [[replace:start]][[cursor]][[replace:end]]\n}\n",
+    "scripts/field_prefix.vela": "struct Record { /* 中😀 */ [[replace:start]]fi[[cursor]][[replace:end]] }\n",
+    "scripts/statement_bre.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]bre[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_cont.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]cont[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_fo.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]fo[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_if.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]if[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_let.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]let[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_matc.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]matc[[cursor]][[replace:end]];\n} }\n",
+    "scripts/statement_retur.vela": "fn main() { for outer in [1] {\n /* 中😀 */ [[replace:start]]retur[[cursor]][[replace:end]];\n} }\n",
+    "scripts/unknown_item.vela": "/* 中😀 */ [[replace:start]]zz_unknown[[cursor]][[replace:end]]\n",
+    "scripts/unknown_field.vela": "struct Record { /* 中😀 */ [[replace:start]]zz_unknown[[cursor]][[replace:end]] }\n",
+    "scripts/field_type.vela": "struct Record { value: /* 中😀 */ [[replace:start]]fie[[cursor]][[replace:end]] }\n",
+    "scripts/field_default.vela": "struct Record { value: i64 = /* 中😀 */ [[replace:start]]fie[[cursor]][[replace:end]] }\n",
+    "scripts/member.vela": "fn main(value: Any) { /* 中😀 */ value.[[replace:start]]fie[[cursor]][[replace:end]]; }\n",
+    "scripts/expression_break.vela": "fn main() { /* 中😀 */ let value = [[replace:start]]bre[[cursor]][[replace:end]]; }\n",
+    "scripts/expression_continue.vela": "fn main() { /* 中😀 */ let value = [[replace:start]]cont[[cursor]][[replace:end]]; }\n",
+    "scripts/method_continue.vela": "struct Holder {}\nimpl Holder { fn run(self) { for item in [1] { /* 中😀 */ [[replace:start]]cont[[cursor]][[replace:end]]; } } }\n",
+    "scripts/lambda_break.vela": "fn main() { let closure = || { for item in [1] { /* 中😀 */ [[replace:start]]bre[[cursor]][[replace:end]]; } }; }\n",
+    "scripts/compact_array.vela": "fn main(zz_value: Array < Option < i64 > >) {\n /* 中😀 */ let output = [[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/compact_map.vela": "fn main(zz_value: Map < String , Result < i64 , String > >) {\n /* 中😀 */ let output = [[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/compact_set.vela": "fn main(zz_value: Set < String >) {\n /* 中😀 */ let output = [[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/compact_result.vela": "fn main(zz_value: Result < Option < i64 > , String >) {\n /* 中😀 */ let output = [[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/dot_array.vela": "fn main(value: Array<i64>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_map.vela": "fn main(value: Map<String, i64>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_set.vela": "fn main(value: Set<String>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_string.vela": "fn main(value: String) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_bytes.vela": "fn main(value: Bytes) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_iterator.vela": "fn main(value: Iterator<i64>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_option.vela": "fn main(value: Option<i64>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_result.vela": "fn main(value: Result<i64, String>) {\n /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_any.vela": "fn main(value: Any) { /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n",
+    "scripts/dot_unknown.vela": "fn main(value: Missing) { /* 中😀 */ value.[[replace:start]][[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "items",
+        "file": "scripts/items.vela",
+        "context": "Item",
+        "items": [
+          {
+            "label": "const",
+            "detail": "constant declaration",
+            "insert": "const ${1:NAME} = $0",
+            "expanded": "const LIMIT = 1;",
+            "fills": [
+              [
+                "${1:NAME}",
+                "LIMIT"
+              ],
+              [
+                "$0",
+                "1;"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ const LIMIT = 1;\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "enum",
+            "detail": "enum declaration",
+            "insert": "enum ${1:Name} {\n    $0\n}",
+            "expanded": "enum Choice {\n    Ready\n}",
+            "fills": [
+              [
+                "${1:Name}",
+                "Choice"
+              ],
+              [
+                "$0",
+                "Ready"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ enum Choice {\n    Ready\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "extern state",
+            "detail": "host-owned extern state declaration",
+            "insert": "extern state ${1:name}: ${2:Type};",
+            "expanded": "extern state score: i64;",
+            "fills": [
+              [
+                "${1:name}",
+                "score"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ extern state score: i64;\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "fn",
+            "detail": "function declaration",
+            "insert": "fn ${1:name}(${2:params}) {\n    $0\n}",
+            "expanded": "fn sample(value: i64) {\n    return value;\n}",
+            "fills": [
+              [
+                "${1:name}",
+                "sample"
+              ],
+              [
+                "${2:params}",
+                "value: i64"
+              ],
+              [
+                "$0",
+                "return value;"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ fn sample(value: i64) {\n    return value;\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "impl",
+            "detail": "implementation block",
+            "insert": "impl ${1:Type} {\n    $0\n}",
+            "expanded": "impl Holder {\n    fn get(self) -> i64 { 1 }\n}",
+            "fills": [
+              [
+                "${1:Type}",
+                "Holder"
+              ],
+              [
+                "$0",
+                "fn get(self) -> i64 { 1 }"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ impl Holder {\n    fn get(self) -> i64 { 1 }\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "pub",
+            "detail": "public visibility",
+            "insert": "pub $0",
+            "expanded": "pub fn sample() {}",
+            "fills": [
+              [
+                "$0",
+                "fn sample() {}"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ pub fn sample() {}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "state",
+            "detail": "per-Runtime VM state declaration",
+            "insert": "state ${1:name}: ${2:Type} = ${3:expression};",
+            "expanded": "state score: i64 = 1;",
+            "fills": [
+              [
+                "${1:name}",
+                "score"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:expression}",
+                "1"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ state score: i64 = 1;\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "struct",
+            "detail": "struct declaration",
+            "insert": "struct ${1:Name} {\n    $0\n}",
+            "expanded": "struct Record {\n    count: i64\n}",
+            "fills": [
+              [
+                "${1:Name}",
+                "Record"
+              ],
+              [
+                "$0",
+                "count: i64"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ struct Record {\n    count: i64\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "trait",
+            "detail": "trait declaration",
+            "insert": "trait ${1:Name} {\n    $0\n}",
+            "expanded": "trait Inspect {\n    fn get(self) -> i64;\n}",
+            "fills": [
+              [
+                "${1:Name}",
+                "Inspect"
+              ],
+              [
+                "$0",
+                "fn get(self) -> i64;"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ trait Inspect {\n    fn get(self) -> i64;\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "use",
+            "detail": "import declaration",
+            "insert": "use $0",
+            "expanded": "use option::some;",
+            "fills": [
+              [
+                "$0",
+                "option::some;"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Holder {}\n/* 中😀 */ use option::some;\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "item_prefix",
+        "file": "scripts/item_prefix.vela",
+        "context": "Item",
+        "items": [
+          {
+            "label": "state",
+            "detail": "per-Runtime VM state declaration",
+            "insert": "state ${1:name}: ${2:Type} = ${3:expression};",
+            "expanded": "state score: i64 = 1;",
+            "fills": [
+              [
+                "${1:name}",
+                "score"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:expression}",
+                "1"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "/* 中😀 */ state score: i64 = 1;\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          },
+          {
+            "label": "struct",
+            "detail": "struct declaration",
+            "insert": "struct ${1:Name} {\n    $0\n}",
+            "expanded": "struct Record {\n    count: i64\n}",
+            "fills": [
+              [
+                "${1:Name}",
+                "Record"
+              ],
+              [
+                "$0",
+                "count: i64"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "/* 中😀 */ struct Record {\n    count: i64\n}\n",
+            "requery": [
+              "const",
+              "enum",
+              "extern state",
+              "fn",
+              "impl",
+              "pub",
+              "state",
+              "struct",
+              "trait",
+              "use"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "fields",
+        "file": "scripts/fields.vela",
+        "context": "StructFieldDeclaration",
+        "items": [
+          {
+            "label": "field",
+            "detail": "struct field",
+            "insert": "${1:name}: ${2:Type}",
+            "expanded": "count: i64",
+            "fills": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Record {\n /* 中😀 */ count: i64\n}\n",
+            "requery": [
+              "field",
+              "field default"
+            ]
+          },
+          {
+            "label": "field default",
+            "detail": "struct field with default",
+            "insert": "${1:name}: ${2:Type} = ${3:value}",
+            "expanded": "count: i64 = 1",
+            "fills": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:value}",
+                "1"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Record {\n /* 中😀 */ count: i64 = 1\n}\n",
+            "requery": [
+              "field",
+              "field default"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "field_prefix",
+        "file": "scripts/field_prefix.vela",
+        "context": "StructFieldDeclaration",
+        "items": [
+          {
+            "label": "field",
+            "detail": "struct field",
+            "insert": "${1:name}: ${2:Type}",
+            "expanded": "count: i64",
+            "fills": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Record { /* 中😀 */ count: i64 }\n",
+            "requery": [
+              "field",
+              "field default"
+            ]
+          },
+          {
+            "label": "field default",
+            "detail": "struct field with default",
+            "insert": "${1:name}: ${2:Type} = ${3:value}",
+            "expanded": "count: i64 = 1",
+            "fills": [
+              [
+                "${1:name}",
+                "count"
+              ],
+              [
+                "${2:Type}",
+                "i64"
+              ],
+              [
+                "${3:value}",
+                "1"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "struct Record { /* 中😀 */ count: i64 = 1 }\n",
+            "requery": [
+              "field",
+              "field default"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_bre",
+        "file": "scripts/statement_bre.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "break",
+            "detail": "break statement",
+            "insert": "break",
+            "expanded": "break",
+            "fills": [],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ break;\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_cont",
+        "file": "scripts/statement_cont.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "continue",
+            "detail": "continue statement",
+            "insert": "continue",
+            "expanded": "continue",
+            "fills": [],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ continue;\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_fo",
+        "file": "scripts/statement_fo.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "for",
+            "detail": "for loop",
+            "insert": "for ",
+            "expanded": "for item in [1] {}",
+            "fills": [
+              [
+                "for ",
+                "for item in [1] {}"
+              ]
+            ],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ for item in [1] {};\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          },
+          {
+            "label": "for in",
+            "detail": "for-in loop",
+            "insert": "for ${1:item} in ${2:items} {\n    $0\n}",
+            "expanded": "for item in [1] {\n    continue;\n}",
+            "fills": [
+              [
+                "${1:item}",
+                "item"
+              ],
+              [
+                "${2:items}",
+                "[1]"
+              ],
+              [
+                "$0",
+                "continue;"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ for item in [1] {\n    continue;\n};\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_if",
+        "file": "scripts/statement_if.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "if",
+            "detail": "if expression",
+            "insert": "if ",
+            "expanded": "if true {}",
+            "fills": [
+              [
+                "if ",
+                "if true {}"
+              ]
+            ],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ if true {};\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_let",
+        "file": "scripts/statement_let.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "let",
+            "detail": "local binding",
+            "insert": "let ",
+            "expanded": "let chosen = 1;",
+            "fills": [
+              [
+                "let ",
+                "let chosen = 1;"
+              ]
+            ],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ let chosen = 1;;\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_matc",
+        "file": "scripts/statement_matc.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "match",
+            "detail": "match expression",
+            "insert": "match ${1:value} {\n    $0\n}",
+            "expanded": "match 1 {\n    _ => {}\n}",
+            "fills": [
+              [
+                "${1:value}",
+                "1"
+              ],
+              [
+                "$0",
+                "_ => {}"
+              ]
+            ],
+            "kind": "Snippet",
+            "lspKind": 15,
+            "format": 2,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ match 1 {\n    _ => {}\n};\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "statement_retur",
+        "file": "scripts/statement_retur.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "return",
+            "detail": "return statement",
+            "insert": "return ",
+            "expanded": "return 1;",
+            "fills": [
+              [
+                "return ",
+                "return 1;"
+              ]
+            ],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ return 1;;\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          },
+          {
+            "label": "reflect::returns",
+            "detail": "Function(Any) -> Option(String)",
+            "insert": "reflect::returns($0)",
+            "expanded": "reflect::returns(1)",
+            "fills": [
+              [
+                "$0",
+                "1"
+              ]
+            ],
+            "kind": "Function",
+            "lspKind": 3,
+            "format": 2,
+            "symbol": "reflect::returns",
+            "applied": "fn main() { for outer in [1] {\n /* 中😀 */ reflect::returns(1);\n} }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown_item",
+        "file": "scripts/unknown_item.vela",
+        "context": "Item",
+        "items": []
+      },
+      {
+        "id": "unknown_field",
+        "file": "scripts/unknown_field.vela",
+        "context": "StructFieldDeclaration",
+        "items": []
+      },
+      {
+        "id": "field_type",
+        "file": "scripts/field_type.vela",
+        "context": "TypeHint",
+        "items": []
+      },
+      {
+        "id": "field_default",
+        "file": "scripts/field_default.vela",
+        "context": "Expression",
+        "items": [],
+        "allowedBuiltins": [
+          "reflect::field",
+          "reflect::fields"
+        ]
+      },
+      {
+        "id": "member",
+        "file": "scripts/member.vela",
+        "context": "Member",
+        "items": []
+      },
+      {
+        "id": "expression_break",
+        "file": "scripts/expression_break.vela",
+        "context": "Expression",
+        "items": []
+      },
+      {
+        "id": "expression_continue",
+        "file": "scripts/expression_continue.vela",
+        "context": "Expression",
+        "items": []
+      },
+      {
+        "id": "method_continue",
+        "file": "scripts/method_continue.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "continue",
+            "detail": "continue statement",
+            "insert": "continue",
+            "expanded": "continue",
+            "fills": [],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "struct Holder {}\nimpl Holder { fn run(self) { for item in [1] { /* 中😀 */ continue; } } }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda_break",
+        "file": "scripts/lambda_break.vela",
+        "context": "Statement",
+        "items": [
+          {
+            "label": "break",
+            "detail": "break statement",
+            "insert": "break",
+            "expanded": "break",
+            "fills": [],
+            "kind": "Keyword",
+            "lspKind": 14,
+            "format": 1,
+            "applied": "fn main() { let closure = || { for item in [1] { /* 中😀 */ break; } }; }\n",
+            "requery": [
+              "break",
+              "continue",
+              "for",
+              "for in",
+              "if",
+              "let",
+              "match",
+              "return"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compact_array",
+        "file": "scripts/compact_array.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "zz_value",
+            "detail": "Array(Option(i64))",
+            "insert": "zz_value",
+            "expanded": "zz_value",
+            "fills": [],
+            "kind": "Parameter",
+            "lspKind": 6,
+            "format": 1,
+            "applied": "fn main(zz_value: Array < Option < i64 > >) {\n /* 中😀 */ let output = zz_value; }\n",
+            "requery": [
+              "zz_value"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compact_map",
+        "file": "scripts/compact_map.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "zz_value",
+            "detail": "Map(String, Result(i64, String))",
+            "insert": "zz_value",
+            "expanded": "zz_value",
+            "fills": [],
+            "kind": "Parameter",
+            "lspKind": 6,
+            "format": 1,
+            "applied": "fn main(zz_value: Map < String , Result < i64 , String > >) {\n /* 中😀 */ let output = zz_value; }\n",
+            "requery": [
+              "zz_value"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compact_set",
+        "file": "scripts/compact_set.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "zz_value",
+            "detail": "Set(String)",
+            "insert": "zz_value",
+            "expanded": "zz_value",
+            "fills": [],
+            "kind": "Parameter",
+            "lspKind": 6,
+            "format": 1,
+            "applied": "fn main(zz_value: Set < String >) {\n /* 中😀 */ let output = zz_value; }\n",
+            "requery": [
+              "zz_value"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compact_result",
+        "file": "scripts/compact_result.vela",
+        "context": "Expression",
+        "items": [
+          {
+            "label": "zz_value",
+            "detail": "Result(Option(i64), String)",
+            "insert": "zz_value",
+            "expanded": "zz_value",
+            "fills": [],
+            "kind": "Parameter",
+            "lspKind": 6,
+            "format": 1,
+            "applied": "fn main(zz_value: Result < Option < i64 > , String >) {\n /* 中😀 */ let output = zz_value; }\n",
+            "requery": [
+              "zz_value"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dot_array",
+        "file": "scripts/dot_array.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "len",
+            "detail": "Function() -> i64",
+            "insert": "len($0)",
+            "expanded": "len()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Array(i64).len",
+            "applied": "fn main(value: Array<i64>) {\n /* 中😀 */ value.len(); }\n",
+            "requery": [
+              "all",
+              "any",
+              "clear",
+              "contains",
+              "count",
+              "distinct",
+              "extend",
+              "filter",
+              "find",
+              "first",
+              "get",
+              "group_by",
+              "index_of",
+              "insert",
+              "is_empty",
+              "iter",
+              "join",
+              "last",
+              "len",
+              "map",
+              "max",
+              "min",
+              "pop",
+              "push",
+              "remove_at",
+              "retain",
+              "reverse",
+              "slice",
+              "sort",
+              "sort_by",
+              "sum",
+              "values"
+            ]
+          }
+        ],
+        "inventory": [
+          "all",
+          "any",
+          "clear",
+          "contains",
+          "count",
+          "distinct",
+          "extend",
+          "filter",
+          "find",
+          "first",
+          "get",
+          "group_by",
+          "index_of",
+          "insert",
+          "is_empty",
+          "iter",
+          "join",
+          "last",
+          "len",
+          "map",
+          "max",
+          "min",
+          "pop",
+          "push",
+          "remove_at",
+          "retain",
+          "reverse",
+          "slice",
+          "sort",
+          "sort_by",
+          "sum",
+          "values"
+        ],
+        "owner": "Array(i64)"
+      },
+      {
+        "id": "dot_map",
+        "file": "scripts/dot_map.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "len",
+            "detail": "Function() -> i64",
+            "insert": "len($0)",
+            "expanded": "len()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Map(String, i64).len",
+            "applied": "fn main(value: Map<String, i64>) {\n /* 中😀 */ value.len(); }\n",
+            "requery": [
+              "all",
+              "any",
+              "clear",
+              "contains_key",
+              "count",
+              "entries",
+              "extend",
+              "filter",
+              "find",
+              "get",
+              "get_or",
+              "get_or_insert",
+              "group_by",
+              "has",
+              "insert",
+              "is_empty",
+              "iter",
+              "keys",
+              "len",
+              "map_values",
+              "merge",
+              "remove",
+              "retain",
+              "set",
+              "values"
+            ]
+          }
+        ],
+        "inventory": [
+          "all",
+          "any",
+          "clear",
+          "contains_key",
+          "count",
+          "entries",
+          "extend",
+          "filter",
+          "find",
+          "get",
+          "get_or",
+          "get_or_insert",
+          "group_by",
+          "has",
+          "insert",
+          "is_empty",
+          "iter",
+          "keys",
+          "len",
+          "map_values",
+          "merge",
+          "remove",
+          "retain",
+          "set",
+          "values"
+        ],
+        "owner": "Map(String, i64)"
+      },
+      {
+        "id": "dot_set",
+        "file": "scripts/dot_set.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "len",
+            "detail": "Function() -> i64",
+            "insert": "len($0)",
+            "expanded": "len()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Set(String).len",
+            "applied": "fn main(value: Set<String>) {\n /* 中😀 */ value.len(); }\n",
+            "requery": [
+              "add",
+              "all",
+              "any",
+              "clear",
+              "contains",
+              "count",
+              "difference",
+              "extend",
+              "filter",
+              "find",
+              "has",
+              "insert",
+              "intersection",
+              "is_disjoint",
+              "is_empty",
+              "is_subset",
+              "is_superset",
+              "iter",
+              "len",
+              "map",
+              "remove",
+              "retain",
+              "symmetric_difference",
+              "union",
+              "values"
+            ]
+          }
+        ],
+        "inventory": [
+          "add",
+          "all",
+          "any",
+          "clear",
+          "contains",
+          "count",
+          "difference",
+          "extend",
+          "filter",
+          "find",
+          "has",
+          "insert",
+          "intersection",
+          "is_disjoint",
+          "is_empty",
+          "is_subset",
+          "is_superset",
+          "iter",
+          "len",
+          "map",
+          "remove",
+          "retain",
+          "symmetric_difference",
+          "union",
+          "values"
+        ],
+        "owner": "Set(String)"
+      },
+      {
+        "id": "dot_string",
+        "file": "scripts/dot_string.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "len",
+            "detail": "Function() -> i64",
+            "insert": "len($0)",
+            "expanded": "len()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "String.len",
+            "applied": "fn main(value: String) {\n /* 中😀 */ value.len(); }\n",
+            "requery": [
+              "bytes",
+              "chars",
+              "contains",
+              "ends_with",
+              "find",
+              "is_empty",
+              "len",
+              "parse_bool",
+              "parse_char",
+              "parse_f32",
+              "parse_f64",
+              "parse_i16",
+              "parse_i32",
+              "parse_i64",
+              "parse_i8",
+              "parse_u16",
+              "parse_u32",
+              "parse_u64",
+              "parse_u8",
+              "repeat",
+              "replace",
+              "slice",
+              "split",
+              "split_lines",
+              "split_once",
+              "split_whitespace",
+              "starts_with",
+              "strip_prefix",
+              "strip_suffix",
+              "to_lower",
+              "to_upper",
+              "trim",
+              "trim_end",
+              "trim_start"
+            ]
+          }
+        ],
+        "inventory": [
+          "bytes",
+          "chars",
+          "contains",
+          "ends_with",
+          "find",
+          "is_empty",
+          "len",
+          "parse_bool",
+          "parse_char",
+          "parse_f32",
+          "parse_f64",
+          "parse_i16",
+          "parse_i32",
+          "parse_i64",
+          "parse_i8",
+          "parse_u16",
+          "parse_u32",
+          "parse_u64",
+          "parse_u8",
+          "repeat",
+          "replace",
+          "slice",
+          "split",
+          "split_lines",
+          "split_once",
+          "split_whitespace",
+          "starts_with",
+          "strip_prefix",
+          "strip_suffix",
+          "to_lower",
+          "to_upper",
+          "trim",
+          "trim_end",
+          "trim_start"
+        ],
+        "owner": "String"
+      },
+      {
+        "id": "dot_bytes",
+        "file": "scripts/dot_bytes.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "len",
+            "detail": "Function() -> i64",
+            "insert": "len($0)",
+            "expanded": "len()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Bytes.len",
+            "applied": "fn main(value: Bytes) {\n /* 中😀 */ value.len(); }\n",
+            "requery": [
+              "get",
+              "is_empty",
+              "iter",
+              "len",
+              "read_u32_be",
+              "read_u32_le",
+              "slice",
+              "to_hex",
+              "values"
+            ]
+          }
+        ],
+        "inventory": [
+          "get",
+          "is_empty",
+          "iter",
+          "len",
+          "read_u32_be",
+          "read_u32_le",
+          "slice",
+          "to_hex",
+          "values"
+        ],
+        "owner": "Bytes"
+      },
+      {
+        "id": "dot_iterator",
+        "file": "scripts/dot_iterator.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "next",
+            "detail": "Function() -> Option(i64)",
+            "insert": "next($0)",
+            "expanded": "next()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Iterator.next",
+            "applied": "fn main(value: Iterator<i64>) {\n /* 中😀 */ value.next(); }\n",
+            "requery": [
+              "all",
+              "any",
+              "collect_array",
+              "collect_map",
+              "collect_set",
+              "count",
+              "filter",
+              "find",
+              "fold",
+              "map",
+              "next",
+              "skip",
+              "take"
+            ]
+          }
+        ],
+        "inventory": [
+          "all",
+          "any",
+          "collect_array",
+          "collect_map",
+          "collect_set",
+          "count",
+          "filter",
+          "find",
+          "fold",
+          "map",
+          "next",
+          "skip",
+          "take"
+        ],
+        "owner": "Iterator"
+      },
+      {
+        "id": "dot_option",
+        "file": "scripts/dot_option.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "is_some",
+            "detail": "Function() -> bool",
+            "insert": "is_some($0)",
+            "expanded": "is_some()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Option(i64).is_some",
+            "applied": "fn main(value: Option<i64>) {\n /* 中😀 */ value.is_some(); }\n",
+            "requery": [
+              "and_then",
+              "filter",
+              "is_none",
+              "is_some",
+              "map",
+              "ok_or",
+              "or_else",
+              "unwrap_or"
+            ]
+          }
+        ],
+        "inventory": [
+          "and_then",
+          "filter",
+          "is_none",
+          "is_some",
+          "map",
+          "ok_or",
+          "or_else",
+          "unwrap_or"
+        ],
+        "owner": "Option(i64)"
+      },
+      {
+        "id": "dot_result",
+        "file": "scripts/dot_result.vela",
+        "context": "Member",
+        "items": [
+          {
+            "label": "is_ok",
+            "detail": "Function() -> bool",
+            "insert": "is_ok($0)",
+            "expanded": "is_ok()",
+            "fills": [
+              [
+                "$0",
+                ""
+              ]
+            ],
+            "kind": "Method",
+            "lspKind": 2,
+            "format": 2,
+            "symbol": "Result(i64, String).is_ok",
+            "applied": "fn main(value: Result<i64, String>) {\n /* 中😀 */ value.is_ok(); }\n",
+            "requery": [
+              "and_then",
+              "is_err",
+              "is_ok",
+              "map",
+              "map_err",
+              "or_else",
+              "to_error_option",
+              "to_option",
+              "unwrap_or"
+            ]
+          }
+        ],
+        "inventory": [
+          "and_then",
+          "is_err",
+          "is_ok",
+          "map",
+          "map_err",
+          "or_else",
+          "to_error_option",
+          "to_option",
+          "unwrap_or"
+        ],
+        "owner": "Result(i64, String)"
+      },
+      {
+        "id": "dot_any",
+        "file": "scripts/dot_any.vela",
+        "context": "Member",
+        "items": []
+      },
+      {
+        "id": "dot_unknown",
+        "file": "scripts/dot_unknown.vela",
+        "context": "Member",
+        "items": []
+      }
+    ]
+  }
+}

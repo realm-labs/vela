@@ -53,6 +53,55 @@ fn cursor_context_classifies_item_boundary_keywords() {
 }
 
 #[test]
+fn authoring_boundaries_ignore_trivia_and_keep_keyword_prefixes_at_statement_starts() {
+    for crlf in [false, true] {
+        for (source, expected) in [
+            ("/* 中😀 */ @", CursorContextKind::Item),
+            ("fn f() {}\n// 中😀\n@", CursorContextKind::Item),
+            ("const A = 1;\n/* 中😀 */ st@", CursorContextKind::Item),
+            ("/* 中😀 */ @fn f() {}", CursorContextKind::Item),
+            (
+                "fn f() { if true { /* 中😀 */ bre@; } }",
+                CursorContextKind::Statement,
+            ),
+            (
+                "struct Holder {} impl Holder { fn f(self) { cont@; } }",
+                CursorContextKind::Statement,
+            ),
+            (
+                "fn f() { let closure = || { ret@; }; }",
+                CursorContextKind::Statement,
+            ),
+            (
+                "fn f() { return /* 中😀 */ bre@; }",
+                CursorContextKind::Expression,
+            ),
+            (
+                "fn f() { let count = bre@; }",
+                CursorContextKind::Expression,
+            ),
+            ("fn f() { lo@; }", CursorContextKind::Expression),
+        ] {
+            let source = source.replace('\n', if crlf { "\r\n" } else { "\n" });
+            let offset = source.find('@').expect("cursor");
+            let text = source.replacen('@', "", 1);
+            assert_eq!(classify_offset(&text, offset).kind(), expected, "{source}");
+        }
+        for source in [
+            "fn f() { other(bre@); }",
+            "fn f() { let text = \"}; @\"; }",
+            "struct Holder { count: i64 = bre@ }",
+        ] {
+            let offset = source.find('@').expect("cursor");
+            let text = source.replacen('@', "", 1);
+            let kind = classify_offset(&text, offset).kind();
+            assert_ne!(kind, CursorContextKind::Item, "{source}");
+            assert_ne!(kind, CursorContextKind::Statement, "{source}");
+        }
+    }
+}
+
+#[test]
 fn cursor_context_exposes_identifier_range_under_cursor() {
     let text = "pub fn main(player) { player.level }";
     let offset = text.find("level").expect("level") + "le".len();

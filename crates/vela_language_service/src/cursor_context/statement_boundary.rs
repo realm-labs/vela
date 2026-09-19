@@ -1,13 +1,18 @@
-use vela_syntax::ast::{AstNode, SyntaxSourceFile, SyntaxStatement, SyntaxStatementKind};
+use vela_syntax::ast::{AstNode, SyntaxSourceFile, SyntaxStatement};
 use vela_syntax::{TextRange as SyntaxTextRange, TextSize};
 
 pub(super) fn is_inside_item(source: &SyntaxSourceFile, offset: usize) -> bool {
     let Some(offset) = syntax_offset(offset) else {
         return false;
     };
-    source
-        .items()
-        .any(|item| range_contains_offset(item.text_range(), offset))
+    source.items().any(|item| {
+        let start = item
+            .syntax()
+            .first_token()
+            .map(|token| token.text_range().start())
+            .unwrap_or(item.text_range().start());
+        start < offset && offset < item.text_range().end()
+    })
 }
 
 pub(super) fn is_statement_context(source: &SyntaxSourceFile, offset: usize) -> bool {
@@ -15,10 +20,16 @@ pub(super) fn is_statement_context(source: &SyntaxSourceFile, offset: usize) -> 
         return false;
     };
     source
-        .functions()
-        .filter_map(|function| function.body())
-        .flat_map(|body| body.statements())
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxStatement::cast)
         .any(|statement| is_statement_start(&statement, offset))
+}
+
+pub(super) fn is_statement_prefix(prefix: &str) -> bool {
+    ["let", "return", "for", "if", "match", "break", "continue"]
+        .iter()
+        .any(|keyword| keyword.starts_with(prefix))
 }
 
 fn is_statement_start(statement: &SyntaxStatement, offset: TextSize) -> bool {
@@ -26,26 +37,12 @@ fn is_statement_start(statement: &SyntaxStatement, offset: TextSize) -> bool {
     if !range_contains_offset(statement_range, offset) {
         return false;
     }
-    match statement.statement_kind() {
-        SyntaxStatementKind::Let => offset <= statement_start(statement) + TextSize::from(4),
-        SyntaxStatementKind::Return
-        | SyntaxStatementKind::Break
-        | SyntaxStatementKind::Continue => true,
-        SyntaxStatementKind::Expr => statement
-            .as_expr()
-            .and_then(|statement| statement.expression())
-            .is_some_and(|expression| {
-                offset <= expression.syntax().text_range().start() + TextSize::from(1)
-            }),
-        SyntaxStatementKind::For
-        | SyntaxStatementKind::If
-        | SyntaxStatementKind::Match
-        | SyntaxStatementKind::Block => offset <= statement_start(statement) + TextSize::from(1),
-    }
-}
-
-fn statement_start(statement: &SyntaxStatement) -> TextSize {
-    statement.syntax().text_range().start()
+    statement
+        .syntax()
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .find(|token| !token.kind().is_trivia())
+        .is_some_and(|token| offset <= token.text_range().start())
 }
 
 fn range_contains_offset(range: SyntaxTextRange, offset: TextSize) -> bool {

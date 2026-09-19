@@ -4650,3 +4650,11 @@ without call parentheses, while expression calls retain their existing behavior.
 Record completion recovery may include the unfinished EOF boundary and trailing
 whitespace, but never reuses a record beyond its closing brace. These authoring
 rules do not change parser grammar, HIR ownership or runtime semantics.
+
+Completion declaration boundaries use the preceding significant CST token, so
+comments and whitespace do not hide a top-level boundary. The first token of an
+existing item remains eligible for declaration completion. Statement completion
+recognizes empty or statement-keyword prefixes at the first significant token of
+any nested statement, including method and lambda bodies. Ordinary expression
+prefixes retain their expression context, and operands after a statement's first
+token cannot become statement positions. These are editor-context rules only.

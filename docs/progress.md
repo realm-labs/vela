@@ -809,7 +809,10 @@ S11 completion now ties repeated queries and incremental cache counters to exact
 current candidates. Shared LF/CRLF transitions cover body edits, changed imports
 and declarations, transitive invalidation, empty sets and restoration; separate
 task tests prove cancellation and bounded stale-generation retry at publication.
-Resume B03.49 with the remaining semantic review and UX04 interaction proof.
+S13 completion now has direct template/application and empty-dot inventory proof.
+Declaration completion survives preceding trivia; statement keyword prefixes work
+in nested blocks, methods and lambdas while operand positions stay expressions.
+Resume B03.50 with the remaining semantic review and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

@@ -4367,6 +4367,118 @@
           "name": "tests::completion_lifecycle::stale_completion_and_resolve_retry_current_facts_and_bound_repeated_changes"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S13/positive/service",
+      "assertion": "Reviewed S13 completion partitions in reviews/completion-s13.md. Shared 34-query LF/CRLF fixture asserts exact declaration/field/statement templates, placeholder fills, byte/UTF-16 edits, completed source parsing and relevant requery inventories. Eight builtin receiver families have complete empty-dot method inventories and every candidate has its own identity/edit/resolve policy; representative methods also verify details and applied source. Existing member/type/ownership matrices cover source/schema/trait/default owners, type positions and label/detail separation. Nested builtin hint details retain the semantic TypeFact notation; source formatting remains a separate feature contract.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "service",
+          "name": "cursor_context::tests::authoring_boundaries_ignore_trivia_and_keep_keyword_prefixes_at_statement_starts"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S13/positive/protocol",
+      "assertion": "Reviewed S13 completion partitions in reviews/completion-s13.md. Shared 34-query LF/CRLF fixture asserts exact declaration/field/statement templates, placeholder fills, byte/UTF-16 edits, completed source parsing and relevant requery inventories. Eight builtin receiver families have complete empty-dot method inventories and every candidate has its own identity/edit/resolve policy; representative methods also verify details and applied source. Existing member/type/ownership matrices cover source/schema/trait/default owners, type positions and label/detail separation. Nested builtin hint details retain the semantic TypeFact notation; source formatting remains a separate feature contract.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S13/negative/service",
+      "assertion": "Top-level trivia and nested method/lambda statements cannot erase template candidates. Field-type/default contexts cannot gain declaration templates; legitimate reflection-function alternatives are explicitly listed. Expression operands cannot gain statement keywords. Dynamic/unknown dot, unknown declarations/fields and unsupported non-nested Option/Result flatten have exact exclusions. Template/local resolve has no invented identity or documentation; builtin members cannot borrow schema docs. Complete owned member/type sets exclude private, missing and wrong-owner candidates. No editor snippet-session or formatting-feature acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "service",
+          "name": "cursor_context::tests::authoring_boundaries_ignore_trivia_and_keep_keyword_prefixes_at_statement_starts"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::type_completion_matrix_preserves_context_ownership_edits_and_resolved_documentation"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S13/negative/protocol",
+      "assertion": "Top-level trivia and nested method/lambda statements cannot erase template candidates. Field-type/default contexts cannot gain declaration templates; legitimate reflection-function alternatives are explicitly listed. Expression operands cannot gain statement keywords. Dynamic/unknown dot, unknown declarations/fields and unsupported non-nested Option/Result flatten have exact exclusions. Template/local resolve has no invented identity or documentation; builtin members cannot borrow schema docs. Complete owned member/type sets exclude private, missing and wrong-owner candidates. No editor snippet-session or formatting-feature acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::type_completion_matrix_projects_utf16_edits_ownership_docs_and_applied_source"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        }
+      ]
     }
   ],
   "featureFiles": [

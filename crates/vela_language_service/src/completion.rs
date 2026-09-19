@@ -7,6 +7,8 @@ mod analysis;
 mod analysis_item;
 #[cfg(test)]
 mod analysis_tests;
+#[cfg(test)]
+mod authoring_surface_tests;
 mod builtin_type;
 mod builtin_value;
 #[cfg(test)]

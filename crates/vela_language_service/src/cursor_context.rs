@@ -19,7 +19,7 @@ use record_expression_field::{
     is_record_expression_field_context, is_record_expression_value_context,
 };
 use record_type_field::is_record_type_field_context;
-use statement_boundary::{is_inside_item, is_statement_context};
+use statement_boundary::{is_inside_item, is_statement_context, is_statement_prefix};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CursorContextKind {
@@ -313,7 +313,7 @@ pub fn cursor_context_at(
         return cursor;
     }
 
-    if prefix.is_empty()
+    if is_statement_prefix(&prefix)
         && syntax_parse
             .as_ref()
             .is_some_and(|parse| is_statement_context(&parse.tree(), prefix_start))
@@ -428,6 +428,18 @@ fn is_item_boundary_context(
         .is_some_and(|parse| is_inside_item(&parse.tree(), prefix_start))
     {
         return false;
+    }
+    if let Some(parse) = syntax_parse {
+        let previous = parse
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|element| element.into_token())
+            .filter(|token| {
+                !token.kind().is_trivia() && usize::from(token.text_range().end()) <= prefix_start
+            })
+            .last();
+        return previous.is_none_or(|token| matches!(token.text(), "}" | ";" | "pub"));
     }
     let before_prefix = text[..prefix_start].trim_end();
     before_prefix.is_empty()

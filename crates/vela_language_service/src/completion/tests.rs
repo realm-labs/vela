@@ -77,8 +77,9 @@ fn expression_completion_suggests_builtin_values() {
 
     assert_eq!(
         completions.context().kind(),
-        CompletionContextKind::Expression
+        CompletionContextKind::Statement
     );
+    assert_completion(&completions, "for in", CompletionKind::Snippet);
     let value = completion(&completions, "false");
     assert_eq!(value.kind(), CompletionKind::Value);
     assert_eq!(value.detail(), "bool");
@@ -1030,7 +1031,7 @@ fn cancellable_completion_discards_stale_generation_results() {
         .expect("fresh completion should return items");
     assert_eq!(
         completions.context().kind(),
-        CompletionContextKind::Expression
+        CompletionContextKind::Statement
     );
 }
 
