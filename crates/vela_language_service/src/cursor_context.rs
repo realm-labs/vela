@@ -1,7 +1,7 @@
 mod member;
 mod tuple_field;
 use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::{AstNode, SyntaxMapEntry, SyntaxSourceFile};
+use vela_syntax::ast::{AstNode, SyntaxMapEntry, SyntaxSourceFile, SyntaxUsePath};
 use vela_syntax::lexer::lex;
 use vela_syntax::token::{Keyword, Symbol, Token, TokenKind};
 use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
@@ -44,6 +44,7 @@ pub enum CursorContextKind {
 pub enum ModulePathRole {
     Expression,
     Type,
+    Import,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -256,7 +257,20 @@ pub fn cursor_context_at(
             identifier_range,
         );
         cursor.module_base = Some(module_path.base);
-        cursor.module_path_role = if syntax_type_context {
+        cursor.module_path_role = if syntax_parse.is_some_and(|parse| {
+            parse
+                .tree()
+                .syntax()
+                .descendants()
+                .filter_map(SyntaxUsePath::cast)
+                .any(|path| {
+                    let range = path.syntax().text_range();
+                    usize::from(range.start()) <= prefix_start
+                        && prefix_start <= usize::from(range.end())
+                })
+        }) {
+            ModulePathRole::Import
+        } else if syntax_type_context {
             ModulePathRole::Type
         } else if record_value_context {
             ModulePathRole::Expression

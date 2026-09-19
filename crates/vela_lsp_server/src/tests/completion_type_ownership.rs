@@ -112,6 +112,11 @@ fn resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries() {
     assert_type_ownership("completion-resolve-identities");
 }
 
+#[test]
+fn import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries() {
+    assert_type_ownership("completion-import-sites");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -137,6 +142,33 @@ fn assert_type_ownership(fixture_id: &str) {
             json!({"processId":null,"rootUri":uri(""),"capabilities":capabilities}),
         );
         let mut control_messages = Vec::new();
+        if let Some(markers) = fixture.disk.get("schema-markers.json") {
+            let snapshot = server.snapshot();
+            let artifact = crate::matrix_fixture::schema_artifact(
+                &serde_json::from_str::<Value>(&markers.text).expect("schema markers"),
+                &fixture,
+                |file| {
+                    snapshot.databases().source_db().records()
+                        [&vela_language_service::DocumentId::from(uri(file))]
+                        .source_id()
+                        .get()
+                },
+            );
+            std::fs::write(root.join("schema.json"), artifact.to_string())
+                .expect("schema artifact");
+            let _ = notify::<n::DidChangeWatchedFiles>(
+                &mut server,
+                json!({"changes":[{"uri":uri("schema.json"),"type":2}]}),
+            );
+            assert!(
+                server
+                    .snapshot()
+                    .databases()
+                    .schema_db()
+                    .diagnostics()
+                    .is_empty()
+            );
+        }
         if let Some(file) = spec.oracle["schemaDiagnosticFile"]
             .as_str()
             .or_else(|| spec.oracle["sourceDiagnosticFile"].as_str())
@@ -279,6 +311,13 @@ fn assert_type_ownership(fixture_id: &str) {
                 let source = fixture.document(file).expect("document");
                 let point = source.markers["cursor"].start;
                 let range = source.markers["replace"];
+                if case["parseErrors"] == true {
+                    assert!(
+                        !vela_syntax::parse::parse_source(&source.text)
+                            .diagnostics()
+                            .is_empty()
+                    );
+                }
                 let params = json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}});
                 let unopened = fresh.as_mut().map(|fresh| {
                     let live =
@@ -376,6 +415,17 @@ fn assert_type_ownership(fixture_id: &str) {
                     };
                     assert_eq!(item["kind"], kind);
                     assert_eq!(item["detail"], expected["detail"]);
+                    if let Some(format) = expected["insertFormat"].as_str() {
+                        assert_eq!(
+                            item["insertTextFormat"],
+                            if format == "Snippet" {
+                                json!(2)
+                            } else {
+                                Value::Null
+                            },
+                            "{case}"
+                        );
+                    }
                     assert!(
                         item.get("documentation").is_none(),
                         "initial list stays lightweight: {case}"

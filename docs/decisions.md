@@ -4643,3 +4643,10 @@ The server preserves all 32 signed version bits in the service's opaque u64
 SourceVersion and reverses that conversion for versioned workspace edits;
 positive versions retain their existing representation. Signed ordering stays
 at the protocol boundary; service analysis ordering uses workspace generations.
+
+Qualified completion paths retain a syntax-derived import role separately from
+their module base. Callable rendering uses this role to insert names in `use`
+without call parentheses, while expression calls retain their existing behavior.
+Record completion recovery may include the unfinished EOF boundary and trailing
+whitespace, but never reuses a record beyond its closing brace. These authoring
+rules do not change parser grammar, HIR ownership or runtime semantics.

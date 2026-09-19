@@ -1,0 +1,488 @@
+{
+  "version": 1,
+  "id": "completion-import-sites",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.import_sites\"\nname=\"import_sites\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}",
+    "scripts/api.vela": "pub fn [[function:start]]zz_function[[function:end]](value: i64) -> i64 { value }\npub const [[constant:start]]zz_constant[[constant:end]]: i64 = 1;\npub state [[state:start]]zz_state[[state:end]]: i64 = 1;\npub extern state [[external:start]]zz_external[[external:end]]: bool;\nfn zz_private() {}\npub struct Token { [[field:start]]zz_tag[[field:end]]: i64 }\n",
+    "scripts/origins.vela": "// Schema origins 中😀 [[function:start]]registered_function[[function:end]]\n// 类型 中😀 [[type:start]]RegisteredType[[type:end]]\n",
+    "schema-markers.json": "{\"functions\":[{\"name\":\"host::zz_function\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"docs\":\"Registered function docs.\",\"sourceSpan\":{\"file\":\"scripts/origins.vela\",\"marker\":\"function\"}},{\"name\":\"host::zz_metadata\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"docs\":\"Metadata-only function docs.\"}],\"types\":[{\"name\":\"host::ZzType\",\"fact\":{\"kind\":\"host\",\"name\":\"host::ZzType\"},\"docs\":\"Registered type docs.\",\"sourceSpan\":{\"file\":\"scripts/origins.vela\",\"marker\":\"type\"}}]}",
+    "scripts/import_source_function.vela": "/* 中😀 */ use api::[[replace:start]]zz_functi[[cursor]][[replace:end]];\n",
+    "scripts/import_source_constant.vela": "/* 中😀 */ use api::[[replace:start]]zz_consta[[cursor]][[replace:end]];\n",
+    "scripts/import_source_state.vela": "/* 中😀 */ use api::[[replace:start]]zz_sta[[cursor]][[replace:end]];\n",
+    "scripts/alias_state.vela": "use api::zz_state as zz_alias;\nfn main() { /* 中😀 */ [[replace:start]]zz_ali[[cursor]][[replace:end]]; }\n",
+    "scripts/import_source_external.vela": "/* 中😀 */ use api::[[replace:start]]zz_extern[[cursor]][[replace:end]];\n",
+    "scripts/alias_external.vela": "use api::zz_external as zz_alias;\nfn main() { /* 中😀 */ [[replace:start]]zz_ali[[cursor]][[replace:end]]; }\n",
+    "scripts/import_schema_function.vela": "/* 中😀 */ use host::[[replace:start]]zz_functi[[cursor]][[replace:end]];\n",
+    "scripts/alias_schema_function.vela": "use host::zz_function as zz_alias;\nfn main() { /* 中😀 */ [[replace:start]]zz_ali[[cursor]][[replace:end]]; }\n",
+    "scripts/import_schema_type.vela": "/* 中😀 */ use host::[[replace:start]]ZzTy[[cursor]][[replace:end]];\n",
+    "scripts/alias_schema_type.vela": "use host::ZzType as zz_alias;\n/* 中😀 */ fn main(value: [[replace:start]]zz_ali[[cursor]][[replace:end]]) {}\n",
+    "scripts/import_builtin.vela": "/* 中😀 */ use option::[[replace:start]]som[[cursor]][[replace:end]];\n",
+    "scripts/import_metadata.vela": "/* 中😀 */ use host::[[replace:start]]zz_meta[[cursor]][[replace:end]];\n",
+    "scripts/private.vela": "/* 中😀 */ use api::[[replace:start]]zz_priv[[cursor]][[replace:end]];\n",
+    "scripts/missing.vela": "/* 中😀 */ use api::[[replace:start]]zz_miss[[cursor]][[replace:end]];\n",
+    "scripts/unknown.vela": "/* 中😀 */ use missing::[[replace:start]]zz_f[[cursor]][[replace:end]];\n",
+    "scripts/source_with_alias.vela": "/* 中😀 */ use api::[[replace:start]]zz_fun[[cursor]][[replace:end]] as zz_renamed;\n",
+    "scripts/source_multiline.vela": "use\n /* 中😀 */ api::[[replace:start]]zz_fun[[cursor]][[replace:end]];\n",
+    "scripts/source_mid_token.vela": "/* 中😀 */ use api::[[replace:start]]zz_fun[[cursor]]ction[[replace:end]];\n",
+    "scripts/source_incomplete.vela": "/* 中😀 */ use api::[[replace:start]]zz_fun[[cursor]][[replace:end]]",
+    "scripts/incomplete_type.vela": "/* 中😀 */ fn main(value: host::[[replace:start]]Zz[[cursor]][[replace:end]]",
+    "scripts/incomplete_unknown_type.vela": "/* 中😀 */ fn main(value: missing::[[replace:start]]Zz[[cursor]][[replace:end]]",
+    "scripts/incomplete_member.vela": "/* 中😀 */ fn main(value: api::Token) { value.[[replace:start]]zz_t[[cursor]][[replace:end]]",
+    "scripts/incomplete_dynamic_member.vela": "/* 中😀 */ fn main(value: Any) { value.[[replace:start]]zz_t[[cursor]][[replace:end]]",
+    "scripts/incomplete_record.vela": "/* 中😀 */ fn main() { api::Token { [[replace:start]]zz_t[[cursor]][[replace:end]]",
+    "scripts/incomplete_unknown_record.vela": "/* 中😀 */ fn main() { missing::Token { [[replace:start]]zz_t[[cursor]][[replace:end]]",
+    "scripts/empty_incomplete_record.vela": "/* 中😀 */ fn main() { api::Token { [[replace:start]][[cursor]][[replace:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "import_source_function",
+        "file": "scripts/import_source_function.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::zz_function",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_source_constant",
+        "file": "scripts/import_source_constant.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_constant",
+            "insert": "zz_constant",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::zz_constant",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "constant",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_source_state",
+        "file": "scripts/import_source_state.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_state",
+            "insert": "zz_state",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::zz_state",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "state",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "alias_state",
+        "file": "scripts/alias_state.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_alias",
+            "insert": "zz_alias",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::zz_state",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "state",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_source_external",
+        "file": "scripts/import_source_external.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_external",
+            "insert": "zz_external",
+            "kind": "Const",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::zz_external",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "external",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "alias_external",
+        "file": "scripts/alias_external.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_alias",
+            "insert": "zz_alias",
+            "kind": "Const",
+            "detail": "bool",
+            "origin": "source",
+            "symbol": "api::zz_external",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "external",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_schema_function",
+        "file": "scripts/import_schema_function.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "schema",
+            "symbol": "host::zz_function",
+            "docs": "Registered function docs.",
+            "target": null,
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "alias_schema_function",
+        "file": "scripts/alias_schema_function.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_alias",
+            "insert": "zz_alias($0)",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "schema",
+            "symbol": "host::zz_function",
+            "docs": "Registered function docs.",
+            "target": "scripts/origins.vela",
+            "marker": "function",
+            "signature": "host::zz_function(arg0: i64) -> i64",
+            "insertFormat": "Snippet"
+          }
+        ]
+      },
+      {
+        "id": "import_schema_type",
+        "file": "scripts/import_schema_type.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "ZzType",
+            "insert": "ZzType",
+            "kind": "Type",
+            "detail": "host::ZzType",
+            "origin": "schema",
+            "symbol": "host::ZzType",
+            "docs": "Registered type docs.",
+            "target": null,
+            "marker": "type",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "alias_schema_type",
+        "file": "scripts/alias_schema_type.vela",
+        "context": "TypeHint",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_alias",
+            "insert": "zz_alias",
+            "kind": "Type",
+            "detail": "host::ZzType",
+            "origin": "schema",
+            "symbol": "host::ZzType",
+            "docs": "Registered type docs.",
+            "target": "scripts/origins.vela",
+            "marker": "type",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_builtin",
+        "file": "scripts/import_builtin.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "some",
+            "insert": "some",
+            "kind": "Function",
+            "detail": "Function(Any) -> Option(Any)",
+            "origin": "builtin",
+            "symbol": "option::some",
+            "docs": null,
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "import_metadata",
+        "file": "scripts/import_metadata.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_metadata",
+            "insert": "zz_metadata",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "schema",
+            "symbol": "host::zz_metadata",
+            "docs": "Metadata-only function docs.",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "private",
+        "file": "scripts/private.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "missing",
+        "file": "scripts/missing.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unknown",
+        "file": "scripts/unknown.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "source_with_alias",
+        "file": "scripts/source_with_alias.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::zz_function",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "source_multiline",
+        "file": "scripts/source_multiline.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::zz_function",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "source_mid_token",
+        "file": "scripts/source_mid_token.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::zz_function",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "source_incomplete",
+        "file": "scripts/source_incomplete.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_function",
+            "insert": "zz_function",
+            "kind": "Function",
+            "detail": "Function(i64) -> i64",
+            "origin": "source",
+            "symbol": "api::zz_function",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "function",
+            "insertFormat": "PlainText"
+          }
+        ]
+      },
+      {
+        "id": "incomplete_type",
+        "file": "scripts/incomplete_type.vela",
+        "context": "TypeHint",
+        "applySuffix": ") {}",
+        "items": [
+          {
+            "label": "ZzType",
+            "insert": "ZzType",
+            "kind": "Type",
+            "detail": "host::ZzType",
+            "origin": "schema",
+            "symbol": "host::ZzType",
+            "docs": "Registered type docs.",
+            "target": "scripts/origins.vela",
+            "marker": "type",
+            "insertFormat": "PlainText"
+          }
+        ],
+        "parseErrors": true
+      },
+      {
+        "id": "incomplete_unknown_type",
+        "file": "scripts/incomplete_unknown_type.vela",
+        "context": "TypeHint",
+        "applySuffix": "",
+        "items": [],
+        "parseErrors": true
+      },
+      {
+        "id": "incomplete_member",
+        "file": "scripts/incomplete_member.vela",
+        "context": "Member",
+        "applySuffix": "; }",
+        "items": [
+          {
+            "label": "zz_tag",
+            "insert": "zz_tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_tag",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "insertFormat": "PlainText"
+          }
+        ],
+        "parseErrors": true
+      },
+      {
+        "id": "incomplete_dynamic_member",
+        "file": "scripts/incomplete_dynamic_member.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [],
+        "parseErrors": true
+      },
+      {
+        "id": "incomplete_record",
+        "file": "scripts/incomplete_record.vela",
+        "context": "RecordField",
+        "applySuffix": ": 1 }; }",
+        "items": [
+          {
+            "label": "zz_tag",
+            "insert": "zz_tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_tag",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "insertFormat": "PlainText"
+          }
+        ],
+        "parseErrors": true
+      },
+      {
+        "id": "incomplete_unknown_record",
+        "file": "scripts/incomplete_unknown_record.vela",
+        "context": "RecordField",
+        "applySuffix": "",
+        "items": [],
+        "parseErrors": true
+      },
+      {
+        "id": "empty_incomplete_record",
+        "file": "scripts/empty_incomplete_record.vela",
+        "context": "RecordField",
+        "applySuffix": ": 1 }; }",
+        "items": [
+          {
+            "label": "zz_tag",
+            "insert": "zz_tag",
+            "kind": "Field",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::Token.zz_tag",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "field",
+            "insertFormat": "PlainText"
+          }
+        ],
+        "parseErrors": true
+      }
+    ]
+  }
+}

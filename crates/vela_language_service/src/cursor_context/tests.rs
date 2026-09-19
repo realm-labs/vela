@@ -77,6 +77,35 @@ fn cursor_context_classifies_use_import_context() {
 }
 
 #[test]
+fn qualified_import_role_uses_syntax_and_keeps_expression_paths_distinct() {
+    for crlf in [false, true] {
+        for source in [
+            "use api::zz_function;",
+            "/* 中😀 */ use api::zz_function as renamed;",
+            "use\n /* 中😀 */ api::zz_function;",
+            "use api::zz_function",
+        ] {
+            let source = source.replace('\n', if crlf { "\r\n" } else { "\n" });
+            let cursor = classify(&source, "zz_fun");
+            assert_eq!(cursor.kind(), CursorContextKind::ModulePath, "{source}");
+            assert_eq!(
+                cursor.module_path_role(),
+                ModulePathRole::Import,
+                "{source}"
+            );
+            assert_eq!(cursor.module_base(), Some("api"));
+        }
+        let source = "use api::zz_function;\nfn main() { /* use api:: */ api::zz_function(); }"
+            .replace('\n', if crlf { "\r\n" } else { "\n" });
+        let offset = source.rfind("zz_function").expect("expression") + "zz_fun".len();
+        let cursor = classify_offset(&source, offset);
+        assert_eq!(cursor.kind(), CursorContextKind::ModulePath);
+        assert_eq!(cursor.module_path_role(), ModulePathRole::Expression);
+        assert_eq!(cursor.module_base(), Some("api"));
+    }
+}
+
+#[test]
 fn cursor_context_classifies_member_access() {
     let cursor = classify("pub fn main(player) { player.le }", "le");
 
@@ -110,7 +139,7 @@ fn cursor_context_classifies_module_path() {
 
     assert_eq!(cursor.kind(), CursorContextKind::ModulePath);
     assert_eq!(cursor.module_base(), Some("game"));
-    assert_eq!(cursor.module_path_role(), ModulePathRole::Expression);
+    assert_eq!(cursor.module_path_role(), ModulePathRole::Import);
 }
 
 #[test]
@@ -342,6 +371,17 @@ fn cursor_context_recovers_useful_roles_in_incomplete_source() {
 
 #[test]
 fn record_completion_context_excludes_constructor_paths_and_field_values() {
+    for text in [
+        "fn main() { Outer { value:",
+        "fn main() { Outer { value: ",
+        "fn main() { Outer { value: 1 ",
+    ] {
+        assert_ne!(
+            classify_offset(text, text.len()).kind(),
+            CursorContextKind::RecordExpressionField,
+            "{text}"
+        );
+    }
     for text in [
         "fn main() { Choice::Da { value: 1 }; }",
         "fn main() { Outer { nested: Choice::Da { value: 1 } }; }",

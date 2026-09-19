@@ -113,6 +113,11 @@ fn resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries() {
     assert_type_ownership("completion-resolve-identities");
 }
 
+#[test]
+fn import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries() {
+    assert_type_ownership("completion-import-sites");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -241,6 +246,13 @@ fn assert_type_ownership(fixture_id: &str) {
                 let file = string(case, "file");
                 let source = fixture.document(file).expect("source");
                 let range = source.markers["replace"];
+                if case["parseErrors"] == true {
+                    assert!(
+                        !vela_syntax::parse::parse_source(&source.text)
+                            .diagnostics()
+                            .is_empty()
+                    );
+                }
                 if let Some(signature) = case["callSignature"].as_str() {
                     let point = position(&source.text, source.markers["call-cursor"].start.byte);
                     let help = db
@@ -284,6 +296,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         Some("Expression") => crate::CompletionContextKind::Expression,
                         Some("ModulePath") => crate::CompletionContextKind::ModulePath,
                         Some("Member") => crate::CompletionContextKind::Member,
+                        Some("RecordField") => crate::CompletionContextKind::RecordField,
                         _ => crate::CompletionContextKind::TypeHint,
                     },
                     "{case}"
@@ -325,6 +338,9 @@ fn assert_type_ownership(fixture_id: &str) {
                         .expect("item");
                     assert_eq!(format!("{:?}", item.kind()), expected["kind"], "{case}");
                     assert_eq!(item.detail(), string(expected, "detail"), "{case}");
+                    if let Some(format) = expected["insertFormat"].as_str() {
+                        assert_eq!(format!("{:?}", item.insert_format()), format, "{case}");
+                    }
                     let expected_symbol = (expected["origin"] != "none").then(|| {
                         expected["serviceSymbol"]
                             .as_str()
@@ -653,7 +669,21 @@ fn phase_databases(
 fn databases(f: &FixtureWorkspace, layout: &Layout) -> LanguageServiceDatabases {
     let mut db = LanguageServiceDatabases::new();
     update(&mut db, f, layout);
-    db.load_schema_artifact_json("/workspace/schema.json", &f.disk["schema.json"].text);
+    let artifact = if let Some(markers) = f.disk.get("schema-markers.json") {
+        crate::matrix_fixture::schema_artifact(
+            &serde_json::from_str::<Value>(&markers.text).expect("schema markers"),
+            f,
+            |file| {
+                db.source_db().records()[&layout.uri(file)]
+                    .source_id()
+                    .get()
+            },
+        )
+        .to_string()
+    } else {
+        f.disk["schema.json"].text.clone()
+    };
+    db.load_schema_artifact_json("/workspace/schema.json", &artifact);
     assert!(db.schema_db().diagnostics().is_empty());
     db
 }

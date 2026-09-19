@@ -2,7 +2,7 @@ use vela_syntax::ast::AstNode;
 use vela_syntax::{SyntaxKind, TextSize};
 
 use crate::callable_context::CallableFacts;
-use crate::{DisplayParts, QueryContext};
+use crate::{CursorContextKind, DisplayParts, ModulePathRole, QueryContext};
 
 use super::{CompletionInsertFormat, CompletionItem, CompletionKind};
 
@@ -50,11 +50,14 @@ pub(super) fn item(label: &str, kind: CompletionKind, insertion: String) -> Comp
     }
 }
 
-pub(super) fn preserve_argument_list(query: &QueryContext<'_>, items: &mut [CompletionItem]) {
+pub(super) fn adjust_call_insertion(query: &QueryContext<'_>, items: &mut [CompletionItem]) {
     let range = query
         .identifier_range()
         .unwrap_or(query.cursor().replace_range());
-    if !has_argument_list(query, range.end) {
+    if query.cursor().kind() != CursorContextKind::UseImport
+        && query.cursor().module_path_role() != ModulePathRole::Import
+        && !has_argument_list(query, range.end)
+    {
         return;
     }
     for item in items {

@@ -1891,10 +1891,25 @@
         "completion-resolve/states/dynamic/protocol"
       ],
       "summary": "Reviewed all S10 symbol-ownership partitions in tests/lsp_matrix/reviews/completion-s10.md and added nine exact catalog mappings: completion/resolve positive/negative at service/protocol layers plus dynamic resolve state. Ten explicit tests per layer cover local/parameter, source declaration/member/variant, schema/host, stdlib/builtin and module facts; protocol negative resolve also binds unknown/malformed payload tests. New fifteen-query identity fixture (eleven candidate and four empty queries, LF/CRLF with Unicode) asserts local let/parameter/shadow/capture/lambda/Any/unresolved value kinds, absent lazy identity and applied declaration ranges, boolean label insertion/no invented edit or identity, and exact source/schema Any-return callable identities/signatures/docs. Separate signature probes prove the Any-return functions exist before asserting no downstream members. Actual protocol resolve preserves every candidate field except explicitly expected owned schema docs. Import-alias drivers now assert lightweight lists, absent local payloads, empty owned documentation and whole-item resolve for source/schema/builtin modules and declarations. Boolean implicit insertion is tested by applying the label to the fixture word range, not claimed as explicit-edit/editor proof. No production behavior changed. Feature audit: 183 verified, 1142 unreviewed, two N/A, no failed rows. Full service 640 and protocol 629 library tests passed with two historical service tests ignored; focused baseline/identity/alias tests, fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-OHuq5F/results.json passed 9; native editors/vscode/test-results/input-VbyRH3/results.json passed 13; strict target/lsp-matrix/run-LP946e/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. Whole-workspace tests were not repeated for this test/catalog-only change. B03 remains open. Resume B03.47 with remaining semantic review and UX04. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.47",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S8/positive/service",
+        "completion/syntax/S8/positive/protocol",
+        "completion/syntax/S8/negative/service",
+        "completion/syntax/S8/negative/protocol",
+        "completion/syntax/S9/positive/service",
+        "completion/syntax/S9/positive/protocol",
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol"
+      ],
+      "summary": "Reviewed every S8 import and S9 recovery partition in tests/lsp_matrix/reviews/completion-import-recovery.md and added eight exact service/protocol catalog mappings. New 26-query shared fixture (20 candidate queries, six empty, LF/CRLF with Unicode; seven independently confirmed malformed inputs) checks source/schema/stdlib import paths, typed constant/state/extern-state imports, schema function/type alias source spans, plain import insertion versus expression call snippets, private/missing/unknown boundaries, and unfinished type/member/record contexts with parseable applied repair suffixes. Two exposed defects were fixed: qualified use paths previously inserted call snippets, and unfinished records at EOF lost field context. SyntaxUsePath now supplies a distinct Import role, consumed by callable insertion without changing expression-call policy. Record recovery admits the unfinished EOF boundary/trailing whitespace but rejects closed records. Dedicated tests distinguish import roles from later expression paths and prevent closed-record reuse. Existing schema-import navigation remains null inside use; source-backed schema aliases at actual use sites have exact targets, with marker-based source IDs/spans generated from the loaded workspace. Source/schema ownership, lazy documentation and protocol fields remain intact. Feature audit: 191 verified, 1134 unreviewed, two N/A, no failed rows. Full workspace 4523 passed with two historical service tests ignored; audit service 643 and protocol 630 passed. Focused baseline/import/context/record-boundary tests, fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-P8DXF5/results.json passed 9; native editors/vscode/test-results/input-CK1Y03/results.json passed 13; strict target/lsp-matrix/run-yatQzT/report.json refreshed all 145 accepted B00-B02 requirements without changing original acceptance snapshots. B03 remains open. Resume B03.48 with S11 and remaining semantic review/UX04. Fresh macOS evidence is required when used; B16 stays deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.47",
-  "nextTask": "B03.47",
+  "activeChild": "B03.48",
+  "nextTask": "B03.48",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4054,7 +4069,21 @@
     "target/b03-46-input.log",
     "target/b03-46-accepted-regression.log",
     "editors/vscode/test-results/run-OHuq5F/results.json",
-    "editors/vscode/test-results/input-VbyRH3/results.json"
+    "editors/vscode/test-results/input-VbyRH3/results.json",
+    "target/lsp-matrix/run-yatQzT/report.json",
+    "target/b03-47-baseline.log",
+    "target/b03-47-import-sites.log",
+    "target/b03-47-context.log",
+    "target/b03-47-record-boundary.log",
+    "target/b03-47-fmt.log",
+    "target/b03-47-clippy.log",
+    "target/b03-47-node.log",
+    "target/b03-47-workspace.log",
+    "target/b03-47-editor.log",
+    "target/b03-47-input.log",
+    "target/b03-47-accepted-regression.log",
+    "editors/vscode/test-results/run-P8DXF5/results.json",
+    "editors/vscode/test-results/input-CK1Y03/results.json"
   ],
   "openIssues": [
     {
@@ -4675,8 +4704,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "a9fc9e1596817056003f61882b90a865eda612f2",
-          "treeSha256": "af2b0936ceb5f7f93e5520215a321c2d759faccad30f002ab1300e39f0b97a1c"
+          "revision": "94350a7b38093a1bcd67691100d0df2dee87241c",
+          "treeSha256": "606cb8c78609c0ba7a398078c9d0ab2c2c3d2b9b380a58269e211aa4c8f3f36d"
         },
         "profile": {
           "platform": "win32",
@@ -4684,11 +4713,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-LP946e/report.json"
+          "target/lsp-matrix/run-yatQzT/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-OHuq5F/results.json --local-results editors/vscode/test-results/input-VbyRH3/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-P8DXF5/results.json --local-results editors/vscode/test-results/input-CK1Y03/results.json",
             "exitCode": 0
           }
         ]

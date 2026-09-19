@@ -801,7 +801,11 @@ S10 completion/resolve now has a reviewed ownership map, including local and
 parameter candidates without lazy identities, source/schema/builtin modules,
 and known Any-return callables whose downstream members remain empty. Actual
 protocol resolve preserves candidate fields and uses only owned schema docs.
-Resume B03.47 with the remaining semantic review and UX04 interaction proof.
+S8/S9 completion now has reviewed import and recovery coverage. Functions in
+`use` insert plain paths; unfinished records at EOF retain owned field candidates
+without borrowing closed records. Shared fixtures also check source-backed schema
+alias targets, unknown contexts and repaired syntax.
+Resume B03.48 with S11 and the remaining semantic review and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

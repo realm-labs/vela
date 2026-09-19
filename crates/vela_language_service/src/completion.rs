@@ -178,7 +178,7 @@ impl LanguageServiceDatabases {
         };
         task_target::adjust_items(self, &query, &mut items);
         callback::adjust_items(self, &query, &mut items);
-        callable_path::preserve_argument_list(&query, &mut items);
+        callable_path::adjust_call_insertion(&query, &mut items);
         self.completion_query_is_current(token).then_some(())?;
         Some(CompletionList {
             context,

@@ -75,7 +75,18 @@ fn recover_record_constructor_from_incomplete_syntax(
     source: &SyntaxSourceFile,
     offset: usize,
 ) -> Option<RecordConstructor> {
-    let search = RecordConstructorSearch::new(syntax_offset(offset)?);
+    let mut offset = syntax_offset(offset)?;
+    let mut source_end = source.syntax().text_range().end();
+    // An unfinished record may end before trailing EOF whitespace. Search at
+    // the last syntax boundary, without borrowing a preceding closed record.
+    if offset == source_end
+        && let Some(token) = source.syntax().last_token()
+        && token.kind() == SyntaxKind::Whitespace
+    {
+        offset = token.text_range().start();
+        source_end = offset;
+    }
+    let search = RecordConstructorSearch { offset, source_end };
     for item in source.items() {
         match item.syntax().kind() {
             SyntaxKind::ConstItem => {
@@ -102,11 +113,13 @@ fn recover_record_constructor_from_incomplete_syntax(
 #[derive(Clone, Copy)]
 struct RecordConstructorSearch {
     offset: TextSize,
+    source_end: TextSize,
 }
 
 impl RecordConstructorSearch {
-    const fn new(offset: TextSize) -> Self {
-        Self { offset }
+    fn contains(self, range: vela_syntax::TextRange) -> bool {
+        range.contains(self.offset)
+            || (self.offset == self.source_end && range.end() == self.source_end)
     }
 }
 
@@ -155,7 +168,7 @@ fn record_constructor_for_block(
     block: &SyntaxBlock,
     search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
-    if !block.syntax().text_range().contains(search.offset) {
+    if !search.contains(block.syntax().text_range()) {
         return None;
     }
     for statement in block.statements() {
@@ -170,7 +183,7 @@ fn record_constructor_for_statement(
     statement: &SyntaxStatement,
     search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
-    if !statement.syntax().text_range().contains(search.offset) {
+    if !search.contains(statement.syntax().text_range()) {
         return None;
     }
     match statement.statement_kind() {
@@ -224,12 +237,18 @@ fn record_constructor_for_expr(
     expr: &SyntaxExpression,
     search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
-    if !expr.syntax().text_range().contains(search.offset) {
+    if !search.contains(expr.syntax().text_range()) {
         return None;
     }
     match expr.expression_kind() {
         SyntaxExpressionKind::Record => {
             let record = expr.as_record()?;
+            if record
+                .r_brace_token()
+                .is_some_and(|close| close.text_range().end() <= search.offset)
+            {
+                return None;
+            }
             for field in record.fields() {
                 if let Some(value) = field.expression()
                     && let Some(context) = record_constructor_for_expr(&value, search)
@@ -382,7 +401,7 @@ fn record_constructor_for_match_arm(
     arm: &SyntaxMatchArm,
     search: &RecordConstructorSearch,
 ) -> Option<RecordConstructor> {
-    if !arm.syntax().text_range().contains(search.offset) {
+    if !search.contains(arm.syntax().text_range()) {
         return None;
     }
     arm.guard()
@@ -505,5 +524,21 @@ mod tests {
             .expect("incomplete record should recover from CST");
 
         assert_eq!(constructor.path, ["Player"]);
+    }
+
+    #[test]
+    fn eof_recovery_does_not_borrow_closed_records() {
+        for text in [
+            "fn main() { Player { field }",
+            "fn main() { Player { field } }",
+            "fn main() { Player { field } }  \n",
+        ] {
+            let parsed = parse_source_with_id(SourceId::new(1), text);
+            assert!(
+                recover_record_constructor_from_incomplete_syntax(&parsed.tree(), text.len())
+                    .is_none(),
+                "{text}"
+            );
+        }
     }
 }

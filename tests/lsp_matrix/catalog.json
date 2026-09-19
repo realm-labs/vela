@@ -4039,6 +4039,262 @@
           "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S8/positive/service",
+      "assertion": "Reviewed all S8 partitions in reviews/completion-import-recovery.md: source/schema/stdlib qualified paths, imported declarations and aliases, source/public/private ownership and source-backed schema spans. Exact complete sets, byte/UTF-16 insertion, plain import paths versus expression call snippets, current owned docs and applied targets/signatures are asserted with LF/CRLF. Typed const/state/extern-state imports are explicit; schema aliases at use sites navigate to marked metadata source spans.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_type_ownership_preserves_dependency_boundaries_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "cursor_context::tests::qualified_import_role_uses_syntax_and_keeps_expression_paths_distinct"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S8/positive/protocol",
+      "assertion": "Reviewed all S8 partitions in reviews/completion-import-recovery.md: source/schema/stdlib qualified paths, imported declarations and aliases, source/public/private ownership and source-backed schema spans. Exact complete sets, byte/UTF-16 insertion, plain import paths versus expression call snippets, current owned docs and applied targets/signatures are asserted with LF/CRLF. Typed const/state/extern-state imports are explicit; schema aliases at use sites navigate to marked metadata source spans.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_type_ownership_projects_exact_dependency_targets_and_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S8/negative/service",
+      "assertion": "Private/missing/duplicate imports, inaccessible dependency paths and wrong owners have exact empty or remaining candidate sets and cannot borrow unrelated schema metadata. Import functions never insert call parentheses or snippet format; comments/newlines/mid-token and unfinished use statements preserve only the imported path. Schema-only/builtin imports retain their supported null source-import navigation, while real source-backed schema use sites are checked separately.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_type_ownership_preserves_dependency_boundaries_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "cursor_context::tests::qualified_import_role_uses_syntax_and_keeps_expression_paths_distinct"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S8/negative/protocol",
+      "assertion": "Private/missing/duplicate imports, inaccessible dependency paths and wrong owners have exact empty or remaining candidate sets and cannot borrow unrelated schema metadata. Import functions never insert call parentheses or snippet format; comments/newlines/mid-token and unfinished use statements preserve only the imported path. Schema-only/builtin imports retain their supported null source-import navigation, while real source-backed schema use sites are checked separately.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_type_ownership_projects_exact_dependency_targets_and_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S9/positive/service",
+      "assertion": "Reviewed all S9 partitions in reviews/completion-import-recovery.md: incomplete import/type/member/call/record edits preserve exact candidate ownership and edits; known incomplete-record EOF and trailing whitespace recover fields. Applied edits plus explicit closing suffixes parse and retain exact target/signature facts. Malformed-neighbor/repair/redamage/close lifecycle compares incremental results with fresh analysis and checks syntax diagnostic appearance/clearing across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S9/positive/protocol",
+      "assertion": "Reviewed all S9 partitions in reviews/completion-import-recovery.md: incomplete import/type/member/call/record edits preserve exact candidate ownership and edits; known incomplete-record EOF and trailing whitespace recover fields. Applied edits plus explicit closing suffixes parse and retain exact target/signature facts. Malformed-neighbor/repair/redamage/close lifecycle compares incremental results with fresh analysis and checks syntax diagnostic appearance/clearing across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S9/negative/service",
+      "assertion": "Unknown type/member/constructor and dynamic receiver recovery never falls back to unrelated candidates. Empty sets are exact; actual parse errors are asserted for unfinished syntax. Missing call close keeps argument/expression partitions distinct. Malformed and replaced source/schema facts cannot retain stale candidate metadata; closed records cannot be reused by EOF recovery.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::call_expression_tests::call_expression_matrix_preserves_complete_choices_and_distinct_insertions"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "service",
+          "name": "completion::record_field::tests::eof_recovery_does_not_borrow_closed_records"
+        },
+        {
+          "layer": "service",
+          "name": "cursor_context::tests::record_completion_context_excludes_constructor_paths_and_field_values"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S9/negative/protocol",
+      "assertion": "Unknown type/member/constructor and dynamic receiver recovery never falls back to unrelated candidates. Empty sets are exact; actual parse errors are asserted for unfinished syntax. Missing call close keeps argument/expression partitions distinct. Malformed and replaced source/schema facts cannot retain stale candidate metadata.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_recovery_preserves_neighbor_candidates_and_repaired_fresh_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_call_expressions::call_expression_matrix_projects_complete_choices_and_applies_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        }
+      ]
     }
   ],
   "featureFiles": [
