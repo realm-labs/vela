@@ -2,6 +2,19 @@ use serde_json::{Value, json};
 
 use super::FixtureWorkspace;
 
+pub(crate) fn schema_lifecycle_source(step: &Value) -> Option<String> {
+    if step["mode"] == "missing" {
+        None
+    } else {
+        Some(
+            step["schemaText"]
+                .as_str()
+                .map(str::to_owned)
+                .unwrap_or_else(|| step["schema"].to_string()),
+        )
+    }
+}
+
 /// Instantiate fixture metadata; the source IDs come from setup, while byte
 /// spans come exclusively from the independent marked source corpus.
 pub(crate) fn schema_artifact(

@@ -1,3 +1,6 @@
+use schema_lifecycle::phase_databases;
+mod schema_lifecycle;
+
 use crate::matrix_fixture::{FixtureWorkspace, load};
 use crate::{
     DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, SymbolRef, TextRange,
@@ -80,6 +83,11 @@ fn schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve() {
     assert_type_ownership("completion-schema-callable-lifecycle");
 }
 
+#[test]
+fn unavailable_schema_lifecycle_preserves_source_authoring_and_clears_stale_host_facts() {
+    assert_type_ownership("completion-schema-unavailable");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -101,15 +109,16 @@ fn assert_type_ownership(fixture_id: &str) {
         for phase in phases {
             let mut current = spec.clone();
             if !phase.is_null() {
-                current
-                    .files
-                    .insert("schema.json".to_owned(), phase["schema"].to_string());
+                match crate::matrix_fixture::schema_lifecycle_source(&phase) {
+                    Some(text) => {
+                        current.files.insert("schema.json".to_owned(), text);
+                    }
+                    None => {
+                        current.files.remove("schema.json");
+                    }
+                }
                 current.oracle["queries"] = phase["queries"].clone();
-                db.load_schema_artifact_json(
-                    "/workspace/schema.json",
-                    &phase["schema"].to_string(),
-                );
-                assert!(db.schema_db().diagnostics().is_empty(), "{phase}");
+                schema_lifecycle::apply_phase(&mut db, &phase);
                 for (name, payload) in &saved {
                     assert_eq!(
                         serde_json::json!(db.completion_documentation(payload)),
@@ -120,6 +129,9 @@ fn assert_type_ownership(fixture_id: &str) {
             }
             let spec = current;
             let fixture = FixtureWorkspace::new(&spec).expect("phase fixture");
+            if let Some(file) = spec.oracle["schemaDiagnosticFile"].as_str() {
+                schema_lifecycle::assert_diagnostics(&db, &layout, file, &phase);
+            }
             for query in phase["signatureQueries"]
                 .as_array()
                 .map(Vec::as_slice)
@@ -131,7 +143,7 @@ fn assert_type_ownership(fixture_id: &str) {
                 let result = db.signature_help(&uri(file), point);
                 assert_eq!(
                     result,
-                    databases(&fixture, &layout).signature_help(&uri(file), point),
+                    phase_databases(&fixture, &layout, &phase).signature_help(&uri(file), point),
                     "fresh signature: {phase}"
                 );
                 let labels = result.as_ref().map(|help| {
@@ -155,7 +167,8 @@ fn assert_type_ownership(fixture_id: &str) {
                 if !phase.is_null() {
                     assert_eq!(
                         result,
-                        databases(&fixture, &layout).completion_items(&uri(file), pos),
+                        phase_databases(&fixture, &layout, &phase)
+                            .completion_items(&uri(file), pos),
                         "fresh schema state: {case}"
                     );
                     for item in result.items() {
@@ -263,7 +276,7 @@ fn assert_type_ownership(fixture_id: &str) {
                     );
                     let mut fresh = FixtureWorkspace::new(&spec).expect("fresh");
                     fresh.disk.get_mut(file).expect("file").text = edited.clone();
-                    let fresh = databases(&fresh, &layout);
+                    let fresh = phase_databases(&fresh, &layout, &phase);
                     if let Some(applied_file) = expected["appliedFile"].as_str() {
                         let applied = fixture.document(applied_file).expect("applied oracle");
                         assert_eq!(edited, applied.text, "{case}");
@@ -374,7 +387,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         let mut argument_fixture =
                             FixtureWorkspace::new(&spec).expect("argument fixture");
                         argument_fixture.disk.get_mut(file).expect("file").text = text.clone();
-                        let arguments = databases(&argument_fixture, &layout)
+                        let arguments = phase_databases(&argument_fixture, &layout, &phase)
                             .completion_items(&uri(file), position(&text, start + 3));
                         assert_eq!(
                             arguments

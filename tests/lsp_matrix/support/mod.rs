@@ -6,7 +6,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 mod schema;
-pub(crate) use schema::{lifecycle_facts, schema_artifact};
+pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Point {

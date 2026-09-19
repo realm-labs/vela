@@ -1,3 +1,5 @@
+mod schema_lifecycle;
+
 use crate::matrix_fixture::{Edit, FixtureWorkspace, apply_edits, load};
 use crate::tests::{TestServer, notify, request, response_value};
 use lsp_types::{notification as n, request as r};
@@ -78,6 +80,11 @@ fn schema_callable_lifecycle_projects_current_contracts_and_stale_resolve() {
     assert_type_ownership("completion-schema-callable-lifecycle");
 }
 
+#[test]
+fn unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts() {
+    assert_type_ownership("completion-schema-unavailable");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -101,6 +108,13 @@ fn assert_type_ownership(fixture_id: &str) {
             1,
             json!({"processId":null,"rootUri":uri(""),"capabilities":{"textDocument":{"completion":{"completionItem":{"snippetSupport":true,"labelDetailsSupport":true,"resolveSupport":{"properties":["documentation"]}}}}}}),
         );
+        if let Some(file) = spec.oracle["schemaDiagnosticFile"].as_str() {
+            let source = fixture.document(file).expect("diagnostic control");
+            let _ = notify::<n::DidOpenTextDocument>(
+                &mut server,
+                json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
+            );
+        }
         let mut id = 2;
         let phases = spec.oracle["schemaLifecycle"]
             .as_array()
@@ -110,15 +124,20 @@ fn assert_type_ownership(fixture_id: &str) {
         for phase in phases {
             let mut current = spec.clone();
             if !phase.is_null() {
-                current
-                    .files
-                    .insert("schema.json".to_owned(), phase["schema"].to_string());
+                match crate::matrix_fixture::schema_lifecycle_source(&phase) {
+                    Some(text) => {
+                        current.files.insert("schema.json".to_owned(), text);
+                    }
+                    None => {
+                        current.files.remove("schema.json");
+                    }
+                }
                 current.oracle["queries"] = phase["queries"].clone();
-                std::fs::write(root.join("schema.json"), phase["schema"].to_string())
-                    .expect("schema replacement");
-                let _ = notify::<n::DidChangeWatchedFiles>(
+                schema_lifecycle::apply_phase(
                     &mut server,
-                    json!({"changes":[{"uri":uri("schema.json"),"type":2}]}),
+                    &root,
+                    spec.oracle["schemaDiagnosticFile"].as_str(),
+                    &phase,
                 );
                 for (name, item) in &saved {
                     let resolved = response_value(request::<r::ResolveCompletionItem>(

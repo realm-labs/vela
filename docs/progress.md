@@ -773,7 +773,10 @@ break/return exits remain terminal. Match values and local environments share
 the irrefutable-pattern boundary and exclude unreachable later arms.
 Schema callable replacement now has shared sync/async, parameter, return-owner,
 metadata-removal/restoration and retained-resolve proof with fresh service checks.
-Resume B03.41 with missing/invalid schema transitions, remaining S5 review and
+Missing, malformed and unsupported schema files now clear host authoring facts
+while retaining source candidates and controlled diagnostics through recovery;
+completion's missing/stale-schema state requirements have concrete mappings.
+Resume B03.42 with source/dependency lifecycle, remaining S5 review and
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

@@ -142,8 +142,16 @@ post-edit signature check.
    retained older resolve payloads. Decoy fields on the other return owner must
    stay absent. Service results also match freshly assembled state; protocol
    transitions use actual schema writes and watched-file notifications.
-   Entire-schema missing/invalid transitions remain separate from callable
-   removal within a valid schema and still require the remaining lifecycle review.
+   `completion-schema-unavailable` adds seven ordered states covering real file
+   deletion, malformed JSON, unsupported format versions and each recovery.
+   Fifty-six queries apply 38 candidates and check 21 unchanged-call signatures
+   per LF/CRLF run. Independent source candidates, named arguments, definitions
+   and signatures remain available while host facts and retained resolve docs
+   disappear. The continuously open source-only control publishes exactly one
+   warning during unavailability and no diagnostics after recovery. Service
+   queries also match fresh state. These assertions map completion's missing and
+   stale schema requirements and extend the existing resolve-state proofs;
+   source/dependency and broader cross-feature lifecycle review remains open.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
    evidence already in the catalog does not close the remaining dimensions.

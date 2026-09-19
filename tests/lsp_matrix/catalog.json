@@ -2623,6 +2623,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts"
         }
       ]
     },
@@ -2633,6 +2637,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_resolve::lifecycle::resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts"
         }
       ]
     },
@@ -3009,6 +3017,26 @@
         {
           "layer": "protocol",
           "name": "tests::completion_members::enum_matrix_projects_exact_variant_and_constructor_completion_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/missing_schema/protocol",
+      "assertion": "Deleting the real configured schema and delivering its file event clears exact host callable and returned-member candidate sets and cached signatures, preserves independently marked source candidates/edits/definitions, and publishes one controlled warning; restoration recovers current metadata and clears the warning under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/stale_schema/protocol",
+      "assertion": "Replacing the configured schema with malformed JSON or an unsupported version clears old host callable and returned-member candidates/signatures while preserving source authoring. Restoring changed sync/async metadata selects exact current owners, signatures, argument edits, inlays and docs, excludes decoy fields and clears controlled diagnostics under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts"
         }
       ]
     }
