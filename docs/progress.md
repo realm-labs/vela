@@ -780,8 +780,12 @@ Source callable disk changes, deletion and recreation now have shared root/dep
 ownership proof, fresh service/protocol comparisons, exact applied signatures
 and definition targets, and diagnostic recovery. Source resolve remains empty
 and never borrows colliding schema documentation.
-Resume B03.43 with dirty dependency overlays and close/save/reopen, remaining S5 review and
-semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
+Dirty dependency edits, external disk writes/deletion, save and close/reopen now
+have shared disk/overlay oracles and fresh-workspace comparisons. Document sync
+also republishes diagnostics for affected open importers; closing a deleted
+dependency no longer leaves their old diagnostics visible.
+Resume B03.44 with recovery and stale-version/cancellation behavior, remaining
+S5/semantic review and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,

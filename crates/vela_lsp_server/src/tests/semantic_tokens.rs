@@ -34,7 +34,7 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
 
     let text = "pub fn main() { let bytes = b\"ok\" return bytes + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -44,7 +44,7 @@ fn lsp_semantic_tokens_cover_lexical_classes() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -100,7 +100,7 @@ pub fn main(amount: i64) -> i64 {
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -110,8 +110,8 @@ pub fn main(amount: i64) -> i64 {
                 "text": "pub fn grant(amount: i64) -> i64 { return amount }"
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -121,7 +121,7 @@ pub fn main(amount: i64) -> i64 {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -213,7 +213,7 @@ pub fn main() -> i64 {
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -223,8 +223,8 @@ pub fn main() -> i64 {
                 "text": "pub fn grant() -> i64 { return 1 }"
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -234,7 +234,7 @@ pub fn main() -> i64 {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -302,7 +302,7 @@ pub fn main() {
     return text
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -312,7 +312,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -379,7 +379,7 @@ pub fn main( {
     // keep tokenization alive
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -389,7 +389,7 @@ pub fn main( {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -485,7 +485,7 @@ impl Reward {
     fn bonus(value: Reward) -> i64 { return 1 }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -495,7 +495,7 @@ impl Reward {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -605,7 +605,7 @@ pub fn main(reward: Reward) -> i64 {
     return reward.amount + reward.bonus()
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -615,7 +615,7 @@ pub fn main(reward: Reward) -> i64 {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -684,7 +684,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
     return rewardable.preview(1)
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -694,7 +694,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -756,7 +756,7 @@ pub fn main() {
     return second
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -766,7 +766,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensRangeRequest>(
         &mut server,
@@ -818,7 +818,7 @@ pub fn main() {
     return value
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -828,7 +828,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensRangeRequest>(
         &mut server,
@@ -933,7 +933,7 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
 
     let text = "pub fn main(flag: bool) { let value = flag == true return value + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -943,7 +943,7 @@ fn lsp_semantic_tokens_project_custom_tokens_to_client_fallbacks() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -999,7 +999,7 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
     let uri = "file:///workspace/scripts/game/main.vela";
     let original = "pub fn main() { let value = 1 return value }";
     let changed = "pub fn main() { let value = 20 return value }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -1009,7 +1009,7 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
                 "text": original
             }
         }),
-    ));
+    );
 
     let full = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
@@ -1039,7 +1039,7 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
     );
     assert_eq!(unchanged["result"]["edits"], serde_json::json!([]));
 
-    let _ = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -1050,7 +1050,7 @@ fn lsp_semantic_token_delta_matches_full_tokens() {
                 { "text": changed }
             ]
         }),
-    ));
+    );
     let changed_full = response_value(request::<lsp_types::request::SemanticTokensFullRequest>(
         &mut server,
         4,

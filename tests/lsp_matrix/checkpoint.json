@@ -1825,10 +1825,33 @@
         "completion-resolve/states/dependency_delete/protocol"
       ],
       "summary": "Six ordered source states cover initial root/dependency declarations, dependency edit, root edit, dependency deletion, recreation and restoration. Per Unicode LF/CRLF run, service/protocol check 108 candidate queries, 142 applied edits and 24 unchanged-call signature/definition probes. Same-name package functions, aliases, inherent/default/trait methods and returned fields retain exact owner-specific types, parameters, inlays and marker-derived definitions; deleted owners cannot borrow root/transitive/schema facts. Fresh service assembly and a fresh protocol instance match persistent state, including unopened importer completion/signature queries. A continuously open import control publishes the expected dependency-loss diagnostics and clears them on recreation. Real file create/change/delete notifications drive protocol invalidation. Retained source resolve items remain unchanged without colliding schema documentation under the current conservative source-doc contract; this does not introduce source doc-comment support. No product correction was required. Four new catalog mappings cover completion and resolve dependency_change/dependency_delete. Current feature audit: 159 verified, 1166 unreviewed, two N/A, no failed rows. Workspace 4507 passed, two historical ignored; fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-lZcQgf/results.json passed 9; native editors/vscode/test-results/input-fvqXwl/results.json passed 13; strict target/lsp-matrix/run-ycC2RC/report.json refreshed all 145 accepted B00-B02 requirements without changing original snapshots. The twelve requirement references record partial S5 progress and the mapped source states, not whole S5 or B03 acceptance. Resume B03.43 with dirty dependency overlays and close/save/reopen, then remaining S5/semantic, URI/client and UX04 proof. Fresh macOS evidence is required when used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.43",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/states/dirty/protocol",
+        "completion/states/close_restore/protocol",
+        "completion/states/dependency_change/protocol",
+        "completion/states/dependency_delete/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/states/dirty/protocol",
+        "completion-resolve/states/close_restore/protocol",
+        "completion-resolve/states/dependency_change/protocol",
+        "completion-resolve/states/dependency_delete/protocol"
+      ],
+      "summary": "Sixteen ordered source disk/overlay states cover open, dirty dependency edits, external writes, close restoration, save, close/reopen, deletion while open, close after deletion and recreation. Each Unicode LF/CRLF run checks 128 candidate queries, 182 applied edits and 64 unchanged-call signature/definition probes. Independent effective/disk/open text oracles distinguish buffer authority from actual disk changes. Service uses persistent Workspace mutations and protocol sends real sync/watch notifications; both compare with fresh disk-plus-overlay state. Current and retained source resolve items preserve the conservative no-source-doc contract without colliding schema docs. The matrix exposed missing importer diagnostic publication after closing a deleted dependency. Open/change/close now publish the synchronized document plus other open modules in the existing analysis invalidation set; missing closed files still receive empty diagnostics. A direct regression checks exact affected URI sets, import diagnostic codes/messages/ranges/labels and clearing, excluding an unrelated open file. The driver retains actual client publications when unchanged imports are not republished, preserving loss/recovery assertions. Existing sync setup drivers now select diagnostics by the synchronized URI and reject duplicate or non-diagnostic notifications, preserving their feature assertions. The first full run exposed 42 obsolete single-notification assumptions; the updated drivers pass the complete rerun. Four new catalog mappings cover completion/resolve dirty and close_restore; existing dependency mappings retain their prior tests and add the overlay proof. Feature audit: 163 verified, 1162 unreviewed, two N/A, no failed rows. Workspace 4510 passed, two historical ignored; fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-GGtQG2/results.json passed 9; native editors/vscode/test-results/input-ybUvhk/results.json passed 13; strict target/lsp-matrix/run-Qotp9C/report.json refreshed all 145 accepted B00-B02 requirements without changing original snapshots. The sixteen requirement references record partial S5 progress and mapped lifecycle states, not whole S5 or B03 acceptance. Resume B03.44 with recovery and stale-version/cancellation behavior, remaining S5/semantic, URI/client and UX04 proof. Fresh macOS evidence is required when used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.43",
-  "nextTask": "B03.43",
+  "activeChild": "B03.44",
+  "nextTask": "B03.44",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3935,7 +3958,20 @@
     "target/b03-42-input.log",
     "target/b03-42-accepted-regression.log",
     "editors/vscode/test-results/run-lZcQgf/results.json",
-    "editors/vscode/test-results/input-fvqXwl/results.json"
+    "editors/vscode/test-results/input-fvqXwl/results.json",
+    "target/lsp-matrix/run-Qotp9C/report.json",
+    "target/b03-43-baseline.log",
+    "target/b03-43-overlay-red.log",
+    "target/b03-43-overlays.log",
+    "target/b03-43-sync.log",
+    "target/b03-43-workspace.log",
+    "target/b03-43-clippy.log",
+    "target/b03-43-node.log",
+    "target/b03-43-editor.log",
+    "target/b03-43-input.log",
+    "target/b03-43-accepted-regression.log",
+    "editors/vscode/test-results/run-GGtQG2/results.json",
+    "editors/vscode/test-results/input-ybUvhk/results.json"
   ],
   "openIssues": [
     {
@@ -4556,8 +4592,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "707187fc2f8c941c7a35e5230315793ff4001367",
-          "treeSha256": "339cdd51d425ace918c53df2f0d190d198dd3bb3b38505a929c70728469aa7cc"
+          "revision": "f9e1f5734cc792f9fc3d9b055333c16619c0d875",
+          "treeSha256": "3fe2cd68278a6182173b2bb9514858ef5670c371fd4e785ab8d08b7b6d6cf326"
         },
         "profile": {
           "platform": "win32",
@@ -4565,11 +4601,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ycC2RC/report.json"
+          "target/lsp-matrix/run-Qotp9C/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-lZcQgf/results.json --local-results editors/vscode/test-results/input-fvqXwl/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-GGtQG2/results.json --local-results editors/vscode/test-results/input-ybUvhk/results.json",
             "exitCode": 0
           }
         ]

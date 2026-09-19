@@ -1,4 +1,4 @@
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -887,7 +887,7 @@ fn initialize(server: &mut TestServer, root_uri: impl AsRef<str>) -> serde_json:
 }
 
 fn open_document(server: &mut TestServer, uri: &str, version: i32, text: &str) {
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -897,7 +897,7 @@ fn open_document(server: &mut TestServer, uri: &str, version: i32, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 }
 
 fn assert_text_edit(edits: &[serde_json::Value], line: usize, character: usize, new_text: &str) {

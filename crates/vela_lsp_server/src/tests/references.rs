@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, request, response_value};
 
 mod cross_file;
 mod degradation;
@@ -850,7 +850,7 @@ fn initialize(server: &mut TestServer) -> serde_json::Value {
 }
 
 fn open_document(server: &mut TestServer, uri: &str, text: &str) {
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -860,7 +860,7 @@ fn open_document(server: &mut TestServer, uri: &str, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 }
 
 fn assert_reference(references: &[serde_json::Value], uri: &str, line: usize, character: usize) {

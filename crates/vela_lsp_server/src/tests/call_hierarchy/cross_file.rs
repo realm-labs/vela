@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 use super::{assert_call_range, line};
 
@@ -47,7 +47,7 @@ impl Rewardable for Player {
         (types_uri, types_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -57,7 +57,7 @@ impl Rewardable for Player {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let prepare_grant = response_value(request::<lsp_types::request::CallHierarchyPrepare>(
@@ -222,7 +222,7 @@ pub trait Rewardable {
         (traits_uri, traits_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -232,7 +232,7 @@ pub trait Rewardable {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let prepare_grant = response_value(request::<lsp_types::request::CallHierarchyPrepare>(

@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 use super::{assert_highlight, assert_reference, line};
 
@@ -23,7 +23,7 @@ fn lsp_document_highlight_returns_empty_for_dynamic_and_unresolved_targets() {
 pub fn unresolved() { return missing }
 pub fn dynamic(value: Any) { return value.level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -33,7 +33,7 @@ pub fn dynamic(value: Any) { return value.level }";
                 "text": text
             }
         }),
-    ));
+    );
 
     assert_empty_highlights(
         &mut server,
@@ -77,7 +77,7 @@ struct Player { level: i64 }
 fn source_any() -> Any { return Player { level: 1 } }
 pub fn main() { return source_any().level }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -87,7 +87,7 @@ pub fn main() { return source_any().level }";
                 "text": text
             }
         }),
-    ));
+    );
 
     assert_empty_highlights(
         &mut server,
@@ -124,7 +124,7 @@ pub fn main(amount: i64) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -134,7 +134,7 @@ pub fn main(amount: i64) -> i64 {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let references = response_value(request::<lsp_types::request::References>(
@@ -250,7 +250,7 @@ pub extern state reward_scale: i64;";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -260,7 +260,7 @@ pub extern state reward_scale: i64;";
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let const_references = response_value(request::<lsp_types::request::References>(
@@ -441,7 +441,7 @@ pub struct Inventory {
     slots: i64
 }";
     for (uri, text) in [(inventory_uri, inventory_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -451,7 +451,7 @@ pub struct Inventory {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let references = response_value(request::<lsp_types::request::References>(
@@ -582,7 +582,7 @@ impl Reward {
     pub fn total(self) -> i64 { return 1 }
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -592,7 +592,7 @@ impl Reward {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let field_references = response_value(request::<lsp_types::request::References>(

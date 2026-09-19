@@ -27,7 +27,7 @@ fn lsp_signature_help_tracks_active_parameter() {
         }),
     ));
     let text = "pub fn grant(amount: i64, bonus: i64) -> bool { return true } pub fn main() { grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -37,7 +37,7 @@ fn lsp_signature_help_tracks_active_parameter() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -89,7 +89,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -99,7 +99,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = 1) -> i64 {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
@@ -144,7 +144,7 @@ fn lsp_signature_help_returns_null_for_unknown_and_dynamic_calls() {
     let text = "\
 pub fn unresolved() { missing(1, 2) }
 pub fn dynamic(player) { player.grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -154,7 +154,7 @@ pub fn dynamic(player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let unresolved_line = text
         .lines()
@@ -213,7 +213,7 @@ impl Player {
     fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
 }
 pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -223,7 +223,7 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -275,7 +275,7 @@ impl Player {
 }
 fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -285,7 +285,7 @@ pub fn main() { current_player().grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -340,7 +340,7 @@ impl Inventory {
     fn grant(self, amount: i64, bonus: i64) -> i64 { return amount + bonus }
 }
 pub fn main(player: Player) { player.inventory().grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -350,7 +350,7 @@ pub fn main(player: Player) { player.inventory().grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -402,7 +402,7 @@ trait Rewardable {
 struct Player { level: i64 }
 impl Rewardable for Player {}
 pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -412,7 +412,7 @@ pub fn main(player: Player) { player.grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -465,7 +465,7 @@ struct Player { level: i64 }
 impl Rewardable for Player {}
 fn current_player() -> Player { return Player { level: 1 } }
 pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -475,7 +475,7 @@ pub fn main() { current_player().grant(1, 2) }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -536,7 +536,7 @@ fn lsp_signature_help_resolves_schema_method_call() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(player: Player) { player.grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -546,7 +546,7 @@ fn lsp_signature_help_resolves_schema_method_call() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -604,7 +604,7 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { current_player().grant(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -614,7 +614,7 @@ fn lsp_signature_help_resolves_schema_method_on_schema_function_return() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -672,7 +672,7 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = r#"pub fn main() { QuestState::Active("quest-1", 3) }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -682,7 +682,7 @@ fn lsp_signature_help_resolves_schema_enum_variant_call() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -737,7 +737,7 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main(rewardable: Rewardable) { rewardable.preview(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -747,7 +747,7 @@ fn lsp_signature_help_resolves_schema_trait_method_call() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -808,7 +808,7 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
     ));
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
     let text = "pub fn main() { current_reward().preview(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -818,7 +818,7 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_function_return() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -864,7 +864,7 @@ fn lsp_signature_help_resolves_stdlib_callback_method_call() {
 pub fn main(scores: Array<i64>) {
     scores.filter(|score| score > 0)
 }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -874,7 +874,7 @@ pub fn main(scores: Array<i64>) {
                 "text": text
             }
         }),
-    ));
+    );
 
     let call_line = text
         .lines()
@@ -920,7 +920,7 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { math::max(1, 2) }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -930,7 +930,7 @@ fn lsp_signature_help_resolves_stdlib_function_call() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,
@@ -972,7 +972,7 @@ fn lsp_signature_help_reports_precise_stdlib_option_method_return() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { \"Ada Lovelace\".split_once(\" \") }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -982,7 +982,7 @@ fn lsp_signature_help_reports_precise_stdlib_option_method_return() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::SignatureHelpRequest>(
         &mut server,

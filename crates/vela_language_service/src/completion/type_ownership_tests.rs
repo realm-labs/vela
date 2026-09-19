@@ -1,4 +1,5 @@
 mod schema_lifecycle;
+mod source_overlays;
 
 use crate::matrix_fixture::{FixtureWorkspace, load};
 use crate::{
@@ -92,6 +93,11 @@ fn source_callable_lifecycle_preserves_package_owners_after_edits_deletion_and_r
     assert_type_ownership("completion-source-callable-lifecycle");
 }
 
+#[test]
+fn source_overlay_lifecycle_preserves_dirty_owners_save_and_close_restoration() {
+    assert_type_ownership("completion-source-overlay-lifecycle");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -104,6 +110,8 @@ fn assert_type_ownership(fixture_id: &str) {
         let layout = Layout::new(&fixture);
         let uri = |file: &str| layout.uri(file);
         let mut db = databases(&fixture, &layout);
+        let mut overlays = (spec.oracle["sourceOverlays"] == true)
+            .then(|| source_overlays::State::new(&spec, &layout));
         let source_lifecycle = spec.oracle["sourceLifecycle"].is_array();
         let phases = spec
             .oracle
@@ -119,7 +127,17 @@ fn assert_type_ownership(fixture_id: &str) {
             if source_lifecycle {
                 current = crate::matrix_fixture::source_lifecycle_spec(&spec, &phase, crlf);
                 let fixture = FixtureWorkspace::new(&current).expect("source phase");
-                update(&mut db, &fixture, &layout);
+                if let Some(state) = &mut overlays {
+                    state.apply(&mut db, &layout, &phase, crlf);
+                    crate::matrix_fixture::assert_source_overlay_state(
+                        &state.fixture,
+                        &fixture,
+                        &phase,
+                        crlf,
+                    );
+                } else {
+                    update(&mut db, &fixture, &layout);
+                }
                 for payload in saved.values() {
                     assert_eq!(
                         db.completion_documentation(payload),
@@ -147,7 +165,10 @@ fn assert_type_ownership(fixture_id: &str) {
                 }
             }
             let spec = current;
-            let fixture = FixtureWorkspace::new(&spec).expect("phase fixture");
+            let fixture = overlays.as_ref().map_or_else(
+                || FixtureWorkspace::new(&spec).expect("phase fixture"),
+                |state| state.fixture.clone(),
+            );
             if let Some(file) = spec.oracle["schemaDiagnosticFile"].as_str() {
                 schema_lifecycle::assert_diagnostics(&db, &layout, file, &phase);
             }
@@ -600,6 +621,23 @@ fn databases(f: &FixtureWorkspace, layout: &Layout) -> LanguageServiceDatabases 
 }
 
 fn update(db: &mut LanguageServiceDatabases, f: &FixtureWorkspace, layout: &Layout) {
+    let mut workspace = Workspace::new();
+    for (file, document) in &f.open {
+        workspace.open_document(
+            layout.uri(file),
+            document.text.as_str(),
+            crate::SourceVersion::new(1),
+        );
+    }
+    update_with_workspace(db, f, layout, &workspace);
+}
+
+fn update_with_workspace(
+    db: &mut LanguageServiceDatabases,
+    f: &FixtureWorkspace,
+    layout: &Layout,
+    workspace: &Workspace,
+) {
     let files = f
         .disk
         .iter()
@@ -610,14 +648,14 @@ fn update(db: &mut LanguageServiceDatabases, f: &FixtureWorkspace, layout: &Layo
         db.update(&crate::assemble_package_project_sources(
             graph,
             &files,
-            &Workspace::new().snapshot(),
+            &workspace.snapshot(),
         ));
         return;
     }
     db.update(&assemble_project_sources(
         &WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]),
         &files,
-        &Workspace::new().snapshot(),
+        &workspace.snapshot(),
     ));
 }
 

@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 mod schema;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
 mod source;
-pub(crate) use source::source_lifecycle_spec;
+pub(crate) use source::{
+    assert_source_overlay_state, source_lifecycle_action, source_lifecycle_spec,
+};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Point {
@@ -135,7 +137,7 @@ pub(crate) struct Spec {
     pub oracle: serde_json::Value,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub(crate) struct FixtureWorkspace {
     pub disk: BTreeMap<String, Document>,
     pub open: BTreeMap<String, Document>,

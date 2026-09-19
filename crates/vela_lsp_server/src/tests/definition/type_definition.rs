@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 mod dynamic;
 mod imported;
@@ -32,7 +32,7 @@ fn initialize(server: &mut TestServer) -> serde_json::Value {
 
 fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
     let uri = uri.as_ref();
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -42,7 +42,7 @@ fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 }
 
 fn assert_source_struct_field_type_definition() {

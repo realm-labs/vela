@@ -30,6 +30,15 @@ pub(super) fn apply_phase(
         server,
         json!({"changes":changes}),
     ));
+    assert_diagnostics(&messages, root, phase, diagnostic_file);
+}
+
+pub(super) fn assert_diagnostics(
+    messages: &[Value],
+    root: &Path,
+    phase: &Value,
+    diagnostic_file: &str,
+) {
     let diagnostic_uri = lsp_types::Url::from_file_path(root.join(diagnostic_file)).expect("URI");
     let publications = messages
         .iter()

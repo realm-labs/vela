@@ -1,4 +1,4 @@
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, request, response_value};
 
 #[test]
 fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
@@ -28,7 +28,7 @@ fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
     let before_project_rebuild_count = server.snapshot().databases().project_db().rebuild_count();
     let before_hir_rebuild_count = server.snapshot().databases().hir_db().rebuild_count();
 
-    let change = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
+    let change = crate::tests::sync_diagnostics::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -39,7 +39,7 @@ fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
                 { "text": "pub fn grant() { return 2 }" }
             ]
         }),
-    ));
+    );
 
     assert_eq!(change["method"], "textDocument/publishDiagnostics");
     assert_eq!(change["params"]["uri"], reward_uri);
@@ -62,7 +62,7 @@ fn lsp_did_change_body_edit_preserves_project_and_rebuilds_hir() {
 }
 
 fn open_document(server: &mut TestServer, uri: &str, text: &str) {
-    let diagnostics = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let diagnostics = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -72,7 +72,7 @@ fn open_document(server: &mut TestServer, uri: &str, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
     assert_eq!(diagnostics["method"], "textDocument/publishDiagnostics");
     assert_eq!(diagnostics["params"]["uri"], uri);
     assert_eq!(diagnostics["params"]["diagnostics"], serde_json::json!([]));

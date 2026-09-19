@@ -872,7 +872,7 @@ fn notify_config_changed(server: &mut TestServer, config_path: &Path) -> serde_j
 
 fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
     let uri = uri.as_ref();
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -882,7 +882,7 @@ fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 }
 
 fn assert_completion(response: &serde_json::Value, label: &str, kind: u8, detail: &str) {

@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 #[test]
 fn lsp_hover_reports_imported_function_const_and_global_facts() {
@@ -32,7 +32,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -42,7 +42,7 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let const_hover = hover_at(

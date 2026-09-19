@@ -1,5 +1,6 @@
 mod schema_lifecycle;
 mod source_lifecycle;
+mod source_overlays;
 
 use crate::matrix_fixture::{Edit, FixtureWorkspace, apply_edits, load};
 use crate::tests::{TestServer, notify, request, response_value};
@@ -91,6 +92,11 @@ fn source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_re
     assert_type_ownership("completion-source-callable-lifecycle");
 }
 
+#[test]
+fn source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration() {
+    assert_type_ownership("completion-source-overlay-lifecycle");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -115,17 +121,20 @@ fn assert_type_ownership(fixture_id: &str) {
             1,
             json!({"processId":null,"rootUri":uri(""),"capabilities":capabilities}),
         );
+        let mut control_messages = Vec::new();
         if let Some(file) = spec.oracle["schemaDiagnosticFile"]
             .as_str()
             .or_else(|| spec.oracle["sourceDiagnosticFile"].as_str())
         {
             let source = fixture.document(file).expect("diagnostic control");
-            let _ = notify::<n::DidOpenTextDocument>(
+            control_messages = crate::tests::notification_values(notify::<n::DidOpenTextDocument>(
                 &mut server,
                 json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
-            );
+            ));
         }
         let mut id = 2;
+        let mut overlays = (spec.oracle["sourceOverlays"] == true)
+            .then(|| source_overlays::State::new(&spec, &root, &control_messages));
         let source_lifecycle = spec.oracle["sourceLifecycle"].is_array();
         let phases = spec
             .oracle
@@ -140,13 +149,23 @@ fn assert_type_ownership(fixture_id: &str) {
             if source_lifecycle {
                 current = crate::matrix_fixture::source_lifecycle_spec(&spec, &phase, crlf);
                 let fixture = FixtureWorkspace::new(&current).expect("source phase");
-                source_lifecycle::apply_phase(
-                    &mut server,
-                    &root,
-                    &fixture,
-                    &phase,
-                    string(&spec.oracle, "sourceDiagnosticFile"),
-                );
+                if let Some(state) = &mut overlays {
+                    state.apply(&mut server, &root, &phase, crlf);
+                    crate::matrix_fixture::assert_source_overlay_state(
+                        &state.fixture,
+                        &fixture,
+                        &phase,
+                        crlf,
+                    );
+                } else {
+                    source_lifecycle::apply_phase(
+                        &mut server,
+                        &root,
+                        &fixture,
+                        &phase,
+                        string(&spec.oracle, "sourceDiagnosticFile"),
+                    );
+                }
                 for item in saved.values() {
                     let resolved = response_value(request::<r::ResolveCompletionItem>(
                         &mut server,
@@ -194,8 +213,12 @@ fn assert_type_ownership(fixture_id: &str) {
             }
             let spec = current;
             let fixture = FixtureWorkspace::new(&spec).expect("phase fixture");
-            let mut fresh =
-                source_lifecycle.then(|| source_lifecycle::fresh_server(&root, &capabilities));
+            let mut fresh = source_lifecycle.then(|| {
+                overlays.as_ref().map_or_else(
+                    || source_lifecycle::fresh_server(&root, &capabilities),
+                    |state| state.fresh_server(&root, &capabilities),
+                )
+            });
             for query in phase["signatureQueries"]
                 .as_array()
                 .map(Vec::as_slice)

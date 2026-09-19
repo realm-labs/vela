@@ -1071,10 +1071,7 @@ impl GlobalState {
         );
         self.project.open_documents.insert(document_id.clone());
         self.project.refresh_document_databases(&document_id);
-        let message = self
-            .project
-            .publish_document_diagnostics(&uri, &document_id);
-        vec![message]
+        self.project.publish_sync_diagnostics(&document_id)
     }
 
     pub(crate) fn did_change(&mut self, params: DidChangeTextDocumentParams) -> Vec<Message> {
@@ -1111,10 +1108,7 @@ impl GlobalState {
             .change_document(document_id.clone(), text, version);
         self.project.open_documents.insert(document_id.clone());
         self.project.refresh_document_databases(&document_id);
-        let message = self
-            .project
-            .publish_document_diagnostics(&uri, &document_id);
-        vec![message]
+        self.project.publish_sync_diagnostics(&document_id)
     }
 
     pub(crate) fn did_close(&mut self, params: DidCloseTextDocumentParams) -> Vec<Message> {
@@ -1124,14 +1118,7 @@ impl GlobalState {
         self.project.open_documents.remove(&document_id);
         self.project.refresh_databases();
 
-        if self.project.disk_sources.contains_key(&document_id) {
-            vec![
-                self.project
-                    .publish_document_diagnostics(&uri, &document_id),
-            ]
-        } else {
-            vec![publish_diagnostics_notification(&uri, Vec::new(), None)]
-        }
+        self.project.publish_sync_diagnostics(&document_id)
     }
 
     fn register_watched_files_after_initialized(&mut self) -> Vec<Message> {

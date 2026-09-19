@@ -3047,6 +3047,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
         }
       ]
     },
@@ -3057,6 +3061,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
         }
       ]
     },
@@ -3067,6 +3075,10 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
         }
       ]
     },
@@ -3077,6 +3089,50 @@
         {
           "layer": "protocol",
           "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/dirty/protocol",
+      "assertion": "Sixteen ordered disk/overlay states use real didOpen/didChange notifications and independently declared effective, disk and open texts. Unsaved dependency type/parameter/range changes immediately affect exact completion sets, applied signatures, named arguments, inlays and source targets. Later disk writes/deletion cannot override the open buffer; live and fresh disk-plus-overlay workspaces agree under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/close_restore/protocol",
+      "assertion": "Closing dirty dependency buffers restores the latest external disk source, saving persists the overlay through close/reopen, and closing a deleted dependency removes its candidates/signatures/definitions until recreation. Exact sets, applied edits and independent target markers agree with fresh disk-plus-overlay analysis under Unicode LF/CRLF; the actual client diagnostic publication is cleared on recovery.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/dirty/protocol",
+      "assertion": "Actual retained source completion items resolve unchanged through dirty dependency edits, external disk changes, save, close/reopen and deletion while open. Source docs remain absent under the existing contract and same-name schema docs never replace them. Exact current candidates, applied signatures and target ranges match independent oracles and fresh disk-plus-overlay workspaces under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/close_restore/protocol",
+      "assertion": "Actual retained source completion items resolve unchanged through dirty dependency edits, external disk changes, save, close/reopen and deletion while open. Source docs remain absent under the existing contract and same-name schema docs never replace them. Exact current candidates, applied signatures and target ranges match independent oracles and fresh disk-plus-overlay workspaces under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_overlay_lifecycle_projects_dirty_owners_save_and_close_restoration"
         }
       ]
     }

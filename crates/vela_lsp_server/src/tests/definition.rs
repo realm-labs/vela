@@ -46,7 +46,7 @@ fn main() {
     return add_mixed(1);
 }
 "#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -56,7 +56,7 @@ fn main() {
                 "text": text
             }
         }),
-    ));
+    );
     let call_line = text.lines().nth(7).expect("call line should exist");
 
     let response = response_value(request::<lsp_types::request::GotoDefinition>(
@@ -101,7 +101,7 @@ pub fn main() {
 }"#;
     let rewards_text = r#"pub const BASE_REWARD = 4
 pub extern state reward_scale: i64;"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -111,8 +111,8 @@ pub extern state reward_scale: i64;"#;
                 "text": rewards_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -122,7 +122,7 @@ pub extern state reward_scale: i64;"#;
                 "text": main_text
             }
         }),
-    ));
+    );
     let return_line = main_text.lines().nth(4).expect("return line should exist");
 
     let const_response = response_value(request::<lsp_types::request::GotoDefinition>(
@@ -227,7 +227,7 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main(value: Any) { return value.level }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -237,7 +237,7 @@ fn lsp_declaration_returns_null_for_dynamic_member() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::GotoDeclaration>(
         &mut server,
@@ -280,7 +280,7 @@ fn assert_unknown_source_member_navigation_null(method: &str) {
 fn assign_cell(cell: Cell) {
     return cell.missing;
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -290,7 +290,7 @@ fn assign_cell(cell: Cell) {
                 "text": text
             }
         }),
-    ));
+    );
     let use_line = text.lines().nth(5).expect("member use line should exist");
 
     let response = response_value(navigation_request(
@@ -324,7 +324,7 @@ fn assert_unresolved_name_navigation_null(method: &str) {
     ));
     let uri = "file:///workspace/scripts/game/main.vela";
     let text = "pub fn main() { return missing }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -334,7 +334,7 @@ fn assert_unresolved_name_navigation_null(method: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(navigation_request(
         &mut server,
@@ -366,7 +366,7 @@ fn assert_local_binding_navigation(method: &str) {
         }),
     ));
     let text = "pub fn main(amount: i64) -> i64 { return amount }";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -376,7 +376,7 @@ fn assert_local_binding_navigation(method: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(navigation_request(
         &mut server,
@@ -429,7 +429,7 @@ fn main() {
     let cell: Cell = Cell { value: 1 };
     return assign_cell(cell, "bad");
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -439,7 +439,7 @@ fn main() {
                 "text": text
             }
         }),
-    ));
+    );
     let field_use_line = text.lines().nth(5).expect("field use line should exist");
     let field_declaration_line = text
         .lines()
@@ -510,7 +510,7 @@ pub fn main() {
         .lines()
         .nth(2)
         .expect("trait method declaration line should exist");
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -520,7 +520,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(navigation_request(
         &mut server,
@@ -620,7 +620,7 @@ fn assert_schema_source_navigation(method: &str) {
         }),
     );
     let main_uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -630,7 +630,7 @@ fn assert_schema_source_navigation(method: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(navigation_request(
         &mut server,

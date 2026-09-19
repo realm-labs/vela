@@ -1,5 +1,45 @@
-use super::{Spec, safe_file};
+use super::{Action, FixtureWorkspace, Spec, parse_markers, safe_file};
 use serde_json::Value;
+
+pub(crate) fn source_lifecycle_action(phase: &Value, crlf: bool) -> Option<Action> {
+    if phase["action"].is_null() {
+        return None;
+    }
+    let mut action: Action =
+        serde_json::from_value(phase["action"].clone()).expect("source action");
+    safe_file(&action.file).expect("fixture-relative action");
+    assert!(action.file.ends_with(".vela"));
+    if let Some(source) = &mut action.source {
+        *source = source.replace('\n', if crlf { "\r\n" } else { "\n" });
+    }
+    Some(action)
+}
+
+pub(crate) fn assert_source_overlay_state(
+    actual: &FixtureWorkspace,
+    expected: &FixtureWorkspace,
+    phase: &Value,
+    crlf: bool,
+) {
+    for file in phase["files"].as_object().expect("source files").keys() {
+        assert_eq!(
+            actual.document(file),
+            expected.document(file),
+            "effective source: {phase}"
+        );
+    }
+    let file = phase["overlayFile"].as_str().expect("overlay file");
+    for (label, document) in [
+        ("diskSource", actual.disk.get(file)),
+        ("openSource", actual.open.get(file)),
+    ] {
+        let expected = phase[label].as_str().map(|source| {
+            parse_markers(&source.replace('\n', if crlf { "\r\n" } else { "\n" }))
+                .expect("independent source oracle")
+        });
+        assert_eq!(document, expected.as_ref(), "{label}: {phase}");
+    }
+}
 
 /// Phase sources and their marker locations are authored independently of the
 /// service. Each phase describes a full replacement of the listed files.

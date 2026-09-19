@@ -84,6 +84,37 @@ fn notification_value(mut messages: Vec<Message>) -> JsonValue {
     message_value(&notification)
 }
 
+fn sync_diagnostics<N>(server: &mut TestServer, params: JsonValue) -> JsonValue
+where
+    N: lsp_types::notification::Notification,
+    N::Params: DeserializeOwned + Serialize,
+{
+    assert!(matches!(
+        N::METHOD,
+        "textDocument/didOpen" | "textDocument/didChange" | "textDocument/didClose"
+    ));
+    let changed = params["textDocument"]["uri"]
+        .as_str()
+        .expect("sync URI")
+        .to_owned();
+    let notifications = notification_values(notify::<N>(server, params));
+    let mut documents = std::collections::BTreeSet::new();
+    for notification in &notifications {
+        assert_eq!(notification["method"], "textDocument/publishDiagnostics");
+        let document = notification["params"]["uri"]
+            .as_str()
+            .expect("diagnostic URI");
+        assert!(
+            documents.insert(document),
+            "duplicate publication for {document}"
+        );
+    }
+    notifications
+        .into_iter()
+        .find(|notification| notification["params"]["uri"] == changed)
+        .expect("synchronized document diagnostic publication")
+}
+
 fn notification_values(messages: Vec<Message>) -> Vec<JsonValue> {
     if messages
         .iter()
@@ -157,6 +188,7 @@ mod completion_struct;
 mod completion_type;
 mod completion_type_ownership;
 mod document_sync;
+mod document_sync_dependents;
 mod file_watching;
 mod formatting;
 mod incremental;

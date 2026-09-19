@@ -8,6 +8,30 @@ use crate::{lsp::to_proto, paths::document_path_uri};
 const WORKSPACE_DIAGNOSTICS_PROGRESS_TOKEN: &str = "vela/workspace-diagnostics";
 
 impl ProjectState {
+    pub(super) fn publish_sync_diagnostics(&self, changed: &DocumentId) -> Vec<Message> {
+        let current =
+            if self.open_documents.contains(changed) || self.disk_sources.contains_key(changed) {
+                self.publish_document_diagnostics(changed.as_str(), changed)
+            } else {
+                publish_diagnostics_notification(changed.as_str(), Vec::new(), None)
+            };
+        let invalidated = self.databases.analysis_db().invalidated_modules();
+        let modules = self.databases.project_db().module_by_document();
+        let mut messages = vec![current];
+        messages.extend(
+            self.open_documents
+                .iter()
+                .filter(|document| {
+                    *document != changed
+                        && modules
+                            .get(*document)
+                            .is_some_and(|module| invalidated.contains(module))
+                })
+                .map(|document| self.publish_document_diagnostics(document.as_str(), document)),
+        );
+        messages
+    }
+
     pub(super) fn publish_open_diagnostics(&self) -> Vec<Message> {
         let mut notifications = Vec::new();
         if !self.open_documents.is_empty() {

@@ -4627,3 +4627,10 @@ inferred semantic locals. Tests force both immediate and subsequent exhaustion.
 Value-flow and local-state walks share the same wildcard/binding irrefutability
 predicate; an irrefutable unguarded arm, or an irrefutable diverging guard, makes
 later match arms unreachable without evaluating patterns or conditions.
+
+LSP document open/change/close publishes diagnostics for the synchronized
+document and other open documents whose modules the existing analysis update
+invalidated. Closing a missing disk file still clears its own diagnostics.
+This keeps importer diagnostics current when dependency overlays replace or
+restore declarations, without a second dependency graph or an unconditional
+workspace-wide diagnostic sweep. Unchanged documents need not be republished.

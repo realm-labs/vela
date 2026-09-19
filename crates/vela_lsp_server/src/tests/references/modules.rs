@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 use super::{assert_highlight, assert_reference, line};
 
@@ -29,7 +29,7 @@ pub fn other() -> i64 { return bonus() }";
         (other_uri, other_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -39,7 +39,7 @@ pub fn other() -> i64 { return bonus() }";
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let response = response_value(request::<lsp_types::request::References>(
@@ -99,7 +99,7 @@ pub fn main() -> i64 {
     let uri = "file:///workspace/scripts/game/main.vela";
     let helper_uri = "file:///workspace/scripts/game/reward.vela";
     for (uri, text) in [(helper_uri, helper_text), (uri, text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -109,7 +109,7 @@ pub fn main() -> i64 {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let response = response_value(request::<lsp_types::request::DocumentHighlightRequest>(

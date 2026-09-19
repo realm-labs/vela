@@ -1,4 +1,4 @@
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, notify, request, response_value};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -18,7 +18,7 @@ fn lsp_code_action_fixes_unknown_field_typo() {
     ));
     let text = "pub fn main(scores: Array<i64>) { return scores.frist() }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -28,7 +28,7 @@ fn lsp_code_action_fixes_unknown_field_typo() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
@@ -78,7 +78,7 @@ fn lsp_code_action_inserts_missing_import() {
         }),
     ));
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -88,10 +88,10 @@ fn lsp_code_action_inserts_missing_import() {
                 "text": "pub fn grant() { return 1 }"
             }
         }),
-    ));
+    );
     let text = "pub fn main() { return grant }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -101,7 +101,7 @@ fn lsp_code_action_inserts_missing_import() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let grant_start = text.find("grant").expect("unresolved symbol");
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
@@ -146,7 +146,7 @@ fn lsp_code_action_removes_unused_import() {
         }),
     ));
     let reward_uri = "file:///workspace/scripts/game/reward.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -156,10 +156,10 @@ fn lsp_code_action_removes_unused_import() {
                 "text": "pub fn grant() { return 1 }"
             }
         }),
-    ));
+    );
     let text = "use game::reward::grant\npub fn main() { return 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -169,7 +169,7 @@ fn lsp_code_action_removes_unused_import() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
@@ -219,7 +219,7 @@ pub fn main(maybe_name: Option<String>) {
     }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -229,7 +229,7 @@ pub fn main(maybe_name: Option<String>) {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
@@ -282,7 +282,7 @@ pub fn main() {
     return Reward { reason: \"bonus\" }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -292,7 +292,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
         &mut server,
@@ -345,7 +345,7 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
             "pub fn grant() { return 2 }",
         ),
     ] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -355,11 +355,11 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
                     "text": text
                 }
             }),
-        ));
+        );
     }
     let text = "pub fn main() { return grant }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -369,7 +369,7 @@ fn lsp_code_action_rejects_ambiguous_import_fix() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let grant_start = text.find("grant").expect("unresolved symbol");
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
@@ -402,7 +402,7 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
     ));
     let text = "pub fn main(player) { return player.levle }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -412,7 +412,7 @@ fn lsp_code_action_rejects_dynamic_receiver_typo_fix() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let typo_start = text.find("levle").expect("dynamic receiver typo");
     let response = response_value(request::<lsp_types::request::CodeActionRequest>(
@@ -449,7 +449,7 @@ pub fn main() {
     return source_any().levle
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -459,7 +459,7 @@ pub fn main() {
                 "text": text
             }
         }),
-    ));
+    );
 
     let typo_line = text.lines().nth(2).expect("typo line");
     let typo_start = typo_line.find("levle").expect("source Any receiver typo");
@@ -534,7 +534,7 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
 
     let overlay_text = "\npub fn main(player: Player) {\n    return player.levle\n}";
     let main_uri = file_uri(&main_path);
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -544,7 +544,7 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
                 "text": overlay_text
             }
         }),
-    ));
+    );
     let typo_line = overlay_text.lines().nth(2).expect("typo line");
     let typo_start = typo_line.find("levle").expect("overlay typo");
 

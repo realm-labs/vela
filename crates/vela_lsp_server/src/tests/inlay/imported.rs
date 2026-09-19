@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 #[test]
 fn lsp_inlay_hints_show_imported_function_parameter_names() {
@@ -171,7 +171,7 @@ pub fn main() {
 }
 
 fn open_document(server: &mut TestServer, uri: &str, text: &str) {
-    let diagnostics = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let diagnostics = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -181,7 +181,7 @@ fn open_document(server: &mut TestServer, uri: &str, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
     assert_eq!(diagnostics["method"], "textDocument/publishDiagnostics");
     assert_eq!(diagnostics["params"]["uri"], uri);
     assert_eq!(diagnostics["params"]["diagnostics"], serde_json::json!([]));

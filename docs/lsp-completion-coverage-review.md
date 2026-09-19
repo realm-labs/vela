@@ -163,9 +163,23 @@ post-edit signature check.
    control reports dependency loss and clears its diagnostics on recovery.
    Source resolve deliberately returns no documentation under the current source
    contract, including retained old items; colliding schema docs cannot leak into
-   those items. This does not add source doc-comment support. Dirty dependency
-   overlays, close/save/reopen, manifest changes and broader cross-feature
-   lifecycle review remain open.
+   those items. This does not add source doc-comment support.
+   `completion-source-overlay-lifecycle` adds sixteen ordered open/change/write/
+   save/close/delete states. Each Unicode LF/CRLF run checks 128 candidate queries,
+   182 applications and 64 unchanged-call signature/definition probes. Independently
+   authored effective, disk and open-source oracles distinguish unsaved metadata
+   from external writes, saved content and deletion. Open overlays survive disk
+   deletion; closing them removes stale facts, and recreation restores current
+   targets. Persistent and fresh disk-plus-overlay workspaces agree in both
+   layers; retained source resolve items never borrow schema documentation.
+   The protocol test exposed stale importer diagnostics after closing a deleted
+   dependency. Sync now publishes to the changed document and other invalidated
+   open modules. A separate regression checks open/change/close publication,
+   exact import diagnostic ranges and clearing, and exclusion of an unrelated
+   open file. The lifecycle driver retains actual client publications when an
+   unchanged import is not republished, so missing loss/recovery updates still
+   fail. Recovery, stale versions, cancellation, manifest changes and broader
+   cross-feature lifecycle review remain open.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
    evidence already in the catalog does not close the remaining dimensions.

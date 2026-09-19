@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, notify, request, response_value};
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -25,7 +25,7 @@ fn lsp_rename_rejects_module_declaration_collision() {
 pub fn grant(amount: i64) -> i64 { return amount }
 pub fn award(amount: i64) -> i64 { return amount + 1 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -35,7 +35,7 @@ pub fn award(amount: i64) -> i64 { return amount + 1 }";
                 "text": text
             }
         }),
-    ));
+    );
 
     let prepare = response_value(request::<lsp_types::request::PrepareRenameRequest>(
         &mut server,
@@ -93,7 +93,7 @@ pub fn main() -> i64 {
         (bonus_uri, bonus_text),
         (main_uri, main_text),
     ] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -103,7 +103,7 @@ pub fn main() -> i64 {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let rename = response_value(request::<lsp_types::request::Rename>(
@@ -148,7 +148,7 @@ impl Rewardable for Reward {
     fn award(self) -> i64 { return self.amount + 1 }
 }";
     let uri = "file:///workspace/scripts/game/main.vela";
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -158,7 +158,7 @@ impl Rewardable for Reward {
                 "text": text
             }
         }),
-    ));
+    );
 
     let rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,
@@ -259,7 +259,7 @@ pub fn award() { return 4 }";
     );
 
     let schema_uri = file_uri(&root.join("scripts").join("_schema_defs.vela"));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -269,7 +269,7 @@ pub fn award() { return 4 }";
                 "text": schema_text
             }
         }),
-    ));
+    );
 
     let text = "\
 pub fn main(player: Player) -> i64 {
@@ -277,7 +277,7 @@ pub fn main(player: Player) -> i64 {
     return player.grant(first)
 }";
     let uri = file_uri(&root.join("scripts").join("game").join("main.vela"));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -287,7 +287,7 @@ pub fn main(player: Player) -> i64 {
                 "text": text
             }
         }),
-    ));
+    );
 
     let field_rename = response_value(request::<lsp_types::request::Rename>(
         &mut server,

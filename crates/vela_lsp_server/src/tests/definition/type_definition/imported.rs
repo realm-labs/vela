@@ -1,4 +1,4 @@
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, request, response_value};
 
 #[test]
 fn lsp_type_definition_follows_imported_source_struct_field_type_alias() {
@@ -43,7 +43,7 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -53,8 +53,8 @@ fn main() {
                 "text": inventory_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -64,7 +64,7 @@ fn main() {
                 "text": main_text
             }
         }),
-    ));
+    );
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
     let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
@@ -110,7 +110,7 @@ fn main() {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -120,8 +120,8 @@ fn main() {
                 "text": inventory_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -131,7 +131,7 @@ fn main() {
                 "text": main_text
             }
         }),
-    ));
+    );
     let annotation_line = main_text.lines().nth(3).expect("local annotation line");
 
     let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
@@ -181,7 +181,7 @@ fn describe(value: Named) {
     let traits_text = r#"pub trait Describable {
     fn describe(self) -> String
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -191,8 +191,8 @@ fn describe(value: Named) {
                 "text": traits_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -202,7 +202,7 @@ fn describe(value: Named) {
                 "text": main_text
             }
         }),
-    ));
+    );
     let parameter_line = main_text
         .lines()
         .nth(2)
@@ -256,7 +256,7 @@ enum Reward {
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -266,8 +266,8 @@ enum Reward {
                 "text": inventory_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -277,7 +277,7 @@ enum Reward {
                 "text": main_text
             }
         }),
-    ));
+    );
     let field_line = main_text.lines().nth(3).expect("enum field line");
 
     let response = response_value(request::<lsp_types::request::GotoTypeDefinition>(
@@ -361,7 +361,7 @@ pub extern state active_bag: Bag;"#;
     let inventory_text = r#"pub struct Inventory {
     slots: i64,
 }"#;
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -371,8 +371,8 @@ pub extern state active_bag: Bag;"#;
                 "text": inventory_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -382,7 +382,7 @@ pub extern state active_bag: Bag;"#;
                 "text": main_text
             }
         }),
-    ));
+    );
     let const_line = main_text.lines().nth(2).expect("const line should exist");
     let global_line = main_text.lines().nth(3).expect("global line should exist");
 

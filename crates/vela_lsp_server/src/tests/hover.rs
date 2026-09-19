@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, request, response_value};
 
 mod cross_file;
 mod dynamic;
@@ -799,7 +799,7 @@ fn initialize_with_schema(
 
 fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
     let uri = uri.as_ref();
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         server,
         serde_json::json!({
             "textDocument": {
@@ -809,7 +809,7 @@ fn open_document(server: &mut TestServer, uri: impl AsRef<str>, text: &str) {
                 "text": text
             }
         }),
-    ));
+    );
 }
 
 fn temp_workspace() -> PathBuf {

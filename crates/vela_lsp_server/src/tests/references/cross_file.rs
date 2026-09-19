@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::tests::{TestServer, notification_value, notify, request, response_value};
+use crate::tests::{TestServer, notify, request, response_value};
 
 use super::{assert_reference, line};
 
@@ -38,7 +38,7 @@ impl Reward {
     pub fn total(self) -> i64 { return 1 }
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -48,7 +48,7 @@ impl Reward {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let field_response = response_value(request::<lsp_types::request::References>(
@@ -193,7 +193,7 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -203,7 +203,7 @@ pub fn main(amount: i64) -> i64 {
                 "text": main_text
             }
         }),
-    ));
+    );
 
     let before = response_value(request::<lsp_types::request::References>(
         &mut server,
@@ -333,7 +333,7 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -343,7 +343,7 @@ pub fn main(amount: i64) -> i64 {
                 "text": old_main_text
             }
         }),
-    ));
+    );
 
     let before = response_value(request::<lsp_types::request::References>(
         &mut server,
@@ -374,7 +374,7 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(notify::<lsp_types::notification::DidChangeTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidChangeTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -385,7 +385,7 @@ pub fn main(amount: i64) -> i64 {
                 { "text": new_main_text }
             ]
         }),
-    ));
+    );
 
     let after = response_value(request::<lsp_types::request::References>(
         &mut server,
@@ -486,7 +486,7 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -496,8 +496,8 @@ pub fn main(amount: i64) -> i64 {
                 "text": overlay_text
             }
         }),
-    ));
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    );
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -507,7 +507,7 @@ pub fn main(amount: i64) -> i64 {
                 "text": main_text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::References>(
         &mut server,
@@ -618,7 +618,7 @@ pub fn main(amount: i64) -> i64 {
             ]
         }),
     );
-    let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+    let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
         serde_json::json!({
             "textDocument": {
@@ -628,7 +628,7 @@ pub fn main(amount: i64) -> i64 {
                 "text": overlay_text
             }
         }),
-    ));
+    );
 
     let response = response_value(request::<lsp_types::request::References>(
         &mut server,
@@ -702,7 +702,7 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -712,7 +712,7 @@ pub enum QuestState {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let response = response_value(request::<lsp_types::request::References>(
@@ -793,7 +793,7 @@ pub enum QuestState {
     Done
 }";
     for (uri, text) in [(types_uri, types_text), (main_uri, main_text)] {
-        let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
+        let _ = crate::tests::sync_diagnostics::<lsp_types::notification::DidOpenTextDocument>(
             &mut server,
             serde_json::json!({
                 "textDocument": {
@@ -803,7 +803,7 @@ pub enum QuestState {
                     "text": text
                 }
             }),
-        ));
+        );
     }
 
     let response = response_value(request::<lsp_types::request::References>(
