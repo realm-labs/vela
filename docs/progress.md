@@ -849,7 +849,12 @@ complete sets, shadow separation, actual applied edits and repeated/restored que
 on Unicode LF/CRLF sources. Qualified uses retain terminal-token ranges and are
 included in renames; import terminal queries resolve their declaration. Protocol
 results project to UTF-16 per document, with client versions only for open files.
-Resume B04.02 with reference and rename semantic ownership/collision partitions.
+B04.02 adds 16 LF/CRLF declaration-rename collision scenarios at both layers.
+Bare uses reject capture by visible locals, including parameters in default
+expressions under the existing canonical binding rules. Qualified paths, retained
+aliases and disjoint scopes remain eligible; applied edits preserve exact call
+ownership. The broad S2 cells remain unreviewed pending the other partitions.
+Resume B04.03 with local-target rename capture and disjoint-scope coverage.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

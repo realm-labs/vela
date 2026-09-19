@@ -4710,3 +4710,11 @@ but the LSP boundary assigns a client version only when that document is open.
 Unopened and closed disk files therefore carry null client versions. Projection
 preserves both edit forms and risk annotations without changing source ownership
 or runtime semantics.
+
+Source declaration rename rejects a new name that would capture a rewritten bare
+use through a local binding. Qualified uses and retained import aliases preserve
+their existing lookup paths. Ordinary visibility uses the shared query context;
+parameter defaults additionally check their owning function's parameters because
+the canonical binder declares all of them before lowering defaults. This safety
+check follows existing HIR ownership, including later/current parameters, without
+changing runtime binding or completion's source-order candidate policy.

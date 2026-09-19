@@ -22,6 +22,9 @@ use crate::{
     },
 };
 
+#[cfg(test)]
+mod collision_tests;
+mod collisions;
 mod edit;
 mod fields;
 mod methods;
@@ -227,7 +230,9 @@ impl LanguageServiceDatabases {
         new_name: &str,
     ) -> Option<WorkspaceEdit> {
         let graph = self.hir_db().graph();
-        if declaration_name_conflicts(graph, target.declaration, new_name) {
+        if declaration_name_conflicts(graph, target.declaration, new_name)
+            || collisions::declaration_use_is_captured(self, target.declaration, new_name)
+        {
             return None;
         }
 

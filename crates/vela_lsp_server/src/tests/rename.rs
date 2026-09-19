@@ -6,6 +6,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod collisions;
 mod imports;
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);

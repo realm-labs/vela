@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "id": "rename-declaration-collisions",
+  "files": {
+    "vela.toml": "[package]\nname = \"rename_collisions\"\nscript_roots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[declaration:start]]grant[[declaration:end]]() -> i64 { return 1; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "cases": [
+      {
+        "id": "parameter",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(award: i64) { [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "local",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { let award = 1; [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "nested-local",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { if true { let award = 1; [[use:start]]grant[[use:end]](); } }\n"
+      },
+      {
+        "id": "lambda-parameter",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { let f = |award| [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "lambda-capture",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(award: i64) { let f = || [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "loop-local",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { for award in [1] { [[use:start]]grant[[use:end]](); } }\n"
+      },
+      {
+        "id": "before-local",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { [[use:start]]grant[[use:end]](); let award = 1; }\n"
+      },
+      {
+        "id": "local-initializer",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { let award = [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "sibling-block",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { if true { let award = 1; } if true { [[use:start]]grant[[use:end]](); } }\n"
+      },
+      {
+        "id": "other-function",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn other(award: i64) {}\nfn main() { [[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "qualified-shadow",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(award: i64) { helpers::[[use:start]]grant[[use:end]](); }\n"
+      },
+      {
+        "id": "loop-iterable",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main() { for award in [ [[use:start]]grant[[use:end]]() ] {} }\n"
+      },
+      {
+        "id": "default-earlier-parameter",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(award: i64, value: i64 = [[use:start]]grant[[use:end]]()) {}\n"
+      },
+      {
+        "id": "default-later-parameter",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(value: i64 = [[use:start]]grant[[use:end]](), award: i64 = 1) {}\n"
+      },
+      {
+        "id": "default-own-parameter",
+        "allowed": false,
+        "source": "use helpers::[[import:start]]grant[[import:end]]\n/* 中😀 */ fn main(award: i64 = [[use:start]]grant[[use:end]]()) {}\n"
+      },
+      {
+        "id": "aliased-import",
+        "allowed": true,
+        "source": "use helpers::[[import:start]]grant[[import:end]] as reward\n/* 中😀 */ fn main(award: i64) { [[alias:start]]reward[[alias:end]](); }\n"
+      }
+    ]
+  }
+}
