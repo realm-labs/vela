@@ -108,6 +108,11 @@ fn builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs() {
     assert_type_ownership("completion-builtin-callable-resolve");
 }
 
+#[test]
+fn resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries() {
+    assert_type_ownership("completion-resolve-identities");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -236,6 +241,14 @@ fn assert_type_ownership(fixture_id: &str) {
                 let file = string(case, "file");
                 let source = fixture.document(file).expect("source");
                 let range = source.markers["replace"];
+                if let Some(signature) = case["callSignature"].as_str() {
+                    let point = position(&source.text, source.markers["call-cursor"].start.byte);
+                    let help = db
+                        .signature_help(&uri(file), point)
+                        .expect("known dynamic-return callable");
+                    assert_eq!(help.signatures().len(), 1, "{case}");
+                    assert_eq!(help.signatures()[0].label(), signature, "{case}");
+                }
                 let pos = position(&source.text, source.markers["cursor"].start.byte);
                 let result = db.completion_items(&uri(file), pos);
                 if !phase.is_null() {
@@ -312,33 +325,48 @@ fn assert_type_ownership(fixture_id: &str) {
                         .expect("item");
                     assert_eq!(format!("{:?}", item.kind()), expected["kind"], "{case}");
                     assert_eq!(item.detail(), string(expected, "detail"), "{case}");
-                    let expected_symbol = expected["serviceSymbol"]
-                        .as_str()
-                        .map(|name| SymbolRef::Source(name.to_owned()))
-                        .unwrap_or_else(|| symbol(expected));
+                    let expected_symbol = (expected["origin"] != "none").then(|| {
+                        expected["serviceSymbol"]
+                            .as_str()
+                            .map(|name| SymbolRef::Source(name.to_owned()))
+                            .unwrap_or_else(|| symbol(expected))
+                    });
                     if expected["origin"] != "local" {
-                        assert_eq!(item.symbol(), Some(&expected_symbol), "{case} {expected}");
+                        assert_eq!(item.symbol(), expected_symbol.as_ref(), "{case} {expected}");
                     }
-                    let edit = item
-                        .text_edit()
-                        .unwrap_or_else(|| panic!("explicit edit: {case} {expected}"));
+                    let insert = if expected["implicitEdit"] == true {
+                        assert!(item.text_edit().is_none(), "{case}");
+                        assert!(item.insert_text().is_none(), "{case}");
+                        item.label()
+                    } else {
+                        let edit = item
+                            .text_edit()
+                            .unwrap_or_else(|| panic!("explicit edit: {case} {expected}"));
+                        assert_eq!(
+                            edit.range(),
+                            TextRange::new(range.start.byte, range.end.byte)
+                        );
+                        edit.new_text()
+                    };
                     assert!(item.documentation().is_none());
-                    assert_eq!(
-                        serde_json::json!(
-                            db.completion_documentation(item.resolve_payload().expect("resolve"))
-                        ),
-                        expected["docs"],
-                        "{case}"
-                    );
-                    assert_eq!(
-                        edit.range(),
-                        TextRange::new(range.start.byte, range.end.byte)
-                    );
-                    assert_eq!(edit.new_text(), string(expected, "insert"));
+                    if expected["origin"] == "none" {
+                        assert!(
+                            item.resolve_payload().is_none(),
+                            "no invented identity: {case}"
+                        );
+                    } else {
+                        assert_eq!(
+                            serde_json::json!(db.completion_documentation(
+                                item.resolve_payload().expect("resolve")
+                            )),
+                            expected["docs"],
+                            "{case}"
+                        );
+                    }
+                    assert_eq!(insert, string(expected, "insert"));
                     let insertion = format!(
                         "{}{}",
-                        edit.new_text()
-                            .replace("$0", expected["value"].as_str().unwrap_or("1")),
+                        insert.replace("$0", expected["value"].as_str().unwrap_or("1")),
                         string(case, "applySuffix")
                     );
                     let mut edited = source.text.clone();
@@ -537,8 +565,8 @@ fn assert_type_ownership(fixture_id: &str) {
                             definition.range().end(),
                             position(&target_doc.text, target_range.end.byte)
                         );
-                        if expected["kind"] != "Module" {
-                            assert_eq!(definition.symbol(), Some(&expected_symbol));
+                        if expected["kind"] != "Module" && expected["origin"] != "none" {
+                            assert_eq!(definition.symbol(), expected_symbol.as_ref());
                         }
                     } else {
                         assert!(

@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "id": "completion-resolve-identities",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.resolve_identities\"\nname=\"resolve_identities\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "scripts/local.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = 1; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/parameter.vela": "fn main([[local:start]]zz_pick[[local:end]]: i64) { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/shadow.vela": "fn main() { let zz_pick = 1; { let [[local:start]]zz_pick[[local:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; } }\n",
+    "scripts/capture.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = 1; let callback = |unused| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }; }\n",
+    "scripts/lambda.vela": "fn main() { let callback = |[[local:start]]zz_pick[[local:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }; }\n",
+    "scripts/dynamic_value.vela": "fn main([[local:start]]zz_pick[[local:end]]: Any) { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/unknown_value.vela": "fn main() { let [[local:start]]zz_pick[[local:end]] = missing(); /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/true.vela": "fn main() { /* 中😀 */ [[replace:start]]tru[[cursor]][[replace:end]]; }\n",
+    "scripts/false.vela": "fn main() { /* 中😀 */ [[replace:start]]fals[[cursor]][[replace:end]]; }\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"functions\":[{\"name\":\"host::zz_dynamic\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Host dynamic function docs.\"},{\"name\":\"zz_source\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema function docs.\"}],\"constants\":[{\"name\":\"zz_pick\",\"fact\":{\"kind\":\"primitive\",\"name\":\"String\"},\"docs\":\"Unrelated schema constant docs.\"}],\"types\":[{\"name\":\"host::Known\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Known\"}}],\"fields\":[{\"owner\":\"host::Known\",\"name\":\"zz_guess\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"docs\":\"Known owner only.\"}]}}",
+    "scripts/source.vela": "pub fn [[function:start]]zz_source[[function:end]]() -> Any { 1 }\nfn main() { /* 中😀 */ [[replace:start]]zz_s[[cursor]][[replace:end]]; }\n",
+    "scripts/schema.vela": "fn main() { /* 中😀 */ host::[[replace:start]]zz_d[[cursor]][[replace:end]]; }\n",
+    "scripts/source_result.vela": "use source::zz_source;\nfn main() { /* 中😀 */ zz_source([[call-cursor]]).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/schema_result.vela": "fn main() { /* 中😀 */ host::zz_dynamic([[call-cursor]]).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/dynamic_member.vela": "fn main(value: Any) { /* 中😀 */ value.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/unresolved_member.vela": "fn main() { /* 中😀 */ missing.[[replace:start]]zz_[[cursor]][[replace:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "local",
+        "file": "scripts/local.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "parameter",
+        "file": "scripts/parameter.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "shadow",
+        "file": "scripts/shadow.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "capture",
+        "file": "scripts/capture.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "lambda",
+        "file": "scripts/lambda.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "dynamic_value",
+        "file": "scripts/dynamic_value.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Parameter",
+            "detail": "Any",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "unknown_value",
+        "file": "scripts/unknown_value.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "unknown",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "local"
+          }
+        ]
+      },
+      {
+        "id": "true",
+        "file": "scripts/true.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "true",
+            "insert": "true",
+            "kind": "Value",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "implicitEdit": true
+          }
+        ]
+      },
+      {
+        "id": "false",
+        "file": "scripts/false.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "false",
+            "insert": "false",
+            "kind": "Value",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "implicitEdit": true
+          }
+        ]
+      },
+      {
+        "id": "source_function",
+        "file": "scripts/source.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_source",
+            "insert": "zz_source($0)",
+            "kind": "Function",
+            "detail": "Function() -> Any",
+            "origin": "source",
+            "symbol": "source::zz_source",
+            "docs": null,
+            "value": "",
+            "signature": "zz_source() -> Any",
+            "target": "self",
+            "marker": "function"
+          }
+        ]
+      },
+      {
+        "id": "schema_function",
+        "file": "scripts/schema.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_dynamic",
+            "insert": "zz_dynamic($0)",
+            "kind": "Function",
+            "detail": "Function() -> Any",
+            "origin": "schema",
+            "symbol": "host::zz_dynamic",
+            "docs": "Host dynamic function docs.",
+            "value": "",
+            "signature": "host::zz_dynamic() -> Any"
+          }
+        ]
+      },
+      {
+        "id": "source_result",
+        "file": "scripts/source_result.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [],
+        "callSignature": "zz_source() -> Any"
+      },
+      {
+        "id": "schema_result",
+        "file": "scripts/schema_result.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [],
+        "callSignature": "host::zz_dynamic() -> Any"
+      },
+      {
+        "id": "dynamic_member",
+        "file": "scripts/dynamic_member.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unresolved_member",
+        "file": "scripts/unresolved_member.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      }
+    ]
+  }
+}

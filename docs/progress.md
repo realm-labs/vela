@@ -797,8 +797,12 @@ owners, named/defaulted parameters, active slots and dynamic/unresolved boundari
 All named-parameter candidates are lightweight and protocol resolve preserves
 their full content without parsing; standard callable fixtures also check exact
 post-edit signatures and exclude colliding schema documentation.
-Resume B03.46 with S10 ownership/dynamic resolve and the remaining semantic
-review and UX04 interaction proof. B00-B02 acceptance snapshots stay
+S10 completion/resolve now has a reviewed ownership map, including local and
+parameter candidates without lazy identities, source/schema/builtin modules,
+and known Any-return callables whose downstream members remain empty. Actual
+protocol resolve preserves candidate fields and uses only owned schema docs.
+Resume B03.47 with the remaining semantic review and UX04 interaction proof.
+B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,

@@ -107,6 +107,11 @@ fn builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs() {
     assert_type_ownership("completion-builtin-callable-resolve");
 }
 
+#[test]
+fn resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries() {
+    assert_type_ownership("completion-resolve-identities");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -296,6 +301,21 @@ fn assert_type_ownership(fixture_id: &str) {
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
                 );
+                if let Some(signature) = case["callSignature"].as_str() {
+                    let point = source.markers["call-cursor"].start;
+                    let help = response_value(request::<r::SignatureHelpRequest>(
+                        &mut server,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+                    ));
+                    id += 1;
+                    assert!(help["error"].is_null(), "{help}");
+                    let signatures = help["result"]["signatures"]
+                        .as_array()
+                        .expect("known dynamic-return callable");
+                    assert_eq!(signatures.len(), 1, "{case}");
+                    assert_eq!(signatures[0]["label"], signature, "{case}");
+                }
                 let response =
                     response_value(request::<r::Completion>(&mut server, id, params.clone()));
                 id += 1;
@@ -323,7 +343,7 @@ fn assert_type_ownership(fixture_id: &str) {
                 let expected = case["items"].as_array().expect("items");
                 let mut actual = items
                     .iter()
-                    .map(|i| (string(i, "label"), string(&i["textEdit"], "newText")))
+                    .map(|i| (string(i, "label"), completion_text(i)))
                     .collect::<Vec<_>>();
                 let mut keys = expected
                     .iter()
@@ -338,7 +358,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         .iter()
                         .find(|i| {
                             i["label"] == expected["label"]
-                                && i["textEdit"]["newText"] == expected["insert"]
+                                && completion_text(i) == expected["insert"]
                         })
                         .expect("item");
                     let kind = match string(expected, "kind") {
@@ -349,6 +369,8 @@ fn assert_type_ownership(fixture_id: &str) {
                         "Type" => 22,
                         "Trait" => 8,
                         "Binding" => 6,
+                        "Parameter" => 6,
+                        "Value" => 12,
                         "Module" => 9,
                         other => panic!("{other}"),
                     };
@@ -358,34 +380,44 @@ fn assert_type_ownership(fixture_id: &str) {
                         item.get("documentation").is_none(),
                         "initial list stays lightweight: {case}"
                     );
-                    let symbol_name = expected["protocolSymbol"]
-                        .as_str()
-                        .unwrap_or(string(expected, "symbol"));
-                    if expected["origin"] != "local" {
+                    if expected["origin"] == "none" {
+                        assert!(
+                            item["data"].get("resolve").is_none(),
+                            "no invented identity: {case}"
+                        );
+                    } else if expected["origin"] != "local" {
+                        let symbol_name = expected["protocolSymbol"]
+                            .as_str()
+                            .unwrap_or(string(expected, "symbol"));
                         assert_eq!(
                             item["data"]["resolve"],
                             json!({"kind":"documentation","symbol":{"kind":expected["origin"],"name":symbol_name}}),
                             "{case}"
                         );
-                        let resolved = response_value(request::<r::ResolveCompletionItem>(
-                            &mut server,
-                            id,
-                            item.clone(),
-                        ));
-                        id += 1;
-                        assert_eq!(resolved["result"]["textEdit"], item["textEdit"]);
-                        assert_eq!(resolved["result"]["data"], item["data"]);
-                        let mut expected_resolved = item.clone();
-                        if let Some(docs) = expected["docs"].as_str() {
-                            expected_resolved["documentation"] =
-                                json!({"kind":"markdown","value":docs});
-                        }
-                        assert_eq!(resolved["result"], expected_resolved, "{case}");
                     }
-                    assert_eq!(
-                        item["textEdit"],
-                        json!({"range":{"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}},"newText":expected["insert"]})
-                    );
+                    let resolved = response_value(request::<r::ResolveCompletionItem>(
+                        &mut server,
+                        id,
+                        item.clone(),
+                    ));
+                    id += 1;
+                    assert!(resolved["error"].is_null(), "{case}: {resolved}");
+                    let mut expected_resolved = item.clone();
+                    if let Some(docs) = expected["docs"].as_str() {
+                        expected_resolved["documentation"] =
+                            json!({"kind":"markdown","value":docs});
+                    }
+                    assert_eq!(resolved["result"], expected_resolved, "{case}");
+                    if expected["implicitEdit"] == true {
+                        assert!(item.get("textEdit").is_none(), "{case}");
+                        assert!(item.get("insertText").is_none(), "{case}");
+                        assert_eq!(item["label"], expected["insert"]);
+                    } else {
+                        assert_eq!(
+                            item["textEdit"],
+                            json!({"range":{"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}},"newText":expected["insert"]})
+                        );
+                    }
                     let insertion = format!(
                         "{}{}",
                         string(expected, "insert")
@@ -731,6 +763,13 @@ fn assert_type_ownership(fixture_id: &str) {
         std::fs::remove_dir_all(temp).expect("cleanup");
     }
 }
+fn completion_text(item: &Value) -> &str {
+    item["textEdit"]["newText"]
+        .as_str()
+        .or_else(|| item["insertText"].as_str())
+        .unwrap_or_else(|| string(item, "label"))
+}
+
 fn string<'a>(value: &'a Value, key: &str) -> &'a str {
     value[key].as_str().expect("fixture string")
 }

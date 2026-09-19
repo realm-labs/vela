@@ -3653,6 +3653,392 @@
           "name": "tests::completion_resolve::completion_resolve_unknown_symbols_preserve_every_existing_edit_and_label_field"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S10/positive/service",
+      "assertion": "Reviewed S10 ownership partitions in reviews/completion-s10.md: local/parameter/capture/shadow, source declaration/member/variant, schema/host, stdlib/builtin and module candidates. Exact owner-specific sets, kinds/details, byte/UTF-16 edits and applied targets/signatures are asserted in shared LF/CRLF fixtures. Boolean values explicitly use label insertion without a fabricated symbol or edit.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S10/positive/protocol",
+      "assertion": "Reviewed S10 ownership partitions in reviews/completion-s10.md: local/parameter/capture/shadow, source declaration/member/variant, schema/host, stdlib/builtin and module candidates. Exact owner-specific sets, kinds/details, byte/UTF-16 edits and applied targets/signatures are asserted in shared LF/CRLF fixtures. Boolean values explicitly use label insertion without a fabricated symbol or edit.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S10/negative/service",
+      "assertion": "Reviewed S10 boundaries: local/source precedence, private/missing/duplicate imports, wrong owners, dynamic Any and unresolved values cannot acquire unrelated candidates or schema identity. Known source/schema Any-return signatures are checked independently before asserting empty downstream member sets. Missing/private modules and erased builtin receivers remain conservative.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S10/negative/protocol",
+      "assertion": "Reviewed S10 boundaries: local/source precedence, private/missing/duplicate imports, wrong owners, dynamic Any and unresolved values cannot acquire unrelated candidates or schema identity. Known source/schema Any-return signatures are checked independently before asserting empty downstream member sets. Missing/private modules and erased builtin receivers remain conservative.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S10/positive/service",
+      "assertion": "Reviewed S10 actual-item resolve policy: local/parameter/capture/bool candidates have no lazy identity and protocol resolve preserves every field; source declaration/member/variant, stdlib/builtin and module identities keep their supported empty-doc result; schema items receive only exact owned lazy documentation. Shared fixtures retain exact insertions, metadata and applied semantic targets across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S10/positive/protocol",
+      "assertion": "Reviewed S10 actual-item resolve policy: local/parameter/capture/bool candidates have no lazy identity and protocol resolve preserves every field; source declaration/member/variant, stdlib/builtin and module identities keep their supported empty-doc result; schema items receive only exact owned lazy documentation. Shared fixtures retain exact insertions, metadata and applied semantic targets across LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S10/negative/service",
+      "assertion": "Reviewed S10 resolve boundaries: source/builtin/local identities cannot borrow colliding schema documentation, schema replacement/removal cannot preserve old docs, module aliases and no-payload candidates preserve whole protocol items. Known Any-return callables retain only their own facts and produce no downstream member item to resolve; unresolved/invalid owners cannot invent docs. Protocol additionally checks unknown and malformed identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::type_ownership_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_callable_ownership_preserves_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::package_member_ownership_preserves_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::import_alias_tests::import_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::schema_callable_lifecycle_preserves_current_contracts_and_stale_resolve"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/syntax/S10/negative/protocol",
+      "assertion": "Reviewed S10 resolve boundaries: source/builtin/local identities cannot borrow colliding schema documentation, schema replacement/removal cannot preserve old docs, module aliases and no-payload candidates preserve whole protocol items. Known Any-return callables retain only their own facts and produce no downstream member item to resolve; unresolved/invalid owners cannot invent docs. Protocol additionally checks unknown and malformed identities.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::type_ownership_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_callable_ownership_projects_sets_signatures_and_applied_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::package_member_ownership_projects_sets_signatures_returns_and_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_import_aliases::import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::builtin_callable_resolve_preserves_owner_edits_and_excludes_schema_docs"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::schema_callable_lifecycle_projects_current_contracts_and_stale_resolve"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_rejects_malformed_payloads_without_poisoning_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_resolve::completion_resolve_unknown_symbols_preserve_every_existing_edit_and_label_field"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/dynamic/protocol",
+      "assertion": "The shared identity fixture resolves actual known source/schema functions returning Any: exact source identity with no borrowed docs, exact schema-owned lazy docs, unchanged item fields and applied Any signatures. Separate receiver queries independently prove the callable signature exists, then assert zero downstream candidates; dynamic parameter and unresolved receivers also remain empty. LF/CRLF and Unicode UTF-16 edits are covered.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::resolve_identity_matrix_preserves_local_values_and_dynamic_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

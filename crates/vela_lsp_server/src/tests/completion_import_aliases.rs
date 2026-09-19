@@ -83,15 +83,18 @@ fn import_alias_matrix_projects_owned_edits_definitions_and_restored_candidates(
                         json!({"kind":"documentation","symbol":{"kind":expected["origin"],"name":symbol_name}}),
                         "{case}"
                     );
-                    let resolved = response_value(request::<r::ResolveCompletionItem>(
-                        &mut server,
-                        id,
-                        item.clone(),
-                    ));
-                    id += 1;
-                    assert_eq!(resolved["result"]["textEdit"], item["textEdit"]);
-                    assert_eq!(resolved["result"]["data"], item["data"]);
+                } else {
+                    assert!(item["data"].get("resolve").is_none(), "{case}");
                 }
+                assert!(item.get("documentation").is_none(), "{case}");
+                let resolved = response_value(request::<r::ResolveCompletionItem>(
+                    &mut server,
+                    id,
+                    item.clone(),
+                ));
+                id += 1;
+                assert!(resolved["error"].is_null(), "{case}: {resolved}");
+                assert_eq!(&resolved["result"], item, "{case}");
                 assert_eq!(
                     item["textEdit"],
                     json!({"range":{"start":{"line":range.start.line,"character":range.start.character},"end":{"line":range.end.line,"character":range.end.character}},"newText":expected["insert"]})

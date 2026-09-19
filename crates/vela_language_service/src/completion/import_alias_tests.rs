@@ -54,6 +54,16 @@ fn import_alias_matrix_preserves_candidates_and_applied_reference_owners() {
                 if expected["origin"] != "local" {
                     assert_eq!(item.symbol(), Some(&expected_symbol), "{case} {expected}");
                 }
+                assert!(item.documentation().is_none(), "{case}");
+                if expected["origin"] == "local" {
+                    assert!(item.resolve_payload().is_none(), "{case}");
+                } else {
+                    assert!(
+                        db.completion_documentation(item.resolve_payload().expect("resolve"))
+                            .is_none(),
+                        "fixture owners have no documentation: {case}"
+                    );
+                }
                 let edit = item.text_edit().expect("explicit edit");
                 assert_eq!(
                     edit.range(),
