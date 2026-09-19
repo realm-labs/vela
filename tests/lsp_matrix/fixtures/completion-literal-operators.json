@@ -1,0 +1,1794 @@
+{
+  "version": 1,
+  "id": "completion-literal-operators",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.literal_operators\"\nname=\"literal_operators\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"methods\":[{\"owner\":\"String\",\"name\":\"replace\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema String.replace docs.\"},{\"owner\":\"Array(i64)\",\"name\":\"insert\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Array<i64>.insert docs.\"},{\"owner\":\"Map(String, i64)\",\"name\":\"insert\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Map<String, i64>.insert docs.\"},{\"owner\":\"Option(i64)\",\"name\":\"is_some\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Option<i64>.is_some docs.\"},{\"owner\":\"Result(i64, String)\",\"name\":\"is_ok\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Unrelated schema Result<i64, String>.is_ok docs.\"}],\"types\":[{\"name\":\"HostColor\",\"fact\":{\"kind\":\"enum\",\"name\":\"HostColor\"}},{\"name\":\"Color\",\"fact\":{\"kind\":\"enum\",\"name\":\"Color\"}}],\"variants\":[{\"owner\":\"HostColor\",\"name\":\"Completed\",\"fact\":{\"kind\":\"enum\",\"name\":\"HostColor\",\"variant\":\"Completed\"},\"docs\":\"Owned host color variant.\"},{\"owner\":\"HostColor\",\"name\":\"Other\",\"fact\":{\"kind\":\"enum\",\"name\":\"HostColor\",\"variant\":\"Other\"},\"docs\":\"Owned host color variant.\"},{\"owner\":\"Color\",\"name\":\"Counterfeit\",\"fact\":{\"kind\":\"enum\",\"name\":\"Color\",\"variant\":\"Counterfeit\"},\"docs\":\"Wrong owner for source Color.\"}]}}",
+    "scripts/integer.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 42; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/hex.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 0x2A; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/binary.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 0b1010; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/signed_suffix.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 42i16; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/unsigned_suffix.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 42u8; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/float.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1.5; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/float_suffix.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1.5f32; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/string.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = \"hello\"; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/multiline.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = \"\"\"hello\nworld\"\"\"; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/bytes.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = b\"hello\"; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/char.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = '中'; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/true.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = true; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/false.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = false; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/unit.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = (); [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/tuple.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = (1, true); [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/array.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = [1, 2]; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/map.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = {\"key\": true}; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/set.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = set::from_array([\"tag\"]); [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/negate.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = -1; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = !true; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/add.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 + 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/subtract.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 4 - 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/multiply.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 3 * 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/divide.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 6 / 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/remainder.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 7 % 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/equal.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 == 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not_equal.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 != 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/identity.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 === 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not_identity.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 !== 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/less.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 < 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/less_equal.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 <= 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/greater.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 > 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/greater_equal.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 >= 2; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/and.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = true && false; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/or.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = true || false; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/range.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1..3; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/range_inclusive.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1..=3; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/array_index.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = [true, false][0]; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/map_index.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = {\"key\": true}[\"key\"]; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/string_index.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = \"hello\"[0]; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/bytes_index.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = b\"hello\"[0]; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/precedence.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1 + 2 * 3; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/parenthesized.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = (1 + 2) * 3; [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/array_element.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = [ [[replace:start]]zz_p[[cursor]][[replace:end]], 2]; }\n",
+    "scripts/tuple_element.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = (true, [[replace:start]]zz_p[[cursor]][[replace:end]]); }\n",
+    "scripts/map_value.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = {\"key\": [[replace:start]]zz_p[[cursor]][[replace:end]]}; }\n",
+    "scripts/index_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = [1, 2][ [[replace:start]]zz_p[[cursor]][[replace:end]]]; }\n",
+    "scripts/interpolation.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = f\"value = {[[replace:start]]zz_p[[cursor]][[replace:end]]}\"; }\n",
+    "scripts/negate_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = -[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: bool = true; let result = ![[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/add_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 + [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/subtract_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 - [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/multiply_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 * [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/divide_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 / [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/remainder_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 % [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/equal_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 == [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not_equal_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 != [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/identity_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 === [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/not_identity_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 !== [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/less_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 < [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/less_equal_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 <= [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/greater_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 > [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/greater_equal_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 >= [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/and_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: bool = true; let result = true && [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/or_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: bool = true; let result = true || [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/range_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 .. [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/range_inclusive_operand.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]]: i64 = 1; let result = 1 ..= [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/inside_string.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = \"[[replace:start]]zz_p[[cursor]][[replace:end]]\"; }\n",
+    "scripts/inside_bytes.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = b\"[[replace:start]]zz_p[[cursor]][[replace:end]]\"; }\n",
+    "scripts/inside_multiline.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = \"\"\"[[replace:start]]zz_p[[cursor]][[replace:end]]\"\"\"; }\n",
+    "scripts/no_fallback_scalar.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (1).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_bool.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (true).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_unit.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (()).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_tuple.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; ((1, true)).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_string.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (\"hello\").[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_bytes.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (b\"hello\").[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_array.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; ([1, 2]).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_map.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; ({\"key\": true}).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_set.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (set::from_array([\"tag\"])).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_range.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (1..3).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_dynamic.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (dynamic).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/no_fallback_unknown.vela": "/* 中😀 */ fn main(dynamic: Any) { let zz_pick = 1; (missing).[[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/literal_string.vela": "/* 中😀 */ fn main() { (\"hello\").[[replace:start]]replac[[cursor]][[replace:end]]; }\n",
+    "scripts/literal_array.vela": "/* 中😀 */ fn main() { ([1, 2]).[[replace:start]]inser[[cursor]][[replace:end]]; }\n",
+    "scripts/literal_map.vela": "/* 中😀 */ fn main() { ({\"key\": 1}).[[replace:start]]inser[[cursor]][[replace:end]]; }\n",
+    "scripts/inside_char.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = '[[replace:start]]z[[cursor]][[replace:end]]'; }\n",
+    "scripts/interpolation_text.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = f\"[[replace:start]]zz_p[[cursor]][[replace:end]] {1}\"; }\n",
+    "scripts/interpolation_escaped_brace.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = f\"{{[[replace:start]]zz_p[[cursor]][[replace:end]]}}\"; }\n",
+    "scripts/interpolation_after.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = f\"{1} [[replace:start]]zz_p[[cursor]][[replace:end]]\"; }\n",
+    "scripts/interpolation_raw_boundary.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = f\"[[replace:start]]zz_p[[cursor]][[replace:end]]{1}\"; }\n",
+    "scripts/unfinished_string.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = \"[[replace:start]]zz_p[[cursor]][[replace:end]]\n",
+    "scripts/unfinished_bytes.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = b\"[[replace:start]]zz_p[[cursor]][[replace:end]]\n",
+    "scripts/unfinished_multiline.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = \"\"\"[[replace:start]]zz_p[[cursor]][[replace:end]]\n",
+    "scripts/unfinished_interpolation.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = f\"[[replace:start]]zz_p[[cursor]][[replace:end]]\n",
+    "scripts/unfinished_empty_string.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let text = \"[[replace:start]][[cursor]][[replace:end]]\n",
+    "scripts/map_key_prefix.vela": "/* 中😀 */ enum Color { [[decl:start]]Completed[[decl:end]], Other } fn main() { let map: Map<Color, i64> = { Other: 0, [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_used.vela": "/* 中😀 */ enum Color { [[decl:start]]Completed[[decl:end]], Other } fn main() { let map: Map<Color, i64> = { Completed: 0, [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_mid_token.vela": "/* 中😀 */ enum Color { [[decl:start]]Completed[[decl:end]], Other } fn main() { let map: Map<Color, i64> = { [[replace:start]]Com[[cursor]]pletedWrong[[replace:end]]: 1 }; }\n",
+    "scripts/map_key_current.vela": "/* 中😀 */ enum Color { [[decl:start]]Completed[[decl:end]], Other } fn main() { let map: Map<Color, i64> = { [[replace:start]]Com[[cursor]]pleted[[replace:end]]: 1 }; }\n",
+    "scripts/map_key_schema.vela": "/* 中😀 */ fn main() { let map: Map<HostColor, i64> = { Other: 0, [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_untyped.vela": "/* 中😀 */ const Completed: i64 = 1; fn main() { let map = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_non_enum.vela": "/* 中😀 */ const Completed: i64 = 1; fn main() { let map: Map<i64, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_nested.vela": "/* 中😀 */ enum Color { Completed } fn main() { let map: Map<Color, Any> = { Completed: { [[replace:start]]Co[[cursor]][[replace:end]]: 1 } }; }\n",
+    "scripts/map_key_string.vela": "/* 中😀 */ fn main() { let map: Map<HostColor, i64> = { \"[[replace:start]]Co[[cursor]][[replace:end]]\": 1 }; }\n",
+    "scripts/api.vela": "pub const [[decl:start]]qq_pick[[decl:end]]: i64 = 1;\npub enum RemoteColor { Completed } enum Secret { Completed } pub struct NotColor {}\n",
+    "scripts/qualified_map_value.vela": "/* 中😀 */ fn main() { let map = { \"key\": api::[[replace:start]]qq_p[[cursor]][[replace:end]] }; }\n",
+    "scripts/map_value_eof.vela": "/* 中😀 */ fn main() { let [[decl:start]]zz_pick[[decl:end]] = 1; let map = { \"key\": [[replace:start]]zz_p[[cursor]][[replace:end]]\n",
+    "scripts/nested_map_type.vela": "/* 中😀 */ fn main() { let zz_pick = 1; let map = { \"key\": { let values: Array<[[replace:start]]zz_p[[cursor]][[replace:end]]> = []; values } }; }\n",
+    "scripts/map_key_alias.vela": "/* 中😀 */ use api::RemoteColor as Alias; fn main() {  let map: Map<Alias, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_namespace.vela": "/* 中😀 */ use api as Api; fn main() {  let map: Map<Api::RemoteColor, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_type_shadow.vela": "/* 中😀 */ use api::RemoteColor as Alias; fn main() { let Alias = 1; let map: Map<Alias, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_schema_alias.vela": "/* 中😀 */ use HostColor as Alias; fn main() {  let map: Map<Alias, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_private.vela": "/* 中😀 */ use api::Secret as Alias; fn main() {  let map: Map<Alias, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n",
+    "scripts/map_key_non_enum_owner.vela": "/* 中😀 */  fn main() {  let map: Map<api::NotColor, i64> = { [[replace:start]]Co[[cursor]][[replace:end]]: 1 }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "integer",
+        "file": "scripts/integer.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "hex",
+        "file": "scripts/hex.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "binary",
+        "file": "scripts/binary.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "signed_suffix",
+        "file": "scripts/signed_suffix.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i16",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "unsigned_suffix",
+        "file": "scripts/unsigned_suffix.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "u8",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "float",
+        "file": "scripts/float.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "f64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "float_suffix",
+        "file": "scripts/float_suffix.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "f32",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "string",
+        "file": "scripts/string.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "String",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "multiline",
+        "file": "scripts/multiline.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "String",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "bytes",
+        "file": "scripts/bytes.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Bytes",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "char",
+        "file": "scripts/char.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "char",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "true",
+        "file": "scripts/true.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "false",
+        "file": "scripts/false.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "unit",
+        "file": "scripts/unit.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "()",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "tuple",
+        "file": "scripts/tuple.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "(i64, bool)",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "array",
+        "file": "scripts/array.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Array(i64)",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "map",
+        "file": "scripts/map.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Map(String, bool)",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "set",
+        "file": "scripts/set.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Set(String)",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "negate",
+        "file": "scripts/negate.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not",
+        "file": "scripts/not.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "add",
+        "file": "scripts/add.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "subtract",
+        "file": "scripts/subtract.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "multiply",
+        "file": "scripts/multiply.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "divide",
+        "file": "scripts/divide.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "remainder",
+        "file": "scripts/remainder.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "equal",
+        "file": "scripts/equal.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not_equal",
+        "file": "scripts/not_equal.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "identity",
+        "file": "scripts/identity.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not_identity",
+        "file": "scripts/not_identity.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "less",
+        "file": "scripts/less.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "less_equal",
+        "file": "scripts/less_equal.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "greater",
+        "file": "scripts/greater.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "greater_equal",
+        "file": "scripts/greater_equal.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "and",
+        "file": "scripts/and.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "or",
+        "file": "scripts/or.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "range",
+        "file": "scripts/range.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Range",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "range_inclusive",
+        "file": "scripts/range_inclusive.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "Range",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "array_index",
+        "file": "scripts/array_index.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "map_index",
+        "file": "scripts/map_index.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "string_index",
+        "file": "scripts/string_index.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "char",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "bytes_index",
+        "file": "scripts/bytes_index.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "u8",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "precedence",
+        "file": "scripts/precedence.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "parenthesized",
+        "file": "scripts/parenthesized.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "array_element",
+        "file": "scripts/array_element.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "tuple_element",
+        "file": "scripts/tuple_element.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "map_value",
+        "file": "scripts/map_value.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "index_operand",
+        "file": "scripts/index_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "interpolation",
+        "file": "scripts/interpolation.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "negate_operand",
+        "file": "scripts/negate_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not_operand",
+        "file": "scripts/not_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "add_operand",
+        "file": "scripts/add_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "subtract_operand",
+        "file": "scripts/subtract_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "multiply_operand",
+        "file": "scripts/multiply_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "divide_operand",
+        "file": "scripts/divide_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "remainder_operand",
+        "file": "scripts/remainder_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "equal_operand",
+        "file": "scripts/equal_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not_equal_operand",
+        "file": "scripts/not_equal_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "identity_operand",
+        "file": "scripts/identity_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "not_identity_operand",
+        "file": "scripts/not_identity_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "less_operand",
+        "file": "scripts/less_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "less_equal_operand",
+        "file": "scripts/less_equal_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "greater_operand",
+        "file": "scripts/greater_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "greater_equal_operand",
+        "file": "scripts/greater_equal_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "and_operand",
+        "file": "scripts/and_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "or_operand",
+        "file": "scripts/or_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "bool",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "range_operand",
+        "file": "scripts/range_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "range_inclusive_operand",
+        "file": "scripts/range_inclusive_operand.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "inside_string",
+        "file": "scripts/inside_string.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "inside_bytes",
+        "file": "scripts/inside_bytes.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "inside_multiline",
+        "file": "scripts/inside_multiline.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_scalar",
+        "file": "scripts/no_fallback_scalar.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_bool",
+        "file": "scripts/no_fallback_bool.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_unit",
+        "file": "scripts/no_fallback_unit.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_tuple",
+        "file": "scripts/no_fallback_tuple.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_string",
+        "file": "scripts/no_fallback_string.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_bytes",
+        "file": "scripts/no_fallback_bytes.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_array",
+        "file": "scripts/no_fallback_array.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_map",
+        "file": "scripts/no_fallback_map.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_set",
+        "file": "scripts/no_fallback_set.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_range",
+        "file": "scripts/no_fallback_range.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_dynamic",
+        "file": "scripts/no_fallback_dynamic.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "no_fallback_unknown",
+        "file": "scripts/no_fallback_unknown.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "literal_string",
+        "file": "scripts/literal_string.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "replace",
+            "insert": "replace($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "String.replace",
+            "detail": "Function(String, String) -> String",
+            "signature": "String.replace(old: String, new: String) -> String",
+            "value": "\"a\", \"b\"",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "literal_array",
+        "file": "scripts/literal_array.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "insert",
+            "insert": "insert($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Array(i64).insert",
+            "detail": "Function(i64, i64) -> ()",
+            "signature": "Array(i64).insert(index: i64, value: i64) -> ()",
+            "value": "0, 1",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "literal_map",
+        "file": "scripts/literal_map.vela",
+        "context": "Member",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "insert",
+            "insert": "insert($0)",
+            "kind": "Method",
+            "origin": "builtin",
+            "symbol": "Map(String, i64).insert",
+            "detail": "Function(String, i64) -> Option(i64)",
+            "signature": "Map(String, i64).insert(key: String, value: i64) -> Option(i64)",
+            "value": "\"key\", 1",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "inside_char",
+        "file": "scripts/inside_char.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "interpolation_text",
+        "file": "scripts/interpolation_text.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "interpolation_escaped_brace",
+        "file": "scripts/interpolation_escaped_brace.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "interpolation_after",
+        "file": "scripts/interpolation_after.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "interpolation_raw_boundary",
+        "file": "scripts/interpolation_raw_boundary.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unfinished_string",
+        "file": "scripts/unfinished_string.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unfinished_bytes",
+        "file": "scripts/unfinished_bytes.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unfinished_multiline",
+        "file": "scripts/unfinished_multiline.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unfinished_interpolation",
+        "file": "scripts/unfinished_interpolation.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "unfinished_empty_string",
+        "file": "scripts/unfinished_empty_string.vela",
+        "context": "Expression",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_prefix",
+        "file": "scripts/map_key_prefix.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Color",
+            "origin": "source",
+            "symbol": "map_key_prefix::Color::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_used",
+        "file": "scripts/map_key_used.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_mid_token",
+        "file": "scripts/map_key_mid_token.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Color",
+            "origin": "source",
+            "symbol": "map_key_mid_token::Color::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_current",
+        "file": "scripts/map_key_current.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Color",
+            "origin": "source",
+            "symbol": "map_key_current::Color::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_schema",
+        "file": "scripts/map_key_schema.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "HostColor",
+            "origin": "schema",
+            "symbol": "HostColor::Completed",
+            "docs": "Owned host color variant."
+          }
+        ]
+      },
+      {
+        "id": "map_key_untyped",
+        "file": "scripts/map_key_untyped.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_non_enum",
+        "file": "scripts/map_key_non_enum.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_nested",
+        "file": "scripts/map_key_nested.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_string",
+        "file": "scripts/map_key_string.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "qualified_map_value",
+        "file": "scripts/qualified_map_value.vela",
+        "context": "ModulePath",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "qq_pick",
+            "insert": "qq_pick",
+            "kind": "Const",
+            "detail": "i64",
+            "origin": "source",
+            "symbol": "api::qq_pick",
+            "docs": null,
+            "target": "scripts/api.vela",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "map_value_eof",
+        "file": "scripts/map_value_eof.vela",
+        "context": "Expression",
+        "applySuffix": " }; }",
+        "items": [
+          {
+            "label": "zz_pick",
+            "insert": "zz_pick",
+            "kind": "Binding",
+            "detail": "i64",
+            "origin": "none",
+            "docs": null,
+            "target": "self",
+            "marker": "decl"
+          }
+        ]
+      },
+      {
+        "id": "nested_map_type",
+        "file": "scripts/nested_map_type.vela",
+        "context": "TypeHint",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_alias",
+        "file": "scripts/map_key_alias.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Alias",
+            "origin": "source",
+            "symbol": "api::RemoteColor::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_namespace",
+        "file": "scripts/map_key_namespace.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Api::RemoteColor",
+            "origin": "source",
+            "symbol": "api::RemoteColor::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_type_shadow",
+        "file": "scripts/map_key_type_shadow.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Alias",
+            "origin": "source",
+            "symbol": "api::RemoteColor::Completed",
+            "docs": null
+          }
+        ]
+      },
+      {
+        "id": "map_key_schema_alias",
+        "file": "scripts/map_key_schema_alias.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": [
+          {
+            "label": "Completed",
+            "insert": "Completed",
+            "kind": "Variant",
+            "detail": "Alias",
+            "origin": "schema",
+            "symbol": "HostColor::Completed",
+            "docs": "Owned host color variant."
+          }
+        ]
+      },
+      {
+        "id": "map_key_private",
+        "file": "scripts/map_key_private.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      },
+      {
+        "id": "map_key_non_enum_owner",
+        "file": "scripts/map_key_non_enum_owner.vela",
+        "context": "MapKey",
+        "applySuffix": "",
+        "items": []
+      }
+    ]
+  }
+}

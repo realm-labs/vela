@@ -17,7 +17,7 @@ impl CstParser<'_, '_> {
             .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
             .filter(|candidate| *candidate <= end)
             .unwrap_or(end);
-        let close = self.record_contents_end(start, fields_end);
+        let close = self.braced_contents_end(start, fields_end);
         self.builder.start_node(SyntaxKind::RecordExprFieldList);
         self.emit_until(start + 1);
         while self.pos < close {
@@ -60,7 +60,7 @@ impl CstParser<'_, '_> {
             return;
         };
         self.emit_until(fields_start + 1);
-        let close = self.record_contents_end(fields_start, end);
+        let close = self.braced_contents_end(fields_start, end);
         while self.pos < close {
             let field_start = self.skip_trivia(self.pos);
             self.emit_until(field_start);
@@ -116,16 +116,6 @@ impl CstParser<'_, '_> {
             depth.bump(current);
         }
         None
-    }
-
-    fn record_contents_end(&self, start: usize, end: usize) -> usize {
-        if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-            == Some(end)
-        {
-            end.saturating_sub(1)
-        } else {
-            end
-        }
     }
 }
 

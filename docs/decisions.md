@@ -4689,3 +4689,14 @@ selection prefers deeper bodies, and half-open scope probing uses an identifier
 inside the selected body before a callee anchor. MIR rejects signature roots as
 runtime compilation entries. This does not add callable method bodies or infer
 unhinted declaration types from initializers.
+
+Completion uses CST token and expression ownership at literal/Map boundaries.
+Map values suppress the colon-based type heuristic, while nested type-hint CST
+nodes retain their type role. Literal-content gating probes the prefix token;
+raw interpolation chunks and malformed literal tokens suppress code candidates,
+and closed interpolation expressions remain eligible. Unclosed maps retain their
+last value through the same braced-content bounds used by records. Map-key
+suggestions reuse the enum path owner resolver, expand imports as type hints
+without value shadowing, exclude other present keys and replace the full current
+identifier. Suggestion metadata identifies an enum variant; the applied bare
+Map key remains a logical string key with no invented definition target.

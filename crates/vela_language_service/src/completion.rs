@@ -33,6 +33,7 @@ mod imports;
 mod incremental_tests;
 mod item;
 mod lambda_parameter;
+mod literal_content;
 mod local;
 mod map_key;
 mod member_index;
@@ -146,6 +147,11 @@ impl LanguageServiceDatabases {
         };
         self.completion_query_is_current(token).then_some(())?;
         let context = completion_context(&query);
+        if literal_content::is_literal_content(&query) {
+            return self
+                .completion_query_is_current(token)
+                .then(|| empty_completion_list(context));
+        }
         let analysis = completion_analysis(self, &query, &context);
         let mut items = if let Some(items) = service_path::completion_items(self, &query, &context)
             .or_else(|| task_path::completion_items(&query, &context))
@@ -168,7 +174,7 @@ impl LanguageServiceDatabases {
                 CompletionContextKind::StructFieldDeclaration => {
                     self.struct_field_completion_items(&context)
                 }
-                CompletionContextKind::MapKey => self.map_key_completion_items(&context),
+                CompletionContextKind::MapKey => self.map_key_completion_items(&query, &context),
                 CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
                 CompletionContextKind::NamedArgument => {
                     self.named_argument_completion_items(&query, &context)
@@ -305,13 +311,17 @@ impl LanguageServiceDatabases {
         })
     }
 
-    fn map_key_completion_items(&self, context: &CompletionContext) -> Vec<CompletionItem> {
+    fn map_key_completion_items(
+        &self,
+        query: &QueryContext<'_>,
+        context: &CompletionContext,
+    ) -> Vec<CompletionItem> {
         let Some(map_key) = context.map_key.as_ref() else {
             return Vec::new();
         };
         map_key_context_completion_items(
-            self.hir_db().graph(),
-            self.schema_db().facts(),
+            self,
+            query,
             map_key,
             context.replace_range(),
             context.prefix(),

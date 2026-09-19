@@ -1,31 +1,27 @@
 use vela_common::SourceId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
-use vela_package::ModuleKey;
 use vela_syntax::ast::{
     AstNode, SyntaxLetStmt, SyntaxMapEntry, SyntaxMapExpr, SyntaxSourceFile, SyntaxTypeHint,
 };
 use vela_syntax::{SyntaxNode, SyntaxToken, TextRange as SyntaxTextRange, TextSize, TokenAtOffset};
 
 use crate::{
-    TextRange,
+    LanguageServiceDatabases, QueryContext, TextRange,
     completion::{
-        CompletionInsertFormat, CompletionItem, CompletionKind, dedupe_and_filter_service_items,
-        display_type_detail_parts, label_segment_matches,
+        CompletionItem, dedupe_and_filter_service_items, display_type_detail_parts,
+        label_segment_matches, module_path::enum_variant_path_completions,
     },
-    symbol_ref::{schema_variant_symbol, source_enum_variant_symbol},
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct MapKeyContext {
     pub(super) key_hint: Option<HirTypeHint>,
     pub(super) used_keys: Vec<Vec<String>>,
-    pub(super) current_module: Option<ModuleKey>,
 }
 
 pub(super) fn map_key_completion_items(
-    graph: &ModuleGraph,
-    schema: &vela_analysis::registry::RegistryFacts,
+    databases: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
     map_key: &MapKeyContext,
     replace_range: TextRange,
     prefix: &str,
@@ -33,8 +29,24 @@ pub(super) fn map_key_completion_items(
     let Some(key_hint) = map_key.key_hint.as_ref() else {
         return Vec::new();
     };
-    let mut items = script_enum_variant_key_completions(graph, map_key, key_hint);
-    items.extend(schema_enum_variant_key_completions(schema, key_hint));
+    let graph = databases.hir_db().graph();
+    let Some(module) = query.module_key().and_then(|key| graph.module_id(key)) else {
+        return Vec::new();
+    };
+    // This owner comes from a type hint; value bindings cannot shadow it.
+    let Some(path) = graph.expand_import_path(module, &key_hint.path) else {
+        return Vec::new();
+    };
+    let base = path.join("::");
+    let items =
+        enum_variant_path_completions(graph, databases.schema_db().facts(), module, &base, prefix)
+            .into_iter()
+            .map(|mut item| {
+                let detail = display_type_detail_parts(key_hint.display());
+                item.detail = detail.render();
+                item.with_detail_parts(detail)
+            })
+            .collect();
     let used_keys = map_key
         .used_keys
         .iter()
@@ -58,8 +70,7 @@ pub(super) fn map_key_at(
     let map = entry.syntax().parent().and_then(SyntaxMapExpr::cast)?;
     Some(MapKeyContext {
         key_hint: enclosing_let_map_key_hint(source_id, &map),
-        used_keys: map_entry_path_keys(&map),
-        current_module: None,
+        used_keys: map_entry_path_keys(&map, &entry),
     })
 }
 
@@ -123,8 +134,9 @@ fn span_for(source_id: Option<SourceId>, range: SyntaxTextRange) -> vela_common:
     )
 }
 
-fn map_entry_path_keys(map: &SyntaxMapExpr) -> Vec<Vec<String>> {
+fn map_entry_path_keys(map: &SyntaxMapExpr, current: &SyntaxMapEntry) -> Vec<Vec<String>> {
     map.entries()
+        .filter(|entry| entry.syntax() != current.syntax())
         .filter_map(|entry| {
             entry
                 .key()
@@ -141,77 +153,4 @@ fn range_contains_offset(range: SyntaxTextRange, offset: TextSize) -> Option<()>
 fn syntax_offset(offset: usize) -> Option<TextSize> {
     let offset = u32::try_from(offset).ok()?;
     Some(TextSize::from(offset))
-}
-
-fn script_enum_variant_key_completions(
-    graph: &ModuleGraph,
-    map_key: &MapKeyContext,
-    key_hint: &HirTypeHint,
-) -> Vec<CompletionItem> {
-    let Some(declaration) = script_enum_key_declaration(graph, map_key, key_hint) else {
-        return Vec::new();
-    };
-    let Some(shape) = graph.enum_shape(declaration.id) else {
-        return Vec::new();
-    };
-    shape
-        .variants
-        .iter()
-        .filter_map(|variant| {
-            let symbol = source_enum_variant_symbol(graph, declaration.id, &variant.name)?;
-            let detail_parts = display_type_detail_parts(key_hint.display());
-            Some(
-                CompletionItem {
-                    label: variant.name.clone(),
-                    kind: CompletionKind::Variant,
-                    detail: detail_parts.render(),
-                    insert_text: None,
-                    insert_format: CompletionInsertFormat::PlainText,
-                    sort_text: None,
-                    metadata: Default::default(),
-                }
-                .with_detail_parts(detail_parts)
-                .with_symbol(symbol),
-            )
-        })
-        .collect()
-}
-
-fn script_enum_key_declaration<'a>(
-    graph: &'a ModuleGraph,
-    map_key: &MapKeyContext,
-    key_hint: &HirTypeHint,
-) -> Option<&'a vela_hir::module_graph::Declaration> {
-    graph.declaration_by_type_path(
-        &key_hint.path,
-        map_key.current_module.as_ref()?,
-        DeclarationKind::Enum,
-    )
-}
-
-fn schema_enum_variant_key_completions(
-    schema: &vela_analysis::registry::RegistryFacts,
-    key_hint: &HirTypeHint,
-) -> Vec<CompletionItem> {
-    let owner = key_hint.path.join("::");
-    schema
-        .variants_for_owner_or_short_name(&owner)
-        .into_iter()
-        .map(|variant| {
-            let owner = variant.owner;
-            let name = variant.name;
-            let detail_parts = display_type_detail_parts(key_hint.display());
-            CompletionItem {
-                label: name.clone(),
-                kind: CompletionKind::Variant,
-                detail: detail_parts.render(),
-                insert_text: None,
-                insert_format: CompletionInsertFormat::PlainText,
-                sort_text: None,
-                metadata: Default::default(),
-            }
-            .with_detail_parts(detail_parts)
-            .with_symbol(schema_variant_symbol(&owner, &name))
-        })
-        .collect()
 }

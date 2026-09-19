@@ -28,6 +28,11 @@ fn signature_scope_matrix_projects_nested_binding_owners() {
 }
 
 #[test]
+fn literal_operator_matrix_projects_values_operands_and_member_owners() {
+    assert_type_ownership("completion-literal-operators");
+}
+
+#[test]
 fn package_type_ownership_projects_exact_dependency_targets_and_edits() {
     assert_type_ownership("completion-package-type-ownership");
 }
@@ -425,6 +430,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         "Binding" => 6,
                         "Parameter" => 6,
                         "Value" => 12,
+                        "Variant" => 20,
                         "Module" => 9,
                         other => panic!("{other}"),
                     };

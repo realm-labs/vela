@@ -5119,6 +5119,94 @@
           "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
         }
       ]
+    },
+    {
+      "requirement": "completion/syntax/S7/positive/service",
+      "assertion": "Reviewed S7 partitions in reviews/completion-s7.md. One hundred thirteen shared LF/CRLF Unicode queries assert literal/container/result details, all unary/arithmetic/equality/identity/comparison/logical/range families, operands, indexing, interpolation code, literal member calls and owned Map key/value contexts. Both layers independently check complete sets, identity/resolve, byte/UTF-16 edits, applied parses, signatures and definition results. Existing member/enum/authoring matrices cover record constructors, payloads and full builtin receiver inventories. Bare Map-key suggestions retain enum metadata but applied keys remain logical strings with explicit null definitions.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::literal_operator_matrix_preserves_values_operands_and_member_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S7/positive/protocol",
+      "assertion": "Reviewed S7 partitions in reviews/completion-s7.md. One hundred thirteen shared LF/CRLF Unicode queries assert literal/container/result details, all unary/arithmetic/equality/identity/comparison/logical/range families, operands, indexing, interpolation code, literal member calls and owned Map key/value contexts. Both layers independently check complete sets, identity/resolve, byte/UTF-16 edits, applied parses, signatures and definition results. Existing member/enum/authoring matrices cover record constructors, payloads and full builtin receiver inventories. Bare Map-key suggestions retain enum metadata but applied keys remain logical strings with explicit null definitions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::literal_operator_matrix_projects_values_operands_and_member_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S7/negative/service",
+      "assertion": "Thirty-three new queries have exact empty sets for literal text and malformed literal tokens, member fallback, quoted/untyped/nested/used/private/non-enum Map keys and value names in nested type positions. Raw interpolation boundaries remain text while closed interpolation code completes. Map-key owners exclude colliding schema variants, preserve current-key eligibility and replace full mid-token identifiers; EOF Map values recover without losing their final token. Existing matrices exclude unknown/private/used constructors and erased receiver guesses. No generated, runtime conversion, scale, UX04 or fresh macOS acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "completion::type_ownership_tests::literal_operator_matrix_preserves_values_operands_and_member_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::member_matrix_tests::member_matrix_preserves_exact_owner_sets_docs_edits_and_erased_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "completion::enum_alias_tests::enum_alias_matrix_preserves_candidates_and_applied_reference_owners"
+        },
+        {
+          "layer": "service",
+          "name": "completion::authoring_surface_tests::authoring_surface_preserves_complete_templates_compact_details_and_applied_source"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/syntax/S7/negative/protocol",
+      "assertion": "Thirty-three new queries have exact empty sets for literal text and malformed literal tokens, member fallback, quoted/untyped/nested/used/private/non-enum Map keys and value names in nested type positions. Raw interpolation boundaries remain text while closed interpolation code completes. Map-key owners exclude colliding schema variants, preserve current-key eligibility and replace full mid-token identifiers; EOF Map values recover without losing their final token. Existing matrices exclude unknown/private/used constructors and erased receiver guesses. No generated, runtime conversion, scale, UX04 or fresh macOS acceptance is inferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::literal_operator_matrix_projects_values_operands_and_member_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_members::member_matrix_projects_exact_sets_resolve_payloads_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_enum_aliases::enum_alias_matrix_projects_owned_edits_definitions_and_restored_candidates"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::completion_authoring_surface::authoring_surface_projects_complete_templates_compact_details_and_applied_source"
+        }
+      ]
     }
   ],
   "featureFiles": [

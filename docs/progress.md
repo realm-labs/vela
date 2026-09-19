@@ -832,7 +832,15 @@ assignment/return/loop flow, callbacks and body templates. Equal-span body
 selection prefers inner lambdas; typed-lambda defaults preserve their own colon
 and comma boundaries. HIR ownership/import refresh and MIR runtime rejection
 have direct tests; required methods remain bodyless.
-Resume B03.54 with S7 semantic review and UX04 interaction proof.
+S7 completion now has reviewed literal/operator coverage. One hundred thirteen
+shared LF/CRLF Unicode queries cover value/result types, operands, indexing,
+literal-content exclusions and owned Map keys/values. Map values retain expression
+contexts; raw and malformed literal content excludes code candidates while
+closed interpolation expressions remain eligible. Unclosed Map CSTs retain their
+last value. Map-key suggestions use the existing enum owner resolver, preserve
+current-key eligibility and replace whole identifiers; applied bare keys retain
+their existing logical-string semantics and null definition result.
+Resume B03.55 with completion-resolve editor smoke and UX04 interaction proof.
 B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

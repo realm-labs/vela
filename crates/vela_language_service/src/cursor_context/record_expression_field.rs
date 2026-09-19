@@ -1,4 +1,6 @@
-use vela_syntax::ast::{AstNode, SyntaxRecordExpr, SyntaxRecordExprField, SyntaxSourceFile};
+use vela_syntax::ast::{
+    AstNode, SyntaxMapEntry, SyntaxRecordExpr, SyntaxRecordExprField, SyntaxSourceFile,
+};
 use vela_syntax::{TextRange as SyntaxTextRange, TextSize};
 
 pub(super) fn is_record_expression_field_context(source: &SyntaxSourceFile, offset: usize) -> bool {
@@ -35,6 +37,27 @@ pub(super) fn is_record_expression_value_context(source: &SyntaxSourceFile, offs
         .descendants()
         .filter_map(SyntaxRecordExprField::cast)
         .any(|field| field_value_contains_offset(source, &field, offset))
+}
+
+pub(super) fn is_map_expression_value_context(source: &SyntaxSourceFile, offset: usize) -> bool {
+    let Some(offset) = syntax_offset(offset) else {
+        return false;
+    };
+    source
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxMapEntry::cast)
+        .any(|entry| {
+            entry.colon_token().is_some_and(|colon| {
+                colon.text_range().end() <= offset
+                    && (offset <= entry.syntax().text_range().end()
+                        || at_eof_after_whitespace(
+                            source,
+                            entry.syntax().text_range().end(),
+                            offset,
+                        ))
+            })
+        })
 }
 
 fn field_value_contains_offset(

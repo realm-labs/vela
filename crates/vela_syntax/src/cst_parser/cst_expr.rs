@@ -227,7 +227,7 @@ impl CstParser<'_, '_> {
     }
 
     fn map_expression_body(&mut self, start: usize, end: usize) {
-        let close = end.saturating_sub(1);
+        let close = self.braced_contents_end(start, end);
         self.emit_until(start + 1);
         while self.pos < close {
             let entry_start = self.skip_trivia(self.pos);
@@ -578,12 +578,13 @@ impl CstParser<'_, '_> {
     }
 
     fn braced_expression_has_map_entry(&self, start: usize, end: usize) -> bool {
-        let close = end.saturating_sub(1);
-        if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-            != Some(end)
+        if self
+            .find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            .is_some_and(|close| close != end)
         {
             return false;
         }
+        let close = self.braced_contents_end(start, end);
 
         let first_entry = self.skip_trivia(start + 1);
         if first_entry >= close {
@@ -596,6 +597,16 @@ impl CstParser<'_, '_> {
         let first_entry_end = self.find_argument_end(first_entry, close);
         self.find_root_kind_before(SyntaxKind::Colon, first_entry, first_entry_end)
             .is_some()
+    }
+
+    fn braced_contents_end(&self, start: usize, end: usize) -> usize {
+        if self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
+            == Some(end)
+        {
+            end.saturating_sub(1)
+        } else {
+            end
+        }
     }
 
     fn find_argument_end(&self, start: usize, end: usize) -> usize {

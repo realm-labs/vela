@@ -133,6 +133,11 @@ fn signature_scope_matrix_preserves_nested_binding_owners() {
     assert_type_ownership("completion-signature-scopes");
 }
 
+#[test]
+fn literal_operator_matrix_preserves_values_operands_and_member_owners() {
+    assert_type_ownership("completion-literal-operators");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -313,6 +318,7 @@ fn assert_type_ownership(fixture_id: &str) {
                         Some("Member") => crate::CompletionContextKind::Member,
                         Some("RecordField") => crate::CompletionContextKind::RecordField,
                         Some("Pattern") => crate::CompletionContextKind::Pattern,
+                        Some("MapKey") => crate::CompletionContextKind::MapKey,
                         _ => crate::CompletionContextKind::TypeHint,
                     },
                     "{case}"

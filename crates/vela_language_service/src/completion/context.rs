@@ -92,15 +92,16 @@ pub(super) fn completion_context(query: &QueryContext<'_>) -> CompletionContext 
     }
 
     if cursor.kind() == CursorContextKind::MapKey
-        && let Some(mut map_key) = query
+        && let Some(map_key) = query
             .syntax_parse()
             .and_then(|parse| map_key_at(&parse.tree(), query.source_id(), offset))
     {
-        map_key.current_module = query.module_key().cloned();
         return CompletionContext {
             kind: CompletionContextKind::MapKey,
             prefix: prefix.to_owned(),
-            replace_range: TextRange::new(prefix_start, offset),
+            replace_range: cursor
+                .identifier_range()
+                .unwrap_or(TextRange::new(prefix_start, offset)),
             module_base: None,
             member_receiver: None,
             record_constructor: None,
