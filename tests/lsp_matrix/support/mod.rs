@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 
 mod schema;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
+mod source;
+pub(crate) use source::source_lifecycle_spec;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Point {

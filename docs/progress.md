@@ -776,7 +776,11 @@ metadata-removal/restoration and retained-resolve proof with fresh service check
 Missing, malformed and unsupported schema files now clear host authoring facts
 while retaining source candidates and controlled diagnostics through recovery;
 completion's missing/stale-schema state requirements have concrete mappings.
-Resume B03.42 with source/dependency lifecycle, remaining S5 review and
+Source callable disk changes, deletion and recreation now have shared root/dep
+ownership proof, fresh service/protocol comparisons, exact applied signatures
+and definition targets, and diagnostic recovery. Source resolve remains empty
+and never borrows colliding schema documentation.
+Resume B03.43 with dirty dependency overlays and close/save/reopen, remaining S5 review and
 semantic, lifecycle and UX04 interaction proof. B00-B02 acceptance snapshots stay
 fixed, and the remaining whole-batch inventory stays at 1332 requirements.
 Windows x64 has current installed VSIX and native input coverage for B01/UX02/UX03:

@@ -1806,10 +1806,29 @@
         "completion-resolve/states/missing_schema/protocol"
       ],
       "summary": "Seven ordered unavailable-schema states cover initial facts, real schema deletion, restoration with changed async return ownership, malformed JSON, changed sync recovery, unsupported format version and final restoration. Service/protocol run 56 exact candidate queries, 38 applied edits and 21 unchanged-call signature queries under Unicode LF/CRLF. Source-only fields/functions retain exact edits, named parameters, inlays, signatures and independent definition markers while host candidates/signatures and retained old resolve docs disappear. Fresh service assembly matches incremental answers. A continuously open source-only document receives exactly one warning with the schema::unavailable code, controlled message and empty location during each unavailable state; recovery clears all diagnostics. Protocol tests exercise actual file writes/deletion and created/changed/deleted notifications. Focused helper modules keep schema phase setup and diagnostic assertions separate from candidate application checks. No product correction was required. New catalog mappings cover completion missing_schema/stale_schema and extend the existing resolve mappings without removing prior tests. The current feature audit records 155 verified, 1170 unreviewed and two N/A obligations, with no failed rows. Workspace 4505 passed, two historical ignored; Clippy/fmt and Node 73 passed. Windows VSIX editors/vscode/test-results/run-FG7CbY/results.json passed 9; native editors/vscode/test-results/input-dcQBxs/results.json passed 13; strict target/lsp-matrix/run-Idoasa/report.json refreshed all 145 accepted B00-B02 requirements with original snapshots unchanged. The twelve requirement references record partial progress, not S5 or batch acceptance. B03 remains unaccepted. Resume B03.42 with source/dependency lifecycle, remaining S5/semantic review, URI/client and UX04 proof. Fresh macOS evidence is required when next used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B03.42",
+      "revision": null,
+      "requirements": [
+        "completion/syntax/S5/positive/service",
+        "completion/syntax/S5/positive/protocol",
+        "completion/syntax/S5/negative/service",
+        "completion/syntax/S5/negative/protocol",
+        "completion/states/dependency_change/protocol",
+        "completion/states/dependency_delete/protocol",
+        "completion-resolve/syntax/S5/positive/service",
+        "completion-resolve/syntax/S5/positive/protocol",
+        "completion-resolve/syntax/S5/negative/service",
+        "completion-resolve/syntax/S5/negative/protocol",
+        "completion-resolve/states/dependency_change/protocol",
+        "completion-resolve/states/dependency_delete/protocol"
+      ],
+      "summary": "Six ordered source states cover initial root/dependency declarations, dependency edit, root edit, dependency deletion, recreation and restoration. Per Unicode LF/CRLF run, service/protocol check 108 candidate queries, 142 applied edits and 24 unchanged-call signature/definition probes. Same-name package functions, aliases, inherent/default/trait methods and returned fields retain exact owner-specific types, parameters, inlays and marker-derived definitions; deleted owners cannot borrow root/transitive/schema facts. Fresh service assembly and a fresh protocol instance match persistent state, including unopened importer completion/signature queries. A continuously open import control publishes the expected dependency-loss diagnostics and clears them on recreation. Real file create/change/delete notifications drive protocol invalidation. Retained source resolve items remain unchanged without colliding schema documentation under the current conservative source-doc contract; this does not introduce source doc-comment support. No product correction was required. Four new catalog mappings cover completion and resolve dependency_change/dependency_delete. Current feature audit: 159 verified, 1166 unreviewed, two N/A, no failed rows. Workspace 4507 passed, two historical ignored; fmt/Clippy and Node 73 passed. Windows VSIX editors/vscode/test-results/run-lZcQgf/results.json passed 9; native editors/vscode/test-results/input-fvqXwl/results.json passed 13; strict target/lsp-matrix/run-ycC2RC/report.json refreshed all 145 accepted B00-B02 requirements without changing original snapshots. The twelve requirement references record partial S5 progress and the mapped source states, not whole S5 or B03 acceptance. Resume B03.43 with dirty dependency overlays and close/save/reopen, then remaining S5/semantic, URI/client and UX04 proof. Fresh macOS evidence is required when used; B16 remains deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B03.42",
-  "nextTask": "B03.42",
+  "activeChild": "B03.43",
+  "nextTask": "B03.43",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -3905,7 +3924,18 @@
     "target/b03-41-input.log",
     "target/b03-41-accepted-regression.log",
     "editors/vscode/test-results/run-FG7CbY/results.json",
-    "editors/vscode/test-results/input-dcQBxs/results.json"
+    "editors/vscode/test-results/input-dcQBxs/results.json",
+    "target/lsp-matrix/run-ycC2RC/report.json",
+    "target/b03-42-baseline.log",
+    "target/b03-42-source.log",
+    "target/b03-42-workspace.log",
+    "target/b03-42-clippy.log",
+    "target/b03-42-node.log",
+    "target/b03-42-editor.log",
+    "target/b03-42-input.log",
+    "target/b03-42-accepted-regression.log",
+    "editors/vscode/test-results/run-lZcQgf/results.json",
+    "editors/vscode/test-results/input-fvqXwl/results.json"
   ],
   "openIssues": [
     {
@@ -4526,8 +4556,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "ee46dc6713e2ceb32578c68bc99207589e1a75bd",
-          "treeSha256": "792a2e32cebb40ae5c977461ee1a14e9d86c3b23e7951248616ffa45e4e90ca2"
+          "revision": "707187fc2f8c941c7a35e5230315793ff4001367",
+          "treeSha256": "339cdd51d425ace918c53df2f0d190d198dd3bb3b38505a929c70728469aa7cc"
         },
         "profile": {
           "platform": "win32",
@@ -4535,11 +4565,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-Idoasa/report.json"
+          "target/lsp-matrix/run-ycC2RC/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-FG7CbY/results.json --local-results editors/vscode/test-results/input-dcQBxs/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B02 --editor-results editors/vscode/test-results/run-lZcQgf/results.json --local-results editors/vscode/test-results/input-fvqXwl/results.json",
             "exitCode": 0
           }
         ]

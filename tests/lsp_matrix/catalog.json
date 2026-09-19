@@ -3039,6 +3039,46 @@
           "name": "tests::completion_type_ownership::unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_facts"
         }
       ]
+    },
+    {
+      "requirement": "completion/states/dependency_change/protocol",
+      "assertion": "Six-state package source lifecycle changes dependency and root signatures/fields with real watched-file events. Unopened completion/signature queries match a fresh protocol instance and exact fixture sets; applying candidates checks owner-specific signatures, named arguments, inlays and independently marked definitions under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        }
+      ]
+    },
+    {
+      "requirement": "completion/states/dependency_delete/protocol",
+      "assertion": "Deleting a real dependency clears exact member/function/alias candidate sets, unchanged-call signatures and definitions without falling back to same-name root/schema owners. Recreating it restores new types, parameters and shifted targets; a continuously open importer publishes loss diagnostics and clears them on recovery. Fresh protocol state agrees under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/dependency_change/protocol",
+      "assertion": "Retained actual source completion items resolve unchanged through root/dependency edits, deletion, recreation and restoration: source documentation remains absent under the current contract and colliding schema function/method docs never leak into source items. Current candidates are applied and checked against exact source signatures and owned targets; incremental and fresh protocol answers agree under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        }
+      ]
+    },
+    {
+      "requirement": "completion-resolve/states/dependency_delete/protocol",
+      "assertion": "Retained actual source completion items resolve unchanged through root/dependency edits, deletion, recreation and restoration: source documentation remains absent under the current contract and colliding schema function/method docs never leak into source items. Current candidates are applied and checked against exact source signatures and owned targets; incremental and fresh protocol answers agree under Unicode LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::completion_type_ownership::source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation"
+        }
+      ]
     }
   ],
   "featureFiles": [

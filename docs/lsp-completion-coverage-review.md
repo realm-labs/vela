@@ -10,8 +10,8 @@ fixture does not certify every combination in an S dimension.
 
 | Partition | Existing shared proof | Remaining review |
 |---|---|---|
-| Source calls, defaults and named arguments | `completion-named-arguments`, `call-parameter-mapping`, `call-argument-context`, `completion-call-expressions`: occupied/current/future slots, nested delimiters, labels versus values, active/expected parameters, edits. `completion-package-callables` checks same-path dependency functions/constants, exact applied signatures, named parameters and definition locations. `completion-package-members` checks qualified/aliased function returns. | Extend package identity checks to dependency lifecycle combinations and remaining returned-receiver forms. |
-| Source methods and traits | `completion-members`, `completion-callable-hints`, `completion-callable-returns`: inherent/trait/default/Provider methods, hints and returned members. `completion-package-members`: exact sets for same-name types across packages; inherent/default methods, trait receiver signatures, applied parameter edits, resolved docs, definition targets and UTF-16 inlay positions; function/method returns and local bindings. `completion-return-flow`: required/default trait returns, awaited functions/methods, same-owner block/if/else-if/match/lambda results and negative erased/unit/unknown receivers. | `completion-receiver-assignments` checks reassignment, mixed-package branch/match/loop identities, shared field type unions and ambiguous field navigation. Shared-method, abrupt-exit and loop/match combinations are indexed below. Source-backed docs and navigation must agree through dependency edits; remaining async restrictions still need review. |
+| Source calls, defaults and named arguments | `completion-named-arguments`, `call-parameter-mapping`, `call-argument-context`, `completion-call-expressions`: occupied/current/future slots, nested delimiters, labels versus values, active/expected parameters, edits. `completion-package-callables` checks same-path dependency functions/constants, exact applied signatures, named parameters and definition locations. `completion-package-members` checks qualified/aliased function returns. | Disk dependency transitions are covered below; extend to dirty overlays, manifest changes and remaining returned-receiver forms. |
+| Source methods and traits | `completion-members`, `completion-callable-hints`, `completion-callable-returns`: inherent/trait/default/Provider methods, hints and returned members. `completion-package-members`: exact sets for same-name types across packages; inherent/default methods, trait receiver signatures, applied parameter edits, resolved docs, definition targets and UTF-16 inlay positions; function/method returns and local bindings. `completion-return-flow`: required/default trait returns, awaited functions/methods, same-owner block/if/else-if/match/lambda results and negative erased/unit/unknown receivers. | `completion-receiver-assignments` checks reassignment, mixed-package branch/match/loop identities, shared field type unions and ambiguous field navigation. Shared-method, abrupt-exit and loop/match combinations are indexed below. Disk dependency navigation and conservative source resolve are covered below; dirty overlays and remaining async restrictions still need review. |
 | Schema/native calls and methods | `completion-named-arguments`, `completion-callable-hints`: explicit and legacy metadata, known parameter prefixes, unknown/Any/extra slots. | Review complete async/await and returned-receiver combinations with replacement/removal of metadata. |
 | Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. `completion-sync-callbacks`: 36 cases for static sync function references, async exclusions, named/reordered slots, dynamic values, canonical resolve/definitions, reflection signature alternatives and ordinary nested calls. `completion-callback-factories` checks existing calls. `completion-callback-contracts` and `completion-callback-results` retain declared signatures and distinguish direct-lambda result facts from erased callback results. | Review remaining contextual parameter/return combinations together with the complete S5 call workflow; these completion tests do not certify runtime callback admission. |
 | Imports and unavailable owners | `callable-imports`, `completion-import-aliases`, `completion-expression-ownership`: source/schema/stdlib aliases, local/declaration shadowing, private/missing/duplicate owners. `completion-package-callables` checks direct dependency function/namespace aliases, `crate::` fallback and inaccessible/transitive declarations. `completion-package-members` distinguishes owned methods/returns from same-name direct/transitive and schema declarations. | Review remaining returned-receiver forms and dependency lifecycle combinations. |
@@ -151,7 +151,21 @@ post-edit signature check.
    warning during unavailability and no diagnostics after recovery. Service
    queries also match fresh state. These assertions map completion's missing and
    stale schema requirements and extend the existing resolve-state proofs;
-   source/dependency and broader cross-feature lifecycle review remains open.
+   `completion-source-callable-lifecycle` adds six disk states: initial facts,
+   changed dependency, changed root, dependency deletion, recreation and full
+   restoration. Each LF/CRLF run checks 108 candidate queries, 142 applied edits
+   and 24 unchanged-call signature/definition probes. Same-name root/dependency
+   functions, inherent/default/trait methods, aliases and returned fields retain
+   their own types, parameter names, inlays and independently marked targets.
+   Deleted owners yield no candidates, signatures or definition targets; recreated
+   owners use shifted ranges and new contracts. Incremental service and protocol
+   answers match fresh state, including unopened importers. A continuously open
+   control reports dependency loss and clears its diagnostics on recovery.
+   Source resolve deliberately returns no documentation under the current source
+   contract, including retained old items; colliding schema docs cannot leak into
+   those items. This does not add source doc-comment support. Dirty dependency
+   overlays, close/save/reopen, manifest changes and broader cross-feature
+   lifecycle review remain open.
 2. Complete the semantic review of every applicable syntax dimension, including
    item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
    evidence already in the catalog does not close the remaining dimensions.

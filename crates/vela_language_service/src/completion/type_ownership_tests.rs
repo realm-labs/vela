@@ -1,4 +1,3 @@
-use schema_lifecycle::phase_databases;
 mod schema_lifecycle;
 
 use crate::matrix_fixture::{FixtureWorkspace, load};
@@ -88,6 +87,11 @@ fn unavailable_schema_lifecycle_preserves_source_authoring_and_clears_stale_host
     assert_type_ownership("completion-schema-unavailable");
 }
 
+#[test]
+fn source_callable_lifecycle_preserves_package_owners_after_edits_deletion_and_recreation() {
+    assert_type_ownership("completion-source-callable-lifecycle");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -100,7 +104,11 @@ fn assert_type_ownership(fixture_id: &str) {
         let layout = Layout::new(&fixture);
         let uri = |file: &str| layout.uri(file);
         let mut db = databases(&fixture, &layout);
-        let phases = spec.oracle["schemaLifecycle"]
+        let source_lifecycle = spec.oracle["sourceLifecycle"].is_array();
+        let phases = spec
+            .oracle
+            .get("sourceLifecycle")
+            .unwrap_or(&spec.oracle["schemaLifecycle"])
             .as_array()
             .cloned()
             .unwrap_or_else(|| vec![Value::Null]);
@@ -108,7 +116,18 @@ fn assert_type_ownership(fixture_id: &str) {
             std::collections::BTreeMap::<String, crate::CompletionResolvePayload>::new();
         for phase in phases {
             let mut current = spec.clone();
-            if !phase.is_null() {
+            if source_lifecycle {
+                current = crate::matrix_fixture::source_lifecycle_spec(&spec, &phase, crlf);
+                let fixture = FixtureWorkspace::new(&current).expect("source phase");
+                update(&mut db, &fixture, &layout);
+                for payload in saved.values() {
+                    assert_eq!(
+                        db.completion_documentation(payload),
+                        None,
+                        "source resolve: {phase}"
+                    );
+                }
+            } else if !phase.is_null() {
                 match crate::matrix_fixture::schema_lifecycle_source(&phase) {
                     Some(text) => {
                         current.files.insert("schema.json".to_owned(), text);
@@ -157,6 +176,30 @@ fn assert_type_ownership(fixture_id: &str) {
                     query["labels"],
                     "cached signature: {phase}"
                 );
+                if source_lifecycle {
+                    let point = position(&source.text, source.markers["callee"].start.byte + 1);
+                    let actual = db.definition(&uri(file), point);
+                    assert_eq!(
+                        actual,
+                        databases(&fixture, &layout).definition(&uri(file), point)
+                    );
+                    if let Some(target) = query["target"].as_str() {
+                        let target_source = fixture.document(target).expect("target");
+                        let marker = target_source.markers[string(query, "marker")];
+                        let actual = actual.expect("existing-call definition");
+                        assert_eq!(actual.document_id(), &uri(target));
+                        assert_eq!(
+                            actual.range().start(),
+                            position(&target_source.text, marker.start.byte)
+                        );
+                        assert_eq!(
+                            actual.range().end(),
+                            position(&target_source.text, marker.end.byte)
+                        );
+                    } else {
+                        assert!(actual.is_none(), "removed dependency: {query}");
+                    }
+                }
             }
             for case in spec.oracle["queries"].as_array().expect("queries") {
                 let file = string(case, "file");
@@ -169,14 +212,23 @@ fn assert_type_ownership(fixture_id: &str) {
                         result,
                         phase_databases(&fixture, &layout, &phase)
                             .completion_items(&uri(file), pos),
-                        "fresh schema state: {case}"
+                        "fresh lifecycle state: {case}"
                     );
                     for item in result.items() {
-                        if let Some(SymbolRef::Schema(name)) = item.symbol() {
-                            saved.insert(
-                                name.clone(),
-                                item.resolve_payload().expect("schema resolve").clone(),
-                            );
+                        match item.symbol() {
+                            Some(SymbolRef::Schema(name)) if !source_lifecycle => {
+                                saved.insert(
+                                    name.clone(),
+                                    item.resolve_payload().expect("resolve").clone(),
+                                );
+                            }
+                            Some(SymbolRef::Source(_)) if source_lifecycle => {
+                                saved.insert(
+                                    format!("{}:{}", string(case, "id"), item.label()),
+                                    item.resolve_payload().expect("resolve").clone(),
+                                );
+                            }
+                            _ => {}
                         }
                     }
                 }
@@ -525,6 +577,20 @@ fn position(text: &str, byte: usize) -> Position {
         byte - text[..byte].rfind('\n').map_or(0, |i| i + 1),
     )
 }
+fn phase_databases(
+    fixture: &FixtureWorkspace,
+    layout: &Layout,
+    phase: &Value,
+) -> LanguageServiceDatabases {
+    if phase.is_null() || phase["files"].is_object() {
+        return databases(fixture, layout);
+    }
+    let mut db = LanguageServiceDatabases::new();
+    update(&mut db, fixture, layout);
+    schema_lifecycle::apply_phase(&mut db, phase);
+    db
+}
+
 fn databases(f: &FixtureWorkspace, layout: &Layout) -> LanguageServiceDatabases {
     let mut db = LanguageServiceDatabases::new();
     update(&mut db, f, layout);

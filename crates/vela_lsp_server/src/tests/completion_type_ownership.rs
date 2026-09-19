@@ -1,4 +1,5 @@
 mod schema_lifecycle;
+mod source_lifecycle;
 
 use crate::matrix_fixture::{Edit, FixtureWorkspace, apply_edits, load};
 use crate::tests::{TestServer, notify, request, response_value};
@@ -85,6 +86,11 @@ fn unavailable_schema_lifecycle_projects_source_authoring_and_clears_stale_host_
     assert_type_ownership("completion-schema-unavailable");
 }
 
+#[test]
+fn source_callable_lifecycle_projects_package_owners_after_edits_deletion_and_recreation() {
+    assert_type_ownership("completion-source-callable-lifecycle");
+}
+
 fn assert_type_ownership(fixture_id: &str) {
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
@@ -102,13 +108,17 @@ fn assert_type_ownership(fixture_id: &str) {
                 .expect("URI")
                 .to_string()
         };
+        let capabilities = json!({"textDocument":{"completion":{"completionItem":{"snippetSupport":true,"labelDetailsSupport":true,"resolveSupport":{"properties":["documentation"]}}}}});
         let mut server = TestServer::new();
         let _ = request::<r::Initialize>(
             &mut server,
             1,
-            json!({"processId":null,"rootUri":uri(""),"capabilities":{"textDocument":{"completion":{"completionItem":{"snippetSupport":true,"labelDetailsSupport":true,"resolveSupport":{"properties":["documentation"]}}}}}}),
+            json!({"processId":null,"rootUri":uri(""),"capabilities":capabilities}),
         );
-        if let Some(file) = spec.oracle["schemaDiagnosticFile"].as_str() {
+        if let Some(file) = spec.oracle["schemaDiagnosticFile"]
+            .as_str()
+            .or_else(|| spec.oracle["sourceDiagnosticFile"].as_str())
+        {
             let source = fixture.document(file).expect("diagnostic control");
             let _ = notify::<n::DidOpenTextDocument>(
                 &mut server,
@@ -116,14 +126,41 @@ fn assert_type_ownership(fixture_id: &str) {
             );
         }
         let mut id = 2;
-        let phases = spec.oracle["schemaLifecycle"]
+        let source_lifecycle = spec.oracle["sourceLifecycle"].is_array();
+        let phases = spec
+            .oracle
+            .get("sourceLifecycle")
+            .unwrap_or(&spec.oracle["schemaLifecycle"])
             .as_array()
             .cloned()
             .unwrap_or_else(|| vec![Value::Null]);
         let mut saved = std::collections::BTreeMap::<String, Value>::new();
         for phase in phases {
             let mut current = spec.clone();
-            if !phase.is_null() {
+            if source_lifecycle {
+                current = crate::matrix_fixture::source_lifecycle_spec(&spec, &phase, crlf);
+                let fixture = FixtureWorkspace::new(&current).expect("source phase");
+                source_lifecycle::apply_phase(
+                    &mut server,
+                    &root,
+                    &fixture,
+                    &phase,
+                    string(&spec.oracle, "sourceDiagnosticFile"),
+                );
+                for item in saved.values() {
+                    let resolved = response_value(request::<r::ResolveCompletionItem>(
+                        &mut server,
+                        id,
+                        item.clone(),
+                    ));
+                    id += 1;
+                    assert!(resolved["error"].is_null(), "{resolved}");
+                    assert_eq!(
+                        &resolved["result"], item,
+                        "source resolve must preserve the original item without schema docs: {phase}"
+                    );
+                }
+            } else if !phase.is_null() {
                 match crate::matrix_fixture::schema_lifecycle_source(&phase) {
                     Some(text) => {
                         current.files.insert("schema.json".to_owned(), text);
@@ -157,6 +194,8 @@ fn assert_type_ownership(fixture_id: &str) {
             }
             let spec = current;
             let fixture = FixtureWorkspace::new(&spec).expect("phase fixture");
+            let mut fresh =
+                source_lifecycle.then(|| source_lifecycle::fresh_server(&root, &capabilities));
             for query in phase["signatureQueries"]
                 .as_array()
                 .map(Vec::as_slice)
@@ -179,27 +218,72 @@ fn assert_type_ownership(fixture_id: &str) {
                         .collect::<Vec<_>>()
                 });
                 assert_eq!(json!(labels), query["labels"], "cached signature: {phase}");
+                if let Some(fresh) = &mut fresh {
+                    let independent = response_value(request::<r::SignatureHelpRequest>(
+                        fresh,
+                        id,
+                        json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}}),
+                    ));
+                    id += 1;
+                    assert!(independent["error"].is_null(), "{independent}");
+                    assert_eq!(
+                        result["result"], independent["result"],
+                        "fresh signature: {phase}"
+                    );
+                    source_lifecycle::assert_definition(&mut server, &root, &fixture, query, id);
+                    id += 1;
+                    source_lifecycle::assert_definition(fresh, &root, &fixture, query, id);
+                    id += 1;
+                }
             }
             for case in spec.oracle["queries"].as_array().expect("queries") {
                 let file = string(case, "file");
                 let source = fixture.document(file).expect("document");
                 let point = source.markers["cursor"].start;
                 let range = source.markers["replace"];
+                let params = json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}});
+                let unopened = fresh.as_mut().map(|fresh| {
+                    let live =
+                        response_value(request::<r::Completion>(&mut server, id, params.clone()));
+                    id += 1;
+                    let independent =
+                        response_value(request::<r::Completion>(fresh, id, params.clone()));
+                    id += 1;
+                    assert!(
+                        live["error"].is_null() && independent["error"].is_null(),
+                        "{live} {independent}"
+                    );
+                    assert_eq!(
+                        live["result"], independent["result"],
+                        "fresh unopened importer: {phase} {case}"
+                    );
+                    live["result"].clone()
+                });
                 let _ = notify::<n::DidOpenTextDocument>(
                     &mut server,
                     json!({"textDocument":{"uri":uri(file),"languageId":"vela","version":1,"text":source.text}}),
                 );
-                let params = json!({"textDocument":{"uri":uri(file)},"position":{"line":point.line,"character":point.character}});
                 let response =
                     response_value(request::<r::Completion>(&mut server, id, params.clone()));
                 id += 1;
                 assert!(response["error"].is_null(), "{case} {response}");
+                if let Some(unopened) = unopened {
+                    assert_eq!(
+                        response["result"], unopened,
+                        "opening unchanged source: {case}"
+                    );
+                }
                 let items = response["result"]["items"].as_array().expect("items");
                 if !phase.is_null() {
                     for item in items {
                         let symbol = &item["data"]["resolve"]["symbol"];
-                        if symbol["kind"] == "schema" {
+                        if symbol["kind"] == "schema" && !source_lifecycle {
                             saved.insert(string(symbol, "name").to_owned(), item.clone());
+                        } else if symbol["kind"] == "source" && source_lifecycle {
+                            saved.insert(
+                                format!("{}:{}", string(case, "id"), string(item, "label")),
+                                item.clone(),
+                            );
                         }
                     }
                 }

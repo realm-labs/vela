@@ -1,6 +1,6 @@
-use super::{Layout, databases, update};
+use super::Layout;
 use crate::LanguageServiceDatabases;
-use crate::matrix_fixture::{FixtureWorkspace, schema_lifecycle_source};
+use crate::matrix_fixture::schema_lifecycle_source;
 use serde_json::Value;
 
 pub(super) fn apply_phase(db: &mut LanguageServiceDatabases, phase: &Value) {
@@ -21,20 +21,6 @@ pub(super) fn apply_phase(db: &mut LanguageServiceDatabases, phase: &Value) {
     } else {
         assert!(diagnostics.is_empty(), "{phase}: {diagnostics:?}");
     }
-}
-
-pub(super) fn phase_databases(
-    fixture: &FixtureWorkspace,
-    layout: &Layout,
-    phase: &Value,
-) -> LanguageServiceDatabases {
-    if phase.is_null() {
-        return databases(fixture, layout);
-    }
-    let mut db = LanguageServiceDatabases::new();
-    update(&mut db, fixture, layout);
-    apply_phase(&mut db, phase);
-    db
 }
 
 pub(super) fn assert_diagnostics(
