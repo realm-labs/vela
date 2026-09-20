@@ -17,6 +17,10 @@ pub(crate) fn variant_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-variant-fields", crlf)
 }
 
+pub(crate) fn schema_field_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-fields", crlf)
+}
+
 pub(crate) fn replacement(site: &Value, name: &str) -> String {
     format!("{name}{}", site["suffix"].as_str().unwrap_or(""))
 }
@@ -82,6 +86,9 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
         *source = source.replace(&old, &new);
     }
     result.oracle["groups"][group]["name"] = new_name.into();
+    if let Some(index) = definition["schemaField"].as_u64() {
+        result.oracle["schema"]["fields"][index as usize]["name"] = new_name.into();
+    }
     for site in result.oracle["groups"][group]["sites"]
         .as_array_mut()
         .expect("sites")

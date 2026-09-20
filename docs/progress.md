@@ -881,18 +881,15 @@ matrix across same-named enums and distinct variants. Enum/variant aliases and
 patterns share exact references and applied rename edits; shorthand locals stay
 independent. Unknown labels and non-record/missing variants own empty results.
 Both layers apply all three field groups and recheck local ownership, collisions,
-LF/CRLF, UTF-16 and document versions. S4/S6 stay open. Resume B04.08 with remaining
-schema and callable ownership partitions, then semantic/lifecycle and UX05/UX06.
-B04.08 is in progress: source-backed schema field rename now includes scoped
-constructor and pattern labels and expands shorthand without renaming its local
-value. A Unicode LF/CRLF service regression checks exact edits from declaration,
-label and dot queries, applies edits, regenerates metadata and rechecks targets.
-References and rename now share scoped schema record sites. Service assertions
-check exact reference/highlight sets and kinds before and after metadata rebuild,
-separate same-named source/other-schema owners, reject unknown-label capture and
-keep metadata-only fields non-renamable. Protocol-specific matrices, remaining
-negative ownership partitions and fresh editor acceptance are still required;
-this child and its checkpoint do not advance.
+LF/CRLF, UTF-16 and document versions. S4/S6 stay open.
+B04.08 adds a shared 14-query schema field matrix: references and rename use scoped
+constructor/pattern sites, separate source/schema owners and preserve shorthand
+locals. Both layers apply three field groups, compare whole files, regenerate
+schema metadata and repeat/restored queries. Metadata-only fields retain references
+without rename; unknown-label capture rejects. Protocol covers schema file watches,
+UTF-16, open/closed versions and schema ABI annotations. Broad S4/S6 remain open.
+Resume B04.09 with remaining callable/schema-variant ownership partitions, then
+semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

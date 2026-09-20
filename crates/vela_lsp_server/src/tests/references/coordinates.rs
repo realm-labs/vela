@@ -24,13 +24,22 @@ fn variant_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::variant_field_spec);
 }
 
+#[test]
+fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::schema_field_spec);
+}
+
 fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
         let spec = spec_for(crlf);
         let fixture = FixtureWorkspace::new(&spec).expect("fixture");
         let mut driver = Driver::new(&fixture);
+        driver.load_schema(&spec, &fixture);
         driver.check(&spec, &fixture);
         for (group, definition) in spec.oracle["groups"].as_object().expect("groups") {
+            if definition["readonly"] == true {
+                continue;
+            }
             let site = &definition["sites"][0];
             let new_name = definition["rename"].as_str().expect("new name");
             let params = driver.params(&fixture, site);
@@ -59,8 +68,10 @@ fn run_matrix(spec_for: fn(bool) -> Spec) {
             }
             oracle::assert_parsed(&applied);
             driver.change(&applied);
+            driver.load_schema(&expected, &applied);
             driver.check(&expected, &applied);
             driver.change(&fixture);
+            driver.load_schema(&spec, &fixture);
             driver.check(&spec, &fixture);
         }
         // A disk snapshot retained after close has an internal service version,
@@ -84,14 +95,7 @@ struct Driver {
 }
 impl Driver {
     fn new(fixture: &FixtureWorkspace) -> Self {
-        let root = std::env::temp_dir().join(format!(
-            "vela-reference-中文 % -{}-{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("valid fixture value")
-                .as_nanos()
-        ));
+        let root = crate::tests::support::unique_temp_root("references").join("中文 % references");
         fixture.materialize(&root).expect("isolated fixture");
         let mut driver = Self {
             root,
@@ -107,6 +111,28 @@ impl Driver {
             driver.open(file, &fixture.disk[file].text);
         }
         driver
+    }
+    fn load_schema(&mut self, spec: &Spec, fixture: &FixtureWorkspace) {
+        if spec.oracle["schema"].is_null() {
+            return;
+        }
+        let path = self.root.join("target/schema.json");
+        let existed = path.exists();
+        std::fs::create_dir_all(path.parent().expect("schema parent")).expect("schema directory");
+        let snapshot = self.endpoint.snapshot();
+        let artifact =
+            crate::matrix_fixture::schema_artifact(&spec.oracle["schema"], fixture, |file| {
+                snapshot.databases().source_db().records()
+                    [&vela_language_service::DocumentId::from(self.uri(file))]
+                    .source_id()
+                    .get()
+            });
+        std::fs::write(&path, artifact.to_string()).expect("regenerated schema");
+        let schema_uri = self.uri("target/schema.json");
+        let _ = notify::<n::DidChangeWatchedFiles>(
+            &mut self.endpoint,
+            json!({"changes":[{"uri":schema_uri,"type":if existed {2} else {1}}]}),
+        );
     }
     fn uri(&self, file: &str) -> String {
         lsp_types::Url::from_file_path(self.root.join(file))
@@ -200,6 +226,22 @@ impl Driver {
                 let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
                 let edit=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":"renamed_symbol"}));
                 if let Some(group) = query["group"].as_str() {
+                    if spec.oracle["groups"][group]["readonly"] == true {
+                        assert!(prepare.is_null());
+                        assert!(edit.is_null());
+                        assert!(self.query::<r::GotoDefinition>(params.clone()).is_null());
+                        continue;
+                    }
+                    if spec.oracle["groups"][group]["origin"] == "schema" {
+                        assert!(
+                            edit["changeAnnotations"]
+                                .as_object()
+                                .expect("schema ABI warnings")
+                                .values()
+                                .any(|value| value["description"] == "schemaAbi"
+                                    && value["needsConfirmation"] == true)
+                        );
+                    }
                     if spec.oracle["checkDefinition"] == true {
                         let site = &sites[0];
                         let definition = self.query::<r::GotoDefinition>(params.clone());
@@ -260,15 +302,16 @@ impl Driver {
 }
 impl Drop for Driver {
     fn drop(&mut self) {
-        assert_eq!(self.root.parent(), Some(std::env::temp_dir().as_path()));
+        let allocation = self.root.parent().expect("isolated allocation");
+        assert_eq!(allocation.parent(), Some(std::env::temp_dir().as_path()));
         assert!(
-            self.root
+            allocation
                 .file_name()
                 .expect("valid fixture value")
                 .to_string_lossy()
-                .starts_with("vela-reference-中文 % -")
+                .starts_with("vela-lsp-references-")
         );
-        std::fs::remove_dir_all(&self.root).expect("fixture cleanup");
+        std::fs::remove_dir_all(allocation).expect("fixture cleanup");
     }
 }
 fn wire_point(point: &Value) -> (usize, usize) {

@@ -28,6 +28,11 @@ fn variant_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::variant_field_spec);
 }
 
+#[test]
+fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::schema_field_spec);
+}
+
 fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
         let spec = spec_for(crlf);
@@ -35,8 +40,12 @@ fn run_matrix(spec_for: fn(bool) -> Spec) {
         oracle::assert_parsed(&fixture);
         let mut db = LanguageServiceDatabases::new();
         update(&mut db, &fixture);
+        load_schema(&mut db, &spec, &fixture);
         check_queries(&db, &spec, &fixture);
         for (group, definition) in spec.oracle["groups"].as_object().expect("groups") {
+            if definition["readonly"] == true {
+                continue;
+            }
             let site = &definition["sites"][0];
             let file = site["file"].as_str().expect("file");
             let marker = site["marker"].as_str().expect("marker");
@@ -69,8 +78,10 @@ fn run_matrix(spec_for: fn(bool) -> Spec) {
             }
             oracle::assert_parsed(&applied);
             update(&mut db, &applied);
+            load_schema(&mut db, &expected, &applied);
             check_queries(&db, &expected, &applied);
             update(&mut db, &fixture);
+            load_schema(&mut db, &spec, &fixture);
             check_queries(&db, &spec, &fixture);
         }
     }
@@ -117,7 +128,14 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
         let sites = oracle::sites(spec, query);
         let symbol = query["group"].as_str().map(|group| {
             let definition = &spec.oracle["groups"][group];
-            if definition["origin"] == "source" {
+            if definition["origin"] == "schema" {
+                SymbolRef::Schema(
+                    definition["qualified"]
+                        .as_str()
+                        .expect("schema owner")
+                        .into(),
+                )
+            } else if definition["origin"] == "source" {
                 SymbolRef::Source(definition["qualified"].as_str().expect("qualified").into())
             } else {
                 let declaration = &definition["sites"][0];
@@ -166,6 +184,12 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
             let prepared = db.prepare_rename(&uri(file), point);
             let renamed = db.rename(&uri(file), point, "renamed_symbol");
             if let Some(group) = query["group"].as_str() {
+                if spec.oracle["groups"][group]["readonly"] == true {
+                    assert!(prepared.is_none());
+                    assert!(renamed.is_none());
+                    assert!(db.definition(&uri(file), point).is_none());
+                    continue;
+                }
                 if spec.oracle["checkDefinition"] == true {
                     let site = &sites[0];
                     let definition = db.definition(&uri(file), point).expect("owned definition");
@@ -198,6 +222,14 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 assert_eq!(Some(prepared.symbol()), symbol.as_ref());
                 let renamed = renamed.expect("rename plan");
                 assert_eq!(renamed.symbol(), symbol.as_ref());
+                if spec.oracle["groups"][group]["origin"] == "schema" {
+                    assert!(
+                        renamed
+                            .risks()
+                            .iter()
+                            .any(|risk| risk.kind() == crate::RenameRiskKind::SchemaAbi)
+                    );
+                }
                 let actual = renamed.document_edits().iter().flat_map(|document| document.edits().iter().map(|edit|
                     json!({"uri":document.document_id().as_str(),"range":range_json(edit.range()),"newText":edit.new_text()}))).collect();
                 let expected = sites.iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")})).collect();
@@ -270,4 +302,18 @@ fn byte_offset(text: &str, point: Position) -> usize {
         .map(str::len)
         .sum::<usize>()
         + point.character
+}
+
+fn load_schema(db: &mut LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWorkspace) {
+    if spec.oracle["schema"].is_null() {
+        return;
+    }
+    let artifact =
+        crate::matrix_fixture::schema_artifact(&spec.oracle["schema"], fixture, |file| {
+            db.source_db().records()[&uri(file)].source_id().get()
+        });
+    db.load_schema_artifact_json(
+        "/workspace/中文 % references/target/schema.json",
+        &artifact.to_string(),
+    );
 }

@@ -1,0 +1,289 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-fields",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_fields\"\nname = \"schema_fields\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[field-decl:start]]value[[field-decl:end]]() {}\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub fn [[other-decl:start]]value[[other-decl:end]]() {}\nfn closed([[other-param:start]]value[[other-param:end]]: i64) { host::Record { [[closed-label:start]]value[[closed-label:end]]: 3 }; third::Record { [[other-shorthand:start]]value[[other-shorthand:end]] }; }\n",
+    "scripts/main.vela": "use host::Record as Alias\n/* 中😀 */ pub struct Record { [[source-decl:start]]value[[source-decl:end]]: i64 }\nfn main([[main-param:start]]value[[main-param:end]]: i64, item: host::Record) {\n let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };\n let b = Alias { [[short:start]]value[[short:end]] };\n match a { Alias { [[pattern:start]]value[[pattern:end]]: bound } => bound };\n match b { host::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]] } => [[pattern-body:start]]value[[pattern-body:end]] };\n item.[[dot-read:start]]value[[dot-read:end]];\n item.[[dot-write:start]]value[[dot-write:end]] += 1;\n Record { [[source-label:start]]value[[source-label:end]]: 1 };\n third::Record { [[other-label:start]]value[[other-label:end]]: 2 };\n other::Record { [[metadata-label:start]]value[[metadata-label:end]]: 3 };\n host::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 };\n Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 5 };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "field": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "schema",
+        "qualified": "host::Record.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "explicit",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "short",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-shorthand",
+            "kind": "Pattern",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "dot-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "dot-write",
+            "kind": "Write"
+          }
+        ],
+        "schemaField": 0
+      },
+      "other": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "schema",
+        "qualified": "third::Record.value",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ],
+        "schemaField": 2
+      },
+      "source": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "main::Record.value",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "metadata": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "schema",
+        "qualified": "other::Record.value",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "metadata-label",
+            "kind": "Read"
+          }
+        ],
+        "readonly": true
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "field-decl",
+        "group": "field"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-decl",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "explicit",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dot-read",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dot-write",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-label",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "metadata-label",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-owner",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      }
+    ],
+    "localChecks": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "short",
+        "queryGroup": "field",
+        "target": "main-param"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-shorthand",
+        "queryGroup": "other",
+        "target": "other-param"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-body",
+        "target": "pattern-shorthand",
+        "targetGroup": "field"
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "host::Record",
+          "fact": {
+            "kind": "host",
+            "name": "host::Record"
+          }
+        },
+        {
+          "name": "third::Record",
+          "fact": {
+            "kind": "host",
+            "name": "third::Record"
+          }
+        },
+        {
+          "name": "other::Record",
+          "fact": {
+            "kind": "host",
+            "name": "other::Record"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "host::Record",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl"
+          }
+        },
+        {
+          "owner": "host::Record",
+          "name": "spare",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          }
+        },
+        {
+          "owner": "third::Record",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          },
+          "sourceSpan": {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl"
+          }
+        },
+        {
+          "owner": "other::Record",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "i64"
+          }
+        }
+      ]
+    },
+    "checkDefinition": true,
+    "rejections": {
+      "field": [
+        "spare",
+        "bogus"
+      ]
+    }
+  }
+}

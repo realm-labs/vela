@@ -2587,10 +2587,49 @@
         "rename/syntax/S6/negative/protocol"
       ],
       "summary": "Advance 32 S4/S6 reference/highlight/prepare-rename/rename cells with an independent three-file enum record-field matrix: 15 queries, 12 sites, three field owners and three preserved-local probes; broad cells remain unreviewed. Separate same-named enums and sibling record variants, enum/variant import aliases, qualified/local constructors, explicit/shorthand match patterns and a closed consumer. Negative labels cover literals, unknown fields/owners and known enums' unit/tuple/missing variants; reject existing-field and same-variant unknown-label capture while unrelated variants/enums may use the same spelling. Both layers repeat exact sets, classifications, definition/prepare targets and edits; apply all three groups, compare whole files, parse, requery and restore under Unicode LF/CRLF. Preserve constructor parameter and pattern-local ownership after shorthand expansion. Protocol checks encoded paths, UTF-16, both edit forms and open/closed versions. Unify struct and enum record-field ownership via canonical declaration plus optional variant, preserving Pattern classification and replacing the old name-based enum search. Explicit invalid labels own empty results; filter queried labels before owner resolution. Existing struct matrix also passes. Workspace 4562 passed, two historical ignored; service 660, protocol 645; focused field/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-QqK7fP/results.json passed 10 and native editors/vscode/test-results/input-Asj19E/results.json passed 16; strict target/lsp-matrix/run-QlAnGY/report.json refreshes 247 accepted B00-B03 obligations with original snapshots unchanged. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.08 remaining schema/callable ownership and semantic/lifecycle plus UX05/UX06 gates. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B04.08",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/negative/protocol",
+        "references/syntax/S6/positive/service",
+        "references/syntax/S6/positive/protocol",
+        "references/syntax/S6/negative/service",
+        "references/syntax/S6/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/negative/protocol",
+        "highlight/syntax/S6/positive/service",
+        "highlight/syntax/S6/positive/protocol",
+        "highlight/syntax/S6/negative/service",
+        "highlight/syntax/S6/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S6/positive/service",
+        "prepare-rename/syntax/S6/positive/protocol",
+        "prepare-rename/syntax/S6/negative/service",
+        "prepare-rename/syntax/S6/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/negative/protocol",
+        "rename/syntax/S6/positive/service",
+        "rename/syntax/S6/positive/protocol",
+        "rename/syntax/S6/negative/service",
+        "rename/syntax/S6/negative/protocol"
+      ],
+      "summary": "Advance 32 S4/S6 reference/highlight/prepare-rename/rename cells with an independent three-file schema record-field matrix: 14 queries, 14 sites, four groups and three local probes; broad cells remain unreviewed. Separate two source-backed schema fields, a same-named source struct field and a metadata-only schema field. Cover qualified/aliased constructors, explicit/shorthand patterns, dot reads/compound writes, a closed consumer and unknown labels/owners/literals. Reject existing-field and unknown-label capture; another schema owner can adopt that spelling. Both layers repeat exact sets/kinds, highlights, definitions, prepare targets and edits; apply all three writable groups, compare full files, parse, explicitly regenerate schema metadata, requery and restore. Preserve shorthand parameters/pattern bindings; metadata-only fields retain references but null definition/prepare/rename. Protocol checks UTF-16, Unicode encoded paths, LF/CRLF, didChange, schema file watches, both edit forms, open/closed versions and schema ABI confirmation annotations. Earlier B04.08 commits repaired constructor/pattern edits and aliased references using shared scoped schema ownership. Initial Windows workspace run exposed timestamp fixture-root collisions; replaced with the existing atomic allocator and ran its frozen-clock concurrency regression. Retain initial failure evidence. Workspace 4565 passed, two historical ignored; service 662, protocol 646; matrix/rename suites, fmt, workspace Clippy and Node 75 passed. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.09 callable/schema-variant ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find the final child checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-VFYm3u/results.json passed 10; native editors/vscode/test-results/input-36si3k/results.json passed 16; strict regression target/lsp-matrix/run-IVcYke/report.json."
     }
   ],
-  "activeChild": "B04.08",
-  "nextTask": "B04.08",
+  "activeChild": "B04.09",
+  "nextTask": "B04.09",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4885,7 +4924,23 @@
     "target/b04-08-references.log",
     "target/b04-08-reference-rename-final.log",
     "target/b04-08-reference-clippy-final.log",
-    "target/b04-08-reference-fmt.log"
+    "target/b04-08-reference-fmt.log",
+    "target/lsp-matrix/run-IVcYke/report.json",
+    "target/b04-08-workspace-initial.log",
+    "target/b04-08-temp-roots.log",
+    "target/b04-08-matrix-baseline.log",
+    "target/b04-08-matrix-focused.log",
+    "target/b04-08-final-rename.log",
+    "target/b04-08-workspace.log",
+    "target/b04-08-final-fmt.log",
+    "target/b04-08-workspace-clippy.log",
+    "target/b04-08-node.log",
+    "target/b04-08-editor.log",
+    "target/b04-08-input.log",
+    "target/b04-08-accepted-regression.log",
+    "editors/vscode/test-results/run-VFYm3u/results.json",
+    "editors/vscode/test-results/input-36si3k/results.json",
+    "target/lsp-matrix/run-u4NTcK/report.json"
   ],
   "openIssues": [
     {
@@ -5915,8 +5970,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "0cea3620bfcb0e91a3de50d8b5f2730d043aba65",
-          "treeSha256": "d95e9c8314315b75aed465ab9872c464e4307ed5859e5b9c9335a09a2e14fb5e"
+          "revision": "7e6d3012ae3f48b3285b8ef587e618df0f44dccf",
+          "treeSha256": "d83fa3583a4ee69b509ef0825acfa77f61129c58de4871d254f08c0fce01b04c"
         },
         "profile": {
           "platform": "win32",
@@ -5924,11 +5979,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-QlAnGY/report.json"
+          "target/lsp-matrix/run-IVcYke/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-QqK7fP/results.json --local-results editors/vscode/test-results/input-Asj19E/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-VFYm3u/results.json --local-results editors/vscode/test-results/input-36si3k/results.json",
             "exitCode": 0
           }
         ]
