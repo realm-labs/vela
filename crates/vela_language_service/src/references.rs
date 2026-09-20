@@ -5,7 +5,6 @@ use crate::{
     symbol_ref::{
         qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
         source_member_symbol, source_symbol_for_declaration, source_symbol_for_declaration_id,
-        source_variant_field_symbol,
     },
     symbol_target::SymbolTarget,
 };
@@ -25,12 +24,11 @@ mod record_variant_patterns;
 pub(crate) mod schema;
 mod support;
 mod type_hints;
-mod variant_fields;
 
 use support::{
-    declaration_name_matches, diagnostic_range, is_call_callee, is_identifier_boundary,
-    last_name_range_in_text, name_range_in_text, record_owner_names, resolved_use_reference_kind,
-    span_text_range, token_text,
+    diagnostic_range, is_call_callee, is_identifier_boundary, last_name_range_in_text,
+    name_range_in_text, record_owner_names, resolved_use_reference_kind, span_text_range,
+    token_text,
 };
 
 #[derive(Debug, Clone, Copy, Eq, Ord, PartialEq, PartialOrd)]
@@ -219,6 +217,11 @@ impl LanguageServiceDatabases {
             return self.local_references(bindings, local.id, include_declaration);
         }
 
+        if let Some(target) = fields::script_record_field_use_target(self, source, &token) {
+            return target.map_or_else(Vec::new, |target| {
+                fields::script_field_references(self, &target, include_declaration)
+            });
+        }
         if let Some(target) = trait_declaration_target(graph, source_id, &token) {
             return self.trait_references(&target, include_declaration);
         }
@@ -227,15 +230,6 @@ impl LanguageServiceDatabases {
         }
         if let Some(target) = enum_variant_declaration_target(graph, source_id, &token) {
             return self.enum_variant_references(&target, include_declaration);
-        }
-        if let Some(target) =
-            variant_fields::script_variant_field_declaration_target(graph, source_id, &token)
-        {
-            return variant_fields::script_variant_field_references(
-                self,
-                &target,
-                include_declaration,
-            );
         }
         if let Some(target) = schema::schema_variant_declaration_target(self, source_id, &token) {
             return schema::schema_variant_references(self, &target, include_declaration);
@@ -285,23 +279,6 @@ impl LanguageServiceDatabases {
                 schema::schema_record_field_use_target(self, syntax_parse, source.text(), &token)
             {
                 return schema::schema_field_references(self, &target, include_declaration);
-            }
-            if let Some(target) = fields::script_record_field_use_target(self, source, &token) {
-                return target.map_or_else(Vec::new, |target| {
-                    fields::script_field_references(self, &target, include_declaration)
-                });
-            }
-            if let Some(target) = variant_fields::script_variant_field_use_target(
-                graph,
-                syntax_parse,
-                source.text(),
-                &token,
-            ) {
-                return variant_fields::script_variant_field_references(
-                    self,
-                    &target,
-                    include_declaration,
-                );
             }
             if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);

@@ -876,8 +876,13 @@ dot accesses preserve qualified owner identity. Field rename expands shorthand
 while preserving its local binding, rejects existing/unknown-label capture and
 does not fall back from a missing field to the enclosing type. Both layers apply
 edits, compare full files and requery/restored ownership with LF/CRLF and UTF-16.
-S4/S6 stay open. Resume B04.07 with remaining field/variant/schema and callable
-ownership partitions, followed by semantic/lifecycle and UX05/UX06 gates.
+B04.07 unifies source struct and enum record-field ownership, adding a 15-query
+matrix across same-named enums and distinct variants. Enum/variant aliases and
+patterns share exact references and applied rename edits; shorthand locals stay
+independent. Unknown labels and non-record/missing variants own empty results.
+Both layers apply all three field groups and recheck local ownership, collisions,
+LF/CRLF, UTF-16 and document versions. S4/S6 stay open. Resume B04.08 with remaining
+schema and callable ownership partitions, then semantic/lifecycle and UX05/UX06.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

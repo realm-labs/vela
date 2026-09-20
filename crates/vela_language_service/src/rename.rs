@@ -505,7 +505,7 @@ impl RenameTarget<'_> {
             Self::Declaration(target) => {
                 Some(source_symbol_for_declaration(graph, target.declaration))
             }
-            Self::ScriptField(target) => source_member_symbol(graph, target.owner, &target.field),
+            Self::ScriptField(target) => target.owner.symbol(graph, &target.field),
             Self::ScriptMethod(target) => source_member_symbol(graph, target.owner, &target.method),
             Self::EnumVariant(target) => {
                 source_enum_variant_symbol(graph, target.owner, &target.variant)
@@ -575,22 +575,8 @@ fn rename_target<'a>(
         }));
     }
 
-    if let Some(site) = query.source_record().and_then(|source| {
-        crate::source_record_fields::explicit_target(databases, source, token.range)
-    }) {
-        if !graph
-            .struct_shape(site.owner)?
-            .fields
-            .iter()
-            .any(|field| field.name == site.name)
-        {
-            return None;
-        }
-        return Some(RenameTarget::ScriptField(fields::ScriptFieldRenameTarget {
-            owner: site.owner,
-            field: site.name,
-            token,
-        }));
+    if let Some(target) = fields::script_record_field_target(databases, query, &token) {
+        return target.map(RenameTarget::ScriptField);
     }
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::ScriptField(target));

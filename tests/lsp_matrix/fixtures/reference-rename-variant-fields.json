@@ -1,0 +1,206 @@
+{
+  "version": 1,
+  "id": "reference-rename-variant-fields",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.variant_fields\"\nname = \"variant_fields\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub enum Event { Item { [[field-decl:start]]value[[field-decl:end]]: i64, spare: i64 }, Other { [[sibling-decl:start]]value[[sibling-decl:end]]: i64 }, Unit, Tuple(item: i64) }\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub enum Event { Item { [[other-decl:start]]value[[other-decl:end]]: i64 } }\nfn closed() { helpers::Event::Item { [[closed-label:start]]value[[closed-label:end]]: 3, spare: 0 }; }\nfn other([[other-param:start]]value[[other-param:end]]: i64) { Event::Item { [[other-shorthand:start]]value[[other-shorthand:end]] }; }\n",
+    "scripts/main.vela": "use helpers::Event as Alias\nuse helpers::Event::Item as ItemAlias\n/* 中😀 */ fn main([[main-param:start]]value[[main-param:end]]: i64) {\n let x = Alias::Item { [[alias-label:start]]value[[alias-label:end]]: value, spare: 0 };\n let y = ItemAlias { [[qualified-shorthand:start]]value[[qualified-shorthand:end]], spare: 1 };\n match x { Alias::Item { [[pattern-label:start]]value[[pattern-label:end]]: extracted, spare: _ } => extracted };\n match y { helpers::Event::Item { [[pattern-shorthand:start]]value[[pattern-shorthand:end]], spare: _ } => [[pattern-body:start]]value[[pattern-body:end]] };\n consumer::Event::Item { [[other-label:start]]value[[other-label:end]]: 9 };\n helpers::Event::Other { [[sibling-label:start]]value[[sibling-label:end]]: 2 };\n match x { Alias::Other { [[sibling-pattern:start]]value[[sibling-pattern:end]]: extracted } => extracted };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\nfn invalid() { helpers::Event::Item { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 }; Missing::Item { [[unknown-owner:start]]value[[unknown-owner:end]]: 7 }; }\nfn invalid_Unit() { helpers::Event::Unit { [[invalid-unit:start]]value[[invalid-unit:end]]: 4 }; }\nfn invalid_Tuple() { helpers::Event::Tuple { [[invalid-tuple:start]]value[[invalid-tuple:end]]: 4 }; }\nfn invalid_Missing() { helpers::Event::Missing { [[invalid-missing:start]]value[[invalid-missing:end]]: 4 }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "field": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "helpers::Event::Item.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "qualified-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-label",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-shorthand",
+            "kind": "Pattern",
+            "suffix": ": value"
+          }
+        ]
+      },
+      "other": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "source",
+        "qualified": "consumer::Event::Item.value",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "sibling": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "source",
+        "qualified": "helpers::Event::Other.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "sibling-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "sibling-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "sibling-pattern",
+            "kind": "Pattern"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "field-decl",
+        "group": "field"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "sibling-decl",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "sibling-label",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "sibling-pattern",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-owner",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "invalid-unit",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "invalid-tuple",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "invalid-missing",
+        "group": null
+      }
+    ],
+    "localChecks": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "qualified-shorthand",
+        "queryGroup": "field",
+        "target": "main-param"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-shorthand",
+        "queryGroup": "other",
+        "target": "other-param"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-body",
+        "target": "pattern-shorthand",
+        "targetGroup": "field"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "field": [
+        "spare",
+        "bogus"
+      ]
+    }
+  }
+}

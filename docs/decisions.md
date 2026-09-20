@@ -4752,3 +4752,12 @@ a field expands shorthand to `new_field: original_local`, preserving local
 binding ownership. An unknown explicit label of a known struct owns an empty
 reference/rename result, and a new field name cannot capture an existing unknown
 label on that struct. Other structs' labels remain independent.
+
+Source record-field ownership is shared by structs and enum record variants.
+Its identity includes the canonical declaration and optional variant name, so
+same-named fields on sibling variants remain independent. References and rename
+consume the same scoped constructor/pattern sites and declaration metadata;
+enum pattern fields retain their Pattern classification. Explicit labels on a
+known enum's non-record or missing variant own an empty result, without fallback
+to the enclosing enum/variant. Filter a queried label before resolving owner
+paths, avoiding unrelated constructor resolution on ordinary identifier queries.

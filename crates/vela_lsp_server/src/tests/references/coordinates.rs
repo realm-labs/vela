@@ -19,6 +19,11 @@ fn record_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::field_spec);
 }
 
+#[test]
+fn variant_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::variant_field_spec);
+}
+
 fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
         let spec = spec_for(crlf);

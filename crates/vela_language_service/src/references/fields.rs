@@ -1,18 +1,18 @@
+use crate::source_record_fields::RecordOwner;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
-use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::ModuleGraph;
 
 use crate::{LanguageServiceDatabases, query_context};
 
 use super::{
     Reference, ReferenceKind, ReferenceToken, diagnostic_range, resolved_use_reference_kind,
-    source_member_symbol, span_text_range,
+    span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct FieldReferenceTarget {
-    owner: HirDeclId,
+    owner: RecordOwner,
     field: String,
 }
 
@@ -56,26 +56,9 @@ pub(super) fn script_field_declaration_target(
     source_id: SourceId,
     token: &ReferenceToken,
 ) -> Option<FieldReferenceTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
-    for declaration in graph.declarations() {
-        if declaration.kind != DeclarationKind::Struct
-            || declaration.span.source != source_id
-            || !declaration.span.contains(start)
-        {
-            continue;
-        }
-        let shape = graph.struct_shape(declaration.id)?;
-        for field in &shape.fields {
-            let field_range = span_text_range(field.span)?;
-            if field_range.start <= token.range.start && token.range.end <= field_range.end {
-                return Some(FieldReferenceTarget {
-                    owner: declaration.id,
-                    field: field.name.clone(),
-                });
-            }
-        }
-    }
-    None
+    let (owner, field) =
+        crate::source_record_fields::declaration_target(graph, source_id, token.range)?;
+    Some(FieldReferenceTarget { owner, field })
 }
 
 pub(super) fn script_field_target_for_receiver_fact(
@@ -85,7 +68,10 @@ pub(super) fn script_field_target_for_receiver_fact(
 ) -> Option<FieldReferenceTarget> {
     let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(FieldReferenceTarget {
-        owner,
+        owner: RecordOwner {
+            declaration: owner,
+            variant: None,
+        },
         field: field.to_owned(),
     })
 }
@@ -96,13 +82,10 @@ pub(super) fn script_record_field_use_target(
     token: &ReferenceToken,
 ) -> Option<Option<FieldReferenceTarget>> {
     let site = crate::source_record_fields::explicit_target(databases, source, token.range)?;
-    let exists = databases
-        .hir_db()
-        .graph()
-        .struct_shape(site.owner)?
-        .fields
-        .iter()
-        .any(|field| field.name == site.name);
+    let exists = site
+        .owner
+        .fields(databases.hir_db().graph())
+        .is_some_and(|fields| fields.iter().any(|field| field.name == site.name));
     Some(exists.then_some(FieldReferenceTarget {
         owner: site.owner,
         field: site.name,
@@ -114,9 +97,9 @@ fn reference_for_script_field_declaration(
     target: &FieldReferenceTarget,
 ) -> Option<Reference> {
     let graph = databases.hir_db().graph();
-    let field = graph
-        .struct_shape(target.owner)?
-        .fields
+    let field = target
+        .owner
+        .fields(graph)?
         .iter()
         .find(|field| field.name == target.field)?;
     let source = databases
@@ -129,7 +112,7 @@ fn reference_for_script_field_declaration(
         document_id: source.document_id().clone(),
         range: diagnostic_range(source.text(), name_range),
         kind: ReferenceKind::Declaration,
-        symbol: source_member_symbol(graph, target.owner, &target.field)?,
+        symbol: target.owner.symbol(graph, &target.field)?,
     })
 }
 
@@ -166,7 +149,9 @@ fn script_field_use_references_for_source(
                 document_id: source.document_id().clone(),
                 range: diagnostic_range(text, member_range),
                 kind: resolved_use_reference_kind(text, member_range),
-                symbol: source_member_symbol(graph, target.owner, &target.field)
+                symbol: target
+                    .owner
+                    .symbol(graph, &target.field)
                     .expect("field target should have a source symbol"),
             });
         }
@@ -185,8 +170,14 @@ fn script_record_field_references_for_source(
         .map(|site| Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(source.text(), site.range),
-            kind: ReferenceKind::Read,
-            symbol: source_member_symbol(databases.hir_db().graph(), target.owner, &target.field)
+            kind: if site.pattern && site.owner.variant.is_some() {
+                ReferenceKind::Pattern
+            } else {
+                ReferenceKind::Read
+            },
+            symbol: target
+                .owner
+                .symbol(databases.hir_db().graph(), &target.field)
                 .expect("source field"),
         })
         .collect()

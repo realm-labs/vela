@@ -2548,10 +2548,49 @@
         "rename/syntax/S6/negative/protocol"
       ],
       "summary": "Advance 32 S4/S6 reference/highlight/prepare-rename/rename cells with an independent three-file source-struct matrix: 13 queries, 13 field sites, two same-named owners and three preserved-local probes; broad cells remain unreviewed. Cover imported aliases, qualified/local constructors, constructor and match-pattern shorthand, explicit patterns, dot reads/writes/compound writes, initially closed consumer, literal/unknown-field/unknown-owner negatives and existing-field/unknown-label capture rejection. Another owner can adopt the unknown label spelling. Both layers repeat exact sets, kinds, definition/prepare targets and edits, apply both groups, compare whole files, parse, requery and restore under Unicode LF/CRLF; protocol checks encoded paths, UTF-16, both edit forms and open/closed versions. Verify local constructor parameters and pattern binding ownership after field shorthand expansion. Resolve labels by scoped canonical declaration IDs, preserve qualified dot receiver identity and reject ambiguous ownership. Unknown explicit labels on known structs no longer borrow their enclosing type. Workspace 4560 passed, two historical ignored; service 659, protocol 644; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-tzvyym/results.json passed 10 and native editors/vscode/test-results/input-NU4y0E/results.json passed 16; strict target/lsp-matrix/run-INwFOY/report.json refreshes 247 accepted B00-B03 obligations with original snapshots unchanged. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.07 remaining field/variant/schema/callable ownership, then semantic/lifecycle and UX05/UX06 gates. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B04.07",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/negative/protocol",
+        "references/syntax/S6/positive/service",
+        "references/syntax/S6/positive/protocol",
+        "references/syntax/S6/negative/service",
+        "references/syntax/S6/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/negative/protocol",
+        "highlight/syntax/S6/positive/service",
+        "highlight/syntax/S6/positive/protocol",
+        "highlight/syntax/S6/negative/service",
+        "highlight/syntax/S6/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S6/positive/service",
+        "prepare-rename/syntax/S6/positive/protocol",
+        "prepare-rename/syntax/S6/negative/service",
+        "prepare-rename/syntax/S6/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/negative/protocol",
+        "rename/syntax/S6/positive/service",
+        "rename/syntax/S6/positive/protocol",
+        "rename/syntax/S6/negative/service",
+        "rename/syntax/S6/negative/protocol"
+      ],
+      "summary": "Advance 32 S4/S6 reference/highlight/prepare-rename/rename cells with an independent three-file enum record-field matrix: 15 queries, 12 sites, three field owners and three preserved-local probes; broad cells remain unreviewed. Separate same-named enums and sibling record variants, enum/variant import aliases, qualified/local constructors, explicit/shorthand match patterns and a closed consumer. Negative labels cover literals, unknown fields/owners and known enums' unit/tuple/missing variants; reject existing-field and same-variant unknown-label capture while unrelated variants/enums may use the same spelling. Both layers repeat exact sets, classifications, definition/prepare targets and edits; apply all three groups, compare whole files, parse, requery and restore under Unicode LF/CRLF. Preserve constructor parameter and pattern-local ownership after shorthand expansion. Protocol checks encoded paths, UTF-16, both edit forms and open/closed versions. Unify struct and enum record-field ownership via canonical declaration plus optional variant, preserving Pattern classification and replacing the old name-based enum search. Explicit invalid labels own empty results; filter queried labels before owner resolution. Existing struct matrix also passes. Workspace 4562 passed, two historical ignored; service 660, protocol 645; focused field/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-QqK7fP/results.json passed 10 and native editors/vscode/test-results/input-Asj19E/results.json passed 16; strict target/lsp-matrix/run-QlAnGY/report.json refreshes 247 accepted B00-B03 obligations with original snapshots unchanged. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.08 remaining schema/callable ownership and semantic/lifecycle plus UX05/UX06 gates. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.07",
-  "nextTask": "B04.07",
+  "activeChild": "B04.08",
+  "nextTask": "B04.08",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4817,7 +4856,23 @@
     "target/b04-06-accepted-regression.log",
     "editors/vscode/test-results/run-tzvyym/results.json",
     "editors/vscode/test-results/input-NU4y0E/results.json",
-    "target/lsp-matrix/run-mSQSBW/report.json"
+    "target/lsp-matrix/run-mSQSBW/report.json",
+    "target/lsp-matrix/run-QlAnGY/report.json",
+    "target/b04-07-baseline.log",
+    "target/b04-07-repro.log",
+    "target/b04-07-negative-repro.log",
+    "target/b04-07-focused-final.log",
+    "target/b04-07-rename.log",
+    "target/b04-07-workspace.log",
+    "target/b04-07-fmt.log",
+    "target/b04-07-clippy.log",
+    "target/b04-07-node.log",
+    "target/b04-07-editor.log",
+    "target/b04-07-input.log",
+    "target/b04-07-accepted-regression.log",
+    "editors/vscode/test-results/run-QqK7fP/results.json",
+    "editors/vscode/test-results/input-Asj19E/results.json",
+    "target/lsp-matrix/run-kfivi0/report.json"
   ],
   "openIssues": [
     {
@@ -5847,8 +5902,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "2466bfdce256740b0fc1e56cd8338b9c8cf0ddbf",
-          "treeSha256": "b119bba08af42ccb92867f850dd75ea42766b531364d3652b9e2b2eaf8266ad9"
+          "revision": "0cea3620bfcb0e91a3de50d8b5f2730d043aba65",
+          "treeSha256": "d95e9c8314315b75aed465ab9872c464e4307ed5859e5b9c9335a09a2e14fb5e"
         },
         "profile": {
           "platform": "win32",
@@ -5856,11 +5911,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-INwFOY/report.json"
+          "target/lsp-matrix/run-QlAnGY/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-tzvyym/results.json --local-results editors/vscode/test-results/input-NU4y0E/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-QqK7fP/results.json --local-results editors/vscode/test-results/input-Asj19E/results.json",
             "exitCode": 0
           }
         ]

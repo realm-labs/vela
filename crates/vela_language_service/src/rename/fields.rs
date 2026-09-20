@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
+use crate::source_record_fields::RecordOwner;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
-use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::ModuleGraph;
 
 use crate::{DocumentId, LanguageServiceDatabases, query_context};
 
@@ -14,7 +14,7 @@ use super::{
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) struct ScriptFieldRenameTarget {
-    pub(super) owner: HirDeclId,
+    pub(super) owner: RecordOwner,
     pub(super) field: String,
     pub(super) token: RenameToken,
 }
@@ -66,27 +66,34 @@ pub(super) fn script_field_declaration_target(
     source_id: SourceId,
     token: &RenameToken,
 ) -> Option<ScriptFieldRenameTarget> {
-    let start = u32::try_from(token.range.start).ok()?;
-    for declaration in graph.declarations() {
-        if declaration.kind != DeclarationKind::Struct
-            || declaration.span.source != source_id
-            || !declaration.span.contains(start)
-        {
-            continue;
-        }
-        let shape = graph.struct_shape(declaration.id)?;
-        for field in &shape.fields {
-            let field_range = span_text_range(field.span)?;
-            if field_range.start <= token.range.start && token.range.end <= field_range.end {
-                return Some(ScriptFieldRenameTarget {
-                    owner: declaration.id,
-                    field: field.name.clone(),
-                    token: token.clone(),
-                });
-            }
-        }
-    }
-    None
+    let (owner, field) =
+        crate::source_record_fields::declaration_target(graph, source_id, token.range)?;
+    Some(ScriptFieldRenameTarget {
+        owner,
+        field,
+        token: token.clone(),
+    })
+}
+
+pub(super) fn script_record_field_target(
+    databases: &LanguageServiceDatabases,
+    query: &crate::QueryContext<'_>,
+    token: &RenameToken,
+) -> Option<Option<ScriptFieldRenameTarget>> {
+    let site = crate::source_record_fields::explicit_target(
+        databases,
+        query.source_record()?,
+        token.range,
+    )?;
+    let exists = site
+        .owner
+        .fields(databases.hir_db().graph())
+        .is_some_and(|fields| fields.iter().any(|field| field.name == site.name));
+    Some(exists.then_some(ScriptFieldRenameTarget {
+        owner: site.owner,
+        field: site.name,
+        token: token.clone(),
+    }))
 }
 
 pub(super) fn script_field_target_for_receiver_fact(
@@ -97,7 +104,10 @@ pub(super) fn script_field_target_for_receiver_fact(
 ) -> Option<ScriptFieldRenameTarget> {
     let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(ScriptFieldRenameTarget {
-        owner,
+        owner: RecordOwner {
+            declaration: owner,
+            variant: None,
+        },
         field: field.to_owned(),
         token: token.clone(),
     })
@@ -110,9 +120,9 @@ fn push_script_field_declaration_edit(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) -> Option<()> {
     let graph = databases.hir_db().graph();
-    let field = graph
-        .struct_shape(target.owner)?
-        .fields
+    let field = target
+        .owner
+        .fields(graph)?
         .iter()
         .find(|field| field.name == target.field)?;
     let source = databases.source_record_for_rename(field.span.source)?;
@@ -168,7 +178,7 @@ fn push_script_field_use_edits(
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct ScriptFieldTarget {
-    owner: HirDeclId,
+    owner: RecordOwner,
     field: String,
 }
 
@@ -179,7 +189,10 @@ fn script_field_target(
 ) -> Option<ScriptFieldTarget> {
     let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(ScriptFieldTarget {
-        owner,
+        owner: RecordOwner {
+            declaration: owner,
+            variant: None,
+        },
         field: field.to_owned(),
     })
 }
@@ -189,9 +202,8 @@ fn script_field_name_conflicts(
     target: &ScriptFieldRenameTarget,
     new_name: &str,
 ) -> bool {
-    graph.struct_shape(target.owner).is_some_and(|shape| {
-        shape
-            .fields
+    target.owner.fields(graph).is_some_and(|fields| {
+        fields
             .iter()
             .any(|field| field.name == new_name && field.name != target.field)
     })

@@ -13,6 +13,10 @@ pub(crate) fn field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-record-fields", crlf)
 }
 
+pub(crate) fn variant_field_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-variant-fields", crlf)
+}
+
 pub(crate) fn replacement(site: &Value, name: &str) -> String {
     format!("{name}{}", site["suffix"].as_str().unwrap_or(""))
 }

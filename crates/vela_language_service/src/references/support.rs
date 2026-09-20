@@ -1,8 +1,7 @@
 use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
-use vela_hir::module_graph::{Declaration, ModuleGraph};
 
-use crate::{DiagnosticRange, LineIndex, TextRange, symbol_ref::qualified_source_declaration_name};
+use crate::{DiagnosticRange, LineIndex, TextRange};
 
 use super::ReferenceKind;
 
@@ -64,14 +63,6 @@ fn push_owner_name(owners: &mut Vec<String>, name: &str) {
     if !owners.iter().any(|owner| owner == name) {
         owners.push(name.to_owned());
     }
-}
-
-pub(super) fn declaration_name_matches(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-    owner: &str,
-) -> bool {
-    declaration.name == owner || qualified_source_declaration_name(graph, declaration) == owner
 }
 
 pub(super) fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
