@@ -142,6 +142,7 @@ pub(super) fn rename_schema_member(
     let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
     push_schema_member_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_schema_member_use_edits(databases, &target, new_name, &mut edits_by_document);
+    super::schema_records::append_edits(databases, &target, new_name, &mut edits_by_document)?;
 
     workspace_edit_for_rename(
         databases,

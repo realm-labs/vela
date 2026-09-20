@@ -4872,7 +4872,12 @@
     "target/b04-07-accepted-regression.log",
     "editors/vscode/test-results/run-QqK7fP/results.json",
     "editors/vscode/test-results/input-Asj19E/results.json",
-    "target/lsp-matrix/run-kfivi0/report.json"
+    "target/lsp-matrix/run-kfivi0/report.json",
+    "target/b04-08-baseline.log",
+    "target/b04-08-repro.log",
+    "target/b04-08-rename-final.log",
+    "target/b04-08-clippy-final.log",
+    "target/b04-08-fmt.log"
   ],
   "openIssues": [
     {

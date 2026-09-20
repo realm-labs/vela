@@ -4761,3 +4761,10 @@ enum pattern fields retain their Pattern classification. Explicit labels on a
 known enum's non-record or missing variant own an empty result, without fallback
 to the enclosing enum/variant. Filter a queried label before resolving owner
 paths, avoiding unrelated constructor resolution on ordinary identifier queries.
+
+Source-backed schema field rename includes constructor and pattern labels only
+after resolving imports and excluding source-owned declaration paths. Shorthand
+expansion preserves the local value name and schema ABI risk reporting remains
+attached to the edit. Applying source edits does not silently mutate schema
+metadata; validation regenerates the artifact before querying the renamed schema
+symbol. Metadata-only fields remain non-renamable.

@@ -883,6 +883,12 @@ independent. Unknown labels and non-record/missing variants own empty results.
 Both layers apply all three field groups and recheck local ownership, collisions,
 LF/CRLF, UTF-16 and document versions. S4/S6 stay open. Resume B04.08 with remaining
 schema and callable ownership partitions, then semantic/lifecycle and UX05/UX06.
+B04.08 is in progress: source-backed schema field rename now includes scoped
+constructor and pattern labels and expands shorthand without renaming its local
+value. A Unicode LF/CRLF service regression checks exact edits from declaration,
+label and dot queries, applies edits, regenerates metadata and rechecks targets.
+Protocol/full-reference matrices, negative ownership partitions and fresh editor
+acceptance remain before closing this child; its checkpoint does not advance.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

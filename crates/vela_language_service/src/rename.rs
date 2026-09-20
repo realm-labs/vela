@@ -32,6 +32,7 @@ mod local_collision_tests;
 mod local_collisions;
 mod methods;
 mod schema;
+mod schema_records;
 mod shorthand;
 #[cfg(test)]
 mod shorthand_tests;
@@ -577,6 +578,9 @@ fn rename_target<'a>(
 
     if let Some(target) = fields::script_record_field_target(databases, query, &token) {
         return target.map(RenameTarget::ScriptField);
+    }
+    if let Some(target) = schema_records::target(databases, query, &token) {
+        return target.map(RenameTarget::SchemaMember);
     }
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::ScriptField(target));

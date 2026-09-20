@@ -6,6 +6,7 @@ use crate::{
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
 mod schema_collision_tests;
+mod schema_record_tests;
 
 #[test]
 fn prepare_rename_rejects_keywords_and_literals() {
