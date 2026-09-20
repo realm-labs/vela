@@ -18,6 +18,11 @@ fn named_parameter_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::named_spec);
 }
 
+#[test]
+fn record_field_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::field_spec);
+}
+
 fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
         let spec = spec_for(crlf);
@@ -67,6 +72,39 @@ fn run_matrix(spec_for: fn(bool) -> Spec) {
 }
 
 fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWorkspace) {
+    for check in spec.oracle["localChecks"].as_array().into_iter().flatten() {
+        let file = check["file"].as_str().expect("file");
+        let query = oracle::local_marker(spec, fixture, check, false);
+        let target = oracle::local_marker(spec, fixture, check, true);
+        let definition = db
+            .definition(
+                &uri(file),
+                byte_point(&fixture.disk[file].text, query.start),
+            )
+            .expect("preserved local binding");
+        assert_eq!(definition.document_id(), &uri(file));
+        assert_eq!(
+            definition.range(),
+            DiagnosticRange::new(
+                byte_point(&fixture.disk[file].text, target.start),
+                byte_point(&fixture.disk[file].text, target.end)
+            )
+        );
+        let prepared = db
+            .prepare_rename(
+                &uri(file),
+                byte_point(&fixture.disk[file].text, query.start),
+            )
+            .expect("local rename");
+        assert_eq!(
+            prepared.symbol(),
+            &SymbolRef::local_at(
+                "value",
+                uri(file),
+                TextRange::new(target.start.byte, target.end.byte)
+            )
+        );
+    }
     for query in spec.oracle["queries"].as_array().expect("queries") {
         let file = query["file"].as_str().expect("query file");
         let marker = query["marker"].as_str().expect("query marker");
@@ -157,7 +195,7 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 assert_eq!(renamed.symbol(), symbol.as_ref());
                 let actual = renamed.document_edits().iter().flat_map(|document| document.edits().iter().map(|edit|
                     json!({"uri":document.document_id().as_str(),"range":range_json(edit.range()),"newText":edit.new_text()}))).collect();
-                let expected = sites.iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":"renamed_symbol"})).collect();
+                let expected = sites.iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")})).collect();
                 assert_eq!(sorted(actual), sorted(expected), "rename {marker}");
             } else {
                 assert!(

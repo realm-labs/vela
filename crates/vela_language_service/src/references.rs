@@ -286,11 +286,10 @@ impl LanguageServiceDatabases {
             {
                 return schema::schema_field_references(self, &target, include_declaration);
             }
-            if let Some(parsed) = syntax_parse
-                && let Some(target) =
-                    fields::script_record_field_use_target(graph, parsed, source.text(), &token)
-            {
-                return fields::script_field_references(self, &target, include_declaration);
+            if let Some(target) = fields::script_record_field_use_target(self, source, &token) {
+                return target.map_or_else(Vec::new, |target| {
+                    fields::script_field_references(self, &target, include_declaration)
+                });
             }
             if let Some(target) = variant_fields::script_variant_field_use_target(
                 graph,

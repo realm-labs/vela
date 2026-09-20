@@ -14,6 +14,11 @@ fn named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::named_spec);
 }
 
+#[test]
+fn record_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::field_spec);
+}
+
 fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
         let spec = spec_for(crlf);
@@ -143,6 +148,16 @@ impl Driver {
         json!({"textDocument":{"uri":self.uri(file)},"position":{"line":point.line,"character":point.character+1}})
     }
     fn check(&mut self, spec: &Spec, fixture: &FixtureWorkspace) {
+        for check in spec.oracle["localChecks"].as_array().into_iter().flatten() {
+            let file = check["file"].as_str().expect("file");
+            let query = oracle::local_marker(spec, fixture, check, false);
+            let target = oracle::local_marker(spec, fixture, check, true);
+            let definition = self.query::<r::GotoDefinition>(json!({"textDocument":{"uri":self.uri(file)},"position":{"line":query.start.line,"character":query.start.character+1}}));
+            assert_eq!(
+                definition,
+                json!({"uri":self.uri(file),"range":{"start":{"line":target.start.line,"character":target.start.character},"end":{"line":target.end.line,"character":target.end.character}}})
+            );
+        }
         for query in spec.oracle["queries"].as_array().expect("fixture array") {
             let file = query["file"].as_str().expect("fixture string");
             let marker = query["marker"].as_str().expect("fixture string");
@@ -203,7 +218,7 @@ impl Driver {
                     );
                     let mut expected = BTreeMap::<String, Vec<Value>>::new();
                     for site in &sites {
-                        expected.entry(self.uri(site["file"].as_str().expect("fixture string"))).or_default().push(json!({"range":site_range(fixture,site),"newText":"renamed_symbol"}));
+                        expected.entry(self.uri(site["file"].as_str().expect("fixture string"))).or_default().push(json!({"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")}));
                     }
                     let actual: BTreeMap<String, Vec<Value>> =
                         serde_json::from_value(edit["changes"].clone()).expect("changes");

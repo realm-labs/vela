@@ -1,16 +1,13 @@
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::SyntaxSourceFile;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::{LanguageServiceDatabases, query_context};
 
 use super::{
-    Reference, ReferenceKind, ReferenceToken, declaration_name_matches, diagnostic_range,
-    record_fields, record_owner_names, resolved_use_reference_kind, source_member_symbol,
-    span_text_range, token_text,
+    Reference, ReferenceKind, ReferenceToken, diagnostic_range, resolved_use_reference_kind,
+    source_member_symbol, span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -37,11 +34,9 @@ pub(super) fn script_field_references(
         references.extend(script_field_use_references_for_source(
             databases, graph, source, target,
         ));
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            references.extend(script_record_field_references_for_source(
-                graph, parsed, source, target,
-            ));
-        }
+        references.extend(script_record_field_references_for_source(
+            databases, source, target,
+        ));
     }
 
     references.sort_by_key(|reference| {
@@ -88,7 +83,7 @@ pub(super) fn script_field_target_for_receiver_fact(
     receiver: &TypeFact,
     field: &str,
 ) -> Option<FieldReferenceTarget> {
-    let owner = script_field_owner(graph, receiver, field)?;
+    let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(FieldReferenceTarget {
         owner,
         field: field.to_owned(),
@@ -96,20 +91,22 @@ pub(super) fn script_field_target_for_receiver_fact(
 }
 
 pub(super) fn script_record_field_use_target(
-    graph: &ModuleGraph,
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-    text: &str,
+    databases: &LanguageServiceDatabases,
+    source: &crate::SourceRecord,
     token: &ReferenceToken,
-) -> Option<FieldReferenceTarget> {
-    let field = token_text(text, token.range)?;
-    record_fields::record_field_sites(parsed)
-        .into_iter()
-        .find(|site| {
-            site.name == field
-                && site.name_range.start <= token.range.start
-                && token.range.end <= site.name_range.end
-        })
-        .and_then(|site| script_field_target_for_constructor_path(graph, &site.path, field))
+) -> Option<Option<FieldReferenceTarget>> {
+    let site = crate::source_record_fields::explicit_target(databases, source, token.range)?;
+    let exists = databases
+        .hir_db()
+        .graph()
+        .struct_shape(site.owner)?
+        .fields
+        .iter()
+        .any(|field| field.name == site.name);
+    Some(exists.then_some(FieldReferenceTarget {
+        owner: site.owner,
+        field: site.name,
+    }))
 }
 
 fn reference_for_script_field_declaration(
@@ -178,86 +175,19 @@ fn script_field_use_references_for_source(
 }
 
 fn script_record_field_references_for_source(
-    graph: &ModuleGraph,
-    parsed: &SyntaxParse<SyntaxSourceFile>,
+    databases: &LanguageServiceDatabases,
     source: &crate::SourceRecord,
     target: &FieldReferenceTarget,
 ) -> Vec<Reference> {
-    let mut references = Vec::new();
-    let text = source.text();
-    for field in record_fields::record_field_sites(parsed) {
-        if field.name != target.field {
-            continue;
-        }
-        if script_field_target_for_constructor_path(graph, &field.path, &target.field).as_ref()
-            != Some(target)
-        {
-            continue;
-        };
-        references.push(Reference {
+    crate::source_record_fields::sites(databases, source)
+        .into_iter()
+        .filter(|site| site.owner == target.owner && site.name == target.field)
+        .map(|site| Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, field.name_range),
+            range: diagnostic_range(source.text(), site.range),
             kind: ReferenceKind::Read,
-            symbol: source_member_symbol(graph, target.owner, &target.field)
-                .expect("field target should have a source symbol"),
-        });
-    }
-    references
-}
-
-fn script_field_target_for_constructor_path(
-    graph: &ModuleGraph,
-    path: &[String],
-    field: &str,
-) -> Option<FieldReferenceTarget> {
-    let owner = graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct
-            || !constructor_path_matches(graph, declaration, path)
-        {
-            return None;
-        }
-        let has_field = graph
-            .struct_shape(declaration.id)
-            .is_some_and(|shape| shape.fields.iter().any(|entry| entry.name == field));
-        has_field.then_some(declaration.id)
-    })?;
-    Some(FieldReferenceTarget {
-        owner,
-        field: field.to_owned(),
-    })
-}
-
-fn script_field_owner(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> Option<HirDeclId> {
-    let owner_names = record_owner_names(receiver);
-    graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct {
-            return None;
-        }
-        let matches_owner = owner_names
-            .iter()
-            .any(|owner| declaration_name_matches(graph, declaration, owner));
-        let has_field = graph
-            .struct_shape(declaration.id)
-            .is_some_and(|shape| shape.fields.iter().any(|entry| entry.name == field));
-        (matches_owner && has_field).then_some(declaration.id)
-    })
-}
-
-fn constructor_path_matches(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-    path: &[String],
-) -> bool {
-    match path {
-        [name] => declaration_name_matches(graph, declaration, name),
-        segments => graph
-            .module_path(declaration.module)
-            .is_some_and(|module_path| {
-                module_path
-                    .segments()
-                    .iter()
-                    .chain(std::iter::once(&declaration.name))
-                    .eq(segments.iter())
-            }),
-    }
+            symbol: source_member_symbol(databases.hir_db().graph(), target.owner, &target.field)
+                .expect("source field"),
+        })
+        .collect()
 }

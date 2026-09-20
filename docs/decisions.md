@@ -4744,3 +4744,11 @@ against the owner's document and adds owned labels across files. It rejects a
 new parameter name that would capture an existing unknown label of the same
 function. CST labels remain eligible when their value expression is missing;
 unknown callees and unrelated callable owners cannot supply a parameter target.
+
+Source struct constructor and pattern labels resolve through their document's
+module/import scope and canonical declaration ID. Dot-field ownership retains
+qualified type identity; ambiguous owners do not generate rename edits. Renaming
+a field expands shorthand to `new_field: original_local`, preserving local
+binding ownership. An unknown explicit label of a known struct owns an empty
+reference/rename result, and a new field name cannot capture an existing unknown
+label on that struct. Other structs' labels remain independent.

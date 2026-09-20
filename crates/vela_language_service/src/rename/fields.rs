@@ -3,12 +3,9 @@ use std::collections::BTreeMap;
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
 use vela_hir::ids::HirDeclId;
-use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
-use crate::{
-    DocumentId, LanguageServiceDatabases, query_context,
-    symbol_ref::qualified_source_declaration_path,
-};
+use crate::{DocumentId, LanguageServiceDatabases, query_context};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range,
@@ -36,6 +33,31 @@ pub(super) fn rename_script_field(
     push_script_field_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
     push_script_field_use_edits(databases, &target, new_name, &mut edits_by_document);
 
+    for source in databases.source_db().records().values() {
+        for site in crate::source_record_fields::sites(databases, source)
+            .into_iter()
+            .filter(|site| site.owner == target.owner)
+        {
+            if new_name != target.field && site.name == new_name {
+                return None;
+            }
+            if site.name != target.field {
+                continue;
+            }
+            let new_text = if site.shorthand && new_name != target.field {
+                format!("{new_name}: {}", site.name)
+            } else {
+                new_name.to_owned()
+            };
+            edits_by_document
+                .entry(source.document_id().clone())
+                .or_default()
+                .push(TextEdit {
+                    range: diagnostic_range(source.text(), site.range),
+                    new_text,
+                });
+        }
+    }
     workspace_edit_for_rename(databases, edits_by_document, Vec::new())
 }
 
@@ -73,7 +95,7 @@ pub(super) fn script_field_target_for_receiver_fact(
     field: &str,
     token: &RenameToken,
 ) -> Option<ScriptFieldRenameTarget> {
-    let owner = script_field_owner(graph, receiver, field)?;
+    let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(ScriptFieldRenameTarget {
         owner,
         field: field.to_owned(),
@@ -155,26 +177,10 @@ fn script_field_target(
     receiver: &TypeFact,
     field: &str,
 ) -> Option<ScriptFieldTarget> {
-    let owner = script_field_owner(graph, receiver, field)?;
+    let owner = crate::source_record_fields::receiver_owner(graph, receiver, field)?;
     Some(ScriptFieldTarget {
         owner,
         field: field.to_owned(),
-    })
-}
-
-fn script_field_owner(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> Option<HirDeclId> {
-    let owner_names = record_owner_names(receiver);
-    graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Struct {
-            return None;
-        }
-        let matches_owner = owner_names
-            .iter()
-            .any(|owner| declaration_name_matches(graph, declaration, owner));
-        let has_field = graph
-            .struct_shape(declaration.id)
-            .is_some_and(|shape| shape.fields.iter().any(|entry| entry.name == field));
-        (matches_owner && has_field).then_some(declaration.id)
     })
 }
 
@@ -189,69 +195,4 @@ fn script_field_name_conflicts(
             .iter()
             .any(|field| field.name == new_name && field.name != target.field)
     })
-}
-
-fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
-    let mut owners = Vec::new();
-    collect_record_owner_names(receiver, &mut owners);
-    owners
-}
-
-fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
-    match receiver {
-        TypeFact::Record { name } => {
-            push_owner_name(owners, name);
-            if let Some(short) = name.rsplit("::").next()
-                && short != name
-            {
-                push_owner_name(owners, short);
-            }
-        }
-        TypeFact::Union(facts) => {
-            for fact in facts {
-                collect_record_owner_names(fact, owners);
-            }
-        }
-        TypeFact::Unknown
-        | TypeFact::Never
-        | TypeFact::Any
-        | TypeFact::Primitive(_)
-        | TypeFact::Range
-        | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
-        | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
-        | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
-        | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
-        | TypeFact::Option { .. }
-        | TypeFact::OptionSome { .. }
-        | TypeFact::OptionNone
-        | TypeFact::Result { .. }
-        | TypeFact::ResultOk { .. }
-        | TypeFact::ResultErr { .. }
-        | TypeFact::Function { .. }
-        | TypeFact::Closure
-        | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
-        | TypeFact::Trait { .. }
-        | TypeFact::Tuple { .. }
-        | TypeFact::LogicalRecord(_)
-        | TypeFact::Module { .. } => {}
-    }
-}
-
-fn push_owner_name(owners: &mut Vec<String>, name: &str) {
-    if !owners.iter().any(|owner| owner == name) {
-        owners.push(name.to_owned());
-    }
-}
-
-fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
-    declaration.name == owner
-        || qualified_source_declaration_path(graph, declaration).join("::") == owner
 }

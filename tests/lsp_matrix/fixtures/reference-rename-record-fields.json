@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "id": "reference-rename-record-fields",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.record_fields\"\nname = \"record_fields\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub struct Record { [[field-decl:start]]value[[field-decl:end]]: i64, spare: i64 }\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub struct Record { [[other-decl:start]]value[[other-decl:end]]: i64 }\nfn closed() { let x = helpers::Record { [[closed-label:start]]value[[closed-label:end]]: 3, spare: 0 }; }\nfn other([[other-param:start]]value[[other-param:end]]: i64) { let x = Record { [[other-shorthand:start]]value[[other-shorthand:end]] }; return x.[[other-read:start]]value[[other-read:end]]; }\n",
+    "scripts/main.vela": "use helpers::Record as Alias\n/* 中😀 */ fn main([[main-param:start]]value[[main-param:end]]: i64) {\n let x = Alias { [[alias-label:start]]value[[alias-label:end]]: value, spare: 0 };\n let y = helpers::Record { [[qualified-shorthand:start]]value[[qualified-shorthand:end]], spare: 1 };\n x.[[dot-read:start]]value[[dot-read:end]];\n x.[[dot-write:start]]value[[dot-write:end]] = 2;\n x.[[dot-compound:start]]value[[dot-compound:end]] += 1;\n match x { Alias { [[pattern-label:start]]value[[pattern-label:end]]: extracted, spare: _ } => extracted };\n match y { helpers::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]], spare: _ } => [[pattern-body:start]]value[[pattern-body:end]] };\n let other = consumer::Record { [[other-label:start]]value[[other-label:end]]: 9 };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\nfn invalid() { helpers::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 }; Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 7 }; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "field": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "helpers::Record.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "qualified-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "dot-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "dot-write",
+            "kind": "Write"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "dot-compound",
+            "kind": "Write"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          }
+        ]
+      },
+      "other": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "source",
+        "qualified": "consumer::Record.value",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-shorthand",
+            "kind": "Read",
+            "suffix": ": value"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "field-decl",
+        "group": "field"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-read",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dot-read",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dot-write",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dot-compound",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-owner",
+        "group": null
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "field": [
+        "spare",
+        "bogus"
+      ]
+    },
+    "localChecks": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "qualified-shorthand",
+        "queryGroup": "field",
+        "target": "main-param"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-shorthand",
+        "queryGroup": "other",
+        "target": "other-param"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-body",
+        "target": "pattern-shorthand",
+        "targetGroup": "field"
+      }
+    ]
+  }
+}

@@ -9,6 +9,41 @@ pub(crate) fn named_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-named-parameters", crlf)
 }
 
+pub(crate) fn field_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-record-fields", crlf)
+}
+
+pub(crate) fn replacement(site: &Value, name: &str) -> String {
+    format!("{name}{}", site["suffix"].as_str().unwrap_or(""))
+}
+
+pub(crate) fn local_marker(
+    spec: &Spec,
+    fixture: &FixtureWorkspace,
+    check: &Value,
+    target: bool,
+) -> super::Marker {
+    let file = check["file"].as_str().expect("file");
+    let key = if target { "target" } else { "marker" };
+    let mut range = fixture.disk[file].markers[check[key].as_str().expect("marker")];
+    let group_key = if target { "targetGroup" } else { "queryGroup" };
+    if let Some(group) = check[group_key].as_str()
+        && spec.oracle["groups"][group]["name"] != "value"
+    {
+        range.start = range.end;
+        range.start.byte += 2;
+        range.start.character += 2;
+        range.end = range.start;
+        range.end.byte += 5;
+        range.end.character += 5;
+    }
+    assert_eq!(
+        &fixture.disk[file].text[range.start.byte..range.end.byte],
+        "value"
+    );
+    range
+}
+
 fn spec_for(id: &str, crlf: bool) -> Spec {
     let mut spec = load(id);
     if crlf {
@@ -36,15 +71,24 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
         let file = site["file"].as_str().expect("file");
         let marker = site["marker"].as_str().expect("marker");
         let old = format!("[[{marker}:start]]{old_name}[[{marker}:end]]");
-        let new = format!("[[{marker}:start]]{new_name}[[{marker}:end]]");
+        let suffix = site["suffix"].as_str().unwrap_or("");
+        let new = format!("[[{marker}:start]]{new_name}[[{marker}:end]]{suffix}");
         let source = result.files.get_mut(file).expect("source");
         assert_eq!(source.matches(&old).count(), 1, "independent marked edit");
         *source = source.replace(&old, &new);
     }
     result.oracle["groups"][group]["name"] = new_name.into();
+    for site in result.oracle["groups"][group]["sites"]
+        .as_array_mut()
+        .expect("sites")
+    {
+        site.as_object_mut().expect("site").remove("suffix");
+    }
     if let Some(qualified) = definition["qualified"].as_str() {
-        let (owner, _) = qualified.rsplit_once("::").expect("qualified owner");
-        result.oracle["groups"][group]["qualified"] = format!("{owner}::{new_name}").into();
+        let separator = if qualified.contains('.') { "." } else { "::" };
+        let (owner, _) = qualified.rsplit_once(separator).expect("qualified owner");
+        result.oracle["groups"][group]["qualified"] =
+            format!("{owner}{separator}{new_name}").into();
     }
     result
 }

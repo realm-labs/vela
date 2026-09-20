@@ -27,6 +27,7 @@ mod schema;
 mod selection;
 mod semantic_tokens;
 mod signature;
+mod source_record_fields;
 mod symbol_ref;
 mod symbol_target;
 mod symbols;

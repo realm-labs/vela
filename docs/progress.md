@@ -870,7 +870,14 @@ aliases, default expressions, closures and missing-value recovery. Caller values
 and other functions' parameters stay independent; same-owner label capture rejects.
 All three groups undergo exact applied edits and repeated/restored queries at both
 layers, including UTF-16 and open/closed versions. Broad S5 cells remain open.
-Resume B04.06 with field-target rename edit ownership and remaining callable kinds.
+B04.06 adds a 13-query cross-file struct-field matrix with two same-named owners.
+References and rename resolve constructor/pattern labels in their own import scope;
+dot accesses preserve qualified owner identity. Field rename expands shorthand
+while preserving its local binding, rejects existing/unknown-label capture and
+does not fall back from a missing field to the enclosing type. Both layers apply
+edits, compare full files and requery/restored ownership with LF/CRLF and UTF-16.
+S4/S6 stay open. Resume B04.07 with remaining field/variant/schema and callable
+ownership partitions, followed by semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
