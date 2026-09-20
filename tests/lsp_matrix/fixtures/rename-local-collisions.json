@@ -1,0 +1,359 @@
+{
+  "version": 1,
+  "id": "rename-local-collisions",
+  "files": {
+    "vela.toml": "[package]\nname = \"rename_local_collisions\"\nscript_roots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[global:start]]award[[global:end]]() -> i64 { return 1; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "cases": [
+      {
+        "id": "same-scope-parameter",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[other:start]]award[[other:end]]: i64) { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target"
+        }
+      },
+      {
+        "id": "same-scope-local",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[other:start]]award[[other:end]] = 1; let [[target:start]]value[[target:end]] = 2; [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target"
+        }
+      },
+      {
+        "id": "sibling-blocks",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { if true { let [[other:start]]award[[other:end]] = 1; [[probe:start]]award[[probe:end]]; } if true { let [[target:start]]value[[target:end]] = 2; [[use1:start]]value[[use1:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "other-function",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn other([[other:start]]award[[other:end]]: i64) { [[probe:start]]award[[probe:end]]; }\nfn main() { let [[target:start]]value[[target:end]] = 2; [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "nested-use-capture",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; if true { let [[other:start]]award[[other:end]] = 2; [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "nested-nonoverlapping-uses",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; if true { let [[other:start]]award[[other:end]] = 2; [[probe:start]]award[[probe:end]]; } [[use2:start]]value[[use2:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "use2": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "inner-captures-outer-use",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[other:start]]award[[other:end]]: i64) { if true { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "inner-after-outer-use",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[other:start]]award[[other:end]]: i64) { if true { [[probe:start]]award[[probe:end]]; let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "global-capture",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]](); }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "global-before-local",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { [[probe:start]]award[[probe:end]](); let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "global-in-initializer",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = [[probe:start]]award[[probe:end]](); [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "global-in-closure",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; let f = || { [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]](); }; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "old-name-shadow-still-captures-global",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; if true { let value = 2; [[probe:start]]award[[probe:end]](); } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "inner-name-keeps-global-shadow",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; if true { let [[other:start]]award[[other:end]] = 2; [[probe:start]]award[[probe:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "lambda-parameter-captures-global",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let f = |[[target:start]]value[[target:end]]| { [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]](); }; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "sibling-lambda-parameters",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let f = |[[other:start]]award[[other:end]]| [[probe:start]]award[[probe:end]]; let g = |[[target:start]]value[[target:end]]| [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "loop-iterable-before-binding",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { for [[target:start]]value[[target:end]] in [ [[probe:start]]award[[probe:end]]() ] { [[use1:start]]value[[use1:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "loop-body-captures-global",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { for [[target:start]]value[[target:end]] in [1] { [[use1:start]]value[[use1:end]]; [[probe:start]]award[[probe:end]](); } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "pattern-guard-captures-global",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { match 1 { [[target:start]]value[[target:end]] if [[probe:start]]award[[probe:end]]() > 0 => [[use1:start]]value[[use1:end]], _ => 0 } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "sibling-match-arms",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { match 1 { [[other:start]]award[[other:end]] if false => [[probe:start]]award[[probe:end]], [[target:start]]value[[target:end]] => [[use1:start]]value[[use1:end]] } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "parameter-default-capture",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64, other: i64 = [[probe:start]]award[[probe:end]]()) { [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "later-parameter-default-capture",
+        "allowed": false,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main(other: i64 = [[probe:start]]award[[probe:end]](), [[target:start]]value[[target:end]]: i64 = 1) { [[use1:start]]value[[use1:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "parameter-default-owned-use",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64, other: i64 = [[use1:start]]value[[use1:end]]) { [[use2:start]]value[[use2:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "use2": "target"
+        }
+      },
+      {
+        "id": "unresolved-capture",
+        "allowed": false,
+        "newName": "missing",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]missing[[probe:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": null
+        }
+      },
+      {
+        "id": "qualified-head-capture",
+        "allowed": false,
+        "newName": "helpers",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]helpers[[probe:end]]::award(); }\n",
+        "probes": {
+          "use1": "target"
+        }
+      },
+      {
+        "id": "bare-map-key-is-not-a-lookup",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; let map = {award: [[use1:start]]value[[use1:end]]}; }\n",
+        "probes": {
+          "use1": "target"
+        }
+      },
+      {
+        "id": "qualified-terminal-keeps-owner",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; helpers::[[probe:start]]award[[probe:end]](); }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "global"
+        }
+      },
+      {
+        "id": "tuple-binding-sibling-scope",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { if true { let [[other:start]]award[[other:end]] = 1; [[probe:start]]award[[probe:end]]; } if true { let ([[target:start]]value[[target:end]], other) = (1, 2); [[use1:start]]value[[use1:end]]; } }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "same-name-noop",
+        "allowed": true,
+        "newName": "value",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; let [[other:start]]value[[other:end]] = 2; [[probe:start]]value[[probe:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "stdlib-capture",
+        "allowed": false,
+        "newName": "max",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; max(1,2); }\n",
+        "probes": {
+          "use1": "target"
+        }
+      },
+      {
+        "id": "lambda-local-precedes-later-parameter",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main(f: Any = |[[target:start]]value[[target:end]]| [[use1:start]]value[[use1:end]], [[other:start]]award[[other:end]]: i64 = 1) { [[probe:start]]award[[probe:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "longer-new-name",
+        "allowed": true,
+        "newName": "updated_value",
+        "source": "use helpers::award\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { [[use1:start]]value[[use1:end]]; [[use2:start]]value[[use2:end]]; }\n",
+        "probes": {
+          "use1": "target",
+          "use2": "target"
+        }
+      },
+      {
+        "id": "closure-before-inner-declaration",
+        "allowed": true,
+        "newName": "award",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; let f = || { [[use1:start]]value[[use1:end]]; let [[other:start]]award[[other:end]] = 2; [[probe:start]]award[[probe:end]]; }; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": "other"
+        }
+      },
+      {
+        "id": "unresolved-field-receiver-capture",
+        "allowed": false,
+        "newName": "missing",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]missing[[probe:end]].level; }\n",
+        "probes": {
+          "use1": "target",
+          "probe": null
+        }
+      },
+      {
+        "id": "unresolved-method-receiver-capture",
+        "allowed": false,
+        "newName": "missing",
+        "source": "use helpers::award\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; [[use1:start]]value[[use1:end]]; [[probe:start]]missing[[probe:end]].run(); }\n",
+        "probes": {
+          "use1": "target",
+          "probe": null
+        }
+      }
+    ]
+  }
+}

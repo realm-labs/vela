@@ -111,19 +111,19 @@ fn assert_owner(endpoint: &mut TestServer, fixture: &FixtureWorkspace, id: &str)
         "{id}"
     );
 }
-fn query<R: r::Request>(endpoint: &mut TestServer, params: Value) -> Value {
+pub(super) fn query<R: r::Request>(endpoint: &mut TestServer, params: Value) -> Value {
     let response = response_value(request::<R>(endpoint, 50, params));
     assert_eq!(response["id"], 50);
     assert!(response.get("error").is_none(), "{response}");
     response["result"].clone()
 }
-fn uri(file: &str) -> String {
+pub(super) fn uri(file: &str) -> String {
     format!("file:///workspace/{file}")
 }
-fn point(point: Point) -> Value {
+pub(super) fn point(point: Point) -> Value {
     json!({"line":point.line,"character":point.character})
 }
-fn wire_point(value: &Value) -> (usize, usize) {
+pub(super) fn wire_point(value: &Value) -> (usize, usize) {
     (
         value["line"].as_u64().expect("line") as usize,
         value["character"].as_u64().expect("character") as usize,

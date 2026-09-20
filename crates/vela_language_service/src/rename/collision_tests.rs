@@ -84,23 +84,23 @@ fn assert_owner(db: &LanguageServiceDatabases, fixture: &FixtureWorkspace, id: &
     );
 }
 
-fn uri(file: &str) -> DocumentId {
+pub(super) fn uri(file: &str) -> DocumentId {
     DocumentId::from(format!("/workspace/{file}"))
 }
-fn position(doc: &Document, point: Point) -> Position {
+pub(super) fn position(doc: &Document, point: Point) -> Position {
     let line_start = doc.text[..point.byte]
         .rfind('\n')
         .map_or(0, |offset| offset + 1);
     Position::new(point.line, point.byte - line_start)
 }
-fn offset(text: &str, position: Position) -> usize {
+pub(super) fn offset(text: &str, position: Position) -> usize {
     text.split_inclusive('\n')
         .take(position.line)
         .map(str::len)
         .sum::<usize>()
         + position.character
 }
-fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
+pub(super) fn databases(fixture: &FixtureWorkspace) -> LanguageServiceDatabases {
     let files = fixture
         .disk
         .iter()

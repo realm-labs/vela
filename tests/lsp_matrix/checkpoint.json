@@ -2464,10 +2464,21 @@
         "rename/syntax/S2/negative/protocol"
       ],
       "summary": "Advance, but do not close, four rename S2 cells with 16 independently specified cross-file source-function capture scenarios on LF/CRLF Unicode text. Both layers verify exact original call ownership, prepare eligibility and allow/reject policy at declaration/import/use sites; successful plans apply and compare whole files, parse, and preserve exact target ownership. Protocol additionally compares complete UTF-16 edits and sends didChange. Fix bare declaration uses captured by local names, while preserving qualified paths, retained aliases, pre-declaration/initializer uses and disjoint scopes. Default expressions check all owning parameters according to canonical HIR binding; later/current parameters must reject capture. No runtime or completion scope semantics changed. Broad S2 cells remain unreviewed; feature counts unchanged at 236 verified, 1089 unreviewed, two N/A, zero failed. Workspace 4552 passed with two historical ignored, service 655, protocol 640; rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-eIpStw/results.json passed 10 and native editors/vscode/test-results/input-x883aC/results.json passed 16; strict target/lsp-matrix/run-s0RpYC/report.json refreshes 247 accepted B00-B03 obligations without changing original snapshots. Whole-batch remaining 1230 and B04 remains open. Resume B04.03 local-target rename capture/disjoint-scope coverage; other semantic/lifecycle and UX05/UX06 gates remain. Fresh macOS evidence required when used; B16 deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B04.03",
+      "revision": null,
+      "requirements": [
+        "rename/syntax/S2/positive/service",
+        "rename/syntax/S2/positive/protocol",
+        "rename/syntax/S2/negative/service",
+        "rename/syntax/S2/negative/protocol"
+      ],
+      "summary": "Advance four rename S2 cells with 35 independently enumerated local capture/scope scenarios on Unicode LF/CRLF; broad cells remain unreviewed. Both layers assert exact target/unrelated binding owners, complete references with/without declarations, prepare ranges/placeholders, and allow/reject outcomes at every target site. Service applies every successful plan and compares the whole file; protocol compares complete legacy/versioned UTF-16 edits, applies and sends didChange, rechecks owners/reference sets, then restores and rechecks. Replace whole-BindingMap name rejection with bounded HIR scope lookup under the proposed rename, including closure creation scopes, parameter defaults, let initializer order and real for/match scopes. Preserve same-scope collision rejection; allow disjoint scopes, harmless shadows and no-ops. Reject global/import/stdlib/unresolved/qualified-head capture, including field/method receivers absent from ordinary unresolved-reference metadata. Literal Map keys and recorded task/service capabilities bypass lookup. No runtime binding changes or source reparse. Workspace 4554 passed, two historical ignored; service 656, protocol 641; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-MUU0HD/results.json passed 10 and native editors/vscode/test-results/input-p7efFs/results.json passed 16; strict target/lsp-matrix/run-EUmYPQ/report.json refreshes all 247 accepted B00-B03 obligations without changing original snapshots. Feature audit stays 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.04 shorthand/pattern and named-argument edit ownership; other semantic/lifecycle and UX05/UX06 gates remain. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.03",
-  "nextTask": "B04.03",
+  "activeChild": "B04.04",
+  "nextTask": "B04.04",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4674,7 +4685,21 @@
     "target/b04-02-accepted-regression.log",
     "editors/vscode/test-results/run-eIpStw/results.json",
     "editors/vscode/test-results/input-x883aC/results.json",
-    "target/lsp-matrix/run-aOiQV5/report.json"
+    "target/lsp-matrix/run-aOiQV5/report.json",
+    "target/lsp-matrix/run-EUmYPQ/report.json",
+    "target/b04-03-baseline.log",
+    "target/b04-03-focused.log",
+    "target/b04-03-rename.log",
+    "target/b04-03-workspace.log",
+    "target/b04-03-fmt.log",
+    "target/b04-03-clippy.log",
+    "target/b04-03-node.log",
+    "target/b04-03-editor.log",
+    "target/b04-03-input.log",
+    "target/b04-03-accepted-regression.log",
+    "editors/vscode/test-results/run-MUU0HD/results.json",
+    "editors/vscode/test-results/input-p7efFs/results.json",
+    "target/lsp-matrix/run-GHyjm2/report.json"
   ],
   "openIssues": [
     {
@@ -5704,8 +5729,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "545fc7b9ddfe5c0a28a4fc3c5383e0b0652ea50d",
-          "treeSha256": "8e4166487990185185e11b7abc1206f3146f3ba2a4923a077ad89134160049e7"
+          "revision": "362eda9ccbdd73406ccd3cf487111128c17b81ec",
+          "treeSha256": "25b8826371fcb9e10b8e6fb37ddb02fbe94d9ebc66137a58ab87a97f9220b727"
         },
         "profile": {
           "platform": "win32",
@@ -5713,11 +5738,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-s0RpYC/report.json"
+          "target/lsp-matrix/run-EUmYPQ/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-eIpStw/results.json --local-results editors/vscode/test-results/input-x883aC/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-MUU0HD/results.json --local-results editors/vscode/test-results/input-p7efFs/results.json",
             "exitCode": 0
           }
         ]

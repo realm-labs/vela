@@ -27,6 +27,9 @@ mod collision_tests;
 mod collisions;
 mod edit;
 mod fields;
+#[cfg(test)]
+mod local_collision_tests;
+mod local_collisions;
 mod methods;
 mod schema;
 mod variants;
@@ -176,7 +179,12 @@ impl LanguageServiceDatabases {
         target: LocalRenameTarget<'_>,
         new_name: &str,
     ) -> Option<WorkspaceEdit> {
-        if local_name_conflicts(target.bindings, target.local, new_name) {
+        if local_collisions::conflicts(
+            self.hir_db().graph(),
+            target.bindings,
+            target.local,
+            new_name,
+        ) {
             return None;
         }
 
@@ -995,12 +1003,6 @@ fn local_declaration_at_token<'a>(
 ) -> Option<&'a LocalBinding> {
     let local = bindings.local_containing_source_range(token.range.start, token.range.end)?;
     bindings.local(local)
-}
-
-fn local_name_conflicts(bindings: &BindingMap, local: HirLocalId, new_name: &str) -> bool {
-    bindings
-        .locals()
-        .any(|binding| binding.id != local && binding.name == new_name)
 }
 
 fn declaration_name_conflicts(

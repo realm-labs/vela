@@ -854,7 +854,12 @@ Bare uses reject capture by visible locals, including parameters in default
 expressions under the existing canonical binding rules. Qualified paths, retained
 aliases and disjoint scopes remain eligible; applied edits preserve exact call
 ownership. The broad S2 cells remain unreviewed pending the other partitions.
-Resume B04.03 with local-target rename capture and disjoint-scope coverage.
+B04.03 adds 35 LF/CRLF local-rename scope/capture cases at both layers. HIR
+scope ancestry permits disjoint bindings and rejects changes to existing lookup
+ownership, including closure/default scopes and unresolved member receivers.
+Both drivers check exact owners/reference sets after applying safe edits; protocol
+also checks both edit forms, open versions and document restoration. S2 remains open.
+Resume B04.04 with shorthand/pattern and named-argument rename edit ownership.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

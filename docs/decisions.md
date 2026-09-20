@@ -4718,3 +4718,13 @@ parameter defaults additionally check their owning function's parameters because
 the canonical binder declares all of them before lowering defaults. This safety
 check follows existing HIR ownership, including later/current parameters, without
 changing runtime binding or completion's source-order candidate policy.
+
+Local rename evaluates the proposed name against the existing HIR scope tree.
+It preserves the same-scope collision rejection policy, permits disjoint scopes,
+and rejects either a renamed use losing its local owner or another lookup being
+captured by that local. Closure roots reconnect to their creation scope; parameter
+defaults reconnect to their parameter owner. Let visibility follows initializer
+completion, while loop/pattern visibility follows actual lexical scopes. Literal
+Map keys and task/service capabilities bypass this name lookup; unresolved reads
+and field/method receivers remain capture-sensitive. This bounded metadata check
+does not reparse sources or change language/runtime binding semantics.
