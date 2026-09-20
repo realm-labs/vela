@@ -1,8 +1,6 @@
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
 use vela_hir::body::HirPathKind;
-use vela_syntax::Parse as SyntaxParse;
-use vela_syntax::ast::SyntaxSourceFile;
 
 use crate::{
     LanguageServiceDatabases, SymbolRef, TextRange, hir_path_sites, query_context,
@@ -13,8 +11,8 @@ use crate::{
 };
 
 use super::{
-    Reference, ReferenceKind, ReferenceToken, diagnostic_range, record_fields,
-    record_variant_patterns, resolved_use_reference_kind, span_text_range, token_text,
+    Reference, ReferenceKind, ReferenceToken, diagnostic_range, resolved_use_reference_kind,
+    span_text_range,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -88,20 +86,9 @@ pub(super) fn schema_field_references(
             source,
             target,
         ));
-        if let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) {
-            references.extend(schema_record_field_references_for_source(
-                databases.schema_db().facts(),
-                parsed,
-                source,
-                target,
-            ));
-            references.extend(schema_record_variant_pattern_field_references_for_source(
-                databases.schema_db().facts(),
-                parsed,
-                source,
-                target,
-            ));
-        }
+        references.extend(schema_record_field_references_for_source(
+            databases, source, target,
+        ));
     }
 
     sort_references(&mut references);
@@ -258,34 +245,19 @@ pub(super) fn schema_variant_use_target(
 
 pub(super) fn schema_record_field_use_target(
     databases: &LanguageServiceDatabases,
-    syntax_parse: Option<&SyntaxParse<SyntaxSourceFile>>,
-    text: &str,
+    source: &crate::SourceRecord,
     token: &ReferenceToken,
-) -> Option<SchemaFieldReferenceTarget> {
-    let field = token_text(text, token.range)?;
-    let parsed = syntax_parse?;
-    record_fields::record_field_sites(parsed)
-        .into_iter()
-        .find(|site| {
-            site.name == field
-                && site.name_range.start <= token.range.start
-                && token.range.end <= site.name_range.end
-        })
-        .and_then(|site| {
-            schema_field_target_for_constructor_path(
-                databases.schema_db().facts(),
-                &site.path,
-                field,
-            )
-        })
-        .or_else(|| {
-            schema_record_variant_pattern_field_use_target(
-                databases.schema_db().facts(),
-                parsed,
-                token,
-                field,
-            )
-        })
+) -> Option<Option<SchemaFieldReferenceTarget>> {
+    let site = crate::schema_record_fields::explicit_target(databases, source, token.range)?;
+    let known = databases
+        .schema_db()
+        .facts()
+        .field_fact(&site.owner, &site.name)
+        .is_some();
+    Some(known.then_some(SchemaFieldReferenceTarget {
+        owner: site.owner,
+        field: site.name,
+    }))
 }
 
 fn reference_for_schema_method_declaration(
@@ -448,57 +420,24 @@ fn schema_field_use_references_for_source(
 }
 
 fn schema_record_field_references_for_source(
-    schema: &RegistryFacts,
-    parsed: &SyntaxParse<SyntaxSourceFile>,
+    databases: &LanguageServiceDatabases,
     source: &crate::SourceRecord,
     target: &SchemaFieldReferenceTarget,
 ) -> Vec<Reference> {
-    let mut references = Vec::new();
-    let text = source.text();
-    for field in record_fields::record_field_sites(parsed) {
-        if field.name != target.field {
-            continue;
-        }
-        if schema_field_target_for_constructor_path(schema, &field.path, &target.field).as_ref()
-            != Some(target)
-        {
-            continue;
-        };
-        references.push(Reference {
+    crate::schema_record_fields::sites(databases, source)
+        .into_iter()
+        .filter(|site| site.owner == target.owner && site.name == target.field)
+        .map(|site| Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, field.name_range),
-            kind: ReferenceKind::Read,
+            range: diagnostic_range(source.text(), site.range),
+            kind: if site.pattern {
+                ReferenceKind::Pattern
+            } else {
+                ReferenceKind::Read
+            },
             symbol: schema_field_symbol(target),
-        });
-    }
-    references
-}
-
-fn schema_record_variant_pattern_field_references_for_source(
-    schema: &RegistryFacts,
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-    source: &crate::SourceRecord,
-    target: &SchemaFieldReferenceTarget,
-) -> Vec<Reference> {
-    let mut references = Vec::new();
-    let text = source.text();
-    for field in record_variant_patterns::record_pattern_field_sites(parsed) {
-        if field.name != target.field {
-            continue;
-        }
-        if schema_field_target_for_constructor_path(schema, &field.path, &target.field).as_ref()
-            != Some(target)
-        {
-            continue;
-        }
-        references.push(Reference {
-            document_id: source.document_id().clone(),
-            range: diagnostic_range(text, field.name_range),
-            kind: ReferenceKind::Pattern,
-            symbol: schema_field_symbol(target),
-        });
-    }
-    references
+        })
+        .collect()
 }
 
 fn schema_variant_use_references_for_source(
@@ -540,22 +479,6 @@ fn schema_variant_use_references_for_source(
     references
 }
 
-fn schema_record_variant_pattern_field_use_target(
-    schema: &RegistryFacts,
-    parsed: &SyntaxParse<SyntaxSourceFile>,
-    token: &ReferenceToken,
-    field: &str,
-) -> Option<SchemaFieldReferenceTarget> {
-    record_variant_patterns::record_pattern_field_sites(parsed)
-        .into_iter()
-        .find(|site| {
-            site.name == field
-                && site.name_range.start <= token.range.start
-                && token.range.end <= site.name_range.end
-        })
-        .and_then(|site| schema_field_target_for_constructor_path(schema, &site.path, field))
-}
-
 pub(crate) fn schema_method_target_for_receiver_fact(
     schema: &RegistryFacts,
     receiver: &TypeFact,
@@ -579,44 +502,6 @@ pub(super) fn schema_field_target_for_receiver_fact(
         owner,
         field: field.to_owned(),
     })
-}
-
-fn schema_field_target_for_constructor_path(
-    schema: &RegistryFacts,
-    path: &[String],
-    field: &str,
-) -> Option<SchemaFieldReferenceTarget> {
-    let mut owners = schema_constructor_owner_candidates(schema, path, field).into_iter();
-    let owner = owners.next()?;
-    owners
-        .next()
-        .is_none()
-        .then_some(SchemaFieldReferenceTarget {
-            owner,
-            field: field.to_owned(),
-        })
-}
-
-fn schema_constructor_owner_candidates(
-    schema: &RegistryFacts,
-    path: &[String],
-    field: &str,
-) -> Vec<String> {
-    let qualified = path.join("::");
-    let short = path.last().cloned();
-    schema
-        .fields()
-        .filter_map(move |candidate| {
-            if candidate.name != field {
-                return None;
-            }
-            let exact = candidate.owner == qualified;
-            let short_match = short
-                .as_deref()
-                .is_some_and(|name| candidate.owner.rsplit("::").next() == Some(name));
-            (exact || short_match).then_some(candidate.owner)
-        })
-        .collect()
 }
 
 fn schema_variant_target_for_path(

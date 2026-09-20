@@ -19,8 +19,6 @@ use vela_hir::type_hint::ImplMetadataKind;
 mod fields;
 mod methods;
 mod modules;
-mod record_fields;
-mod record_variant_patterns;
 pub(crate) mod schema;
 mod support;
 mod type_hints;
@@ -209,7 +207,6 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
-        let syntax_parse = self.parse_db().syntax_parse(document_id);
 
         if let Some((bindings, local)) =
             crate::named_argument_sites::target(self, document_id, token.range)
@@ -220,6 +217,11 @@ impl LanguageServiceDatabases {
         if let Some(target) = fields::script_record_field_use_target(self, source, &token) {
             return target.map_or_else(Vec::new, |target| {
                 fields::script_field_references(self, &target, include_declaration)
+            });
+        }
+        if let Some(target) = schema::schema_record_field_use_target(self, source, &token) {
+            return target.map_or_else(Vec::new, |target| {
+                schema::schema_field_references(self, &target, include_declaration)
             });
         }
         if let Some(target) = trait_declaration_target(graph, source_id, &token) {
@@ -274,11 +276,6 @@ impl LanguageServiceDatabases {
                 schema::schema_variant_use_target(self, source_id, source.text(), &token)
             {
                 return schema::schema_variant_references(self, &target, include_declaration);
-            }
-            if let Some(target) =
-                schema::schema_record_field_use_target(self, syntax_parse, source.text(), &token)
-            {
-                return schema::schema_field_references(self, &target, include_declaration);
             }
             if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);

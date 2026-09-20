@@ -24,6 +24,7 @@ mod query_context;
 mod references;
 mod rename;
 mod schema;
+mod schema_record_fields;
 mod selection;
 mod semantic_tokens;
 mod signature;

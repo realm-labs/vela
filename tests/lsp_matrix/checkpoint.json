@@ -4877,7 +4877,15 @@
     "target/b04-08-repro.log",
     "target/b04-08-rename-final.log",
     "target/b04-08-clippy-final.log",
-    "target/b04-08-fmt.log"
+    "target/b04-08-fmt.log",
+    "target/b04-08-reference-baseline.log",
+    "target/b04-08-reference-repro.log",
+    "target/b04-08-reference-focused.log",
+    "target/b04-08-reference-negative.log",
+    "target/b04-08-references.log",
+    "target/b04-08-reference-rename-final.log",
+    "target/b04-08-reference-clippy-final.log",
+    "target/b04-08-reference-fmt.log"
   ],
   "openIssues": [
     {

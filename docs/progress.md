@@ -887,8 +887,12 @@ B04.08 is in progress: source-backed schema field rename now includes scoped
 constructor and pattern labels and expands shorthand without renaming its local
 value. A Unicode LF/CRLF service regression checks exact edits from declaration,
 label and dot queries, applies edits, regenerates metadata and rechecks targets.
-Protocol/full-reference matrices, negative ownership partitions and fresh editor
-acceptance remain before closing this child; its checkpoint does not advance.
+References and rename now share scoped schema record sites. Service assertions
+check exact reference/highlight sets and kinds before and after metadata rebuild,
+separate same-named source/other-schema owners, reject unknown-label capture and
+keep metadata-only fields non-renamable. Protocol-specific matrices, remaining
+negative ownership partitions and fresh editor acceptance are still required;
+this child and its checkpoint do not advance.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

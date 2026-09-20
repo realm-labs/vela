@@ -4768,3 +4768,9 @@ expansion preserves the local value name and schema ABI risk reporting remains
 attached to the edit. Applying source edits does not silently mutate schema
 metadata; validation regenerates the artifact before querying the renamed schema
 symbol. Metadata-only fields remain non-renamable.
+
+Schema record-field references and rename share one scoped label-site resolver;
+reference collection does not use a separate short-name owner search. Explicit
+unknown labels own an empty result, while metadata-only known fields retain
+references without becoming rename targets. Pattern labels preserve Pattern
+classification and shorthand query tokens continue to belong to their locals.
