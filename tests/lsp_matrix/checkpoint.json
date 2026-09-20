@@ -2475,10 +2475,21 @@
         "rename/syntax/S2/negative/protocol"
       ],
       "summary": "Advance four rename S2 cells with 35 independently enumerated local capture/scope scenarios on Unicode LF/CRLF; broad cells remain unreviewed. Both layers assert exact target/unrelated binding owners, complete references with/without declarations, prepare ranges/placeholders, and allow/reject outcomes at every target site. Service applies every successful plan and compares the whole file; protocol compares complete legacy/versioned UTF-16 edits, applies and sends didChange, rechecks owners/reference sets, then restores and rechecks. Replace whole-BindingMap name rejection with bounded HIR scope lookup under the proposed rename, including closure creation scopes, parameter defaults, let initializer order and real for/match scopes. Preserve same-scope collision rejection; allow disjoint scopes, harmless shadows and no-ops. Reject global/import/stdlib/unresolved/qualified-head capture, including field/method receivers absent from ordinary unresolved-reference metadata. Literal Map keys and recorded task/service capabilities bypass lookup. No runtime binding changes or source reparse. Workspace 4554 passed, two historical ignored; service 656, protocol 641; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-MUU0HD/results.json passed 10 and native editors/vscode/test-results/input-p7efFs/results.json passed 16; strict target/lsp-matrix/run-EUmYPQ/report.json refreshes all 247 accepted B00-B03 obligations without changing original snapshots. Feature audit stays 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.04 shorthand/pattern and named-argument edit ownership; other semantic/lifecycle and UX05/UX06 gates remain. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
+    },
+    {
+      "id": "B04.04",
+      "revision": null,
+      "requirements": [
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S6/positive/service",
+        "rename/syntax/S6/positive/protocol"
+      ],
+      "summary": "Advance four positive rename S4/S6 cells with 16 independently authored shorthand before/after scenarios on Unicode LF/CRLF; broad cells remain unreviewed. Both layers assert prepare ranges/placeholders and complete edit plans at every owned site; apply actual edits, compare whole files, parse, verify exact local declaration ownership and complete references with/without declarations. Protocol checks both UTF-16 edit forms and open versions, sends didChange and restores/requeries the original source. Fix local rename changing a shorthand's field label: canonical HIR metadata expands affected record values and pattern bindings to original_field: renamed_local. Explicit labels, unrelated shadows and no-ops remain unchanged. Cover source/enum constructors, nested tuple/match/for patterns, captures, nested/repeated constructors and independent field/local namespaces. Direct nominal let patterns are not certified; fixtures use existing CST pattern forms. No grammar or runtime changes. Workspace 4556 passed, two historical ignored; service 657, protocol 642; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-QCloRV/results.json passed 10 and native editors/vscode/test-results/input-VbChGQ/results.json passed 16; strict target/lsp-matrix/run-otLTmh/report.json refreshes 247 accepted B00-B03 obligations without changing original snapshots. Feature audit stays 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.05 named-argument and field-target edit ownership, then remaining semantic/lifecycle and UX05/UX06 gates. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer. The first native attempt passed its 16 scenarios but failed the final process-stream close timeout; retain it as a failed attempt and use only the complete successful standalone rerun for acceptance."
     }
   ],
-  "activeChild": "B04.04",
-  "nextTask": "B04.04",
+  "activeChild": "B04.05",
+  "nextTask": "B04.05",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4699,7 +4710,23 @@
     "target/b04-03-accepted-regression.log",
     "editors/vscode/test-results/run-MUU0HD/results.json",
     "editors/vscode/test-results/input-p7efFs/results.json",
-    "target/lsp-matrix/run-GHyjm2/report.json"
+    "target/lsp-matrix/run-GHyjm2/report.json",
+    "target/lsp-matrix/run-otLTmh/report.json",
+    "target/b04-04-baseline.log",
+    "target/b04-04-focused.log",
+    "target/b04-04-rename.log",
+    "target/b04-04-workspace.log",
+    "target/b04-04-fmt.log",
+    "target/b04-04-clippy.log",
+    "target/b04-04-node.log",
+    "target/b04-04-editor.log",
+    "target/b04-04-input.log",
+    "target/b04-04-accepted-regression.log",
+    "editors/vscode/test-results/run-QCloRV/results.json",
+    "editors/vscode/test-results/input-VbChGQ/results.json",
+    "target/lsp-matrix/run-i8h4yf/report.json",
+    "target/b04-04-input-initial.log",
+    "editors/vscode/test-results/input-Fi6GPE/results.json"
   ],
   "openIssues": [
     {
@@ -5729,8 +5756,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "362eda9ccbdd73406ccd3cf487111128c17b81ec",
-          "treeSha256": "25b8826371fcb9e10b8e6fb37ddb02fbe94d9ebc66137a58ab87a97f9220b727"
+          "revision": "8727c6e9ce868041ef72ec5d3978a3f967ec3fd6",
+          "treeSha256": "fea3d0aa8975eb37c0ecef4b8d1ab47d01d57f59024bdec07d70fda33858c7a7"
         },
         "profile": {
           "platform": "win32",
@@ -5738,11 +5765,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-EUmYPQ/report.json"
+          "target/lsp-matrix/run-otLTmh/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-MUU0HD/results.json --local-results editors/vscode/test-results/input-p7efFs/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-QCloRV/results.json --local-results editors/vscode/test-results/input-VbChGQ/results.json",
             "exitCode": 0
           }
         ]

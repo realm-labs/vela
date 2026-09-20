@@ -32,6 +32,9 @@ mod local_collision_tests;
 mod local_collisions;
 mod methods;
 mod schema;
+mod shorthand;
+#[cfg(test)]
+mod shorthand_tests;
 mod variants;
 
 pub use edit::{
@@ -189,13 +192,15 @@ impl LanguageServiceDatabases {
         }
 
         let graph = self.hir_db().graph();
+        let source = target.bindings.local(target.local)?.span.source;
+        let shorthand_labels = shorthand::local_labels(graph, source);
         let mut edits = Vec::new();
         if let Some(binding) = target.bindings.local(target.local)
             && let Some(range) = span_text_range(binding.span)
         {
             edits.push(TextEdit {
                 range: diagnostic_range(text, range),
-                new_text: new_name.to_owned(),
+                new_text: shorthand::local_replacement(&shorthand_labels, binding.span, new_name),
             });
         }
         edits.extend(
@@ -207,7 +212,11 @@ impl LanguageServiceDatabases {
                         let span = graph.expression_span(expression)?;
                         Some(TextEdit {
                             range: diagnostic_range(text, span_text_range(span)?),
-                            new_text: new_name.to_owned(),
+                            new_text: shorthand::local_replacement(
+                                &shorthand_labels,
+                                span,
+                                new_name,
+                            ),
                         })
                     }
                     BindingResolution::Local(_)

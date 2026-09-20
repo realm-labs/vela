@@ -9,6 +9,7 @@ use std::{
 mod collisions;
 mod imports;
 mod local_collisions;
+mod shorthand;
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 

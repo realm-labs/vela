@@ -1,0 +1,231 @@
+{
+  "version": 1,
+  "id": "rename-local-shorthand",
+  "files": {},
+  "actions": [],
+  "oracle": {
+    "cases": [
+      {
+        "id": "parameter-record",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let item = Record { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "local-record",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main() { let [[target:start]]value[[target:end]] = 1; let item = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main() { let [[target:start]]renamed_value[[target:end]] = 1; let item = Record { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "captured-record",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let make = || Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let make = || Record { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "multiple-records",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let first = Record { [[short1:start]]value[[short1:end]] }; let second = Record { [[short2:start]]value[[short2:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let first = Record { value: [[short1:start]]renamed_value[[short1:end]] }; let second = Record { value: [[short2:start]]renamed_value[[short2:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "short2": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "explicit-record-value",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Record { value: [[explicit:start]]value[[explicit:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let item = Record { value: [[explicit:start]]renamed_value[[explicit:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "explicit": "renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "enum-record",
+        "source": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Choice::Item { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let item = Choice::Item { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "tuple-struct-pattern",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(item: Record) { let (Record { [[target:start]]value[[target:end]] }, _) = (item, 0); [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(item: Record) { let (Record { value: [[target:start]]renamed_value[[target:end]] }, _) = (item, 0); [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "tuple-enum-pattern",
+        "source": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { let (Choice::Item { [[target:start]]value[[target:end]] }, _) = (item, 0); [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { let (Choice::Item { value: [[target:start]]renamed_value[[target:end]] }, _) = (item, 0); [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "match-enum-pattern",
+        "source": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { match item { Choice::Item { [[target:start]]value[[target:end]] } if [[guard:start]]value[[guard:end]] > 0 => [[read:start]]value[[read:end]], _ => 0 } }\n",
+        "expected": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { match item { Choice::Item { value: [[target:start]]renamed_value[[target:end]] } if [[guard:start]]renamed_value[[guard:end]] > 0 => [[read:start]]renamed_value[[read:end]], _ => 0 } }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "value: renamed_value",
+          "guard": "renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "explicit-pattern",
+        "source": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { match item { Choice::Item { value: [[target:start]]value[[target:end]] } => [[read:start]]value[[read:end]], _ => 0 } }\n",
+        "expected": "/* 中😀 */ enum Choice { Item { value: i64 }, Empty }\n/* 中😀 */ fn main(item: Choice) { match item { Choice::Item { value: [[target:start]]renamed_value[[target:end]] } => [[read:start]]renamed_value[[read:end]], _ => 0 } }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "loop-struct-pattern",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(items: Array<Record>) { for Record { [[target:start]]value[[target:end]] } in items { [[read:start]]value[[read:end]]; } }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(items: Array<Record>) { for Record { value: [[target:start]]renamed_value[[target:end]] } in items { [[read:start]]renamed_value[[read:end]]; } }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "pattern-to-record",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(item: Record) { let (Record { [[target:start]]value[[target:end]] }, _) = (item, 0); let next = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main(item: Record) { let (Record { value: [[target:start]]renamed_value[[target:end]] }, _) = (item, 0); let next = Record { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "value: renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "noop-shorthand",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "newName": "value",
+        "edits": {
+          "target": "value",
+          "short1": "value",
+          "read": "value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "unrelated-shadow-keeps-shorthand",
+        "source": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { if true { let value = 2; let other = Record { value }; } let item = Record { [[short1:start]]value[[short1:end]] }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { if true { let value = 2; let other = Record { value }; } let item = Record { value: [[short1:start]]renamed_value[[short1:end]] }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "nested-constructor",
+        "source": "/* 中😀 */ struct Record { value: i64 }\nstruct Outer { inner: Record }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Outer { inner: Record { [[short1:start]]value[[short1:end]] } }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64 }\nstruct Outer { inner: Record }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let item = Outer { inner: Record { value: [[short1:start]]renamed_value[[short1:end]] } }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      },
+      {
+        "id": "field-name-is-not-local-conflict",
+        "source": "/* 中😀 */ struct Record { value: i64, renamed_value: i64 }\n/* 中😀 */ fn main([[target:start]]value[[target:end]]: i64) { let item = Record { [[short1:start]]value[[short1:end]], renamed_value: 1 }; [[read:start]]value[[read:end]]; }\n",
+        "expected": "/* 中😀 */ struct Record { value: i64, renamed_value: i64 }\n/* 中😀 */ fn main([[target:start]]renamed_value[[target:end]]: i64) { let item = Record { value: [[short1:start]]renamed_value[[short1:end]], renamed_value: 1 }; [[read:start]]renamed_value[[read:end]]; }\n",
+        "newName": "renamed_value",
+        "edits": {
+          "target": "renamed_value",
+          "short1": "value: renamed_value",
+          "read": "renamed_value"
+        },
+        "probes": {
+          "read": "target"
+        }
+      }
+    ]
+  }
+}

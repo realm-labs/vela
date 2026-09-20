@@ -859,7 +859,12 @@ scope ancestry permits disjoint bindings and rejects changes to existing lookup
 ownership, including closure/default scopes and unresolved member receivers.
 Both drivers check exact owners/reference sets after applying safe edits; protocol
 also checks both edit forms, open versions and document restoration. S2 remains open.
-Resume B04.04 with shorthand/pattern and named-argument rename edit ownership.
+B04.04 adds 16 LF/CRLF shorthand rename cases. Local renames expand affected
+constructor uses and pattern bindings to preserve the original field labels;
+explicit labels, unrelated shadows and no-ops remain unchanged. Both layers apply
+exact edits and recheck complete references and local ownership; protocol also
+checks UTF-16/versioned output and restores the original document. S4/S6 stay open.
+Resume B04.05 with named-argument and field-target rename edit ownership.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

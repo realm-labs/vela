@@ -4728,3 +4728,10 @@ completion, while loop/pattern visibility follows actual lexical scopes. Literal
 Map keys and task/service capabilities bypass this name lookup; unresolved reads
 and field/method receivers remain capture-sensitive. This bounded metadata check
 does not reparse sources or change language/runtime binding semantics.
+
+When a local rename affects a shorthand record value or pattern binding, the
+edit expands that token to an explicit `original_field: renamed_local` pair.
+Canonical HIR shorthand metadata owns this distinction; ordinary explicit values
+receive only an identifier replacement. Unrelated labels and no-op shorthand
+renames retain their existing spelling. Field names are not implicitly renamed
+when the user renames a local binding.
