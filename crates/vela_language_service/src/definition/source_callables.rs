@@ -7,14 +7,14 @@ use vela_hir::{
 
 use crate::{Definition, LanguageServiceDatabases, SymbolRef};
 
-pub(super) struct SourceParameters<'a> {
-    pub(super) params: &'a [ParamHint],
-    pub(super) declaration: Option<HirDeclId>,
+pub(crate) struct SourceParameters<'a> {
+    pub(crate) params: &'a [ParamHint],
+    pub(crate) declaration: Option<HirDeclId>,
     pub(super) variant: Option<(HirDeclId, &'a str)>,
 }
 
 impl LanguageServiceDatabases {
-    pub(super) fn source_parameters_for_navigation(
+    pub(crate) fn source_parameters_for_navigation(
         &self,
         callee: &Definition,
     ) -> Option<SourceParameters<'_>> {

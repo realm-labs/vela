@@ -18,6 +18,7 @@ mod hir_path_sites;
 mod hover;
 mod incremental;
 mod inlay;
+mod named_argument_sites;
 mod project;
 mod query_context;
 mod references;

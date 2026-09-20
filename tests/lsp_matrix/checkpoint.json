@@ -2486,10 +2486,33 @@
         "rename/syntax/S6/positive/protocol"
       ],
       "summary": "Advance four positive rename S4/S6 cells with 16 independently authored shorthand before/after scenarios on Unicode LF/CRLF; broad cells remain unreviewed. Both layers assert prepare ranges/placeholders and complete edit plans at every owned site; apply actual edits, compare whole files, parse, verify exact local declaration ownership and complete references with/without declarations. Protocol checks both UTF-16 edit forms and open versions, sends didChange and restores/requeries the original source. Fix local rename changing a shorthand's field label: canonical HIR metadata expands affected record values and pattern bindings to original_field: renamed_local. Explicit labels, unrelated shadows and no-ops remain unchanged. Cover source/enum constructors, nested tuple/match/for patterns, captures, nested/repeated constructors and independent field/local namespaces. Direct nominal let patterns are not certified; fixtures use existing CST pattern forms. No grammar or runtime changes. Workspace 4556 passed, two historical ignored; service 657, protocol 642; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-QCloRV/results.json passed 10 and native editors/vscode/test-results/input-VbChGQ/results.json passed 16; strict target/lsp-matrix/run-otLTmh/report.json refreshes 247 accepted B00-B03 obligations without changing original snapshots. Feature audit stays 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.05 named-argument and field-target edit ownership, then remaining semantic/lifecycle and UX05/UX06 gates. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer. The first native attempt passed its 16 scenarios but failed the final process-stream close timeout; retain it as a failed attempt and use only the complete successful standalone rerun for acceptance."
+    },
+    {
+      "id": "B04.05",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol"
+      ],
+      "summary": "Advance sixteen S5 reference/highlight/prepare-rename/rename cells with a shared 16-position Unicode LF/CRLF cross-file source-function parameter matrix; broad cells remain unreviewed. Three binding groups separate the target parameter, caller variable and other function parameter. Exact repeated reference sets with/without declarations, highlight ranges/kinds, prepare ranges/placeholders, source-local symbols/definition targets and all edit ranges/text are asserted. Apply every group, compare whole files, parse, requery and restore; protocol sends didChange, checks both UTF-16/versioned forms, opens the initially closed consumer and later closes it with null client versions. Named labels include imported aliases, qualified calls, closures, defaults and missing-value recovery explicitly verified in CST. Unknown labels/callees/literals stay empty. Reject same-owner existing-parameter and unknown-label capture; another function's same-spelled unknown label does not block a valid rename. Share navigation's source-signature ownership and canonical local IDs; project local edits against the declaration's source and gather owned labels across documents. Filter candidate labels before resolving callees. Scope remains source functions, not all callable kinds. Workspace 4558 passed, two historical ignored; service 658, protocol 643; focused/rename suites, fmt/Clippy and Node 75 passed. Windows VSIX editors/vscode/test-results/run-Eiesku/results.json passed 10 and native editors/vscode/test-results/input-7cItKL/results.json passed 16; strict target/lsp-matrix/run-qmfDXh/report.json refreshes 247 accepted B00-B03 obligations without changing original snapshots. Feature audit stays 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Resume B04.06 field-target edit ownership and remaining callable kinds; other semantic/lifecycle and UX05/UX06 gates remain. Fresh macOS evidence when used; B16 deferred. Find this commit by its LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.05",
-  "nextTask": "B04.05",
+  "activeChild": "B04.06",
+  "nextTask": "B04.06",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4726,7 +4749,21 @@
     "editors/vscode/test-results/input-VbChGQ/results.json",
     "target/lsp-matrix/run-i8h4yf/report.json",
     "target/b04-04-input-initial.log",
-    "editors/vscode/test-results/input-Fi6GPE/results.json"
+    "editors/vscode/test-results/input-Fi6GPE/results.json",
+    "target/lsp-matrix/run-qmfDXh/report.json",
+    "target/b04-05-baseline.log",
+    "target/b04-05-focused.log",
+    "target/b04-05-rename.log",
+    "target/b04-05-workspace.log",
+    "target/b04-05-fmt.log",
+    "target/b04-05-clippy.log",
+    "target/b04-05-node.log",
+    "target/b04-05-editor.log",
+    "target/b04-05-input.log",
+    "target/b04-05-accepted-regression.log",
+    "editors/vscode/test-results/run-Eiesku/results.json",
+    "editors/vscode/test-results/input-7cItKL/results.json",
+    "target/lsp-matrix/run-cWmodz/report.json"
   ],
   "openIssues": [
     {
@@ -5756,8 +5793,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "8727c6e9ce868041ef72ec5d3978a3f967ec3fd6",
-          "treeSha256": "fea3d0aa8975eb37c0ecef4b8d1ab47d01d57f59024bdec07d70fda33858c7a7"
+          "revision": "9dc7333e59c8c09275d38977cddb74171c999409",
+          "treeSha256": "f8c6e5b134ab3402420bf90cad108e774c98c14399bc2b4007d1ed526aa12e3c"
         },
         "profile": {
           "platform": "win32",
@@ -5765,11 +5802,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-otLTmh/report.json"
+          "target/lsp-matrix/run-qmfDXh/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-QCloRV/results.json --local-results editors/vscode/test-results/input-VbChGQ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-Eiesku/results.json --local-results editors/vscode/test-results/input-7cItKL/results.json",
             "exitCode": 0
           }
         ]

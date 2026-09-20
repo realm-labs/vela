@@ -4735,3 +4735,12 @@ Canonical HIR shorthand metadata owns this distinction; ordinary explicit values
 receive only an identifier replacement. Unrelated labels and no-op shorthand
 renames retain their existing spelling. Field names are not implicitly renamed
 when the user renames a local binding.
+
+Source function named-argument labels use the same resolved source signature as
+navigation and map its parameter span to the canonical HIR local ID. References
+and highlights treat a label as a read reference to that parameter; the argument
+value keeps its separate binding. Local rename projects declaration/body edits
+against the owner's document and adds owned labels across files. It rejects a
+new parameter name that would capture an existing unknown label of the same
+function. CST labels remain eligible when their value expression is missing;
+unknown callees and unrelated callable owners cannot supply a parameter target.

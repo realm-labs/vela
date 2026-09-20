@@ -10,8 +10,17 @@ use crate::{
 
 #[test]
 fn reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::spec);
+}
+
+#[test]
+fn named_parameter_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::named_spec);
+}
+
+fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
-        let spec = oracle::spec(crlf);
+        let spec = spec_for(crlf);
         let fixture = FixtureWorkspace::new(&spec).expect("fixture");
         oracle::assert_parsed(&fixture);
         let mut db = LanguageServiceDatabases::new();
@@ -114,6 +123,26 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
             let prepared = db.prepare_rename(&uri(file), point);
             let renamed = db.rename(&uri(file), point, "renamed_symbol");
             if let Some(group) = query["group"].as_str() {
+                if spec.oracle["checkDefinition"] == true {
+                    let site = &sites[0];
+                    let definition = db.definition(&uri(file), point).expect("owned definition");
+                    assert_eq!(
+                        definition.document_id(),
+                        &uri(site["file"].as_str().expect("file"))
+                    );
+                    assert_eq!(range_json(definition.range()), site_range(fixture, site));
+                }
+                for rejected in spec.oracle["rejections"][group]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                {
+                    assert!(
+                        db.rename(&uri(file), point, rejected.as_str().expect("name"))
+                            .is_none(),
+                        "collision {marker}: {rejected}"
+                    );
+                }
                 let prepared = prepared.expect("prepare rename");
                 assert_eq!(prepared.document_id(), &uri(file));
                 assert_eq!(range_json(prepared.range()), site_range(fixture, query));

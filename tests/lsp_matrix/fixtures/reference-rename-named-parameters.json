@@ -1,0 +1,190 @@
+{
+  "version": 1,
+  "id": "reference-rename-named-parameters",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.named_parameters\"\nname = \"named_parameters\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn grant([[parameter-decl:start]]amount[[parameter-decl:end]]: i64, bonus: i64 = 0) -> i64 { return [[parameter-read:start]]amount[[parameter-read:end]] + bonus; }\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub fn grant([[other-decl:start]]amount[[other-decl:end]]: i64) -> i64 { return [[other-read:start]]amount[[other-read:end]]; }\nfn side() { helpers::grant([[closed-label:start]]amount[[closed-label:end]] = 3); }\nfn default_call(seed: i64 = helpers::grant([[default-label:start]]amount[[default-label:end]] = 4)) {}\n",
+    "scripts/main.vela": "use helpers::grant as reward\n/* 中😀 */ fn main([[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n    reward([[alias-label:start]]amount[[alias-label:end]] = [[caller-read:start]]amount[[caller-read:end]]);\n    /* 中😀 */ helpers::grant([[qualified-label:start]]amount[[qualified-label:end]] = 2, bonus = 1);\n    consumer::grant([[other-label:start]]amount[[other-label:end]] = 3);\n    let callback = || reward([[lambda-label:start]]amount[[lambda-label:end]] = 4);\n    reward(5);\n    reward([[unknown-label:start]]bogus[[unknown-label:end]] = 6);\n    missing([[unknown-callee-label:start]]amount[[unknown-callee-label:end]] = 7);\n    let note = \"[[literal:start]]amount[[literal:end]]\";\n}\nfn incomplete() { reward([[recovery-label:start]]amount[[recovery-label:end]] = ); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "parameter": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "parameter-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "parameter-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "default-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "qualified-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "lambda-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "recovery-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "amount",
+        "rename": "caller_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-read",
+            "kind": "Read"
+          }
+        ]
+      },
+      "other": {
+        "name": "amount",
+        "rename": "bogus",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "parameter-decl",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "parameter-read",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-read",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "default-label",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-label",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-read",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "qualified-label",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "lambda-label",
+        "group": "parameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-callee-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "recovery-label",
+        "group": "parameter"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "parameter": [
+        "bonus",
+        "bogus"
+      ]
+    }
+  }
+}

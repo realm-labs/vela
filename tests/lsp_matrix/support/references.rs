@@ -2,7 +2,15 @@ use super::{FixtureWorkspace, Spec, load};
 use serde_json::Value;
 
 pub(crate) fn spec(crlf: bool) -> Spec {
-    let mut spec = load("reference-rename-coordinates");
+    spec_for("reference-rename-coordinates", crlf)
+}
+
+pub(crate) fn named_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-named-parameters", crlf)
+}
+
+fn spec_for(id: &str, crlf: bool) -> Spec {
+    let mut spec = load(id);
     if crlf {
         for text in spec.files.values_mut() {
             *text = text.replace('\n', "\r\n");
@@ -50,6 +58,29 @@ pub(crate) fn assert_parsed(fixture: &FixtureWorkspace) {
                     .is_empty(),
                 "{file}"
             );
+            if let Some(marker) = document.markers.get("recovery-label") {
+                use vela_syntax::ast::{AstNode, SyntaxCallExpr};
+                let parsed = vela_syntax::parse::parse_source(&document.text);
+                let arguments = parsed
+                    .tree()
+                    .syntax()
+                    .descendants()
+                    .filter_map(SyntaxCallExpr::cast)
+                    .flat_map(|call| call.arguments())
+                    .collect::<Vec<_>>();
+                let argument = arguments
+                    .iter()
+                    .find(|argument| {
+                        argument.name_token().is_some_and(|name| {
+                            usize::from(name.text_range().start()) == marker.start.byte
+                        })
+                    })
+                    .expect("recovered named argument");
+                assert!(
+                    argument.expression().is_none(),
+                    "recovery fixture must retain its missing value"
+                );
+            }
         }
     }
 }

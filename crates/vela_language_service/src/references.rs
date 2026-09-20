@@ -213,6 +213,12 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         let syntax_parse = self.parse_db().syntax_parse(document_id);
 
+        if let Some((bindings, local)) =
+            crate::named_argument_sites::target(self, document_id, token.range)
+        {
+            return self.local_references(bindings, local.id, include_declaration);
+        }
+
         if let Some(target) = trait_declaration_target(graph, source_id, &token) {
             return self.trait_references(&target, include_declaration);
         }
@@ -371,6 +377,24 @@ impl LanguageServiceDatabases {
     ) -> Vec<Reference> {
         let graph = self.hir_db().graph();
         let mut references = Vec::new();
+
+        if let Some(binding) = bindings.local(local)
+            && binding.kind == vela_hir::binding::LocalBindingKind::Parameter
+        {
+            for site in crate::named_argument_sites::matching(self, &[&binding.name])
+                .into_iter()
+                .filter(|site| site.parameter == Some(local))
+            {
+                if let Some(source) = self.source_db().records().get(&site.document) {
+                    references.push(Reference {
+                        document_id: site.document.clone(),
+                        range: diagnostic_range(source.text(), site.range),
+                        kind: ReferenceKind::Read,
+                        symbol: self.reference_local_symbol_for_binding(binding),
+                    });
+                }
+            }
+        }
 
         if include_declaration
             && let Some(binding) = bindings.local(local)

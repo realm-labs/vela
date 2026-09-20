@@ -148,9 +148,7 @@ impl LanguageServiceDatabases {
         )?;
         let symbol = target.symbol(self.hir_db().graph(), self)?;
         match target {
-            RenameTarget::Local(target) => {
-                self.rename_local(document_id, query.text(), target, new_name)
-            }
+            RenameTarget::Local(target) => self.rename_local(target, new_name),
             RenameTarget::Declaration(target) => self.rename_declaration(target, new_name),
             RenameTarget::ScriptField(target) => {
                 fields::rename_script_field(self, target, new_name)
@@ -175,13 +173,7 @@ impl LanguageServiceDatabases {
         .map(|edit| edit.with_symbol(symbol))
     }
 
-    fn rename_local(
-        &self,
-        document_id: &DocumentId,
-        text: &str,
-        target: LocalRenameTarget<'_>,
-        new_name: &str,
-    ) -> Option<WorkspaceEdit> {
+    fn rename_local(&self, target: LocalRenameTarget<'_>, new_name: &str) -> Option<WorkspaceEdit> {
         if local_collisions::conflicts(
             self.hir_db().graph(),
             target.bindings,
@@ -192,8 +184,23 @@ impl LanguageServiceDatabases {
         }
 
         let graph = self.hir_db().graph();
-        let source = target.bindings.local(target.local)?.span.source;
-        let shorthand_labels = shorthand::local_labels(graph, source);
+        let binding = target.bindings.local(target.local)?;
+        let source = self.source_record_for_rename(binding.span.source)?;
+        let document_id = source.document_id();
+        let text = source.text();
+        let named_sites = if binding.kind == vela_hir::binding::LocalBindingKind::Parameter {
+            crate::named_argument_sites::matching(self, &[&binding.name, new_name])
+        } else {
+            Vec::new()
+        };
+        if named_sites.iter().any(|site| {
+            site.owner == target.bindings.declaration
+                && site.name == new_name
+                && site.parameter != Some(target.local)
+        }) {
+            return None;
+        }
+        let shorthand_labels = shorthand::local_labels(graph, source.source_id());
         let mut edits = Vec::new();
         if let Some(binding) = target.bindings.local(target.local)
             && let Some(range) = span_text_range(binding.span)
@@ -231,14 +238,21 @@ impl LanguageServiceDatabases {
             (start.line, start.character)
         });
 
-        WorkspaceEdit::checked(
-            vec![document_text_edit_for_rename(
-                self,
-                document_id.clone(),
-                edits,
-            )],
-            Vec::new(),
-        )
+        let mut by_document = BTreeMap::from([(document_id.clone(), edits)]);
+        for site in named_sites
+            .into_iter()
+            .filter(|site| site.parameter == Some(target.local))
+        {
+            let source = self.source_db().records().get(&site.document)?;
+            by_document
+                .entry(site.document)
+                .or_default()
+                .push(TextEdit {
+                    range: diagnostic_range(source.text(), site.range),
+                    new_text: new_name.to_owned(),
+                });
+        }
+        workspace_edit_for_rename(self, by_document, Vec::new())
     }
 
     fn rename_declaration(
@@ -549,6 +563,17 @@ fn rename_target<'a>(
 ) -> Option<RenameTarget<'a>> {
     let graph = databases.hir_db().graph();
     let offset = u32::try_from(token.range.start).ok()?;
+
+    if let Some((bindings, binding)) =
+        crate::named_argument_sites::target(databases, query.document_id(), token.range)
+    {
+        return Some(RenameTarget::Local(LocalRenameTarget {
+            bindings,
+            local: binding.id,
+            token,
+            placeholder: binding.name.clone(),
+        }));
+    }
 
     if let Some(target) = fields::script_field_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::ScriptField(target));

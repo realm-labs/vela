@@ -6,8 +6,17 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 #[test]
 fn reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::spec);
+}
+
+#[test]
+fn named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::named_spec);
+}
+
+fn run_matrix(spec_for: fn(bool) -> Spec) {
     for crlf in [false, true] {
-        let spec = oracle::spec(crlf);
+        let spec = spec_for(crlf);
         let fixture = FixtureWorkspace::new(&spec).expect("fixture");
         let mut driver = Driver::new(&fixture);
         driver.check(&spec, &fixture);
@@ -171,6 +180,22 @@ impl Driver {
                 let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
                 let edit=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":"renamed_symbol"}));
                 if let Some(group) = query["group"].as_str() {
+                    if spec.oracle["checkDefinition"] == true {
+                        let site = &sites[0];
+                        let definition = self.query::<r::GotoDefinition>(params.clone());
+                        assert_eq!(
+                            definition,
+                            json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})
+                        );
+                    }
+                    for rejected in spec.oracle["rejections"][group]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                    {
+                        let result=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":rejected}));
+                        assert!(result.is_null(), "collision {marker}: {rejected}");
+                    }
                     assert_eq!(
                         prepare,
                         json!({"range":site_range(fixture,query),"placeholder":spec.oracle["groups"][group]["name"]}),

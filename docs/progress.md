@@ -864,7 +864,13 @@ constructor uses and pattern bindings to preserve the original field labels;
 explicit labels, unrelated shadows and no-ops remain unchanged. Both layers apply
 exact edits and recheck complete references and local ownership; protocol also
 checks UTF-16/versioned output and restores the original document. S4/S6 stay open.
-Resume B04.05 with named-argument and field-target rename edit ownership.
+B04.05 adds a 16-position cross-file source-parameter matrix. Named labels now
+share canonical parameter ownership with references/highlights/rename, including
+aliases, default expressions, closures and missing-value recovery. Caller values
+and other functions' parameters stay independent; same-owner label capture rejects.
+All three groups undergo exact applied edits and repeated/restored queries at both
+layers, including UTF-16 and open/closed versions. Broad S5 cells remain open.
+Resume B04.06 with field-target rename edit ownership and remaining callable kinds.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
