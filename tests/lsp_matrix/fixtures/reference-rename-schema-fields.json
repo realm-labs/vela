@@ -59,7 +59,10 @@
             "kind": "Write"
           }
         ],
-        "schemaField": 0
+        "schemaEntry": {
+          "collection": "fields",
+          "index": 0
+        }
       },
       "other": {
         "name": "value",
@@ -84,7 +87,10 @@
             "kind": "Read"
           }
         ],
-        "schemaField": 2
+        "schemaEntry": {
+          "collection": "fields",
+          "index": 2
+        }
       },
       "source": {
         "name": "value",

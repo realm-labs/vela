@@ -913,7 +913,12 @@ Tuple defaults resolve module names independently of their same-spelled fields;
 trait-default locals retain parameter scope. Both layers apply all groups, check
 compound writes and capture rejection, and repeat queries after edits/restoration.
 Broad S2/S4/S5/S6 remain open.
-Resume B04.13 with remaining schema callable ownership, then
+B04.13 adds 16 queries across five schema/source method groups. Schema method
+rename rejects capture of unresolved calls on the same receiver owner; other
+owners remain independent. Source method rename uses the canonical method symbol.
+Both layers apply all four writable groups, regenerate schema metadata explicitly,
+and retain metadata-only references without rename. Broad S4/S5 remain open.
+Resume B04.14 with remaining schema callable ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

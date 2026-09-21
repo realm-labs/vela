@@ -49,6 +49,11 @@ fn default_binding_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn schema_method_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::schema_method_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }

@@ -135,7 +135,9 @@ pub(super) fn rename_schema_member(
     target: SchemaMemberRenameTarget,
     new_name: &str,
 ) -> Option<WorkspaceEdit> {
-    if schema_member_name_conflicts(databases.schema_db().facts(), &target, new_name) {
+    if schema_member_name_conflicts(databases.schema_db().facts(), &target, new_name)
+        || schema_method_call_conflicts(databases, &target, new_name)
+    {
         return None;
     }
 
@@ -631,6 +633,42 @@ fn push_schema_member_use_edits(
             }
         }
     }
+}
+
+fn schema_method_call_conflicts(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaMemberRenameTarget,
+    new_name: &str,
+) -> bool {
+    if target.member == new_name || target.kind == SchemaMemberRenameKind::Field {
+        return false;
+    }
+    let graph = databases.hir_db().graph();
+    databases.source_db().records().values().any(|source| {
+        graph
+            .member_calls_in_source(source.source_id())
+            .filter(|field| field.name == new_name)
+            .any(|field| {
+                let Some(site) = schema_member_site_for_field(graph, field, true) else {
+                    return false;
+                };
+                let Some(receiver) = query_context::type_fact_for_source_range(
+                    databases,
+                    source.source_id(),
+                    site.receiver_range,
+                ) else {
+                    return false;
+                };
+                schema_member_target_for_receiver_fact(
+                    databases,
+                    &receiver,
+                    &target.member,
+                    true,
+                    &target.token,
+                )
+                .is_some_and(|found| found.owner == target.owner && found.kind == target.kind)
+            })
+    })
 }
 
 fn schema_member_site_for_field(

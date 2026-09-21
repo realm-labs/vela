@@ -4806,3 +4806,10 @@ edits. Tuple-field defaults retain their existing independent expression scope;
 a same-spelled module constant is distinct from the tuple field. Required trait
 defaults retain their existing parameter environment. This collection change does
 not change binder or runtime semantics.
+
+Schema method rename checks proposed-name calls against the canonical receiver
+owner of the original method, rejecting capture even when the proposed call is
+currently unresolved. Different qualified owners remain independent. Source method
+rename shares the same impl/trait symbol constructors as reference and navigation
+queries, rather than deriving an impl method identity from the impl declaration's
+display name.

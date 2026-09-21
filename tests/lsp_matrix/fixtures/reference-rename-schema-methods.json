@@ -1,0 +1,355 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-methods",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_methods\"\nname = \"schema_methods\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[method-decl:start]]add[[method-decl:end]]() {}\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub fn [[other-decl:start]]add[[other-decl:end]]() {}\nfn closed(item: host::Counter) { item.[[closed-call:start]]add[[closed-call:end]](3); }\n",
+    "scripts/trait_defs.vela": "/* 中😀 */ pub fn [[trait-decl:start]]add[[trait-decl:end]]() {}\n",
+    "scripts/main.vela": "use host::Counter as Count\nuse host::Measure as Measured\nstruct Counter {}\nimpl Counter { fn [[source-decl:start]]add[[source-decl:end]](self, value: i64) -> i64 { return value; } }\nfn returned(item: Count) -> Count { return item; }\n/* 中😀 */ fn main(item: Count, other: third::Counter, measured: Measured, source: Counter, meta: other::Counter) {\n item.[[main-call:start]]add[[main-call:end]](1);\n returned(item).[[returned-call:start]]add[[returned-call:end]](2);\n let call = || item.[[closure-call:start]]add[[closure-call:end]](3);\n other.[[other-call:start]]add[[other-call:end]](4);\n measured.[[trait-call:start]]add[[trait-call:end]](5);\n source.[[source-call:start]]add[[source-call:end]](6);\n meta.[[metadata-call:start]]add[[metadata-call:end]](7);\n meta.[[metadata-again:start]]add[[metadata-again:end]](8);\n item.[[unknown-method:start]]bogus[[unknown-method:end]](9);\n let note = \"[[literal:start]]add[[literal:end]]\";\n}\nfn unknown(item) { item.[[unknown-receiver:start]]add[[unknown-receiver:end]](1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "method": {
+        "name": "add",
+        "rename": "renamed_add",
+        "origin": "schema",
+        "qualified": "host::Counter.add",
+        "schemaEntry": {
+          "collection": "methods",
+          "index": 0
+        },
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "method-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "main-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "returned-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "other": {
+        "name": "add",
+        "rename": "bogus",
+        "origin": "schema",
+        "qualified": "third::Counter.add",
+        "schemaEntry": {
+          "collection": "methods",
+          "index": 2
+        },
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "trait": {
+        "name": "add",
+        "rename": "renamed_add",
+        "origin": "schema",
+        "qualified": "host::Measure.add",
+        "schemaEntry": {
+          "collection": "traitMethods",
+          "index": 0
+        },
+        "sites": [
+          {
+            "file": "scripts/trait_defs.vela",
+            "marker": "trait-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "source": {
+        "name": "add",
+        "rename": "renamed_add",
+        "origin": "source",
+        "qualified": "main::Counter.add",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "metadata": {
+        "name": "add",
+        "rename": "renamed_add",
+        "origin": "schema",
+        "qualified": "other::Counter.add",
+        "readonly": true,
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "metadata-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "metadata-again",
+            "kind": "Call"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "method-decl",
+        "group": "method"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-call",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "main-call",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "returned-call",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-call",
+        "group": "method"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-call",
+        "group": "other"
+      },
+      {
+        "file": "scripts/trait_defs.vela",
+        "marker": "trait-decl",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-call",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-decl",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-call",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "metadata-call",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "metadata-again",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-receiver"
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "host::Counter",
+          "fact": {
+            "kind": "host",
+            "name": "host::Counter"
+          }
+        },
+        {
+          "name": "third::Counter",
+          "fact": {
+            "kind": "host",
+            "name": "third::Counter"
+          }
+        },
+        {
+          "name": "other::Counter",
+          "fact": {
+            "kind": "host",
+            "name": "other::Counter"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "host::Measure",
+          "fact": {
+            "kind": "trait",
+            "name": "host::Measure"
+          }
+        }
+      ],
+      "methods": [
+        {
+          "owner": "host::Counter",
+          "name": "add",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "method-decl"
+          }
+        },
+        {
+          "owner": "host::Counter",
+          "name": "spare",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        },
+        {
+          "owner": "third::Counter",
+          "name": "add",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl"
+          }
+        },
+        {
+          "owner": "other::Counter",
+          "name": "add",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        }
+      ],
+      "traitMethods": [
+        {
+          "owner": "host::Measure",
+          "name": "add",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "primitive",
+                "name": "i64"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/trait_defs.vela",
+            "marker": "trait-decl"
+          }
+        }
+      ]
+    },
+    "checkDefinition": true,
+    "rejections": {
+      "method": [
+        "spare",
+        "bogus"
+      ]
+    }
+  }
+}

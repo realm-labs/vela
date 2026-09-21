@@ -17,8 +17,7 @@ use crate::{
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
         qualified_source_declaration_path, schema_member_symbol, schema_symbol,
-        schema_variant_symbol, source_enum_variant_symbol, source_member_symbol,
-        source_symbol_for_declaration,
+        schema_variant_symbol, source_enum_variant_symbol, source_symbol_for_declaration,
     },
 };
 
@@ -430,7 +429,7 @@ impl RenameTarget<'_> {
                 Some(source_symbol_for_declaration(graph, target.declaration))
             }
             Self::ScriptField(target) => target.owner.symbol(graph, &target.field),
-            Self::ScriptMethod(target) => source_member_symbol(graph, target.owner, &target.method),
+            Self::ScriptMethod(target) => target.symbol(graph),
             Self::EnumVariant(target) => {
                 source_enum_variant_symbol(graph, target.owner, &target.variant)
             }

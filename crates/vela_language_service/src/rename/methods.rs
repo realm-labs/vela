@@ -27,6 +27,19 @@ enum ScriptMethodRenameTargetKind {
     Trait,
 }
 
+impl ScriptMethodRenameTarget {
+    pub(super) fn symbol(&self, graph: &ModuleGraph) -> Option<crate::SymbolRef> {
+        match self.target_kind {
+            ScriptMethodRenameTargetKind::Impl => {
+                crate::symbol_ref::source_impl_method_symbol(graph, self.owner, &self.method)
+            }
+            ScriptMethodRenameTargetKind::Trait => {
+                crate::symbol_ref::source_member_symbol(graph, self.owner, &self.method)
+            }
+        }
+    }
+}
+
 pub(super) fn rename_script_method(
     databases: &LanguageServiceDatabases,
     target: ScriptMethodRenameTarget,
