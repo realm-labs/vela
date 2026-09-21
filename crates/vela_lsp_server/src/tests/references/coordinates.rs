@@ -40,6 +40,11 @@ fn tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
 }
 
 #[test]
+fn default_binding_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::default_binding_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -265,11 +270,7 @@ impl Driver {
                             json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})
                         );
                     }
-                    for rejected in spec.oracle["rejections"][group]
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                    {
+                    for rejected in oracle::rejections(spec, group) {
                         let result=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":rejected}));
                         assert!(result.is_null(), "collision {marker}: {rejected}");
                     }

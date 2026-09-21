@@ -2759,10 +2759,81 @@
         "rename/syntax/S5/negative/protocol"
       ],
       "summary": "Advance 32 S4/S5 reference/highlight/prepare-rename/rename cells with an independent three-file required-trait-parameter matrix: 19 queries and five binding groups. Broad cells remain unreviewed. Separate required signatures, sibling methods, same-named traits, concrete implementations and caller values. Cover signatures without defaults and a parameter used in two default-expression binding maps, aliases, closed consumers, closure calls and missing-value recovery. Unknown labels/receivers and literals remain empty. Both layers repeat exact sets/kinds, highlights, definitions, prepare targets and complete edits; apply all five groups, compare whole files, parse, requery and restore. Reject existing-parameter, owned unknown-label and default-local capture while preserving sibling independence. Protocol checks LF/CRLF, UTF-16, encoded Unicode paths, both edit forms, didChange and open/closed versions. Required parameters retain canonical declaration-span identity and collect all default-body local bindings instead of borrowing the first map. Share resolved call-label collection among body-backed parameters, required signatures and tuple variants; extract local rename to keep the parent below 1200 lines. Workspace 4571 passed, two historical ignored; service 665, protocol 649; fmt, workspace Clippy and Node 75 passed. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.12 remaining schema callable ownership and default-scope edges, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find the final child checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-jlt5LG/results.json passed 10; native editors/vscode/test-results/input-IQxSuW/results.json passed 16; strict regression target/lsp-matrix/run-25YEmA/report.json."
+    },
+    {
+      "id": "B04.12",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S2/positive/service",
+        "references/syntax/S2/positive/protocol",
+        "references/syntax/S2/negative/service",
+        "references/syntax/S2/negative/protocol",
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/negative/protocol",
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "references/syntax/S6/positive/service",
+        "references/syntax/S6/positive/protocol",
+        "references/syntax/S6/negative/service",
+        "references/syntax/S6/negative/protocol",
+        "highlight/syntax/S2/positive/service",
+        "highlight/syntax/S2/positive/protocol",
+        "highlight/syntax/S2/negative/service",
+        "highlight/syntax/S2/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "highlight/syntax/S6/positive/service",
+        "highlight/syntax/S6/positive/protocol",
+        "highlight/syntax/S6/negative/service",
+        "highlight/syntax/S6/negative/protocol",
+        "prepare-rename/syntax/S2/positive/service",
+        "prepare-rename/syntax/S2/positive/protocol",
+        "prepare-rename/syntax/S2/negative/service",
+        "prepare-rename/syntax/S2/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S6/positive/service",
+        "prepare-rename/syntax/S6/positive/protocol",
+        "prepare-rename/syntax/S6/negative/service",
+        "prepare-rename/syntax/S6/negative/protocol",
+        "rename/syntax/S2/positive/service",
+        "rename/syntax/S2/positive/protocol",
+        "rename/syntax/S2/negative/service",
+        "rename/syntax/S2/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol",
+        "rename/syntax/S6/positive/service",
+        "rename/syntax/S6/positive/protocol",
+        "rename/syntax/S6/negative/service",
+        "rename/syntax/S6/negative/protocol"
+      ],
+      "summary": "Advance 64 S2/S4/S5/S6 reference/highlight/prepare-rename/rename cells with a three-file default-binding matrix: 26 queries and six groups. Broad cells remain unreviewed. Separate a private module constant, same-spelled tuple fields on sibling variants, tuple-default locals, required-trait-default locals and caller values. Preserve the existing semantic distinction: tuple defaults use independent expression scope while required trait defaults bind parameters. Cover constant uses in tuple and required-trait defaults, nested closures, constant/state initializers, inherent/trait-default methods and a normal function default; include compound local writes, aliased/qualified labels and a closed consumer. All declaration uses now enumerate distinct canonical binding maps, avoiding omitted expression roots and duplicate edits through shared closure/default maps. Both layers repeat exact sets/kinds, highlights, definition/prepare targets and complete edits; apply all six groups, compare whole files, parse, requery and restore. Reject label/parameter capture and local/global capture; collision expectations refer to explicit owner groups so they track applied spellings. Unknown labels/owners and literals remain empty. Protocol checks LF/CRLF, UTF-16, encoded paths, both edit forms, didChange and versions. Initial tuple-default parameter assumption was corrected against canonical HIR before fixing the actual declaration-reference omission; binder/runtime semantics unchanged. Workspace 4573 passed, two historical ignored; service 666, protocol 650; fmt, workspace Clippy and Node 75 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.13 schema callable ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find the final checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-sTEiNg/results.json passed 10; native editors/vscode/test-results/input-YAZNtA/results.json passed 16; strict regression target/lsp-matrix/run-mRpUwb/report.json."
     }
   ],
-  "activeChild": "B04.12",
-  "nextTask": "B04.12",
+  "activeChild": "B04.13",
+  "nextTask": "B04.13",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -5118,7 +5189,24 @@
     "target/b04-11-accepted-regression.log",
     "editors/vscode/test-results/run-jlt5LG/results.json",
     "editors/vscode/test-results/input-IQxSuW/results.json",
-    "target/lsp-matrix/run-h1r95L/report.json"
+    "target/lsp-matrix/run-h1r95L/report.json",
+    "target/lsp-matrix/run-mRpUwb/report.json",
+    "target/b04-12-baseline.log",
+    "target/b04-12-semantic-baseline.log",
+    "target/b04-12-matrix-final.log",
+    "target/b04-12-workspace-initial.log",
+    "target/b04-12-imported-type-initial.log",
+    "target/b04-12-imported-type.log",
+    "target/b04-12-workspace.log",
+    "target/b04-12-final-fmt.log",
+    "target/b04-12-workspace-clippy.log",
+    "target/b04-12-node.log",
+    "target/b04-12-editor.log",
+    "target/b04-12-input.log",
+    "target/b04-12-accepted-regression.log",
+    "editors/vscode/test-results/run-sTEiNg/results.json",
+    "editors/vscode/test-results/input-YAZNtA/results.json",
+    "target/lsp-matrix/run-04h4pa/report.json"
   ],
   "openIssues": [
     {
@@ -6148,8 +6236,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7cef78b800f0086d1dca712831330ba2509c151b",
-          "treeSha256": "402f360b93118af809e16e0ac7e5b52b8432ad8cbbb02491a3eb87d1ca5718d5"
+          "revision": "0572928398c523959a5cb1bac8ad1f44c4b42656",
+          "treeSha256": "99ed2483d697bd56fb1421e3aa0dc70a3caf13628e888db46abb2afe3267291e"
         },
         "profile": {
           "platform": "win32",
@@ -6157,11 +6245,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-25YEmA/report.json"
+          "target/lsp-matrix/run-mRpUwb/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-jlt5LG/results.json --local-results editors/vscode/test-results/input-IQxSuW/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-sTEiNg/results.json --local-results editors/vscode/test-results/input-YAZNtA/results.json",
             "exitCode": 0
           }
         ]

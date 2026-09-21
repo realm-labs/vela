@@ -202,7 +202,7 @@ pub struct Inventory {
         true,
     );
 
-    assert_eq!(references.len(), 6, "{references:?}");
+    assert_eq!(references.len(), 7, "{references:?}");
     assert_reference_in_document(
         &references,
         &inventory,
@@ -228,6 +228,15 @@ pub struct Inventory {
         line(main_text, 2)
             .find("Bag")
             .expect("const type hint should exist"),
+        ReferenceKind::Read,
+    );
+    assert_reference_in_document(
+        &references,
+        &main,
+        2,
+        line(main_text, 2)
+            .rfind("Bag")
+            .expect("const constructor should exist"),
         ReferenceKind::Read,
     );
     assert_reference_in_document(

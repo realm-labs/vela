@@ -1,0 +1,322 @@
+{
+  "version": 1,
+  "id": "reference-rename-default-bindings",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.default_bindings\"\nname = \"default_bindings\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "const [[constant-decl:start]]value[[constant-decl:end]]: i64 = 10;\n/* 中😀 */ pub enum Event { Item([[field-decl:start]]value[[field-decl:end]]: i64, spare: i64 = { let [[tuple-local-decl:start]]temp[[tuple-local-decl:end]] = 1; [[tuple-local-write:start]]temp[[tuple-local-write:end]] += 1; [[first-default:start]]value[[first-default:end]] + [[tuple-local-use:start]]temp[[tuple-local-use:end]] }, extra: i64 = (|| [[second-default:start]]value[[second-default:end]])()), Other([[other-decl:start]]value[[other-decl:end]]: i64) }\npub trait Measure { fn measure(self, amount: i64, spare: i64 = { let [[trait-local-decl:start]]temp[[trait-local-decl:end]] = 2; [[trait-local-write:start]]temp[[trait-local-write:end]] += 1; amount + [[trait-local-use:start]]temp[[trait-local-use:end]] }, extra: i64 = [[trait-default:start]]value[[trait-default:end]]) -> i64; }\nconst mirror: i64 = [[const-initializer:start]]value[[const-initializer:end]];\nstate stored: i64 = [[state-initializer:start]]value[[state-initializer:end]];\npub struct Holder {}\nimpl Holder { fn read(self) -> i64 { return [[method-use:start]]value[[method-use:end]]; } }\npub trait Readable { fn read(self) -> i64 { return [[trait-body:start]]value[[trait-body:end]]; } }\nfn regular(arg: i64 = [[function-default:start]]value[[function-default:end]]) {}\n",
+    "scripts/consumer.vela": "/* 中😀 */ fn closed() { helpers::Event::Item([[closed-label:start]]value[[closed-label:end]] = 3); }\n",
+    "scripts/main.vela": "use helpers::Event::Item as ItemAlias\n/* 中😀 */ fn main([[caller-decl:start]]value[[caller-decl:end]]: i64) {\n ItemAlias([[main-label:start]]value[[main-label:end]] = [[caller-use:start]]value[[caller-use:end]]);\n let call = || helpers::Event::Item([[closure-label:start]]value[[closure-label:end]] = 4);\n helpers::Event::Other([[other-label:start]]value[[other-label:end]] = 5);\n helpers::Event::Item([[unknown-label:start]]bogus[[unknown-label:end]] = 6);\n Missing::Item([[unknown-owner:start]]value[[unknown-owner:end]] = 7);\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "field": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "helpers::Event::Item.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "main-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "tupleLocal": {
+        "name": "temp",
+        "rename": "renamed_temp",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "tuple-local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "tuple-local-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "tuple-local-write",
+            "kind": "Write"
+          }
+        ]
+      },
+      "traitLocal": {
+        "name": "temp",
+        "rename": "renamed_temp",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-local-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-local-write",
+            "kind": "Write"
+          }
+        ]
+      },
+      "other": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "source",
+        "qualified": "helpers::Event::Other.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-use",
+            "kind": "Read"
+          }
+        ]
+      },
+      "constant": {
+        "name": "value",
+        "rename": "renamed_constant",
+        "origin": "source",
+        "qualified": "helpers::value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "constant-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "first-default",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "second-default",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-default",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "const-initializer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "state-initializer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "method-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-body",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "function-default",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "field-decl",
+        "group": "field"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "first-default",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "second-default",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "main-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "tuple-local-decl",
+        "group": "tupleLocal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "tuple-local-use",
+        "group": "tupleLocal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-local-decl",
+        "group": "traitLocal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-local-use",
+        "group": "traitLocal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-use",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-owner"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "constant-decl",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-default",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "const-initializer",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "state-initializer",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "method-use",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-body",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "function-default",
+        "group": "constant"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "tuple-local-write",
+        "group": "tupleLocal"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-local-write",
+        "group": "traitLocal"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "field": [
+        "spare",
+        "bogus"
+      ],
+      "traitLocal": [
+        "amount"
+      ]
+    },
+    "rejectionGroups": {
+      "constant": [
+        "tupleLocal"
+      ],
+      "tupleLocal": [
+        "constant"
+      ]
+    }
+  }
+}

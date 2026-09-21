@@ -906,7 +906,14 @@ References and rename merge canonical bindings from every parameter-default body
 with owned call labels. Both layers apply all groups and requery after restoration;
 existing names, unknown-label capture and default-local capture reject. Signatures
 without defaults retain declaration identity. Broad S4/S5 remain open.
-Resume B04.12 with remaining schema callable ownership and default-scope edges, then
+B04.12 adds 26 queries across six declaration/field/local groups. Declaration
+references and rename now enumerate distinct canonical binding maps, including
+field/parameter defaults, closures, constant/state initializers and methods.
+Tuple defaults resolve module names independently of their same-spelled fields;
+trait-default locals retain parameter scope. Both layers apply all groups, check
+compound writes and capture rejection, and repeat queries after edits/restoration.
+Broad S2/S4/S5/S6 remain open.
+Resume B04.13 with remaining schema callable ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

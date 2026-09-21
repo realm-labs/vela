@@ -349,7 +349,7 @@ pub struct Inventory {
         ),
         true,
     );
-    assert_eq!(references.len(), 6, "{references:?}");
+    assert_eq!(references.len(), 7, "{references:?}");
     assert_reference(
         &references,
         &inventory,
@@ -369,7 +369,7 @@ pub struct Inventory {
                 .expect("parameter type hint should exist"),
         ),
     );
-    assert_eq!(highlights.len(), 5, "{highlights:?}");
+    assert_eq!(highlights.len(), 6, "{highlights:?}");
     assert_highlight(
         &highlights,
         0,
@@ -384,6 +384,14 @@ pub struct Inventory {
         line(main_text, 2)
             .find("Bag")
             .expect("const type hint should exist"),
+        DocumentHighlightKind::Read,
+    );
+    assert_highlight(
+        &highlights,
+        2,
+        line(main_text, 2)
+            .rfind("Bag")
+            .expect("const constructor should exist"),
         DocumentHighlightKind::Read,
     );
     assert_highlight(

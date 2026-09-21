@@ -454,26 +454,24 @@ impl LanguageServiceDatabases {
                     symbol.clone(),
                 ));
             }
-            if let Some(bindings) = graph.bindings(owner.id) {
-                references.extend(
-                    bindings.resolutions().filter_map(
-                        |(expression, resolution)| match resolution {
-                            BindingResolution::Declaration(resolved)
-                                if *resolved == declaration =>
-                            {
-                                self.reference_for_resolved_use_span(
-                                    graph.expression_span(expression)?,
-                                    symbol.clone(),
-                                )
-                            }
-                            BindingResolution::Declaration(_)
-                            | BindingResolution::Local(_)
-                            | BindingResolution::Import(_)
-                            | BindingResolution::QualifiedPath(_) => None,
-                        },
-                    ),
-                );
-            }
+        }
+        for bindings in hir_path_sites::binding_maps(graph) {
+            references.extend(
+                bindings
+                    .resolutions()
+                    .filter_map(|(expression, resolution)| match resolution {
+                        BindingResolution::Declaration(resolved) if *resolved == declaration => {
+                            self.reference_for_resolved_use_span(
+                                graph.expression_span(expression)?,
+                                symbol.clone(),
+                            )
+                        }
+                        BindingResolution::Declaration(_)
+                        | BindingResolution::Local(_)
+                        | BindingResolution::Import(_)
+                        | BindingResolution::QualifiedPath(_) => None,
+                    }),
+            );
         }
 
         references.sort_by_key(|reference| {

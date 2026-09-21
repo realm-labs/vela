@@ -4798,3 +4798,11 @@ keeping sibling signatures and concrete implementations independent. Functions,
 methods and tuple variants share one resolved call-label collector; signature-only
 parameters do not borrow the first available default body's local ID as their
 complete identity.
+
+Declaration references and rename enumerate each canonical binding map once,
+including initializer, field-default, required-signature-default and method roots.
+Nested closures and function defaults can share a map and must not duplicate
+edits. Tuple-field defaults retain their existing independent expression scope;
+a same-spelled module constant is distinct from the tuple field. Required trait
+defaults retain their existing parameter environment. This collection change does
+not change binder or runtime semantics.

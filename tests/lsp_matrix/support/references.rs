@@ -29,6 +29,10 @@ pub(crate) fn tuple_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-tuple-fields", crlf)
 }
 
+pub(crate) fn default_binding_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-default-bindings", crlf)
+}
+
 pub(crate) fn schema_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-fields", crlf)
 }
@@ -81,6 +85,24 @@ pub(crate) fn sites(spec: &Spec, query: &Value) -> Vec<Value> {
             .expect("reference sites")
             .clone()
     })
+}
+
+pub(crate) fn rejections(spec: &Spec, group: &str) -> Vec<Value> {
+    let mut names = spec.oracle["rejections"][group]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    for owner in spec.oracle["rejectionGroups"][group]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        let name = spec.oracle["groups"][owner.as_str().expect("collision owner")]["name"]
+            .as_str()
+            .expect("collision owner's current spelling");
+        names.push(name.into());
+    }
+    names
 }
 
 pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {

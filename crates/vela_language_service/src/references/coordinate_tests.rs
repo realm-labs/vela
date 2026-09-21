@@ -44,6 +44,11 @@ fn tuple_field_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn default_binding_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::default_binding_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -214,18 +219,14 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                     );
                     assert_eq!(range_json(definition.range()), site_range(fixture, site));
                 }
-                for rejected in spec.oracle["rejections"][group]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                {
+                for rejected in oracle::rejections(spec, group) {
                     assert!(
                         db.rename(&uri(file), point, rejected.as_str().expect("name"))
                             .is_none(),
                         "collision {marker}: {rejected}"
                     );
                 }
-                let prepared = prepared.expect("prepare rename");
+                let prepared = prepared.unwrap_or_else(|| panic!("prepare rename {marker}"));
                 assert_eq!(prepared.document_id(), &uri(file));
                 assert_eq!(range_json(prepared.range()), site_range(fixture, query));
                 assert_eq!(

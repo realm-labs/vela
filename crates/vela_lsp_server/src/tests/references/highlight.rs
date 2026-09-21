@@ -471,7 +471,7 @@ pub struct Inventory {
     let reference_items = references["result"]
         .as_array()
         .expect("references response should be an array");
-    assert_eq!(reference_items.len(), 6, "{reference_items:?}");
+    assert_eq!(reference_items.len(), 7, "{reference_items:?}");
     assert_reference(
         reference_items,
         inventory_uri,
@@ -497,7 +497,7 @@ pub struct Inventory {
     let highlight_items = highlights["result"]
         .as_array()
         .expect("documentHighlight response should be an array");
-    assert_eq!(highlight_items.len(), 5, "{highlight_items:?}");
+    assert_eq!(highlight_items.len(), 6, "{highlight_items:?}");
     assert_highlight(
         highlight_items,
         0,
@@ -512,6 +512,14 @@ pub struct Inventory {
         line(main_text, 2)
             .find("Bag")
             .expect("const type hint should exist"),
+        2,
+    );
+    assert_highlight(
+        highlight_items,
+        2,
+        line(main_text, 2)
+            .rfind("Bag")
+            .expect("const constructor should exist"),
         2,
     );
     assert_highlight(

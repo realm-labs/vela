@@ -271,10 +271,7 @@ impl LanguageServiceDatabases {
         edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
     ) {
         let graph = self.hir_db().graph();
-        for owner in graph.declarations() {
-            let Some(bindings) = graph.bindings(owner.id) else {
-                continue;
-            };
+        for bindings in crate::hir_path_sites::binding_maps(graph) {
             for (expression, resolution) in bindings.resolutions() {
                 let BindingResolution::Declaration(resolved) = resolution else {
                     continue;

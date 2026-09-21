@@ -274,7 +274,7 @@ pub struct Inventory {
         .as_array()
         .expect("references response should be an array");
 
-    assert_eq!(references.len(), 6, "{references:?}");
+    assert_eq!(references.len(), 7, "{references:?}");
     assert_reference(
         references,
         inventory_uri,
@@ -298,6 +298,14 @@ pub struct Inventory {
         line(main_text, 2)
             .find("Bag")
             .expect("const type hint should exist"),
+    );
+    assert_reference(
+        references,
+        main_uri,
+        2,
+        line(main_text, 2)
+            .rfind("Bag")
+            .expect("const constructor should exist"),
     );
     assert_reference(
         references,

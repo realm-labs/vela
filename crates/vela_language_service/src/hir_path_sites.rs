@@ -4,6 +4,16 @@ use vela_hir::module_graph::{Declaration, ImportResolution, ModuleGraph};
 
 use crate::TextRange;
 
+pub(crate) fn binding_maps(
+    graph: &ModuleGraph,
+) -> impl Iterator<Item = &vela_hir::binding::BindingMap> {
+    let mut seen = std::collections::BTreeSet::new();
+    graph
+        .bodies()
+        .filter_map(|body| graph.bindings_for_body(body.id))
+        .filter(move |bindings| seen.insert(bindings.body()))
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PathSite<'a> {
     pub(crate) path: &'a [String],
