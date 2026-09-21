@@ -23,6 +23,7 @@ mod named_arguments;
 mod owned_declarations;
 mod record_fields;
 mod source_callables;
+pub(crate) use source_callables::SourceParameters;
 mod source_members;
 mod source_variants;
 mod type_hints;
@@ -55,6 +56,12 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
+        if let Some(parameter) = crate::signature_parameters::target(self, &query) {
+            return self.definition_from_span_with_symbol(
+                parameter.parameter.span,
+                parameter.symbol(self),
+            );
+        }
         let target = SymbolTarget::from_query(self, &query)?;
 
         if target.is_module_symbol(self) {
@@ -361,7 +368,7 @@ impl LanguageServiceDatabases {
             // before consulting return facts, which may include all candidates.
             let definition = (|| {
                 let callee = source_members::source_member_definition_for_target(self, target)?;
-                let (signature, _) = self.source_signature_for_navigation(&callee)?;
+                let (signature, _, _) = self.source_signature_for_navigation(&callee)?;
                 let hint = signature.return_type.as_ref()?;
                 let fact = crate::callable_context::query_type_fact_from_hint(
                     graph,

@@ -20,6 +20,11 @@ fn method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits() {
 }
 
 #[test]
+fn required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::required_parameter_spec);
+}
+
+#[test]
 fn record_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::field_spec);
 }

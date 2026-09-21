@@ -4789,3 +4789,12 @@ matching, preserving import aliases and local shadowing. Tuple and record forms
 remain distinct so malformed constructors do not become valid field references.
 Positional constructor arguments and pattern bindings are independent of the
 tuple parameter's spelling and are not edited by a field rename.
+
+Required trait parameters retain their declaration-span identity even without an
+executable method body. Each default expression may have a distinct canonical
+binding map; reference and rename collection joins those maps by parameter span
+and checks capture in every map. Named labels belong to the resolved method span,
+keeping sibling signatures and concrete implementations independent. Functions,
+methods and tuple variants share one resolved call-label collector; signature-only
+parameters do not borrow the first available default body's local ID as their
+complete identity.

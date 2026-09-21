@@ -900,7 +900,13 @@ canonical signature; record and tuple syntax remain distinct. Both layers apply
 all field/local groups and preserve positional pattern bindings, aliases and
 closed-file edits. Unknown labels, wrong constructor forms and shadowed aliases
 remain empty. Broad S4/S5/S6 cells stay open.
-Resume B04.11 with remaining signature-only/schema callable ownership, then
+B04.11 adds 19 required-trait-parameter queries across five groups, separating
+signatures, sibling methods, other traits, implementations and caller values.
+References and rename merge canonical bindings from every parameter-default body
+with owned call labels. Both layers apply all groups and requery after restoration;
+existing names, unknown-label capture and default-local capture reject. Signatures
+without defaults retain declaration identity. Broad S4/S5 remain open.
+Resume B04.12 with remaining schema callable ownership and default-scope edges, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

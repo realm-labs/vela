@@ -20,6 +20,7 @@ mod fields;
 mod methods;
 mod modules;
 pub(crate) mod schema;
+mod signatures;
 mod support;
 mod type_hints;
 
@@ -207,6 +208,10 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let graph = self.hir_db().graph();
+
+        if let Some(target) = crate::signature_parameters::target(self, &query) {
+            return signatures::references(self, target, include_declaration);
+        }
 
         if let Some((bindings, local)) =
             crate::named_argument_sites::target(self, document_id, token.range)

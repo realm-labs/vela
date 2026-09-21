@@ -3,6 +3,7 @@
 //! Editor-neutral language-service workspace state.
 
 mod analysis_cache;
+mod call_argument_sites;
 mod call_hierarchy;
 mod callable_context;
 mod code_action;
@@ -28,6 +29,7 @@ mod schema_record_fields;
 mod selection;
 mod semantic_tokens;
 mod signature;
+mod signature_parameters;
 mod source_record_fields;
 mod symbol_ref;
 mod symbol_target;

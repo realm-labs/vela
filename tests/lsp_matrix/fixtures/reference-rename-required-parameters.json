@@ -1,0 +1,232 @@
+{
+  "version": 1,
+  "id": "reference-rename-required-parameters",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.required_params\"\nname = \"required_params\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub trait Measure { fn measure(self, [[required-decl:start]]amount[[required-decl:end]]: i64, spare: i64 = { let captured = 1; [[first-default:start]]amount[[first-default:end]] + captured }, extra: i64 = [[second-default:start]]amount[[second-default:end]]) -> i64; fn plain(self, [[plain-decl:start]]amount[[plain-decl:end]]: i64) -> i64; }\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub trait Measure { fn measure(self, [[other-decl:start]]amount[[other-decl:end]]: i64) -> i64; }\nfn closed(item: helpers::Measure) { item.measure([[closed-label:start]]amount[[closed-label:end]] = 3); }\npub struct Counter {}\nimpl helpers::Measure for Counter { fn measure(self, [[impl-decl:start]]amount[[impl-decl:end]]: i64, spare: i64, extra: i64) -> i64 { return [[impl-body:start]]amount[[impl-body:end]]; } fn plain(self, amount: i64) -> i64 { return amount; } }\n",
+    "scripts/main.vela": "use helpers::Measure as Alias\n/* 中😀 */ fn main(item: Alias, other: consumer::Measure, concrete: consumer::Counter, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n item.measure([[main-label:start]]amount[[main-label:end]] = [[caller-use:start]]amount[[caller-use:end]]);\n item.plain([[plain-label:start]]amount[[plain-label:end]] = 2);\n other.measure([[other-label:start]]amount[[other-label:end]] = 4);\n concrete.measure([[impl-label:start]]amount[[impl-label:end]] = 5, spare = 0, extra = 0);\n let call = || item.measure([[closure-label:start]]amount[[closure-label:end]] = 6);\n item.measure([[unknown-label:start]]bogus[[unknown-label:end]] = 7);\n let note = \"[[literal:start]]amount[[literal:end]]\";\n}\nfn incomplete(item: Alias) { item.measure([[recovery-label:start]]amount[[recovery-label:end]] = ); }\nfn unknown(item) { item.measure([[unknown-receiver:start]]amount[[unknown-receiver:end]] = 1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "required": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "required-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "first-default",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "second-default",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "main-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "recovery-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "plain": {
+        "name": "amount",
+        "rename": "bogus",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "plain-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "plain-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "other": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "implementation": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "impl-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "impl-body",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "impl-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-use",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "required-decl",
+        "group": "required"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "first-default",
+        "group": "required"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "second-default",
+        "group": "required"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "required"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "main-label",
+        "group": "required"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-label",
+        "group": "required"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "recovery-label",
+        "group": "required"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "plain-decl",
+        "group": "plain"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "plain-label",
+        "group": "plain"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "impl-decl",
+        "group": "implementation"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "impl-body",
+        "group": "implementation"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "impl-label",
+        "group": "implementation"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-use",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-receiver"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "required": [
+        "spare",
+        "bogus",
+        "captured"
+      ]
+    }
+  }
+}

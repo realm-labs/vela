@@ -11,6 +11,7 @@ pub(crate) struct SourceParameters<'a> {
     pub(crate) params: &'a [ParamHint],
     pub(crate) declaration: Option<HirDeclId>,
     pub(crate) variant: Option<(HirDeclId, &'a str)>,
+    pub(crate) required_method: Option<Span>,
 }
 
 impl LanguageServiceDatabases {
@@ -18,11 +19,14 @@ impl LanguageServiceDatabases {
         &self,
         callee: &Definition,
     ) -> Option<SourceParameters<'_>> {
-        if let Some((signature, declaration)) = self.source_signature_for_navigation(callee) {
+        if let Some((signature, declaration, required_method)) =
+            self.source_signature_for_navigation(callee)
+        {
             return Some(SourceParameters {
                 params: &signature.params,
                 declaration,
                 variant: None,
+                required_method,
             });
         }
         let graph = self.hir_db().graph();
@@ -49,6 +53,7 @@ impl LanguageServiceDatabases {
                         params: parameters,
                         declaration: None,
                         variant: Some((declaration.id, &variant.name)),
+                        required_method: None,
                     });
                 }
             }
@@ -59,7 +64,7 @@ impl LanguageServiceDatabases {
     pub(super) fn source_signature_for_navigation(
         &self,
         callee: &Definition,
-    ) -> Option<(&FunctionSignature, Option<HirDeclId>)> {
+    ) -> Option<(&FunctionSignature, Option<HirDeclId>, Option<Span>)> {
         if !matches!(callee.symbol(), Some(SymbolRef::Source(_))) {
             return None;
         }
@@ -78,19 +83,25 @@ impl LanguageServiceDatabases {
             .find_map(|declaration| match declaration.kind {
                 DeclarationKind::Function if matches(declaration.name_span) => graph
                     .function_signature(declaration.id)
-                    .map(|signature| (signature, Some(declaration.id))),
+                    .map(|signature| (signature, Some(declaration.id), None)),
                 DeclarationKind::Impl => graph
                     .impl_metadata(declaration.id)?
                     .methods
                     .iter()
                     .find(|method| matches(method.name_span))
-                    .map(|method| (&method.signature, None)),
+                    .map(|method| (&method.signature, None, None)),
                 DeclarationKind::Trait => graph
                     .trait_shape(declaration.id)?
                     .methods
                     .iter()
                     .find(|method| matches(method.name_span))
-                    .map(|method| (&method.signature, None)),
+                    .map(|method| {
+                        (
+                            &method.signature,
+                            None,
+                            (!method.has_default).then_some(method.name_span),
+                        )
+                    }),
                 _ => None,
             })
     }
