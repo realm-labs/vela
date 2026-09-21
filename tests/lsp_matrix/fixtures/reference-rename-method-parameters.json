@@ -1,0 +1,281 @@
+{
+  "version": 1,
+  "id": "reference-rename-method-parameters",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.method_parameters\"\nname = \"method_parameters\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "pub struct Counter {}\nimpl Counter {\n /* 中😀 */ pub fn add(self, [[method-decl:start]]amount[[method-decl:end]]: i64, spare: i64 = 0) -> i64 { return [[method-read:start]]amount[[method-read:end]] + spare; }\n pub fn sibling(self, [[sibling-decl:start]]amount[[sibling-decl:end]]: i64) -> i64 { return [[sibling-read:start]]amount[[sibling-read:end]]; }\n}\npub trait Measure {\n fn measure(self, [[default-decl:start]]amount[[default-decl:end]]: i64) -> i64 { return [[default-read:start]]amount[[default-read:end]]; }\n}\n",
+    "scripts/consumer.vela": "pub struct Counter {}\nimpl Counter { pub fn add(self, [[other-decl:start]]amount[[other-decl:end]]: i64) -> i64 { return [[other-read:start]]amount[[other-read:end]]; } }\nfn closed(item: helpers::Counter) { item.add([[closed-label:start]]amount[[closed-label:end]] = 3); }\nimpl helpers::Measure for Counter { fn measure(self, [[override-decl:start]]amount[[override-decl:end]]: i64) -> i64 { return [[override-read:start]]amount[[override-read:end]]; } }\n",
+    "scripts/main.vela": "use helpers::Counter as Count\nuse helpers::Measure as Measured\n/* 中😀 */ fn main(item: Count, other: consumer::Counter, measured: Measured, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n item.add([[method-label:start]]amount[[method-label:end]] = [[caller-read:start]]amount[[caller-read:end]]);\n item.sibling([[sibling-label:start]]amount[[sibling-label:end]] = 2);\n other.add([[other-label:start]]amount[[other-label:end]] = 4);\n measured.measure([[default-label:start]]amount[[default-label:end]] = 5);\n let callback = || item.add([[closure-label:start]]amount[[closure-label:end]] = 6);\n item.add([[unknown-label:start]]bogus[[unknown-label:end]] = 7);\n let text = \"[[literal:start]]amount[[literal:end]]\";\n}\nfn incomplete(item: Count) { item.add([[recovery-label:start]]amount[[recovery-label:end]] = ); }\nfn overridden(item: consumer::Counter) { item.measure([[override-label:start]]amount[[override-label:end]] = 8); }\nfn unknown(item) { item.add([[unknown-callee:start]]amount[[unknown-callee:end]] = 1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "method": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "method-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "method-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "method-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "recovery-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "sibling": {
+        "name": "amount",
+        "rename": "bogus",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "sibling-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "sibling-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "sibling-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "other": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "default": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "default-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "default-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "default-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-read",
+            "kind": "Read"
+          }
+        ]
+      },
+      "override": {
+        "name": "amount",
+        "rename": "renamed_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "override-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "override-read",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "override-label",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "method-decl",
+        "group": "method"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "method-read",
+        "group": "method"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "sibling-decl",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "sibling-read",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "default-decl",
+        "group": "default"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "default-read",
+        "group": "default"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-read",
+        "group": "other"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "method-label",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-read",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "sibling-label",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "default-label",
+        "group": "default"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-label",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "recovery-label",
+        "group": "method"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "override-decl",
+        "group": "override"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "override-read",
+        "group": "override"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "override-label",
+        "group": "override"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-callee",
+        "group": null
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "method": [
+        "spare",
+        "bogus"
+      ]
+    }
+  }
+}

@@ -261,7 +261,7 @@ impl LanguageServiceDatabases {
             if declaration.span.source != source_id || !declaration.span.contains(offset) {
                 continue;
             }
-            let Some(bindings) = graph.bindings(declaration.id) else {
+            let Some(bindings) = query.bindings() else {
                 continue;
             };
             if let Some(local) = local_reference_target(graph, bindings, &token) {

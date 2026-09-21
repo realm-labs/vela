@@ -19,6 +19,11 @@ fn named_parameter_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn method_parameter_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::method_parameter_spec);
+}
+
+#[test]
 fn record_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::field_spec);
 }

@@ -9,6 +9,10 @@ pub(crate) fn named_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-named-parameters", crlf)
 }
 
+pub(crate) fn method_parameter_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-method-parameters", crlf)
+}
+
 pub(crate) fn field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-record-fields", crlf)
 }

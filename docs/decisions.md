@@ -4774,3 +4774,10 @@ reference collection does not use a separate short-name owner search. Explicit
 unknown labels own an empty result, while metadata-only known fields retain
 references without becoming rename targets. Pattern labels preserve Pattern
 classification and shorthand query tokens continue to belong to their locals.
+
+Body-backed method parameters use the canonical HIR body binding map, including
+when queried at the parameter declaration outside the method body span. Resolved
+source-signature parameter spans connect named labels to that map. Collision
+ownership uses the body ID because sibling methods share an impl declaration.
+Trait defaults and explicit implementations retain separate parameter identities;
+unknown receivers do not supply a signature by matching a method's short name.

@@ -888,7 +888,13 @@ locals. Both layers apply three field groups, compare whole files, regenerate
 schema metadata and repeat/restored queries. Metadata-only fields retain references
 without rename; unknown-label capture rejects. Protocol covers schema file watches,
 UTF-16, open/closed versions and schema ABI annotations. Broad S4/S6 remain open.
-Resume B04.09 with remaining callable/schema-variant ownership partitions, then
+B04.09 adds 23 method-parameter queries across six independent binding groups.
+Inherent, trait-default and explicit trait-implementation parameters share owned
+named labels through canonical body binding maps. Both layers apply all groups,
+compare complete files and repeat queries after edits/restoration. Unknown callees
+and labels remain empty; sibling methods cannot borrow each other's collisions.
+Signature-only and schema callable ownership remain open, as do broad S4/S5 cells.
+Resume B04.10 with remaining callable/schema-variant ownership partitions, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

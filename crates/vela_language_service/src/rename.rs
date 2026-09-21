@@ -195,7 +195,7 @@ impl LanguageServiceDatabases {
             Vec::new()
         };
         if named_sites.iter().any(|site| {
-            site.owner == target.bindings.declaration
+            site.owner == target.bindings.body()
                 && site.name == new_name
                 && site.parameter != Some(target.local)
         }) {
@@ -626,7 +626,10 @@ fn rename_target<'a>(
                 token,
             }));
         }
-        let Some(bindings) = graph.bindings(declaration.id) else {
+        let Some(bindings) = query
+            .bindings()
+            .and_then(|bindings| graph.bindings_for_body(bindings.body()))
+        else {
             continue;
         };
         if let Some(binding) = local_declaration_at_token(bindings, &token) {

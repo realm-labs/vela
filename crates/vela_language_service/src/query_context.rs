@@ -567,15 +567,18 @@ fn bindings_for_trait_method(
         .methods
         .iter()
         .find_map(|method| {
-            let body_span = method.default_body_span?;
-            body_span
-                .contains(offset)
-                .then(|| {
-                    method
-                        .default_body_node
-                        .and_then(|node| graph.trait_default_method_bindings(node))
-                })
-                .flatten()
+            (method.span.contains(offset)
+                || method
+                    .signature
+                    .params
+                    .iter()
+                    .any(|param| param.span.contains(offset)))
+            .then(|| {
+                method
+                    .default_body_node
+                    .and_then(|node| graph.trait_default_method_bindings(node))
+            })
+            .flatten()
         })
 }
 
@@ -589,11 +592,14 @@ fn bindings_for_impl_method(
         .methods
         .iter()
         .find_map(|method| {
-            method
-                .span
-                .contains(offset)
-                .then(|| graph.impl_method_bindings(method.node))
-                .flatten()
+            (method.span.contains(offset)
+                || method
+                    .signature
+                    .params
+                    .iter()
+                    .any(|param| param.span.contains(offset)))
+            .then(|| graph.impl_method_bindings(method.node))
+            .flatten()
         })
 }
 

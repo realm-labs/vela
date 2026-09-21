@@ -2626,10 +2626,49 @@
         "rename/syntax/S6/negative/protocol"
       ],
       "summary": "Advance 32 S4/S6 reference/highlight/prepare-rename/rename cells with an independent three-file schema record-field matrix: 14 queries, 14 sites, four groups and three local probes; broad cells remain unreviewed. Separate two source-backed schema fields, a same-named source struct field and a metadata-only schema field. Cover qualified/aliased constructors, explicit/shorthand patterns, dot reads/compound writes, a closed consumer and unknown labels/owners/literals. Reject existing-field and unknown-label capture; another schema owner can adopt that spelling. Both layers repeat exact sets/kinds, highlights, definitions, prepare targets and edits; apply all three writable groups, compare full files, parse, explicitly regenerate schema metadata, requery and restore. Preserve shorthand parameters/pattern bindings; metadata-only fields retain references but null definition/prepare/rename. Protocol checks UTF-16, Unicode encoded paths, LF/CRLF, didChange, schema file watches, both edit forms, open/closed versions and schema ABI confirmation annotations. Earlier B04.08 commits repaired constructor/pattern edits and aliased references using shared scoped schema ownership. Initial Windows workspace run exposed timestamp fixture-root collisions; replaced with the existing atomic allocator and ran its frozen-clock concurrency regression. Retain initial failure evidence. Workspace 4565 passed, two historical ignored; service 662, protocol 646; matrix/rename suites, fmt, workspace Clippy and Node 75 passed. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.09 callable/schema-variant ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find the final child checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-VFYm3u/results.json passed 10; native editors/vscode/test-results/input-36si3k/results.json passed 16; strict regression target/lsp-matrix/run-IVcYke/report.json."
+    },
+    {
+      "id": "B04.09",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/negative/protocol",
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol"
+      ],
+      "summary": "Advance 32 S4/S5 reference/highlight/prepare-rename/rename cells with an independent three-file method-parameter matrix: 23 queries and six binding groups. Broad cells remain unreviewed. Separate inherent methods, sibling methods, same-named owners, trait defaults, explicit trait implementations and caller parameters. Cover aliases, closed consumers, closure calls, defaults, missing-value recovery and unknown labels/receivers/literals. Both layers repeat exact sets/kinds, highlights, definitions, prepare targets and complete edits; apply all six groups, compare full files, parse, requery and restore. Reject existing-parameter and owned unknown-label capture while preserving sibling independence. Protocol checks LF/CRLF, UTF-16, encoded Unicode paths, both edit forms, didChange and open/closed versions. Fix declaration queries outside method body spans and select canonical body binding maps; named labels use resolved signature spans and body IDs. Workspace 4567 passed, two historical ignored; service 663, protocol 647; fmt, workspace Clippy and Node 75 passed. Feature audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; whole-batch remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.10 remaining callable/schema-variant ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find the final child checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-EtXu5x/results.json passed 10; native editors/vscode/test-results/input-dqdgSK/results.json passed 16; strict regression target/lsp-matrix/run-YOFPKX/report.json."
     }
   ],
-  "activeChild": "B04.09",
-  "nextTask": "B04.09",
+  "activeChild": "B04.10",
+  "nextTask": "B04.10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -4940,7 +4979,22 @@
     "target/b04-08-accepted-regression.log",
     "editors/vscode/test-results/run-VFYm3u/results.json",
     "editors/vscode/test-results/input-36si3k/results.json",
-    "target/lsp-matrix/run-u4NTcK/report.json"
+    "target/lsp-matrix/run-u4NTcK/report.json",
+    "target/lsp-matrix/run-YOFPKX/report.json",
+    "target/b04-09-baseline.log",
+    "target/b04-09-repro.log",
+    "target/b04-09-focused-final.log",
+    "target/b04-09-matrix-final.log",
+    "target/b04-09-workspace.log",
+    "target/b04-09-final-fmt.log",
+    "target/b04-09-workspace-clippy.log",
+    "target/b04-09-node.log",
+    "target/b04-09-editor.log",
+    "target/b04-09-input.log",
+    "target/b04-09-accepted-regression.log",
+    "editors/vscode/test-results/run-EtXu5x/results.json",
+    "editors/vscode/test-results/input-dqdgSK/results.json",
+    "target/lsp-matrix/run-ciMJZL/report.json"
   ],
   "openIssues": [
     {
@@ -5970,8 +6024,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7e6d3012ae3f48b3285b8ef587e618df0f44dccf",
-          "treeSha256": "d83fa3583a4ee69b509ef0825acfa77f61129c58de4871d254f08c0fce01b04c"
+          "revision": "10158e2d7fca2fb9966178f8d8402e322adb3cac",
+          "treeSha256": "5f7b003eb32f97fb045fb83be4b3d1472fe6d78b4e1b6d9212b7b80cd0ff12bc"
         },
         "profile": {
           "platform": "win32",
@@ -5979,11 +6033,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-IVcYke/report.json"
+          "target/lsp-matrix/run-YOFPKX/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-VFYm3u/results.json --local-results editors/vscode/test-results/input-36si3k/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-EtXu5x/results.json --local-results editors/vscode/test-results/input-dqdgSK/results.json",
             "exitCode": 0
           }
         ]

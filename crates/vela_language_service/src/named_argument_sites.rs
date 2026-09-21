@@ -1,5 +1,5 @@
 use vela_hir::binding::{BindingMap, LocalBinding};
-use vela_hir::ids::{HirDeclId, HirLocalId};
+use vela_hir::ids::{HirBodyId, HirLocalId};
 use vela_syntax::{
     SyntaxKind,
     ast::{AstNode, SyntaxCallExpr},
@@ -11,7 +11,7 @@ pub(crate) struct NamedArgumentSite {
     pub(crate) document: DocumentId,
     pub(crate) range: TextRange,
     pub(crate) name: String,
-    pub(crate) owner: HirDeclId,
+    pub(crate) owner: HirBodyId,
     pub(crate) parameter: Option<HirLocalId>,
 }
 
@@ -35,7 +35,7 @@ pub(crate) fn target<'a>(
     let site = in_document(databases, document, Some(range), &[])
         .into_iter()
         .next()?;
-    let bindings = databases.hir_db().graph().bindings(site.owner)?;
+    let bindings = databases.hir_db().graph().bindings_for_body(site.owner)?;
     Some((bindings, bindings.local(site.parameter?)?))
 }
 
@@ -99,12 +99,24 @@ fn in_document(
         let Some(parameters) = databases.source_parameters_for_navigation(&callee) else {
             continue;
         };
-        // The declaration identity denotes a source function, not an unrelated
-        // same-spelled method, schema parameter, or tuple-variant field.
-        let Some(owner) = parameters.declaration else {
-            continue;
-        };
-        let Some(bindings) = databases.hir_db().graph().bindings(owner) else {
+        // Match resolved signature spans to the canonical binding map. Method
+        // bodies have their own maps even when they share an impl declaration.
+        let graph = databases.hir_db().graph();
+        let Some(bindings) = parameters
+            .declaration
+            .and_then(|declaration| graph.bindings(declaration))
+            .or_else(|| {
+                graph
+                    .bodies()
+                    .filter_map(|body| graph.bindings_for_body(body.id))
+                    .find(|bindings| {
+                        parameters
+                            .params
+                            .iter()
+                            .any(|param| bindings.locals().any(|local| local.span == param.span))
+                    })
+            })
+        else {
             continue;
         };
         for label in labels {
@@ -121,7 +133,7 @@ fn in_document(
                     usize::from(label.text_range().end()),
                 ),
                 name: label.text().to_owned(),
-                owner,
+                owner: bindings.body(),
                 parameter,
             });
         }
