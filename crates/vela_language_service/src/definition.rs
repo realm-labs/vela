@@ -56,6 +56,21 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn definition(&self, document_id: &DocumentId, position: Position) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
+        if let Some(source) = query.source_record()
+            && let Some(range) = query.identifier_range()
+            && let Some(name) = crate::schema_function_sites::target(self, source, range)
+        {
+            return self
+                .schema_db()
+                .source_locations()
+                .function_span(&name)
+                .and_then(|span| {
+                    self.definition_from_span_with_symbol(
+                        span,
+                        Some(crate::symbol_ref::schema_symbol(&name)),
+                    )
+                });
+        }
         if let Some(parameter) = crate::signature_parameters::target(self, &query) {
             return self.definition_from_span_with_symbol(
                 parameter.parameter.span,

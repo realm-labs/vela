@@ -2869,10 +2869,49 @@
         "rename/syntax/S5/negative/protocol"
       ],
       "summary": "Advance 32 S4/S5 reference/highlight/prepare-rename/rename cells with 16 queries and five schema/source method groups; broad cells remain unreviewed. Distinguish qualified schema owners, schema trait methods, source methods and metadata-only methods. Cover aliases, returned receivers, closures and closed files. Reject existing method conflicts and unresolved-call capture on the same owner while allowing the same spelling on another owner. Reuse canonical impl/trait symbols for source method rename. Both layers repeat exact references/kinds, highlights, definitions, prepare targets and edit plans; apply four writable groups, compare whole files, parse, explicitly regenerate schema metadata, requery and restore. Unknown receivers/methods and literals stay empty; metadata-only methods remain non-renamable. Protocol checks LF/CRLF, UTF-16, encoded paths, versions, both edit forms and schema ABI annotations. Workspace 4575 passed, two historical ignored; service 667, protocol 651; fmt, workspace Clippy and Node 75 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.14 remaining schema callable ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-h5dBoL/results.json passed 10; native editors/vscode/test-results/input-jrxZ7q/results.json passed 16; strict regression target/lsp-matrix/run-Zvm8dE/report.json."
+    },
+    {
+      "id": "B04.14",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "references/syntax/S10/positive/service",
+        "references/syntax/S10/positive/protocol",
+        "references/syntax/S10/negative/service",
+        "references/syntax/S10/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "highlight/syntax/S10/positive/service",
+        "highlight/syntax/S10/positive/protocol",
+        "highlight/syntax/S10/negative/service",
+        "highlight/syntax/S10/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S10/positive/service",
+        "prepare-rename/syntax/S10/positive/protocol",
+        "prepare-rename/syntax/S10/negative/service",
+        "prepare-rename/syntax/S10/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol",
+        "rename/syntax/S10/positive/service",
+        "rename/syntax/S10/positive/protocol",
+        "rename/syntax/S10/negative/service",
+        "rename/syntax/S10/negative/protocol"
+      ],
+      "summary": "Advance 32 S5/S10 reference/highlight/prepare-rename/rename cells with 14 queries and four schema/source/local callable groups; broad cells remain unreviewed. Add source-backed and metadata-only schema function references for calls and function values, including closures, bare unique names, exact qualified names and a closed consumer. A shared canonical path collector excludes source declarations and local bindings and rejects unknown qualified paths. References, navigation and rename use consistent schema ownership; prepare placeholders match the editable terminal name. Both layers apply all three writable groups, compare entire files, regenerate schema metadata explicitly, parse, requery and restore. Metadata-only functions have references but no rename; strings and unknown qualified calls stay empty. Protocol checks Unicode LF/CRLF, UTF-16, encoded paths, versions, both edit forms and schema ABI confirmation. Initial missing-reference failure is retained; an old protocol placeholder expectation was updated while keeping its range/edit/risk assertions. Workspace 4577 passed, two historical ignored; service 668, protocol 652; fmt, workspace Clippy and Node 75 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.15 schema import aliases, capture/parameter/variant ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-FvhKin/results.json passed 10; native editors/vscode/test-results/input-VGUp8z/results.json passed 16; strict regression target/lsp-matrix/run-pzvWun/report.json."
     }
   ],
-  "activeChild": "B04.14",
-  "nextTask": "B04.14",
+  "activeChild": "B04.15",
+  "nextTask": "B04.15",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -5260,7 +5299,25 @@
     "target/b04-13-accepted-regression.log",
     "editors/vscode/test-results/run-h5dBoL/results.json",
     "editors/vscode/test-results/input-jrxZ7q/results.json",
-    "target/lsp-matrix/run-nN2GH6/report.json"
+    "target/lsp-matrix/run-nN2GH6/report.json",
+    "target/lsp-matrix/run-pzvWun/report.json",
+    "target/b04-14-baseline.log",
+    "target/b04-14-repro.log",
+    "target/b04-14-focused.log",
+    "target/b04-14-schema-functions.log",
+    "target/b04-14-schema-functions-final.log",
+    "target/b04-14-placeholder.log",
+    "target/b04-14-workspace-initial.log",
+    "target/b04-14-workspace.log",
+    "target/b04-14-fmt.log",
+    "target/b04-14-clippy.log",
+    "target/b04-14-node.log",
+    "target/b04-14-editor.log",
+    "target/b04-14-input.log",
+    "target/b04-14-accepted-regression.log",
+    "editors/vscode/test-results/run-FvhKin/results.json",
+    "editors/vscode/test-results/input-VGUp8z/results.json",
+    "target/lsp-matrix/run-c2WSBF/report.json"
   ],
   "openIssues": [
     {
@@ -6290,8 +6347,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "d6cbe876ac9c117c6437f2bad2371d03a14b4044",
-          "treeSha256": "fb0c717dd4b7b9eb875cde41100757d2fe7b24b390af58129a93d15071043841"
+          "revision": "3b88b7154a203a1223df53ce39117ef5ae873743",
+          "treeSha256": "97624a17b47dd9d000dc999de91e17890b958fefc8eda80da7ea39f84ea78436"
         },
         "profile": {
           "platform": "win32",
@@ -6299,11 +6356,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-Zvm8dE/report.json"
+          "target/lsp-matrix/run-pzvWun/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-h5dBoL/results.json --local-results editors/vscode/test-results/input-jrxZ7q/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B03 --editor-results editors/vscode/test-results/run-FvhKin/results.json --local-results editors/vscode/test-results/input-VGUp8z/results.json",
             "exitCode": 0
           }
         ]

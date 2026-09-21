@@ -50,6 +50,11 @@ fn schema_method_matrix_projects_exact_sets_and_applied_utf16_edits() {
 }
 
 #[test]
+fn schema_function_matrix_projects_exact_sets_and_applied_utf16_edits() {
+    run_matrix(oracle::schema_function_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }

@@ -120,7 +120,7 @@ pub fn main(amount: i64) -> i64 {
             }
         }),
     ));
-    assert_eq!(prepare["result"]["placeholder"], "game::reward::grant");
+    assert_eq!(prepare["result"]["placeholder"], "grant");
     assert_eq!(prepare["result"]["range"]["start"]["line"], 1);
     assert_eq!(prepare["result"]["range"]["start"]["character"], 16);
 

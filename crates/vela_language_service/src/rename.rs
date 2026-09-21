@@ -412,7 +412,7 @@ impl RenameTarget<'_> {
             Self::ScriptMethod(target) => &target.method,
             Self::SchemaMember(target) => &target.member,
             Self::SchemaType(target) => &target.name,
-            Self::SchemaFunction(target) => &target.name,
+            Self::SchemaFunction(target) => target.name.rsplit("::").next().unwrap_or(&target.name),
             Self::SchemaVariant(target) => &target.variant,
             Self::EnumVariant(target) => &target.variant,
         }

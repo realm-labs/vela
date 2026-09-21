@@ -41,6 +41,10 @@ pub(crate) fn schema_method_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-methods", crlf)
 }
 
+pub(crate) fn schema_function_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-functions", crlf)
+}
+
 pub(crate) fn replacement(site: &Value, name: &str) -> String {
     format!("{name}{}", site["suffix"].as_str().unwrap_or(""))
 }
@@ -127,7 +131,18 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
     if let Some(entry) = definition["schemaEntry"].as_object() {
         let collection = entry["collection"].as_str().expect("schema collection");
         let index = entry["index"].as_u64().expect("schema entry index") as usize;
-        result.oracle["schema"][collection][index]["name"] = new_name.into();
+        let original = result.oracle["schema"][collection][index]["name"]
+            .as_str()
+            .expect("schema name");
+        result.oracle["schema"][collection][index]["name"] = if collection == "functions" {
+            original.rsplit_once("::").map_or_else(
+                || new_name.to_owned(),
+                |(owner, _)| format!("{owner}::{new_name}"),
+            )
+        } else {
+            new_name.to_owned()
+        }
+        .into();
     }
     for site in result.oracle["groups"][group]["sites"]
         .as_array_mut()

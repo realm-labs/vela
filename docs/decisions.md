@@ -4813,3 +4813,10 @@ currently unresolved. Different qualified owners remain independent. Source meth
 rename shares the same impl/trait symbol constructors as reference and navigation
 queries, rather than deriving an impl method identity from the impl declaration's
 display name.
+
+Schema free-function reference, navigation and rename queries share canonical
+call/value path ownership. Source declarations and locals take precedence over
+schema short-name lookup, and qualified unknown paths never borrow a short-name
+match. Source-backed definitions retain their schema identity; metadata-only
+functions expose references but no source edits. Prepare-rename placeholders
+match the editable terminal segment rather than the fully qualified schema name.

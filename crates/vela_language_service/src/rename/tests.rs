@@ -622,7 +622,7 @@ pub fn main(amount: i64) -> i64 {
         )
         .expect("source-backed schema function should be renameable from a call");
 
-    assert_eq!(prepare.placeholder(), "game::reward::grant");
+    assert_eq!(prepare.placeholder(), "grant");
     assert_eq!(prepare.range().start(), Position::new(1, 16));
     assert_eq!(
         prepare.symbol(),

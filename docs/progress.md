@@ -918,7 +918,10 @@ rename rejects capture of unresolved calls on the same receiver owner; other
 owners remain independent. Source method rename uses the canonical method symbol.
 Both layers apply all four writable groups, regenerate schema metadata explicitly,
 and retain metadata-only references without rename. Broad S4/S5 remain open.
-Resume B04.14 with remaining schema callable ownership, then
+Schema free-function references and rename now share owned call/value sites,
+including closures and closed files; source/local shadows remain independent.
+B04.14 checks 14 queries and four groups with applied edits at both layers.
+Resume B04.15 with schema import aliases, capture/parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

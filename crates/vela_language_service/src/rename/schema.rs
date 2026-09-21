@@ -322,18 +322,14 @@ pub(super) fn schema_function_use_target(
     token: &RenameToken,
 ) -> Option<SchemaFunctionRenameTarget> {
     let source = query.source_record()?;
-    databases
-        .hir_db()
-        .graph()
-        .paths_in_source_by_kind(source.source_id(), HirPathKind::Callee)
-        .filter_map(hir_path_sites::site)
-        .find(|site| site.segment_range == token.range)
-        .and_then(|site| schema_function_target_for_name(databases, &site.path.join("::")))
-        .and_then(|target| source_backed_schema_function_target(databases, target))
-        .map(|mut target| {
-            target.token = token.clone();
-            target
+    crate::schema_function_sites::sites(databases, source)
+        .into_iter()
+        .find(|site| site.range == token.range)
+        .map(|site| SchemaFunctionRenameTarget {
+            name: site.name,
+            token: token.clone(),
         })
+        .and_then(|target| source_backed_schema_function_target(databases, target))
 }
 
 pub(super) fn schema_variant_use_target(
@@ -493,29 +489,14 @@ fn push_schema_function_use_edits(
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    let target_segment = schema_function_segment(&target.name);
-    let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
-        let text = source.text();
-        for site in graph
-            .paths_in_source_by_kind(source.source_id(), HirPathKind::Callee)
-            .filter_map(hir_path_sites::site)
-        {
-            if site
-                .path
-                .last()
-                .is_none_or(|segment| segment != target_segment)
-            {
-                continue;
-            }
-            if schema_function_target_for_name(databases, &site.path.join("::"))
-                .is_some_and(|found| found.name == target.name)
-            {
+        for site in crate::schema_function_sites::sites(databases, source) {
+            if site.name == target.name {
                 edits_by_document
                     .entry(source.document_id().clone())
                     .or_default()
                     .push(TextEdit {
-                        range: diagnostic_range(text, site.segment_range),
+                        range: diagnostic_range(source.text(), site.range),
                         new_text: new_name.to_owned(),
                     });
             }
@@ -1015,43 +996,6 @@ fn schema_variant_target_for_path(
                 range: TextRange::new(0, 0),
             },
         })
-}
-
-fn schema_function_target_for_name(
-    databases: &LanguageServiceDatabases,
-    callee: &str,
-) -> Option<SchemaFunctionRenameTarget> {
-    let schema = databases.schema_db().facts();
-    if schema.function_fact(callee).is_some() {
-        return Some(SchemaFunctionRenameTarget {
-            name: callee.to_owned(),
-            token: RenameToken {
-                range: TextRange::new(0, 0),
-            },
-        });
-    }
-
-    if callee.contains("::") {
-        return None;
-    }
-
-    let mut matches = schema.functions().filter_map(|function| {
-        (schema_function_segment(&function.name) == callee).then_some(function.name)
-    });
-    let name = matches.next()?;
-    matches
-        .next()
-        .is_none()
-        .then_some(SchemaFunctionRenameTarget {
-            name,
-            token: RenameToken {
-                range: TextRange::new(0, 0),
-            },
-        })
-}
-
-fn schema_function_segment(name: &str) -> &str {
-    name.rsplit("::").next().unwrap_or(name)
 }
 
 fn schema_function_renamed_name(name: &str, new_segment: &str) -> String {
