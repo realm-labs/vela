@@ -1,9 +1,11 @@
 use vela_hir::{
     ids::HirDeclId,
     module_graph::{DeclarationKind, Visibility},
-    type_hint::{EnumVariantFieldsHint, StructFieldHint},
+    type_hint::EnumVariantFieldsHint,
 };
 use vela_syntax::ast::{AstNode, SyntaxRecordExpr, SyntaxRecordPattern};
+
+mod tuple;
 
 use crate::{LanguageServiceDatabases, LineIndex, QueryContext, SourceRecord, TextRange};
 
@@ -11,25 +13,58 @@ use crate::{LanguageServiceDatabases, LineIndex, QueryContext, SourceRecord, Tex
 pub(crate) struct RecordOwner {
     pub(crate) declaration: HirDeclId,
     pub(crate) variant: Option<String>,
+    pub(crate) tuple: bool,
+}
+
+pub(crate) struct FieldSignature<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) span: vela_common::Span,
 }
 
 impl RecordOwner {
     pub(crate) fn fields<'a>(
         &self,
         graph: &'a vela_hir::module_graph::ModuleGraph,
-    ) -> Option<&'a [StructFieldHint]> {
+    ) -> Option<Vec<FieldSignature<'a>>> {
         if let Some(name) = &self.variant {
             let variant = graph
                 .enum_shape(self.declaration)?
                 .variants
                 .iter()
                 .find(|variant| variant.name == *name)?;
-            let EnumVariantFieldsHint::Record(fields) = &variant.fields else {
-                return None;
-            };
-            Some(fields)
+            match &variant.fields {
+                EnumVariantFieldsHint::Record(fields) if !self.tuple => Some(
+                    fields
+                        .iter()
+                        .map(|field| FieldSignature {
+                            name: &field.name,
+                            span: field.span,
+                        })
+                        .collect(),
+                ),
+                EnumVariantFieldsHint::Tuple(params) if self.tuple => Some(
+                    params
+                        .iter()
+                        .map(|param| FieldSignature {
+                            name: &param.name,
+                            span: param.span,
+                        })
+                        .collect(),
+                ),
+                _ => None,
+            }
         } else {
-            Some(&graph.struct_shape(self.declaration)?.fields)
+            Some(
+                graph
+                    .struct_shape(self.declaration)?
+                    .fields
+                    .iter()
+                    .map(|field| FieldSignature {
+                        name: &field.name,
+                        span: field.span,
+                    })
+                    .collect(),
+            )
         }
     }
 
@@ -56,19 +91,25 @@ pub(crate) fn declaration_target(
         .filter(|declaration| declaration.span.source == source)
     {
         let variants = match declaration.kind {
-            DeclarationKind::Struct => vec![None],
+            DeclarationKind::Struct => vec![(None, false)],
             DeclarationKind::Enum => graph
                 .enum_shape(declaration.id)?
                 .variants
                 .iter()
-                .map(|variant| Some(variant.name.clone()))
+                .map(|variant| {
+                    (
+                        Some(variant.name.clone()),
+                        matches!(variant.fields, EnumVariantFieldsHint::Tuple(_)),
+                    )
+                })
                 .collect(),
             _ => continue,
         };
-        for variant in variants {
+        for (variant, tuple) in variants {
             let owner = RecordOwner {
                 declaration: declaration.id,
                 variant,
+                tuple,
             };
             let Some(fields) = owner.fields(graph) else {
                 continue;
@@ -76,7 +117,7 @@ pub(crate) fn declaration_target(
             if let Some(field) = fields.iter().find(|field| {
                 field.span.start as usize == range.start && field.span.end as usize == range.end
             }) {
-                return Some((owner, field.name.clone()));
+                return Some((owner, field.name.to_owned()));
             }
         }
     }
@@ -139,7 +180,7 @@ fn collect_sites(
     };
     let graph = databases.hir_db().graph();
     let lines = LineIndex::new(source.text());
-    let mut sites = Vec::new();
+    let mut sites = tuple::sites(databases, source, at);
     for node in parsed.tree().syntax().descendants() {
         let (path, mut fields, pattern) = if let Some(record) = SyntaxRecordExpr::cast(node.clone())
         {
@@ -152,7 +193,7 @@ fn collect_sites(
                     .collect::<Vec<_>>(),
                 false,
             )
-        } else if let Some(pattern) = SyntaxRecordPattern::cast(node) {
+        } else if let Some(pattern) = SyntaxRecordPattern::cast(node.clone()) {
             (
                 pattern.path_segments(),
                 pattern
@@ -205,6 +246,7 @@ fn collect_sites(
         let owner = RecordOwner {
             declaration: owner.id,
             variant,
+            tuple: false,
         };
         sites.extend(fields.into_iter().map(|(label, shorthand)| FieldSite {
             owner: owner.clone(),

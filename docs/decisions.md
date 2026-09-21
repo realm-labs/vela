@@ -4781,3 +4781,11 @@ source-signature parameter spans connect named labels to that map. Collision
 ownership uses the body ID because sibling methods share an impl declaration.
 Trait defaults and explicit implementations retain separate parameter identities;
 unknown receivers do not supply a signature by matching a method's short name.
+
+Source tuple-variant parameters share field reference and rename ownership with
+record fields, using canonical enum declaration, variant and construction form.
+Named call labels use the resolved navigation signature rather than textual path
+matching, preserving import aliases and local shadowing. Tuple and record forms
+remain distinct so malformed constructors do not become valid field references.
+Positional constructor arguments and pattern bindings are independent of the
+tuple parameter's spelling and are not edited by a field rename.

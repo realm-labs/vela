@@ -21,6 +21,10 @@ pub(crate) fn variant_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-variant-fields", crlf)
 }
 
+pub(crate) fn tuple_field_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-tuple-fields", crlf)
+}
+
 pub(crate) fn schema_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-fields", crlf)
 }

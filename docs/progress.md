@@ -894,7 +894,13 @@ named labels through canonical body binding maps. Both layers apply all groups,
 compare complete files and repeat queries after edits/restoration. Unknown callees
 and labels remain empty; sibling methods cannot borrow each other's collisions.
 Signature-only and schema callable ownership remain open, as do broad S4/S5 cells.
-Resume B04.10 with remaining callable/schema-variant ownership partitions, then
+B04.10 adds 20 tuple-variant parameter queries across five independent groups.
+Shared source-field ownership includes tuple call labels resolved through their
+canonical signature; record and tuple syntax remain distinct. Both layers apply
+all field/local groups and preserve positional pattern bindings, aliases and
+closed-file edits. Unknown labels, wrong constructor forms and shadowed aliases
+remain empty. Broad S4/S5/S6 cells stay open.
+Resume B04.11 with remaining signature-only/schema callable ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

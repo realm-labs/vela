@@ -71,6 +71,7 @@ pub(super) fn script_field_target_for_receiver_fact(
         owner: RecordOwner {
             declaration: owner,
             variant: None,
+            tuple: false,
         },
         field: field.to_owned(),
     })
@@ -100,7 +101,7 @@ fn reference_for_script_field_declaration(
     let field = target
         .owner
         .fields(graph)?
-        .iter()
+        .into_iter()
         .find(|field| field.name == target.field)?;
     let source = databases
         .source_db()

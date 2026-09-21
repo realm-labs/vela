@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "id": "reference-rename-tuple-fields",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.tuple_fields\"\nname = \"tuple_fields\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub enum Event { Item([[field-decl:start]]value[[field-decl:end]]: i64, spare: i64), Other([[sibling-decl:start]]value[[sibling-decl:end]]: i64), Record { value: i64 }, Unit }\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub enum Event { Item([[other-decl:start]]value[[other-decl:end]]: i64) }\nfn closed() { helpers::Event::Item([[closed-label:start]]value[[closed-label:end]] = 3, spare = 0); }\n",
+    "scripts/main.vela": "use helpers::Event as Alias\nuse helpers::Event::Item as ItemAlias\n/* 中😀 */ fn main([[caller-decl:start]]value[[caller-decl:end]]: i64) {\n let x = Alias::Item([[alias-label:start]]value[[alias-label:end]] = [[caller-use:start]]value[[caller-use:end]], spare = 0);\n ItemAlias([[variant-label:start]]value[[variant-label:end]] = 2, spare = 0);\n let call = || helpers::Event::Item([[closure-label:start]]value[[closure-label:end]] = 3, spare = 0);\n helpers::Event::Other([[sibling-label:start]]value[[sibling-label:end]] = 4);\n consumer::Event::Item([[other-label:start]]value[[other-label:end]] = 5);\n match x { Alias::Item([[pattern-decl:start]]value[[pattern-decl:end]], _) => [[pattern-use:start]]value[[pattern-use:end]] };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\nfn incomplete() { helpers::Event::Item([[recovery-label:start]]value[[recovery-label:end]] = ); }\nfn invalid() { helpers::Event::Item([[unknown-label:start]]bogus[[unknown-label:end]] = 7); Missing::Item([[unknown-owner:start]]value[[unknown-owner:end]] = 8); helpers::Event::Item { [[invalid-record:start]]value[[invalid-record:end]]: 9 }; helpers::Event::Record([[invalid-call:start]]value[[invalid-call:end]] = 0); }\nfn shadow(ItemAlias) { ItemAlias([[shadow-label:start]]value[[shadow-label:end]] = 1); }\nfn positional() { helpers::Event::Item(3, 0); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "field": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "helpers::Event::Item.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "field-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "variant-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "recovery-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "sibling": {
+        "name": "value",
+        "rename": "bogus",
+        "origin": "source",
+        "qualified": "helpers::Event::Other.value",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "sibling-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "sibling-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "other": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "source",
+        "qualified": "consumer::Event::Item.value",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-use",
+            "kind": "Read"
+          }
+        ]
+      },
+      "pattern": {
+        "name": "value",
+        "rename": "renamed_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "pattern-use",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "field-decl",
+        "group": "field"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "variant-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "recovery-label",
+        "group": "field"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "sibling-decl",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "sibling-label",
+        "group": "sibling"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-decl",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "other"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-use",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-owner"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "invalid-record"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "invalid-call"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-decl",
+        "group": "pattern"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "pattern-use",
+        "group": "pattern"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "shadow-label"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "field": [
+        "spare",
+        "bogus"
+      ]
+    }
+  }
+}

@@ -10,7 +10,7 @@ use crate::{Definition, LanguageServiceDatabases, SymbolRef};
 pub(crate) struct SourceParameters<'a> {
     pub(crate) params: &'a [ParamHint],
     pub(crate) declaration: Option<HirDeclId>,
-    pub(super) variant: Option<(HirDeclId, &'a str)>,
+    pub(crate) variant: Option<(HirDeclId, &'a str)>,
 }
 
 impl LanguageServiceDatabases {

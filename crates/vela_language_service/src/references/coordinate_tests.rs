@@ -34,6 +34,11 @@ fn variant_field_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn tuple_field_matrix_preserves_sets_owners_and_applied_edits() {
+    run_matrix(oracle::tuple_field_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
