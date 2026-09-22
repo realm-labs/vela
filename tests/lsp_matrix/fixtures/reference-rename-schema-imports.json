@@ -1,0 +1,465 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-imports",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_functions\"\nname = \"schema_functions\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]grant[[decl:end]]() {}\n",
+    "scripts/consumer.vela": "use host::[[plain-import:start]]grant[[plain-import:end]]\nfn closed() { [[bare:start]]grant[[bare:end]](); let f = host::[[closed-value:start]]grant[[closed-value:end]]; }\n",
+    "scripts/main.vela": "use host::[[alias-terminal:start]]grant[[alias-terminal:end]] as [[alias-decl:start]]deliver[[alias-decl:end]]\nuse host as bridge\nuse meta::ping as [[meta-alias-decl:start]]probe[[meta-alias-decl:end]]\nuse unknown::grant as missing\npub fn [[source-decl:start]]grant[[source-decl:end]]() {}\n/* 中😀 */ fn main() {\n host::[[call:start]]grant[[call:end]]();\n let f = host::[[value:start]]grant[[value:end]];\n let c = || host::[[closure:start]]grant[[closure:end]]();\n [[source-call:start]]grant[[source-call:end]]();\n meta::[[meta-call:start]]ping[[meta-call:end]]();\n let m = meta::[[meta-value:start]]ping[[meta-value:end]];\n let text = \"[[literal:start]]grant[[literal:end]]\";\n unknown::[[unknown:start]]grant[[unknown:end]]();\n}\nfn shadow([[local-decl:start]]grant[[local-decl:end]]) { [[local-call:start]]grant[[local-call:end]](); }\nfn aliases() {\n [[alias-call:start]]deliver[[alias-call:end]]();\n let f = [[alias-value:start]]deliver[[alias-value:end]];\n let c = || [[alias-closure:start]]deliver[[alias-closure:end]]();\n bridge::[[module-call:start]]grant[[module-call:end]]();\n [[meta-alias-call:start]]probe[[meta-alias-call:end]]();\n [[unknown-alias:start]]missing[[unknown-alias:end]]();\n}\nfn local_alias([[alias-local-decl:start]]deliver[[alias-local-decl:end]]) { [[alias-local-call:start]]deliver[[alias-local-call:end]](); }\n",
+    "scripts/retained.vela": "use host::[[same-terminal:start]]grant[[same-terminal:end]] as [[same-alias:start]]grant[[same-alias:end]]\nfn retained() { [[same-call:start]]grant[[same-call:end]](); let f = [[same-value:start]]grant[[same-value:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "schema": {
+        "name": "grant",
+        "rename": "award",
+        "origin": "schema",
+        "qualified": "host::grant",
+        "schemaEntry": {
+          "collection": "functions",
+          "index": 0
+        },
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "bare",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-decl",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-closure",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "module-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "plain-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/retained.vela",
+            "marker": "same-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/retained.vela",
+            "marker": "same-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/retained.vela",
+            "marker": "same-value",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "bare",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "module-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "plain-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/retained.vela",
+            "marker": "same-terminal",
+            "kind": "Import"
+          }
+        ]
+      },
+      "source": {
+        "name": "grant",
+        "rename": "source_award",
+        "origin": "source",
+        "qualified": "main::grant",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-call",
+            "kind": "Call"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "local": {
+        "name": "grant",
+        "rename": "local_award",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-call",
+            "kind": "Call"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "local-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "metadata": {
+        "name": "ping",
+        "origin": "schema",
+        "qualified": "meta::ping",
+        "readonly": true,
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-alias-decl",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-alias-call",
+            "kind": "Call"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "meta-value",
+            "kind": "Read"
+          }
+        ]
+      },
+      "alias_local": {
+        "name": "deliver",
+        "rename": "renamed_local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "alias-local-call",
+            "kind": "Call"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "bare",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-decl",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-call",
+        "group": "source"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "local-decl",
+        "group": "local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "local-call",
+        "group": "local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "meta-call",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "meta-value",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-call",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-closure",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "module-call",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "plain-import",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-terminal",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-alias"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "meta-alias-decl",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "meta-alias-call",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-local-decl",
+        "group": "alias_local"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "alias-local-call",
+        "group": "alias_local"
+      },
+      {
+        "file": "scripts/retained.vela",
+        "marker": "same-alias",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/retained.vela",
+        "marker": "same-call",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/retained.vela",
+        "marker": "same-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/retained.vela",
+        "marker": "same-terminal",
+        "group": "schema"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "schema": [
+        "spare"
+      ]
+    },
+    "schema": {
+      "functions": [
+        {
+          "name": "host::grant",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "decl"
+          }
+        },
+        {
+          "name": "host::spare",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        },
+        {
+          "name": "meta::ping",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

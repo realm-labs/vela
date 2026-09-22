@@ -55,6 +55,11 @@ fn schema_function_matrix_projects_exact_sets_and_applied_utf16_edits() {
 }
 
 #[test]
+fn schema_import_matrix_preserves_aliases_and_applied_utf16_edits() {
+    run_matrix(oracle::schema_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -290,7 +295,7 @@ impl Driver {
                         "prepare {marker}"
                     );
                     let mut expected = BTreeMap::<String, Vec<Value>>::new();
-                    for site in &sites {
+                    for site in oracle::edits(spec, group) {
                         expected.entry(self.uri(site["file"].as_str().expect("fixture string"))).or_default().push(json!({"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")}));
                     }
                     let actual: BTreeMap<String, Vec<Value>> =

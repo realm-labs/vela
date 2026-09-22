@@ -27,11 +27,7 @@ pub(super) fn references(
                 .map(|site| Reference {
                     document_id: source.document_id().clone(),
                     range: diagnostic_range(source.text(), site.range),
-                    kind: if site.call {
-                        ReferenceKind::Call
-                    } else {
-                        ReferenceKind::Read
-                    },
+                    kind: site.kind,
                     symbol: schema_symbol(name),
                 }),
         );

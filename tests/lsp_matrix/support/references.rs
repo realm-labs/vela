@@ -45,6 +45,19 @@ pub(crate) fn schema_function_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-functions", crlf)
 }
 
+pub(crate) fn schema_import_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-imports", crlf)
+}
+
+pub(crate) fn edits<'a>(spec: &'a Spec, group: &str) -> &'a [Value] {
+    let definition = &spec.oracle["groups"][group];
+    definition
+        .get("edits")
+        .unwrap_or(&definition["sites"])
+        .as_array()
+        .expect("edit sites")
+}
+
 pub(crate) fn replacement(site: &Value, name: &str) -> String {
     format!("{name}{}", site["suffix"].as_str().unwrap_or(""))
 }
@@ -117,7 +130,7 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
     let mut result = spec.clone();
     let definition = &spec.oracle["groups"][group];
     let old_name = definition["name"].as_str().expect("old name");
-    for site in definition["sites"].as_array().expect("sites") {
+    for site in edits(spec, group) {
         let file = site["file"].as_str().expect("file");
         let marker = site["marker"].as_str().expect("marker");
         let old = format!("[[{marker}:start]]{old_name}[[{marker}:end]]");

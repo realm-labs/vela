@@ -322,11 +322,9 @@ pub(super) fn schema_function_use_target(
     token: &RenameToken,
 ) -> Option<SchemaFunctionRenameTarget> {
     let source = query.source_record()?;
-    crate::schema_function_sites::sites(databases, source)
-        .into_iter()
-        .find(|site| site.range == token.range)
-        .map(|site| SchemaFunctionRenameTarget {
-            name: site.name,
+    crate::schema_function_sites::target(databases, source, token.range)
+        .map(|name| SchemaFunctionRenameTarget {
+            name,
             token: token.clone(),
         })
         .and_then(|target| source_backed_schema_function_target(databases, target))
@@ -491,12 +489,14 @@ fn push_schema_function_use_edits(
 ) {
     for source in databases.source_db().records().values() {
         for site in crate::schema_function_sites::sites(databases, source) {
-            if site.name == target.name {
+            if site.name == target.name
+                && let Some(range) = site.edit_range
+            {
                 edits_by_document
                     .entry(source.document_id().clone())
                     .or_default()
                     .push(TextEdit {
-                        range: diagnostic_range(source.text(), site.range),
+                        range: diagnostic_range(source.text(), range),
                         new_text: new_name.to_owned(),
                     });
             }

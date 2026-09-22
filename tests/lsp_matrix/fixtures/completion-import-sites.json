@@ -171,7 +171,7 @@
             "origin": "schema",
             "symbol": "host::zz_function",
             "docs": "Registered function docs.",
-            "target": null,
+            "target": "scripts/origins.vela",
             "marker": "function",
             "insertFormat": "PlainText"
           }

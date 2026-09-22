@@ -4820,3 +4820,13 @@ schema short-name lookup, and qualified unknown paths never borrow a short-name
 match. Source-backed definitions retain their schema identity; metadata-only
 functions expose references but no source edits. Prepare-rename placeholders
 match the editable terminal segment rather than the fully qualified schema name.
+
+Schema function imports expose their binding token as an Import reference, matching
+source import reference conventions. Rename edits the import's terminal path token;
+explicit alias bindings and their uses retain their spelling, even when that
+spelling initially equals the function name. Module aliases retain their prefix
+while their terminal function uses change. Shared sites carry reference ranges
+and optional edit ranges independently; test oracles declare both sets explicitly.
+After expanding a namespace alias, visible source declarations still take
+precedence over colliding schema facts; a qualified-path binding alone does not
+establish schema ownership.

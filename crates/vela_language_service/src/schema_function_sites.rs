@@ -1,14 +1,17 @@
 use vela_common::SourceId;
+use vela_hir::module_graph::DeclarationKind;
 use vela_hir::{binding::BindingResolution, body::HirPathKind};
 
 use crate::{
-    LanguageServiceDatabases, LineIndex, QueryContext, SourceRecord, TextRange, hir_path_sites,
+    LanguageServiceDatabases, LineIndex, QueryContext, ReferenceKind, SourceRecord, TextRange,
+    hir_path_sites,
 };
 
 pub(crate) struct Site {
     pub(crate) name: String,
     pub(crate) range: TextRange,
-    pub(crate) call: bool,
+    pub(crate) kind: ReferenceKind,
+    pub(crate) edit_range: Option<TextRange>,
 }
 
 pub(crate) fn target(
@@ -82,16 +85,68 @@ fn collect(
                 return None;
             }
             let expanded = query.expand_import_path(site.path)?;
-            // Alias tokens have a different editable identity from the imported
-            // function's terminal name and are not equivalent rename sites.
-            if expanded != site.path {
+            let module = query.module_key().and_then(|key| graph.module_id(key))?;
+            if [
+                DeclarationKind::Function,
+                DeclarationKind::Const,
+                DeclarationKind::State,
+                DeclarationKind::Struct,
+                DeclarationKind::Enum,
+                DeclarationKind::Trait,
+            ]
+            .into_iter()
+            .any(|kind| {
+                graph
+                    .resolve_visible_declaration_path(module, &expanded, kind)
+                    .is_some()
+            }) {
                 return None;
             }
             let name = resolve(db, &expanded.join("::"))?;
+            let explicit_alias = site.path.len() == 1
+                && query
+                    .module_key()
+                    .and_then(|key| graph.module_id(key))
+                    .and_then(|module| graph.imports(module))
+                    .is_some_and(|imports| {
+                        imports.iter().any(|import| {
+                            import.alias.as_ref() == site.path.first() && import.path == expanded
+                        })
+                    });
             Some(Site {
                 name,
                 range: site.segment_range,
-                call: path.kind == HirPathKind::Callee,
+                kind: if path.kind == HirPathKind::Callee {
+                    ReferenceKind::Call
+                } else {
+                    ReferenceKind::Read
+                },
+                edit_range: (!explicit_alias).then_some(site.segment_range),
+            })
+        })
+        .chain(import_sites(db, source).into_iter().filter(|site| {
+            at.is_none_or(|range| site.range == range || site.edit_range == Some(range))
+        }))
+        .collect()
+}
+
+fn import_sites(db: &LanguageServiceDatabases, source: &SourceRecord) -> Vec<Site> {
+    let graph = db.hir_db().graph();
+    graph
+        .module_ids()
+        .filter_map(|module| graph.imports(module))
+        .flatten()
+        .filter(|import| import.span.source == source.source_id() && import.resolution.is_none())
+        .filter_map(|import| {
+            let name = import.path.join("::");
+            db.schema_db().facts().function_fact(&name)?;
+            let terminal = *import.path_spans.last()?;
+            let range = hir_path_sites::text_range_for_span(import.alias_span.unwrap_or(terminal))?;
+            Some(Site {
+                name,
+                range,
+                kind: ReferenceKind::Import,
+                edit_range: hir_path_sites::text_range_for_span(terminal),
             })
         })
         .collect()

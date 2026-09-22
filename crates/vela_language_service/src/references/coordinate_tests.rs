@@ -59,6 +59,11 @@ fn schema_function_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn schema_import_matrix_preserves_aliases_and_applied_edits() {
+    run_matrix(oracle::schema_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -258,7 +263,7 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 }
                 let actual = renamed.document_edits().iter().flat_map(|document| document.edits().iter().map(|edit|
                     json!({"uri":document.document_id().as_str(),"range":range_json(edit.range()),"newText":edit.new_text()}))).collect();
-                let expected = sites.iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")})).collect();
+                let expected = oracle::edits(spec, group).iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")})).collect();
                 assert_eq!(sorted(actual), sorted(expected), "rename {marker}");
             } else {
                 assert!(

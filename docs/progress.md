@@ -921,7 +921,10 @@ and retain metadata-only references without rename. Broad S4/S5 remain open.
 Schema free-function references and rename now share owned call/value sites,
 including closures and closed files; source/local shadows remain independent.
 B04.14 checks 14 queries and four groups with applied edits at both layers.
-Resume B04.15 with schema import aliases, capture/parameter/variant ownership, then
+Schema function imports now distinguish reference sites from editable terminals.
+B04.15 checks 30 queries across five groups, preserving explicit function aliases
+(including same-spelled aliases), module aliases and local shadows after edits.
+Resume B04.16 with schema capture/parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
