@@ -74,6 +74,11 @@ fn schema_lookup_matrix_preserves_unknown_and_exact_owners_after_rename() {
 }
 
 #[test]
+fn schema_variant_matrix_preserves_expression_and_pattern_ownership() {
+    run_matrix(oracle::schema_variant_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }

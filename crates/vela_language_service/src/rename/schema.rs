@@ -344,7 +344,9 @@ pub(super) fn schema_variant_use_target(
         .hir_db()
         .graph()
         .paths_in_source(source.source_id())
-        .filter(|path| hir_path_sites::is_expression_path(path.kind))
+        .filter(|path| {
+            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
+        })
         .filter_map(hir_path_sites::site)
         .find(|site| site.segment_range == token.range)
         .and_then(|site| schema_variant_target_for_path(databases, site.path))

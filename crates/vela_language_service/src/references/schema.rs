@@ -3,7 +3,7 @@ use vela_common::SourceId;
 use vela_hir::body::HirPathKind;
 
 use crate::{
-    LanguageServiceDatabases, SymbolRef, TextRange, hir_path_sites, query_context,
+    LanguageServiceDatabases, SymbolRef, hir_path_sites, query_context,
     symbol_ref::{
         schema_member_symbol as shared_schema_member_symbol,
         schema_variant_symbol as shared_schema_variant_symbol,
@@ -472,7 +472,11 @@ fn schema_variant_use_references_for_source(
         references.push(Reference {
             document_id: source.document_id().clone(),
             range: diagnostic_range(text, site.segment_range),
-            kind: schema_variant_reference_kind(text, site.segment_range),
+            kind: if path.kind == HirPathKind::Pattern {
+                ReferenceKind::Pattern
+            } else {
+                ReferenceKind::Read
+            },
             symbol: schema_variant_symbol(target),
         });
     }
@@ -592,21 +596,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
             variant: None,
         } => Some(name.clone()),
         _ => None,
-    }
-}
-
-fn schema_variant_reference_kind(text: &str, range: TextRange) -> ReferenceKind {
-    let line_end = text
-        .get(range.end..)
-        .and_then(|suffix| suffix.find('\n').map(|end| range.end + end))
-        .unwrap_or(text.len());
-    if text
-        .get(range.end..line_end)
-        .is_some_and(|suffix| suffix.contains("=>"))
-    {
-        ReferenceKind::Pattern
-    } else {
-        ReferenceKind::Read
     }
 }
 

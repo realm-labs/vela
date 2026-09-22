@@ -1,0 +1,242 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-variants",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_variants\"\nname = \"schema_variants\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]Active[[decl:end]]() {}\n",
+    "scripts/main.vela": "fn main() {\n /* 中😀 */ match host::State::[[scrutinee:start]]Active[[scrutinee:end]] { host::State::[[inline-pattern:start]]Active[[inline-pattern:end]] => { let next = host::State::[[arm-value:start]]Active[[arm-value:end]]; } peer::State::[[peer-pattern:start]]Active[[peer-pattern:end]] => {} }\n match peer::State::[[peer-value:start]]Active[[peer-value:end]] {\n host::State::[[split-pattern:start]]Active[[split-pattern:end]]\n => {}\n }\n let value = host::State::[[comment-value:start]]Active[[comment-value:end]]; // => [[comment:start]]Active[[comment:end]]\n let unknown = missing::State::[[unknown:start]]Active[[unknown:end]];\n let text = \"[[literal:start]]Active[[literal:end]] =>\";\n}\n",
+    "scripts/consumer.vela": "fn closed() { let v = host::State::[[closed:start]]Active[[closed:end]];\n match meta::State::[[meta-value:start]]Active[[meta-value:end]] { meta::State::[[meta-pattern:start]]Active[[meta-pattern:end]] => {} }\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "schema": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "host::State::Active",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "scrutinee",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "inline-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "split-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "comment-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed",
+            "kind": "Read"
+          }
+        ],
+        "schemaEntry": {
+          "collection": "variants",
+          "index": 0
+        }
+      },
+      "peer": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "peer::State::Active",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-pattern",
+            "kind": "Pattern"
+          }
+        ],
+        "readonly": true
+      },
+      "metadata": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "meta::State::Active",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-pattern",
+            "kind": "Pattern"
+          }
+        ],
+        "readonly": true
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "scrutinee",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "inline-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "split-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-value",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-pattern",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-value",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-pattern",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "schema": [
+        "Done"
+      ]
+    },
+    "schema": {
+      "types": [
+        {
+          "name": "host::State",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State"
+          }
+        },
+        {
+          "name": "peer::State",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State"
+          }
+        },
+        {
+          "name": "meta::State",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Active"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "decl"
+          }
+        },
+        {
+          "owner": "peer::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "meta::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "host::State",
+          "name": "Done",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Done"
+          }
+        }
+      ]
+    }
+  }
+}

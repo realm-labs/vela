@@ -3073,10 +3073,49 @@
         "rename/syntax/S8/negative/protocol"
       ],
       "summary": "Advance 48 S2/S5/S8 reference/highlight/prepare-rename/rename cells with 24 queries and seven ownership groups; broad cells remain unreviewed. Compare schema function lookup before and after proposed rename: edited paths retain the renamed identity and other paths retain their identity or unresolved state. Reject capture of unknown calls, independently named function values, qualified calls and unused imports; reject ambiguous short names and loss of exact-name ownership. Shared scoped path expansion preserves local/source priority and handles aliases; imports use exact registered paths. Qualified edits safely coexist with an exact unqualified schema function. This applied case exposed source-location suffix fallback borrowing another function span; canonical function source lookup now keeps metadata-only owners non-renamable. Both layers apply all four writable groups, compare whole files, regenerate explicit schema metadata, parse, requery and restore. Protocol checks Unicode LF/CRLF, UTF-16, encoded paths, open/closed versions, both edit forms and schema ABI confirmation. Initial capture and span failures are retained. Full service 671 passed plus two historical ignored; protocol 655 passed; fmt, workspace Clippy and Node 75 passed. This child does not claim a new full-workspace run; the last full workspace checkpoint is B04.14. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. Original B00-B03 snapshots unchanged; refresh 247 accepted obligations. Resume B04.18 remaining schema parameter/variant ownership, then semantic/lifecycle and UX05/UX06. Fresh macOS evidence when used; B16 deferred. Find checkpoint commit by its LSP-Batch trailer. Windows VSIX editors/vscode/test-results/run-FLPXSO/results.json passed 10; native editors/vscode/test-results/input-2FRtYr/results.json passed 16; strict regression target/lsp-matrix/run-ajnBge/report.json."
+    },
+    {
+      "id": "B04.18",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/negative/protocol",
+        "references/syntax/S8/positive/service",
+        "references/syntax/S8/positive/protocol",
+        "references/syntax/S8/negative/service",
+        "references/syntax/S8/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/negative/protocol",
+        "highlight/syntax/S8/positive/service",
+        "highlight/syntax/S8/positive/protocol",
+        "highlight/syntax/S8/negative/service",
+        "highlight/syntax/S8/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S8/positive/service",
+        "prepare-rename/syntax/S8/positive/protocol",
+        "prepare-rename/syntax/S8/negative/service",
+        "prepare-rename/syntax/S8/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/negative/protocol",
+        "rename/syntax/S8/positive/service",
+        "rename/syntax/S8/positive/protocol",
+        "rename/syntax/S8/negative/service",
+        "rename/syntax/S8/negative/protocol"
+      ],
+      "summary": "Advance 32 S4/S8 reference/highlight/prepare-rename/rename cells with 14 queries across three schema variant owners; broad cells remain unreviewed. Independent exact sets distinguish same-line scrutinees/arm expressions, patterns with next-line arrows and arrows in comments. Metadata-only owners stay non-renamable, other owners remain separate and unknown/string/comment sites remain empty. HIR path kind replaces line-based arrow scanning; pattern sites now allow prepare-rename. Both layers apply the complete writable owner edit, compare whole files, regenerate variant name/value metadata, parse, requery and restore. Protocol checks Unicode LF/CRLF, UTF-16, encoded paths, open/closed versions and ABI markers. Initial classification and pattern-prepare failures retained. Focused variant tests service 7/protocol 8; full service 672 plus two historical ignored, protocol 656; fmt, workspace Clippy, Node 75 and installed VSIX 10 passed. No new whole-workspace, native-input or strict accepted-batch acceptance claimed for this child; last strict/native evidence is B04.17 and last workspace checkpoint B04.14. Original accepted B00-B03 snapshots unchanged; audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. Resume B04.19 schema variant import/source-owner and remaining parameter/lifecycle coverage, then UX05/UX06. Fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-Z2517P/results.json; audit target/lsp-matrix/run-TlsFMV/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.18",
-  "nextTask": "B04.18",
+  "activeChild": "B04.19",
+  "nextTask": "B04.19",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -5527,7 +5566,18 @@
     "target/b04-17-accepted-regression.log",
     "editors/vscode/test-results/run-FLPXSO/results.json",
     "editors/vscode/test-results/input-2FRtYr/results.json",
-    "target/lsp-matrix/run-iTx5xy/report.json"
+    "target/lsp-matrix/run-iTx5xy/report.json",
+    "target/b04-18-baseline.log",
+    "target/b04-18-repro.log",
+    "target/b04-18-matrix.log",
+    "target/b04-18-matrix-fixed.log",
+    "target/b04-18-variants.log",
+    "target/b04-18-fmt.log",
+    "target/b04-18-clippy.log",
+    "target/b04-18-node.log",
+    "target/b04-18-editor.log",
+    "target/lsp-matrix/run-TlsFMV/report.json",
+    "editors/vscode/test-results/run-Z2517P/results.json"
   ],
   "openIssues": [
     {

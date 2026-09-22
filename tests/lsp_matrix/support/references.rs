@@ -57,6 +57,10 @@ pub(crate) fn schema_lookup_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-lookup", crlf)
 }
 
+pub(crate) fn schema_variant_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-variants", crlf)
+}
+
 pub(crate) fn edits<'a>(spec: &'a Spec, group: &str) -> &'a [Value] {
     let definition = &spec.oracle["groups"][group];
     definition
@@ -164,6 +168,9 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
             new_name.to_owned()
         }
         .into();
+        if collection == "variants" {
+            result.oracle["schema"][collection][index]["fact"]["variant"] = new_name.into();
+        }
     }
     for site in result.oracle["groups"][group]["sites"]
         .as_array_mut()
