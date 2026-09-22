@@ -69,6 +69,10 @@ pub(crate) fn schema_variant_capture_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-variant-capture", crlf)
 }
 
+pub(crate) fn schema_variant_lookup_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-variant-lookup", crlf)
+}
+
 pub(crate) fn edits<'a>(spec: &'a Spec, group: &str) -> &'a [Value] {
     let definition = &spec.oracle["groups"][group];
     definition

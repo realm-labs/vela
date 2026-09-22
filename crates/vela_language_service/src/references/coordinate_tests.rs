@@ -89,6 +89,11 @@ fn schema_variant_capture_matrix_rejects_changed_owners_and_applies_safe_edits()
 }
 
 #[test]
+fn schema_variant_lookup_matrix_preserves_unknown_and_short_name_owners() {
+    run_matrix(oracle::schema_variant_lookup_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }

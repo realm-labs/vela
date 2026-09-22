@@ -1,4 +1,3 @@
-use vela_analysis::registry::RegistryFacts;
 use vela_hir::{body::HirPathKind, module_graph::DeclarationKind};
 
 use crate::{
@@ -50,6 +49,7 @@ fn collect(
 ) -> Vec<Site> {
     let graph = db.hir_db().graph();
     let schema = db.schema_db().facts();
+    let names = names(db);
     let lines = LineIndex::new(source.text());
     let mut result: Vec<_> = graph
         .paths_in_source(source.source_id())
@@ -66,32 +66,9 @@ fn collect(
                 source.document_id(),
                 lines.position(site.segment_range.start),
             )?;
-            let expanded = crate::schema_function_sites::scoped_path(
-                db,
-                &query,
-                site.path,
-                site.segment_range,
-            )?;
+            let expanded = scoped_path(db, &query, site.path, site.segment_range)?;
             let module = query.module_key().and_then(|key| graph.module_id(key))?;
-            let (_, parent) = expanded.split_last()?;
-            // A source type owns its variants even if a schema has the same path.
-            if [
-                DeclarationKind::Enum,
-                DeclarationKind::Struct,
-                DeclarationKind::Trait,
-                DeclarationKind::Function,
-                DeclarationKind::Const,
-                DeclarationKind::State,
-            ]
-            .into_iter()
-            .any(|kind| {
-                graph
-                    .resolve_visible_declaration_path(module, parent, kind)
-                    .is_some()
-            }) {
-                return None;
-            }
-            let (owner, variant) = resolve(schema, &expanded)?;
+            let (owner, variant) = resolve_names(&names, &expanded)?.clone();
             let explicit_alias = site.path.len() == 1
                 && graph.imports(module).is_some_and(|imports| {
                     imports.iter().any(|import| {
@@ -138,24 +115,66 @@ fn collect(
     result
 }
 
-fn resolve(schema: &RegistryFacts, path: &[String]) -> Option<(String, String)> {
+pub(crate) type VariantName = (String, String);
+
+pub(crate) fn names(db: &LanguageServiceDatabases) -> Vec<VariantName> {
+    db.schema_db()
+        .facts()
+        .variants()
+        .map(|variant| (variant.owner, variant.name))
+        .collect()
+}
+
+pub(crate) fn scoped_path(
+    db: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    path: &[String],
+    range: TextRange,
+) -> Option<Vec<String>> {
+    let expanded = crate::schema_function_sites::scoped_path(db, query, path, range)?;
+    let graph = db.hir_db().graph();
+    let module = query.module_key().and_then(|key| graph.module_id(key))?;
+    let (_, parent) = expanded.split_last()?;
+    if [
+        DeclarationKind::Enum,
+        DeclarationKind::Struct,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .resolve_visible_declaration_path(module, parent, kind)
+            .is_some()
+    }) {
+        return None;
+    }
+    Some(expanded)
+}
+
+pub(crate) fn resolve_names<'a>(
+    names: &'a [VariantName],
+    path: &[String],
+) -> Option<&'a VariantName> {
     let (variant, parent) = path.split_last()?;
     if parent.is_empty() {
         return None;
     }
     let owner = parent.join("::");
-    if schema.variant_fact(&owner, variant).is_some() {
-        return Some((owner, variant.clone()));
+    if let Some(exact) = names
+        .iter()
+        .find(|(candidate_owner, name)| candidate_owner == &owner && name == variant)
+    {
+        return Some(exact);
     }
     if parent.len() != 1 {
         return None;
     }
-    let mut owners = schema.variants().filter(|candidate| {
-        candidate.name == *variant && candidate.owner.rsplit("::").next() == Some(owner.as_str())
+    let mut matches = names.iter().filter(|(candidate_owner, name)| {
+        name == variant && candidate_owner.rsplit("::").next() == Some(owner.as_str())
     });
-    let first = owners.next()?;
-    owners
-        .next()
-        .is_none()
-        .then_some((first.owner, variant.clone()))
+    let first = matches.next()?;
+    matches.next().is_none().then_some(first)
 }

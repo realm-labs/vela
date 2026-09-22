@@ -91,6 +91,14 @@ pub(super) fn rename_schema_variant(
     if schema_variant_name_conflicts(databases.schema_db().facts(), &target, new_name) {
         return None;
     }
+    if super::schema_variant_lookup::changes_lookup(
+        databases,
+        &target.owner,
+        &target.variant,
+        new_name,
+    ) {
+        return None;
+    }
     if super::schema_collisions::variant_name_is_captured(
         databases,
         &target.owner,

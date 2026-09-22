@@ -938,7 +938,9 @@ source enum references. Public source enums retain their existing rename policy.
 B04.20 checks 38 variant capture queries with distinct local/default/module/import
 collision names and a safe qualified/retained-alias rename. Functions and variants
 share the lexical guard over their canonical editable sites.
-Resume B04.21 with remaining schema parameter/variant lookup and ownership, then
+B04.21 checks 38 variant lookup queries, preserving unresolved paths and other
+owners during rename, including the new binding from an unaliased import.
+Resume B04.22 with remaining schema parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

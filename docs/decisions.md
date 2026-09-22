@@ -4850,3 +4850,6 @@ edits; explicit aliases retain their spelling. Canonical source enum owners and
 local bindings take precedence over colliding schema facts.
 Function and variant renames use the same lexical capture guard over their owned
 editable sites, preserving qualified references and retained explicit aliases.
+Variant rename also compares lookup identities before and after the proposed
+schema name change, including new bindings from renamed unaliased imports.
+Other paths retain their original identity or unresolved state.

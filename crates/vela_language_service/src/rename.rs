@@ -35,6 +35,7 @@ mod schema;
 mod schema_collisions;
 mod schema_lookup;
 mod schema_records;
+mod schema_variant_lookup;
 mod shorthand;
 #[cfg(test)]
 mod shorthand_tests;
