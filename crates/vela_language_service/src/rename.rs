@@ -530,6 +530,9 @@ fn rename_target<'a>(
     if let Some(target) = schema::schema_function_use_target(databases, query, text, &token) {
         return Some(RenameTarget::SchemaFunction(target));
     }
+    if let Some(target) = schema::schema_variant_use_target(databases, query, text, &token) {
+        return Some(RenameTarget::SchemaVariant(target));
+    }
 
     if let Some(declaration) =
         crate::hir_path_sites::imported_declaration(graph, source_id, token.range)
@@ -601,9 +604,6 @@ fn rename_target<'a>(
         }
         if let Some(target) = schema::schema_type_use_target(databases, declaration, text, &token) {
             return Some(RenameTarget::SchemaType(target));
-        }
-        if let Some(target) = schema::schema_variant_use_target(databases, query, text, &token) {
-            return Some(RenameTarget::SchemaVariant(target));
         }
         if let Some(target) = member_receiver_fact.and_then(|receiver| {
             token_text(text, token.range).and_then(|field| {

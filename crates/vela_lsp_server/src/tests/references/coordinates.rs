@@ -75,6 +75,11 @@ fn schema_variant_matrix_preserves_expression_and_pattern_utf16_edits() {
 }
 
 #[test]
+fn schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits() {
+    run_matrix(oracle::schema_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -279,7 +284,16 @@ impl Driver {
                     if spec.oracle["groups"][group]["readonly"] == true {
                         assert!(prepare.is_null());
                         assert!(edit.is_null());
-                        assert!(self.query::<r::GotoDefinition>(params.clone()).is_null());
+                        let definition = self.query::<r::GotoDefinition>(params.clone());
+                        if spec.oracle["groups"][group]["sourceDefinition"] == true {
+                            let site = &sites[0];
+                            assert_eq!(
+                                definition,
+                                json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})
+                            );
+                        } else {
+                            assert!(definition.is_null());
+                        }
                         continue;
                     }
                     if spec.oracle["groups"][group]["origin"] == "schema" {

@@ -71,6 +71,21 @@ impl LanguageServiceDatabases {
                     )
                 });
         }
+        if let Some(source) = query.source_record()
+            && let Some(range) = query.identifier_range()
+            && let Some((owner, variant)) = crate::schema_variant_sites::target(self, source, range)
+        {
+            return self
+                .schema_db()
+                .source_locations()
+                .variant_span(&owner, &variant)
+                .and_then(|span| {
+                    self.definition_from_span_with_symbol(
+                        span,
+                        Some(crate::symbol_ref::schema_variant_symbol(&owner, &variant)),
+                    )
+                });
+        }
         if let Some(parameter) = crate::signature_parameters::target(self, &query) {
             return self.definition_from_span_with_symbol(
                 parameter.parameter.span,

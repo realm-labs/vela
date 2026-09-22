@@ -4843,3 +4843,8 @@ other paths retain their original identity or unresolved state. Calls and functi
 values share scoped path expansion and exact-name/unique-short-name resolution;
 imports use exact registered paths. Source locations accept canonical function
 names only, so metadata-only exact names cannot borrow a qualified owner's span.
+
+Schema variant navigation, reference collection and rename share scoped variant
+sites. Import bindings contribute reference sites separately from terminal path
+edits; explicit aliases retain their spelling. Canonical source enum owners and
+local bindings take precedence over colliding schema facts.

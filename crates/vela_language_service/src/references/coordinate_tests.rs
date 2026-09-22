@@ -79,6 +79,11 @@ fn schema_variant_matrix_preserves_expression_and_pattern_ownership() {
 }
 
 #[test]
+fn schema_variant_import_matrix_preserves_aliases_and_applied_edits() {
+    run_matrix(oracle::schema_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -237,7 +242,18 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 if spec.oracle["groups"][group]["readonly"] == true {
                     assert!(prepared.is_none());
                     assert!(renamed.is_none());
-                    assert!(db.definition(&uri(file), point).is_none());
+                    let definition = db.definition(&uri(file), point);
+                    if spec.oracle["groups"][group]["sourceDefinition"] == true {
+                        let target = &sites[0];
+                        let definition = definition.expect("read-only source definition");
+                        assert_eq!(
+                            definition.document_id(),
+                            &uri(target["file"].as_str().expect("file"))
+                        );
+                        assert_eq!(range_json(definition.range()), site_range(fixture, target));
+                    } else {
+                        assert!(definition.is_none());
+                    }
                     continue;
                 }
                 if spec.oracle["checkDefinition"] == true {

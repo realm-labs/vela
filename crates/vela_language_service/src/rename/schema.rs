@@ -3,13 +3,10 @@ use std::collections::BTreeMap;
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::body::HirField;
-use vela_hir::body::HirPathKind;
 use vela_hir::module_graph::{Declaration, ModuleGraph};
 use vela_hir::type_hint::HirTypeHint;
 
-use crate::{
-    DocumentId, LanguageServiceDatabases, QueryContext, TextRange, hir_path_sites, query_context,
-};
+use crate::{DocumentId, LanguageServiceDatabases, QueryContext, TextRange, query_context};
 
 use super::{
     RenameRisk, RenameRiskKind, RenameToken, TextEdit, WorkspaceEdit, diagnostic_range,
@@ -35,13 +32,6 @@ struct SchemaMemberSite {
     member_range: TextRange,
     receiver_range: TextRange,
     is_call: bool,
-}
-
-struct SchemaVariantUseEditSite<'a> {
-    source: &'a crate::SourceRecord,
-    text: &'a str,
-    path: &'a [String],
-    range: TextRange,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -340,21 +330,15 @@ pub(super) fn schema_variant_use_target(
     token: &RenameToken,
 ) -> Option<SchemaVariantRenameTarget> {
     let source = query.source_record()?;
-    databases
-        .hir_db()
-        .graph()
-        .paths_in_source(source.source_id())
-        .filter(|path| {
-            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-        })
-        .filter_map(hir_path_sites::site)
-        .find(|site| site.segment_range == token.range)
-        .and_then(|site| schema_variant_target_for_path(databases, site.path))
-        .and_then(|target| source_backed_schema_variant_target(databases, target))
-        .map(|mut target| {
-            target.token = token.clone();
-            target
-        })
+    let (owner, variant) = crate::schema_variant_sites::target(databases, source, token.range)?;
+    source_backed_schema_variant_target(
+        databases,
+        SchemaVariantRenameTarget {
+            owner,
+            variant,
+            token: token.clone(),
+        },
+    )
 }
 
 pub(super) fn schema_member_target_for_receiver_fact(
@@ -516,59 +500,21 @@ fn push_schema_variant_use_edits(
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
     for source in databases.source_db().records().values() {
-        let text = source.text();
-        for path in databases
-            .hir_db()
-            .graph()
-            .paths_in_source(source.source_id())
-            .filter(|path| {
-                hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-            })
-        {
-            let Some(site) = hir_path_sites::site(path) else {
-                continue;
-            };
-            if site
-                .path
-                .last()
-                .is_none_or(|segment| segment != &target.variant)
-            {
+        for site in crate::schema_variant_sites::sites(databases, source) {
+            if site.owner != target.owner || site.variant != target.variant {
                 continue;
             }
-            push_schema_variant_use_edit_for_path(
-                databases,
-                SchemaVariantUseEditSite {
-                    source,
-                    text,
-                    path: site.path,
-                    range: site.segment_range,
-                },
-                target,
-                new_name,
-                edits_by_document,
-            );
+            let Some(range) = site.edit_range else {
+                continue;
+            };
+            edits_by_document
+                .entry(source.document_id().clone())
+                .or_default()
+                .push(TextEdit {
+                    range: diagnostic_range(source.text(), range),
+                    new_text: new_name.to_owned(),
+                });
         }
-    }
-}
-
-fn push_schema_variant_use_edit_for_path(
-    databases: &LanguageServiceDatabases,
-    site: SchemaVariantUseEditSite<'_>,
-    target: &SchemaVariantRenameTarget,
-    new_name: &str,
-    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
-) {
-    if schema_variant_target_for_path(databases, site.path)
-        .and_then(|found| source_backed_schema_variant_target(databases, found))
-        .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
-    {
-        edits_by_document
-            .entry(site.source.document_id().clone())
-            .or_default()
-            .push(TextEdit {
-                range: diagnostic_range(site.text, site.range),
-                new_text: new_name.to_owned(),
-            });
     }
 }
 
@@ -955,52 +901,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
         } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn schema_variant_target_for_path(
-    databases: &LanguageServiceDatabases,
-    path: &[String],
-) -> Option<SchemaVariantRenameTarget> {
-    let (variant, owner_segments) = path.split_last()?;
-    if owner_segments.is_empty() {
-        return None;
-    }
-    let owner = owner_segments.join("::");
-    let schema = databases.schema_db().facts();
-    if schema.variant_fact(&owner, variant).is_some() {
-        return Some(SchemaVariantRenameTarget {
-            owner,
-            variant: variant.clone(),
-            token: RenameToken {
-                range: TextRange::new(0, 0),
-            },
-        });
-    }
-
-    if owner.contains("::") {
-        return None;
-    }
-
-    let mut matches = schema.variants().filter_map(|candidate| {
-        (candidate.name == *variant
-            && candidate
-                .owner
-                .rsplit("::")
-                .next()
-                .is_some_and(|short| short == owner))
-        .then_some(candidate.owner)
-    });
-    let matched_owner = matches.next()?;
-    matches
-        .next()
-        .is_none()
-        .then_some(SchemaVariantRenameTarget {
-            owner: matched_owner,
-            variant: variant.clone(),
-            token: RenameToken {
-                range: TextRange::new(0, 0),
-            },
-        })
 }
 
 fn schema_function_renamed_name(name: &str, new_segment: &str) -> String {

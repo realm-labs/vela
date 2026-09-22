@@ -214,6 +214,12 @@ impl LanguageServiceDatabases {
             return schema_functions::references(self, &name, include_declaration);
         }
 
+        if let Some(target) =
+            schema::schema_variant_use_target(self, source_id, source.text(), &token)
+        {
+            return schema::schema_variant_references(self, &target, include_declaration);
+        }
+
         if let Some(target) = crate::signature_parameters::target(self, &query) {
             return signatures::references(self, target, include_declaration);
         }
@@ -281,11 +287,6 @@ impl LanguageServiceDatabases {
                 enum_variant_use_target(graph, bindings, source_id, source.text(), &token)
             {
                 return self.enum_variant_references(&target.target, include_declaration);
-            }
-            if let Some(target) =
-                schema::schema_variant_use_target(self, source_id, source.text(), &token)
-            {
-                return schema::schema_variant_references(self, &target, include_declaration);
             }
             if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
@@ -888,10 +889,33 @@ fn enum_variant_use_target_for_path(
                 kind: resolved_use_reference_kind(text, token.range),
             })
         }
+        BindingResolution::QualifiedPath(path) => {
+            let module = graph.declaration(bindings.declaration)?.module;
+            let path = graph.expand_import_path(module, path)?;
+            let (name, parent) = path.split_last()?;
+            let owner =
+                graph.resolve_visible_declaration_path(module, parent, DeclarationKind::Enum)?;
+            if (owner.module != module
+                && owner.visibility != vela_hir::module_graph::Visibility::Public)
+                || !enum_variant_exists(graph, owner.id, name)
+            {
+                return None;
+            }
+            Some(EnumVariantUseTarget {
+                target: EnumVariantReferenceTarget {
+                    owner: owner.id,
+                    variant: name.clone(),
+                },
+                kind: if is_pattern {
+                    ReferenceKind::Pattern
+                } else {
+                    resolved_use_reference_kind(text, token.range)
+                },
+            })
+        }
         BindingResolution::Declaration(_)
         | BindingResolution::Local(_)
-        | BindingResolution::Import(_)
-        | BindingResolution::QualifiedPath(_) => None,
+        | BindingResolution::Import(_) => None,
     }
 }
 

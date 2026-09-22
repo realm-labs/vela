@@ -1,9 +1,8 @@
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::SourceId;
-use vela_hir::body::HirPathKind;
 
 use crate::{
-    LanguageServiceDatabases, SymbolRef, hir_path_sites, query_context,
+    LanguageServiceDatabases, SymbolRef, query_context,
     symbol_ref::{
         schema_member_symbol as shared_schema_member_symbol,
         schema_variant_symbol as shared_schema_variant_symbol,
@@ -231,16 +230,13 @@ pub(super) fn schema_variant_use_target(
     _text: &str,
     token: &ReferenceToken,
 ) -> Option<SchemaVariantReferenceTarget> {
-    databases
-        .hir_db()
-        .graph()
-        .paths_in_source(source_id)
-        .filter(|path| {
-            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-        })
-        .filter_map(hir_path_sites::site)
-        .find(|site| site.segment_range == token.range)
-        .and_then(|site| schema_variant_target_for_path(databases.schema_db().facts(), site.path))
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == source_id)?;
+    let (owner, variant) = crate::schema_variant_sites::target(databases, source, token.range)?;
+    Some(SchemaVariantReferenceTarget { owner, variant })
 }
 
 pub(super) fn schema_record_field_use_target(
@@ -442,45 +438,20 @@ fn schema_record_field_references_for_source(
 
 fn schema_variant_use_references_for_source(
     databases: &LanguageServiceDatabases,
-    schema: &RegistryFacts,
+    _schema: &RegistryFacts,
     source: &crate::SourceRecord,
     target: &SchemaVariantReferenceTarget,
 ) -> Vec<Reference> {
-    let mut references = Vec::new();
-    let text = source.text();
-    for path in databases
-        .hir_db()
-        .graph()
-        .paths_in_source(source.source_id())
-        .filter(|path| {
-            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-        })
-    {
-        let Some(site) = hir_path_sites::site(path) else {
-            continue;
-        };
-        if site
-            .path
-            .last()
-            .is_none_or(|segment| segment != &target.variant)
-        {
-            continue;
-        }
-        if schema_variant_target_for_path(schema, site.path).as_ref() != Some(target) {
-            continue;
-        }
-        references.push(Reference {
+    crate::schema_variant_sites::sites(databases, source)
+        .into_iter()
+        .filter(|site| site.owner == target.owner && site.variant == target.variant)
+        .map(|site| Reference {
             document_id: source.document_id().clone(),
-            range: diagnostic_range(text, site.segment_range),
-            kind: if path.kind == HirPathKind::Pattern {
-                ReferenceKind::Pattern
-            } else {
-                ReferenceKind::Read
-            },
+            range: diagnostic_range(source.text(), site.range),
+            kind: site.kind,
             symbol: schema_variant_symbol(target),
-        });
-    }
-    references
+        })
+        .collect()
 }
 
 pub(crate) fn schema_method_target_for_receiver_fact(
@@ -506,45 +477,6 @@ pub(super) fn schema_field_target_for_receiver_fact(
         owner,
         field: field.to_owned(),
     })
-}
-
-fn schema_variant_target_for_path(
-    schema: &RegistryFacts,
-    path: &[String],
-) -> Option<SchemaVariantReferenceTarget> {
-    let (variant, owner_segments) = path.split_last()?;
-    if owner_segments.is_empty() {
-        return None;
-    }
-    let owner = owner_segments.join("::");
-    if schema.variant_fact(&owner, variant).is_some() {
-        return Some(SchemaVariantReferenceTarget {
-            owner,
-            variant: variant.clone(),
-        });
-    }
-
-    if owner.contains("::") {
-        return None;
-    }
-
-    let mut matches = schema.variants().filter_map(|candidate| {
-        (candidate.name == *variant
-            && candidate
-                .owner
-                .rsplit("::")
-                .next()
-                .is_some_and(|short| short == owner))
-        .then_some(candidate.owner)
-    });
-    let matched_owner = matches.next()?;
-    matches
-        .next()
-        .is_none()
-        .then_some(SchemaVariantReferenceTarget {
-            owner: matched_owner,
-            variant: variant.clone(),
-        })
 }
 
 fn schema_method_owner(
