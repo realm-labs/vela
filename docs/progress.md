@@ -924,7 +924,11 @@ B04.14 checks 14 queries and four groups with applied edits at both layers.
 Schema function imports now distinguish reference sites from editable terminals.
 B04.15 checks 30 queries across five groups, preserving explicit function aliases
 (including same-spelled aliases), module aliases and local shadows after edits.
-Resume B04.16 with schema capture/parameter/variant ownership, then
+B04.16 checks schema function lexical capture across 23 queries and five groups:
+visible locals, default parameters, module/import bindings and source declaration
+collisions reject; qualified calls and retained aliases preserve safe edits.
+Resume B04.17 with reverse capture, short-name ambiguity and schema
+parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

@@ -60,6 +60,11 @@ fn schema_import_matrix_preserves_aliases_and_applied_utf16_edits() {
 }
 
 #[test]
+fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
+    run_matrix(oracle::schema_capture_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }

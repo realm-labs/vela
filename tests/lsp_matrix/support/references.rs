@@ -49,6 +49,10 @@ pub(crate) fn schema_import_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-imports", crlf)
 }
 
+pub(crate) fn schema_capture_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-capture", crlf)
+}
+
 pub(crate) fn edits<'a>(spec: &'a Spec, group: &str) -> &'a [Value] {
     let definition = &spec.oracle["groups"][group];
     definition

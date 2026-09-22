@@ -32,6 +32,7 @@ mod local_collision_tests;
 mod local_collisions;
 mod methods;
 mod schema;
+mod schema_collisions;
 mod schema_records;
 mod shorthand;
 #[cfg(test)]

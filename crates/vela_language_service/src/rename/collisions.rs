@@ -39,14 +39,20 @@ pub(super) fn declaration_use_is_captured(
                 source.document_id(),
                 LineIndex::new(source.text()).position(range.start),
             )
-            .is_some_and(|query| {
-                query
-                    .local_bindings_before_cursor()
-                    .any(|local| local.name == new_name)
-                    || default_parameter_captures(graph, &query, new_name)
-            })
+            .is_some_and(|query| local_name_captures(graph, &query, new_name))
         })
     })
+}
+
+pub(super) fn local_name_captures(
+    graph: &ModuleGraph,
+    query: &QueryContext<'_>,
+    name: &str,
+) -> bool {
+    query
+        .local_bindings_before_cursor()
+        .any(|local| local.name == name)
+        || default_parameter_captures(graph, query, name)
 }
 
 fn default_parameter_captures(graph: &ModuleGraph, query: &QueryContext<'_>, name: &str) -> bool {

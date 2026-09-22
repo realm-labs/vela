@@ -75,7 +75,9 @@ pub(super) fn rename_schema_function(
     target: SchemaFunctionRenameTarget,
     new_name: &str,
 ) -> Option<WorkspaceEdit> {
-    if schema_function_name_conflicts(databases.schema_db().facts(), &target, new_name) {
+    if schema_function_name_conflicts(databases.schema_db().facts(), &target, new_name)
+        || super::schema_collisions::function_name_is_captured(databases, &target.name, new_name)
+    {
         return None;
     }
 

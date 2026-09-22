@@ -4830,3 +4830,9 @@ and optional edit ranges independently; test oracles declare both sets explicitl
 After expanding a namespace alias, visible source declarations still take
 precedence over colliding schema facts; a qualified-path binding alone does not
 establish schema ownership.
+
+Source and schema function rename share the canonical local/default-parameter
+capture check. Schema function edits also preserve module and imported binding
+ownership, including unused unaliased imports and the source-backed declaration's
+own module. Qualified use sites and retained explicit aliases do not undergo bare
+name lookup and therefore do not borrow unrelated local-name conflicts.

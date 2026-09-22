@@ -64,6 +64,11 @@ fn schema_import_matrix_preserves_aliases_and_applied_edits() {
 }
 
 #[test]
+fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_edits() {
+    run_matrix(oracle::schema_capture_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
