@@ -11,7 +11,6 @@ use crate::{
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
-use vela_hir::body::HirPathKind;
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
 use vela_hir::type_hint::ImplMetadataKind;
@@ -210,6 +209,15 @@ impl LanguageServiceDatabases {
         };
         let graph = self.hir_db().graph();
 
+        if let Some(site) = crate::source_variant_sites::target(self, source, token.range) {
+            return self.enum_variant_references(
+                &EnumVariantReferenceTarget {
+                    owner: site.owner,
+                    variant: site.variant,
+                },
+                include_declaration,
+            );
+        }
         if let Some(name) = crate::schema_function_sites::target(self, source, token.range) {
             return schema_functions::references(self, &name, include_declaration);
         }
@@ -282,11 +290,6 @@ impl LanguageServiceDatabases {
             };
             if let Some(local) = local_reference_target(graph, bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
-            }
-            if let Some(target) =
-                enum_variant_use_target(graph, bindings, source_id, source.text(), &token)
-            {
-                return self.enum_variant_references(&target.target, include_declaration);
             }
             if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
                 return self.declaration_references(declaration, include_declaration);
@@ -556,12 +559,17 @@ impl LanguageServiceDatabases {
         };
 
         for source in self.source_db().records().values() {
-            references.extend(enum_variant_use_references_for_source(
-                graph,
-                source,
-                target,
-                symbol.clone(),
-            ));
+            references.extend(
+                crate::source_variant_sites::sites(self, source)
+                    .into_iter()
+                    .filter(|site| site.owner == target.owner && site.variant == target.variant)
+                    .map(|site| Reference {
+                        document_id: source.document_id().clone(),
+                        range: diagnostic_range(source.text(), site.range),
+                        kind: site.kind,
+                        symbol: symbol.clone(),
+                    }),
+            );
         }
 
         references.sort_by_key(|reference| {
@@ -812,196 +820,6 @@ fn path_range_in_text(text: &str, range: TextRange, path: &str) -> Option<TextRa
         let end = start + matched.len();
         is_identifier_boundary(text, start, end).then(|| TextRange::new(start, end))
     })
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-struct EnumVariantUseTarget {
-    target: EnumVariantReferenceTarget,
-    kind: ReferenceKind,
-}
-
-struct EnumVariantUseReferenceSite<'a> {
-    source: &'a crate::SourceRecord,
-    text: &'a str,
-    path: &'a [String],
-    range: TextRange,
-    is_pattern: bool,
-}
-
-fn enum_variant_use_target(
-    graph: &ModuleGraph,
-    bindings: &BindingMap,
-    source_id: SourceId,
-    text: &str,
-    token: &ReferenceToken,
-) -> Option<EnumVariantUseTarget> {
-    graph
-        .paths_in_source(source_id)
-        .filter(|path| {
-            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-        })
-        .filter_map(hir_path_sites::site)
-        .find(|site| site.segment_range == token.range)
-        .and_then(|site| {
-            enum_variant_use_target_for_path(
-                graph,
-                bindings,
-                site.path,
-                text,
-                token,
-                graph
-                    .paths_in_source_by_kind(source_id, HirPathKind::Pattern)
-                    .filter_map(hir_path_sites::site)
-                    .any(|pattern| pattern.segment_range == site.segment_range),
-            )
-        })
-}
-
-fn enum_variant_use_target_for_path(
-    graph: &ModuleGraph,
-    bindings: &BindingMap,
-    path: &[String],
-    text: &str,
-    token: &ReferenceToken,
-    is_pattern: bool,
-) -> Option<EnumVariantUseTarget> {
-    let variant = path.last()?;
-    if is_pattern
-        && let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
-        && enum_variant_exists(graph, *owner, variant)
-    {
-        return Some(EnumVariantUseTarget {
-            target: EnumVariantReferenceTarget {
-                owner: *owner,
-                variant: variant.clone(),
-            },
-            kind: ReferenceKind::Pattern,
-        });
-    }
-
-    match narrowest_resolution_at_token(graph, bindings, token)? {
-        BindingResolution::Declaration(owner) if enum_variant_exists(graph, *owner, variant) => {
-            Some(EnumVariantUseTarget {
-                target: EnumVariantReferenceTarget {
-                    owner: *owner,
-                    variant: variant.clone(),
-                },
-                kind: resolved_use_reference_kind(text, token.range),
-            })
-        }
-        BindingResolution::QualifiedPath(path) => {
-            let module = graph.declaration(bindings.declaration)?.module;
-            let path = graph.expand_import_path(module, path)?;
-            let (name, parent) = path.split_last()?;
-            let owner =
-                graph.resolve_visible_declaration_path(module, parent, DeclarationKind::Enum)?;
-            if (owner.module != module
-                && owner.visibility != vela_hir::module_graph::Visibility::Public)
-                || !enum_variant_exists(graph, owner.id, name)
-            {
-                return None;
-            }
-            Some(EnumVariantUseTarget {
-                target: EnumVariantReferenceTarget {
-                    owner: owner.id,
-                    variant: name.clone(),
-                },
-                kind: if is_pattern {
-                    ReferenceKind::Pattern
-                } else {
-                    resolved_use_reference_kind(text, token.range)
-                },
-            })
-        }
-        BindingResolution::Declaration(_)
-        | BindingResolution::Local(_)
-        | BindingResolution::Import(_) => None,
-    }
-}
-
-fn enum_variant_use_references_for_source(
-    graph: &ModuleGraph,
-    source: &crate::SourceRecord,
-    target: &EnumVariantReferenceTarget,
-    symbol: SymbolRef,
-) -> Vec<Reference> {
-    let mut references = Vec::new();
-    let text = source.text();
-    for path in graph.paths_in_source(source.source_id()) {
-        if !(hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern) {
-            continue;
-        }
-        let Some(site) = hir_path_sites::site(path) else {
-            continue;
-        };
-        if site
-            .path
-            .last()
-            .is_none_or(|segment| segment != &target.variant)
-        {
-            continue;
-        }
-        push_enum_variant_use_reference_for_path(
-            graph,
-            EnumVariantUseReferenceSite {
-                source,
-                text,
-                path: site.path,
-                range: site.segment_range,
-                is_pattern: path.kind == HirPathKind::Pattern,
-            },
-            target,
-            symbol.clone(),
-            &mut references,
-        );
-    }
-    references
-}
-
-fn push_enum_variant_use_reference_for_path(
-    graph: &ModuleGraph,
-    site: EnumVariantUseReferenceSite<'_>,
-    target: &EnumVariantReferenceTarget,
-    symbol: SymbolRef,
-    references: &mut Vec<Reference>,
-) {
-    let source_id = site.source.source_id();
-    let Some(start) = u32::try_from(site.range.start).ok() else {
-        return;
-    };
-    for declaration in graph.declarations() {
-        if declaration.span.source != source_id || !declaration.span.contains(start) {
-            continue;
-        }
-        let Some(bindings) = graph.bindings(declaration.id) else {
-            continue;
-        };
-        let Some(found) = enum_variant_use_target_for_path(
-            graph,
-            bindings,
-            site.path,
-            site.text,
-            &ReferenceToken { range: site.range },
-            site.is_pattern,
-        ) else {
-            continue;
-        };
-        if found.target == *target {
-            references.push(Reference {
-                document_id: site.source.document_id().clone(),
-                range: diagnostic_range(site.text, site.range),
-                kind: found.kind,
-                symbol,
-            });
-            break;
-        }
-    }
-}
-
-fn enum_variant_exists(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> bool {
-    graph
-        .enum_shape(owner)
-        .is_some_and(|shape| shape.variants.iter().any(|entry| entry.name == variant))
 }
 
 fn declaration_reference_target(

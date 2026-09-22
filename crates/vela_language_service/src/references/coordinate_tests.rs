@@ -94,6 +94,11 @@ fn schema_variant_lookup_matrix_preserves_unknown_and_short_name_owners() {
 }
 
 #[test]
+fn source_variant_import_matrix_preserves_source_and_schema_owners() {
+    run_matrix(oracle::source_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -249,6 +254,17 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
             let prepared = db.prepare_rename(&uri(file), point);
             let renamed = db.rename(&uri(file), point, "renamed_symbol");
             if let Some(group) = query["group"].as_str() {
+                if let Some(target) = spec.oracle["groups"][group]["typeTarget"].as_object() {
+                    let target = &json!(target);
+                    let definition = db
+                        .type_definition(&uri(file), point)
+                        .unwrap_or_else(|| panic!("owned type definition {marker}"));
+                    assert_eq!(
+                        definition.document_id(),
+                        &uri(target["file"].as_str().expect("file"))
+                    );
+                    assert_eq!(range_json(definition.range()), site_range(fixture, target));
+                }
                 if spec.oracle["groups"][group]["readonly"] == true {
                     assert!(prepared.is_none());
                     assert!(renamed.is_none());

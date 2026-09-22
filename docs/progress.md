@@ -940,7 +940,10 @@ collision names and a safe qualified/retained-alias rename. Functions and varian
 share the lexical guard over their canonical editable sites.
 B04.21 checks 38 variant lookup queries, preserving unresolved paths and other
 owners during rename, including the new binding from an unaliased import.
-Resume B04.22 with remaining schema parameter/variant ownership, then
+B04.22 checks 42 source variant import queries, preserving source ownership,
+local shadowing, missing/private nulls and exact enum type targets despite schema
+collisions. Navigation and references share scoped source variant sites.
+Resume B04.23 with remaining schema parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

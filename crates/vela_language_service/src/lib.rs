@@ -33,6 +33,7 @@ mod semantic_tokens;
 mod signature;
 mod signature_parameters;
 mod source_record_fields;
+mod source_variant_sites;
 mod symbol_ref;
 mod symbol_target;
 mod symbols;

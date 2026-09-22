@@ -4853,3 +4853,7 @@ editable sites, preserving qualified references and retained explicit aliases.
 Variant rename also compares lookup identities before and after the proposed
 schema name change, including new bindings from renamed unaliased imports.
 Other paths retain their original identity or unresolved state.
+Source enum variant navigation and references share scoped source paths and import
+sites. Source-owned import paths cannot fall back to colliding schema variants,
+including missing members and inaccessible source owners. Public enum rename
+policy remains unchanged.

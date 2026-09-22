@@ -90,6 +90,11 @@ fn schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits() {
 }
 
 #[test]
+fn source_variant_import_matrix_preserves_source_and_schema_utf16_edits() {
+    run_matrix(oracle::source_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -291,6 +296,14 @@ impl Driver {
                 let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
                 let edit=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":"renamed_symbol"}));
                 if let Some(group) = query["group"].as_str() {
+                    if let Some(target) = spec.oracle["groups"][group]["typeTarget"].as_object() {
+                        let site = &json!(target);
+                        let definition = self.query::<r::GotoTypeDefinition>(params.clone());
+                        assert_eq!(
+                            definition,
+                            json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})
+                        );
+                    }
                     if spec.oracle["groups"][group]["readonly"] == true {
                         assert!(prepare.is_null());
                         assert!(edit.is_null());

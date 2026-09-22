@@ -58,6 +58,23 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         if let Some(source) = query.source_record()
             && let Some(range) = query.identifier_range()
+            && let Some(site) = crate::source_variant_sites::target(self, source, range)
+        {
+            let graph = self.hir_db().graph();
+            let variant = graph
+                .enum_shape(site.owner)?
+                .variants
+                .iter()
+                .find(|variant| variant.name == site.variant)?;
+            return source_members::definition_from_named_span_with_symbol(
+                self,
+                variant.span,
+                &variant.name,
+                source_enum_variant_symbol(graph, site.owner, &variant.name),
+            );
+        }
+        if let Some(source) = query.source_record()
+            && let Some(range) = query.identifier_range()
             && let Some(name) = crate::schema_function_sites::target(self, source, range)
         {
             return self
@@ -177,6 +194,16 @@ impl LanguageServiceDatabases {
         position: Position,
     ) -> Option<Definition> {
         let query = QueryContext::from_databases(self, document_id, position)?;
+        if let Some(source) = query.source_record()
+            && let Some(range) = query.identifier_range()
+            && let Some(site) = crate::source_variant_sites::target(self, source, range)
+        {
+            return self
+                .hir_db()
+                .graph()
+                .declaration(site.owner)
+                .and_then(|owner| self.definition_from_declaration(owner));
+        }
         let target = SymbolTarget::from_query(self, &query)?;
 
         if target.is_module_symbol(self) {

@@ -94,7 +94,9 @@ fn collect(
             .filter_map(|module| graph.imports(module))
             .flatten()
             .filter(|import| {
-                import.span.source == source.source_id() && import.resolution.is_none()
+                import.span.source == source.source_id()
+                    && import.resolution.is_none()
+                    && !source_parent_exists(db, import.module, &import.path)
             })
             .filter_map(|import| {
                 let (variant, parent) = import.path.split_last()?;
@@ -134,8 +136,21 @@ pub(crate) fn scoped_path(
     let expanded = crate::schema_function_sites::scoped_path(db, query, path, range)?;
     let graph = db.hir_db().graph();
     let module = query.module_key().and_then(|key| graph.module_id(key))?;
-    let (_, parent) = expanded.split_last()?;
-    if [
+    if source_parent_exists(db, module, &expanded) {
+        return None;
+    }
+    Some(expanded)
+}
+
+fn source_parent_exists(
+    db: &LanguageServiceDatabases,
+    module: vela_hir::ids::ModuleId,
+    path: &[String],
+) -> bool {
+    let Some((_, parent)) = path.split_last() else {
+        return false;
+    };
+    [
         DeclarationKind::Enum,
         DeclarationKind::Struct,
         DeclarationKind::Trait,
@@ -145,13 +160,11 @@ pub(crate) fn scoped_path(
     ]
     .into_iter()
     .any(|kind| {
-        graph
+        db.hir_db()
+            .graph()
             .resolve_visible_declaration_path(module, parent, kind)
             .is_some()
-    }) {
-        return None;
-    }
-    Some(expanded)
+    })
 }
 
 pub(crate) fn resolve_names<'a>(
