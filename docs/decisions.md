@@ -4848,3 +4848,5 @@ Schema variant navigation, reference collection and rename share scoped variant
 sites. Import bindings contribute reference sites separately from terminal path
 edits; explicit aliases retain their spelling. Canonical source enum owners and
 local bindings take precedence over colliding schema facts.
+Function and variant renames use the same lexical capture guard over their owned
+editable sites, preserving qualified references and retained explicit aliases.

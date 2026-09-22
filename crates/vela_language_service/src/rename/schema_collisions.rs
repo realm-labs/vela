@@ -1,8 +1,15 @@
 use vela_hir::ids::ModuleId;
 
 use crate::{
-    LanguageServiceDatabases, LineIndex, QueryContext, ReferenceKind, schema_function_sites,
+    LanguageServiceDatabases, LineIndex, QueryContext, ReferenceKind, SourceRecord, TextRange,
+    schema_function_sites, schema_variant_sites,
 };
+
+struct CaptureSite {
+    kind: ReferenceKind,
+    range: TextRange,
+    edit_range: Option<TextRange>,
+}
 
 pub(super) fn function_name_is_captured(
     db: &LanguageServiceDatabases,
@@ -12,8 +19,61 @@ pub(super) fn function_name_is_captured(
     if name.rsplit("::").next() == Some(new_name) {
         return false;
     }
+    name_is_captured(
+        db,
+        db.schema_db().source_locations().function_span(name),
+        new_name,
+        |source| {
+            schema_function_sites::sites(db, source)
+                .into_iter()
+                .filter(|site| site.name == name)
+                .map(|site| CaptureSite {
+                    kind: site.kind,
+                    range: site.range,
+                    edit_range: site.edit_range,
+                })
+                .collect()
+        },
+    )
+}
+
+pub(super) fn variant_name_is_captured(
+    db: &LanguageServiceDatabases,
+    owner: &str,
+    variant: &str,
+    new_name: &str,
+) -> bool {
+    if variant == new_name {
+        return false;
+    }
+    name_is_captured(
+        db,
+        db.schema_db()
+            .source_locations()
+            .variant_span(owner, variant),
+        new_name,
+        |source| {
+            schema_variant_sites::sites(db, source)
+                .into_iter()
+                .filter(|site| site.owner == owner && site.variant == variant)
+                .map(|site| CaptureSite {
+                    kind: site.kind,
+                    range: site.range,
+                    edit_range: site.edit_range,
+                })
+                .collect()
+        },
+    )
+}
+
+fn name_is_captured(
+    db: &LanguageServiceDatabases,
+    declaration_span: Option<vela_common::Span>,
+    new_name: &str,
+    sites: impl Fn(&SourceRecord) -> Vec<CaptureSite>,
+) -> bool {
     let graph = db.hir_db().graph();
-    if let Some(span) = db.schema_db().source_locations().function_span(name)
+    if let Some(span) = declaration_span
         && let Some(declaration) = graph
             .declarations()
             .find(|declaration| declaration.name_span == span)
@@ -22,9 +82,9 @@ pub(super) fn function_name_is_captured(
         return true;
     }
     db.source_db().records().values().any(|source| {
-        schema_function_sites::sites(db, source)
+        sites(source)
             .into_iter()
-            .filter(|site| site.name == name && site.edit_range.is_some())
+            .filter(|site| site.edit_range.is_some())
             .any(|site| {
                 if site.kind == ReferenceKind::Import {
                     // Explicit aliases keep their binding name when the path changes.

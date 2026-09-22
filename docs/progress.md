@@ -935,7 +935,10 @@ line text, and permits rename from owned patterns with applied-edit verification
 B04.19 checks 29 variant import queries with separate reference/edit sets,
 preserves retained aliases and source/local ownership, and restores qualified
 source enum references. Public source enums retain their existing rename policy.
-Resume B04.20 with remaining schema parameter/variant capture and ownership, then
+B04.20 checks 38 variant capture queries with distinct local/default/module/import
+collision names and a safe qualified/retained-alias rename. Functions and variants
+share the lexical guard over their canonical editable sites.
+Resume B04.21 with remaining schema parameter/variant lookup and ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

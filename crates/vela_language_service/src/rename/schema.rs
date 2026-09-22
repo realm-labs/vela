@@ -91,6 +91,14 @@ pub(super) fn rename_schema_variant(
     if schema_variant_name_conflicts(databases.schema_db().facts(), &target, new_name) {
         return None;
     }
+    if super::schema_collisions::variant_name_is_captured(
+        databases,
+        &target.owner,
+        &target.variant,
+        new_name,
+    ) {
+        return None;
+    }
 
     let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
     push_schema_variant_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;

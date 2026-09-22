@@ -1,0 +1,653 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-variant-capture",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_variants\"\nname = \"schema_variants\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]Active[[decl:end]]() {}\nfn wrapper_taken() {}\n",
+    "scripts/main.vela": "fn main() {\n /* 中😀 */ match host::State::[[scrutinee:start]]Active[[scrutinee:end]] { host::State::[[inline-pattern:start]]Active[[inline-pattern:end]] => { let next = host::State::[[arm-value:start]]Active[[arm-value:end]]; } peer::State::[[peer-pattern:start]]Active[[peer-pattern:end]] => {} }\n match peer::State::[[peer-value:start]]Active[[peer-value:end]] {\n host::State::[[split-pattern:start]]Active[[split-pattern:end]]\n => {}\n }\n let value = host::State::[[comment-value:start]]Active[[comment-value:end]]; // => [[comment:start]]Active[[comment:end]]\n let unknown = missing::State::[[unknown:start]]Active[[unknown:end]];\n let text = \"[[literal:start]]Active[[literal:end]] =>\";\n}\n",
+    "scripts/consumer.vela": "fn closed() { let v = host::State::[[closed:start]]Active[[closed:end]];\n match meta::State::[[meta-value:start]]Active[[meta-value:end]] { meta::State::[[meta-pattern:start]]Active[[meta-pattern:end]] => {} }\n}\n",
+    "scripts/imports.vela": "use host as bridge;\nuse host::State as Status;\nuse host::State::[[direct-import:start]]Active[[direct-import:end]];\nuse host::State::[[alias-path:start]]Active[[alias-path:end]] as [[alias-decl:start]]Selected[[alias-decl:end]];\nuse meta::State as Metadata;\nfn imported() {\n let a = bridge::State::[[module-value:start]]Active[[module-value:end]];\n match Status::[[enum-value:start]]Active[[enum-value:end]] { Status::[[enum-pattern:start]]Active[[enum-pattern:end]] => {} }\n let b = [[direct-value:start]]Active[[direct-value:end]];\n let c = [[alias-value:start]]Selected[[alias-value:end]];\n let d = Metadata::[[meta-alias:start]]Active[[meta-alias:end]];\n}\nfn source_owner() { let x = shadow::State::[[source-qualified:start]]Active[[source-qualified:end]]; }\nfn local_alias([[local-decl:start]]Selected[[local-decl:end]]) { let x = [[local-value:start]]Selected[[local-value:end]]; }\nfn captured(taken) { let x = [[captured:start]]Active[[captured:end]]; }\nfn defaults(value = [[default-use:start]]Active[[default-use:end]], late = 1) {}\nfn closure() { let f = |closure_taken| [[closure-use:start]]Active[[closure-use:end]]; }\nconst module_taken = 1;\nuse shadow::State as import_taken;\n",
+    "scripts/shadow.vela": "pub enum State { [[source-decl:start]]Active[[source-decl:end]], Done }\nfn own() { let x = State::[[source-value:start]]Active[[source-value:end]]; match x { State::[[source-pattern:start]]Active[[source-pattern:end]] => {} } }\n",
+    "scripts/unused.vela": "use host::State::[[unused-import:start]]Active[[unused-import:end]];\nconst unused_taken = 1;\n",
+    "scripts/safe_defs.vela": "pub fn [[safe-decl:start]]Active[[safe-decl:end]]() {}\n",
+    "scripts/safe.vela": "use safe_host::Other::[[safe-import-path:start]]Active[[safe-import-path:end]] as [[safe-alias:start]]Retained[[safe-alias:end]];\nfn safe(taken) { let x = safe_host::Other::[[safe-value:start]]Active[[safe-value:end]]; let y = [[safe-alias-value:start]]Retained[[safe-alias-value:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "schema": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "host::State::Active",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "scrutinee",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "inline-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "split-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "comment-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-decl",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "module-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "captured",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "default-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "closure-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/unused.vela",
+            "marker": "unused-import",
+            "kind": "Import"
+          }
+        ],
+        "schemaEntry": {
+          "collection": "variants",
+          "index": 0
+        },
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "scrutinee",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "inline-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "split-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "comment-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "module-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-path",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "captured",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "default-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "closure-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/unused.vela",
+            "marker": "unused-import",
+            "kind": "Import"
+          }
+        ]
+      },
+      "peer": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "peer::State::Active",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-pattern",
+            "kind": "Pattern"
+          }
+        ],
+        "readonly": true
+      },
+      "metadata": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "meta::State::Active",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "meta-alias",
+            "kind": "Read"
+          }
+        ],
+        "readonly": true
+      },
+      "source": {
+        "name": "Active",
+        "rename": "Started",
+        "origin": "source",
+        "qualified": "shadow::State::Active",
+        "sites": [
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "source-qualified",
+            "kind": "Read"
+          }
+        ],
+        "readonly": true,
+        "sourceDefinition": true
+      },
+      "local": {
+        "name": "Selected",
+        "rename": "local_selected",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/imports.vela",
+            "marker": "local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "local-value",
+            "kind": "Read"
+          }
+        ]
+      },
+      "safe": {
+        "name": "Active",
+        "rename": "taken",
+        "origin": "schema",
+        "qualified": "safe_host::Other::Active",
+        "schemaEntry": {
+          "collection": "variants",
+          "index": 5
+        },
+        "sites": [
+          {
+            "file": "scripts/safe_defs.vela",
+            "marker": "safe-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/safe.vela",
+            "marker": "safe-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/safe.vela",
+            "marker": "safe-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/safe.vela",
+            "marker": "safe-alias-value",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/safe_defs.vela",
+            "marker": "safe-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/safe.vela",
+            "marker": "safe-import-path",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/safe.vela",
+            "marker": "safe-value",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "scrutinee",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "inline-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "split-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-value",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-pattern",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-value",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-pattern",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "direct-import",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "module-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "enum-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "enum-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "direct-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-path",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "meta-alias",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-decl",
+        "group": "source"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-value",
+        "group": "source"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-pattern",
+        "group": "source"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "source-qualified",
+        "group": "source"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "local-decl",
+        "group": "local"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "local-value",
+        "group": "local"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "captured",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "default-use",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "closure-use",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/unused.vela",
+        "marker": "unused-import",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/safe_defs.vela",
+        "marker": "safe-decl",
+        "group": "safe"
+      },
+      {
+        "file": "scripts/safe.vela",
+        "marker": "safe-alias",
+        "group": "safe"
+      },
+      {
+        "file": "scripts/safe.vela",
+        "marker": "safe-value",
+        "group": "safe"
+      },
+      {
+        "file": "scripts/safe.vela",
+        "marker": "safe-alias-value",
+        "group": "safe"
+      },
+      {
+        "file": "scripts/safe.vela",
+        "marker": "safe-import-path",
+        "group": "safe"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "schema": [
+        "Done",
+        "taken",
+        "late",
+        "closure_taken",
+        "module_taken",
+        "import_taken",
+        "unused_taken",
+        "wrapper_taken"
+      ]
+    },
+    "schema": {
+      "types": [
+        {
+          "name": "host::State",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State"
+          }
+        },
+        {
+          "name": "peer::State",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State"
+          }
+        },
+        {
+          "name": "meta::State",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State"
+          }
+        },
+        {
+          "name": "shadow::State",
+          "fact": {
+            "kind": "enum",
+            "name": "shadow::State"
+          }
+        },
+        {
+          "name": "safe_host::Other",
+          "fact": {
+            "kind": "enum",
+            "name": "safe_host::Other"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Active"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "decl"
+          }
+        },
+        {
+          "owner": "peer::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "meta::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "host::State",
+          "name": "Done",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Done"
+          }
+        },
+        {
+          "owner": "shadow::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "shadow::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "safe_host::Other",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "safe_host::Other",
+            "variant": "Active"
+          },
+          "sourceSpan": {
+            "file": "scripts/safe_defs.vela",
+            "marker": "safe-decl"
+          }
+        }
+      ]
+    }
+  }
+}
