@@ -4836,3 +4836,10 @@ capture check. Schema function edits also preserve module and imported binding
 ownership, including unused unaliased imports and the source-backed declaration's
 own module. Qualified use sites and retained explicit aliases do not undergo bare
 name lookup and therefore do not borrow unrelated local-name conflicts.
+
+Schema function rename compares lookup results before and after the proposed
+schema-name change. Edited target paths must resolve to the renamed identity;
+other paths retain their original identity or unresolved state. Calls and function
+values share scoped path expansion and exact-name/unique-short-name resolution;
+imports use exact registered paths. Source locations accept canonical function
+names only, so metadata-only exact names cannot borrow a qualified owner's span.

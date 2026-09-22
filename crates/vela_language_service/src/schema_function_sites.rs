@@ -52,6 +52,12 @@ fn collect(
     at: Option<TextRange>,
 ) -> Vec<Site> {
     let graph = db.hir_db().graph();
+    let names: Vec<_> = db
+        .schema_db()
+        .facts()
+        .functions()
+        .map(|function| function.name)
+        .collect();
     let lines = LineIndex::new(source.text());
     graph
         .paths_in_source(source.source_id())
@@ -66,43 +72,8 @@ fn collect(
                 source.document_id(),
                 lines.position(site.segment_range.start),
             )?;
-            if query
-                .bindings()
-                .and_then(|bindings| {
-                    crate::query_context::binding_resolution_for_source_range(
-                        graph,
-                        bindings,
-                        site.segment_range,
-                    )
-                })
-                .is_some_and(|resolution| {
-                    matches!(
-                        resolution,
-                        BindingResolution::Local(_) | BindingResolution::Declaration(_)
-                    )
-                })
-            {
-                return None;
-            }
-            let expanded = query.expand_import_path(site.path)?;
-            let module = query.module_key().and_then(|key| graph.module_id(key))?;
-            if [
-                DeclarationKind::Function,
-                DeclarationKind::Const,
-                DeclarationKind::State,
-                DeclarationKind::Struct,
-                DeclarationKind::Enum,
-                DeclarationKind::Trait,
-            ]
-            .into_iter()
-            .any(|kind| {
-                graph
-                    .resolve_visible_declaration_path(module, &expanded, kind)
-                    .is_some()
-            }) {
-                return None;
-            }
-            let name = resolve(db, &expanded.join("::"))?;
+            let expanded = scoped_path(db, &query, site.path, site.segment_range)?;
+            let name = resolve_names(&names, &expanded.join("::")).map(str::to_owned)?;
             let explicit_alias = site.path.len() == 1
                 && query
                     .module_key()
@@ -152,17 +123,63 @@ fn import_sites(db: &LanguageServiceDatabases, source: &SourceRecord) -> Vec<Sit
         .collect()
 }
 
-fn resolve(db: &LanguageServiceDatabases, path: &str) -> Option<String> {
-    let schema = db.schema_db().facts();
-    if schema.function_fact(path).is_some() {
-        return Some(path.to_owned());
-    }
-    if path.contains("::") {
+pub(crate) fn scoped_path(
+    db: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    path: &[String],
+    range: TextRange,
+) -> Option<Vec<String>> {
+    let graph = db.hir_db().graph();
+    if query
+        .bindings()
+        .and_then(|bindings| {
+            crate::query_context::binding_resolution_for_source_range(graph, bindings, range)
+        })
+        .is_some_and(|resolution| {
+            matches!(
+                resolution,
+                BindingResolution::Local(_) | BindingResolution::Declaration(_)
+            )
+        })
+    {
         return None;
     }
-    let mut matches = schema
-        .functions()
-        .filter(|function| function.name.rsplit("::").next() == Some(path));
-    let found = matches.next()?.name;
-    matches.next().is_none().then_some(found)
+    let expanded = query.expand_import_path(path)?;
+    let module = query.module_key().and_then(|key| graph.module_id(key))?;
+    if [
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .resolve_visible_declaration_path(module, &expanded, kind)
+            .is_some()
+    }) {
+        return None;
+    }
+
+    Some(expanded)
+}
+
+pub(crate) fn resolve_names<'a>(
+    names: impl IntoIterator<Item = &'a String>,
+    path: &str,
+) -> Option<&'a str> {
+    let mut found = None;
+    let mut ambiguous = false;
+    for name in names {
+        if name == path {
+            return Some(name.as_str());
+        }
+        if !path.contains("::") && name.rsplit("::").next() == Some(path) {
+            ambiguous |= found.is_some();
+            found = Some(name.as_str());
+        }
+    }
+    if ambiguous { None } else { found }
 }

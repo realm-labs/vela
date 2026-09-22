@@ -65,6 +65,11 @@ fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
 }
 
 #[test]
+fn schema_lookup_matrix_preserves_unknown_and_exact_owners_after_utf16_edits() {
+    run_matrix(oracle::schema_lookup_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }

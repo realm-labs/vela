@@ -261,22 +261,9 @@ impl SchemaSourceLocations {
 
     #[must_use]
     pub fn function_span(&self, name: &str) -> Option<Span> {
-        self.functions
-            .get(name)
-            .copied()
-            .or_else(|| self.unique_function_segment_span(name))
-    }
-
-    fn unique_function_segment_span(&self, name: &str) -> Option<Span> {
-        let mut matches = self.functions.iter().filter_map(|(function, span)| {
-            function
-                .rsplit("::")
-                .next()
-                .is_some_and(|segment| segment == name)
-                .then_some(*span)
-        });
-        let first = matches.next()?;
-        matches.next().is_none().then_some(first)
+        // Callers resolve the canonical function identity before looking up its
+        // source. A metadata-only function must not borrow another owner's span.
+        self.functions.get(name).copied()
     }
 }
 

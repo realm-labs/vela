@@ -33,6 +33,7 @@ mod local_collisions;
 mod methods;
 mod schema;
 mod schema_collisions;
+mod schema_lookup;
 mod schema_records;
 mod shorthand;
 #[cfg(test)]

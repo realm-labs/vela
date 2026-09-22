@@ -927,8 +927,10 @@ B04.15 checks 30 queries across five groups, preserving explicit function aliase
 B04.16 checks schema function lexical capture across 23 queries and five groups:
 visible locals, default parameters, module/import bindings and source declaration
 collisions reject; qualified calls and retained aliases preserve safe edits.
-Resume B04.17 with reverse capture, short-name ambiguity and schema
-parameter/variant ownership, then
+B04.17 compares schema lookup ownership before and after proposed edits across
+24 queries and seven groups, rejecting new bindings and short-name ambiguity while
+preserving exact-name priority. Function source locations use canonical names.
+Resume B04.18 with remaining schema parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
