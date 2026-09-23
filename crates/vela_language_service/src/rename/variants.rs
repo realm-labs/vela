@@ -1,15 +1,10 @@
 use std::collections::BTreeMap;
 
 use vela_common::SourceId;
-use vela_hir::binding::{BindingMap, BindingResolution};
-use vela_hir::body::HirPathKind;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 
-use crate::{
-    DocumentId, LanguageServiceDatabases, TextRange, hir_path_sites,
-    query_context::binding_resolution_for_source_range,
-};
+use crate::{DocumentId, LanguageServiceDatabases};
 
 use super::{
     RenameToken, TextEdit, WorkspaceEdit, diagnostic_range, span_text_range,
@@ -23,14 +18,6 @@ pub(super) struct EnumVariantRenameTarget {
     pub(super) token: RenameToken,
 }
 
-struct EnumVariantUseEditSite<'a> {
-    source: &'a crate::SourceRecord,
-    text: &'a str,
-    path: &'a [String],
-    range: TextRange,
-    is_pattern: bool,
-}
-
 pub(super) fn rename_enum_variant(
     databases: &LanguageServiceDatabases,
     target: EnumVariantRenameTarget,
@@ -38,6 +25,22 @@ pub(super) fn rename_enum_variant(
 ) -> Option<WorkspaceEdit> {
     let graph = databases.hir_db().graph();
     if enum_variant_name_conflicts(graph, &target, new_name) {
+        return None;
+    }
+    if super::source_variant_lookup::changes_lookup(
+        databases,
+        target.owner,
+        &target.variant,
+        new_name,
+    ) {
+        return None;
+    }
+    if super::schema_collisions::source_variant_name_is_captured(
+        databases,
+        target.owner,
+        &target.variant,
+        new_name,
+    ) {
         return None;
     }
 
@@ -77,67 +80,6 @@ pub(super) fn enum_variant_declaration_target(
     None
 }
 
-pub(super) fn enum_variant_use_target(
-    graph: &ModuleGraph,
-    bindings: &BindingMap,
-    source_id: SourceId,
-    _text: &str,
-    token: &RenameToken,
-) -> Option<EnumVariantRenameTarget> {
-    graph
-        .paths_in_source(source_id)
-        .filter(|path| {
-            hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern
-        })
-        .find_map(|path| {
-            let site = hir_path_sites::site(path)?;
-            (site.segment_range == token.range).then(|| {
-                enum_variant_use_target_for_path(
-                    graph,
-                    bindings,
-                    site.path,
-                    token,
-                    path.kind == HirPathKind::Pattern,
-                )
-            })?
-        })
-}
-
-fn enum_variant_use_target_for_path(
-    graph: &ModuleGraph,
-    bindings: &BindingMap,
-    path: &[String],
-    token: &RenameToken,
-    is_pattern: bool,
-) -> Option<EnumVariantRenameTarget> {
-    let variant = path.last()?;
-    if is_pattern
-        && let Some(BindingResolution::Declaration(owner)) = bindings.pattern_resolution(path)
-        && can_rename_enum_variant(graph, *owner, variant)
-    {
-        return Some(EnumVariantRenameTarget {
-            owner: *owner,
-            variant: variant.clone(),
-            token: token.clone(),
-        });
-    }
-    match binding_resolution_for_source_range(graph, bindings, token.range)? {
-        BindingResolution::Declaration(owner)
-            if can_rename_enum_variant(graph, *owner, variant) =>
-        {
-            Some(EnumVariantRenameTarget {
-                owner: *owner,
-                variant: variant.clone(),
-                token: token.clone(),
-            })
-        }
-        BindingResolution::Declaration(_)
-        | BindingResolution::Local(_)
-        | BindingResolution::Import(_)
-        | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
 fn push_enum_variant_declaration_edit(
     databases: &LanguageServiceDatabases,
     target: &EnumVariantRenameTarget,
@@ -168,80 +110,30 @@ fn push_enum_variant_use_edits(
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
 ) {
-    let graph = databases.hir_db().graph();
     for source in databases.source_db().records().values() {
-        let text = source.text();
-        for path in graph.paths_in_source(source.source_id()) {
-            if !(hir_path_sites::is_expression_path(path.kind) || path.kind == HirPathKind::Pattern)
-            {
+        for site in crate::source_variant_sites::sites(databases, source) {
+            if site.owner != target.owner || site.variant != target.variant {
                 continue;
             }
-            let Some(site) = hir_path_sites::site(path) else {
+            let Some(range) = site.edit_range else {
                 continue;
             };
-            if site
-                .path
-                .last()
-                .is_none_or(|segment| segment != &target.variant)
-            {
-                continue;
-            }
-            push_enum_variant_use_edit_for_path(
-                graph,
-                EnumVariantUseEditSite {
-                    source,
-                    text,
-                    path: site.path,
-                    range: site.segment_range,
-                    is_pattern: path.kind == HirPathKind::Pattern,
-                },
-                target,
-                new_name,
-                edits_by_document,
-            );
-        }
-    }
-}
-
-fn push_enum_variant_use_edit_for_path(
-    graph: &ModuleGraph,
-    site: EnumVariantUseEditSite<'_>,
-    target: &EnumVariantRenameTarget,
-    new_name: &str,
-    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
-) {
-    let Some(start) = u32::try_from(site.range.start).ok() else {
-        return;
-    };
-    for declaration in graph.declarations() {
-        if declaration.span.source != site.source.source_id() || !declaration.span.contains(start) {
-            continue;
-        }
-        let Some(bindings) = graph.bindings(declaration.id) else {
-            continue;
-        };
-        if enum_variant_use_target_for_path(
-            graph,
-            bindings,
-            site.path,
-            &RenameToken { range: site.range },
-            site.is_pattern,
-        )
-        .is_some_and(|found| found.owner == target.owner && found.variant == target.variant)
-        {
             edits_by_document
-                .entry(site.source.document_id().clone())
+                .entry(source.document_id().clone())
                 .or_default()
                 .push(TextEdit {
-                    range: diagnostic_range(site.text, site.range),
+                    range: diagnostic_range(source.text(), range),
                     new_text: new_name.to_owned(),
                 });
-            break;
         }
     }
 }
 
-fn can_rename_enum_variant(graph: &ModuleGraph, owner: HirDeclId, variant: &str) -> bool {
+pub(super) fn can_rename_enum_variant(
+    graph: &ModuleGraph,
+    owner: HirDeclId,
+    variant: &str,
+) -> bool {
     graph.declaration(owner).is_some_and(|declaration| {
         declaration.kind == DeclarationKind::Enum && declaration.visibility != Visibility::Public
     }) && enum_variant_exists(graph, owner, variant)

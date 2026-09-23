@@ -14,6 +14,7 @@ pub(crate) struct Site {
     pub(crate) variant: String,
     pub(crate) range: TextRange,
     terminal_range: TextRange,
+    pub(crate) edit_range: Option<TextRange>,
     pub(crate) kind: ReferenceKind,
 }
 
@@ -56,11 +57,18 @@ fn collect(
             let module = graph.module_id(query.module_key()?)?;
             let expanded = query.expand_import_path(site.path)?;
             let (owner, variant) = resolve(db, module, &expanded)?;
+            let explicit_alias = site.path.len() == 1
+                && graph.imports(module).is_some_and(|imports| {
+                    imports.iter().any(|import| {
+                        import.alias.as_ref() == site.path.first() && import.path == expanded
+                    })
+                });
             Some(Site {
                 owner,
                 variant,
                 range: site.segment_range,
                 terminal_range: site.segment_range,
+                edit_range: (!explicit_alias).then_some(site.segment_range),
                 kind: if path.kind == HirPathKind::Pattern {
                     ReferenceKind::Pattern
                 } else if path.kind == HirPathKind::Callee {
@@ -93,6 +101,7 @@ fn collect(
                     variant,
                     range,
                     terminal_range,
+                    edit_range: Some(terminal_range),
                     kind: ReferenceKind::Import,
                 })
             }),

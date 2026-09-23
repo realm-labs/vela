@@ -95,6 +95,11 @@ fn source_variant_import_matrix_preserves_source_and_schema_utf16_edits() {
 }
 
 #[test]
+fn private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits() {
+    run_matrix(oracle::private_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }

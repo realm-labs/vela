@@ -4857,3 +4857,8 @@ Source enum variant navigation and references share scoped source paths and impo
 sites. Source-owned import paths cannot fall back to colliding schema variants,
 including missing members and inaccessible source owners. Public enum rename
 policy remains unchanged.
+Private source enum variant rename shares those canonical sites. It edits the
+terminal import path while retaining explicit alias spelling, and rejects
+lexical capture or any change in source variant path ownership after the
+proposed rename, including an unresolved path becoming resolved. Public enum
+variant rename remains unavailable.

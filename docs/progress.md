@@ -943,7 +943,11 @@ owners during rename, including the new binding from an unaliased import.
 B04.22 checks 42 source variant import queries, preserving source ownership,
 local shadowing, missing/private nulls and exact enum type targets despite schema
 collisions. Navigation and references share scoped source variant sites.
-Resume B04.23 with remaining schema parameter/variant ownership, then
+B04.23 checks 53 variant import and rename queries across schema, public source
+and private source owners. Private rename preserves retained aliases, direct
+imports and separate local ownership; it rejects lexical and reverse capture.
+Public source variants remain non-renamable.
+Resume B04.24 with ambiguity-removal and remaining schema parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

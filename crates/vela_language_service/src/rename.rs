@@ -40,6 +40,7 @@ mod shorthand;
 #[cfg(test)]
 mod shorthand_tests;
 mod signatures;
+mod source_variant_lookup;
 mod variants;
 
 pub use edit::{
@@ -516,6 +517,19 @@ fn rename_target<'a>(
     if let Some(target) = variants::enum_variant_declaration_target(graph, source_id, &token) {
         return Some(RenameTarget::EnumVariant(target));
     }
+    if let Some(site) = query
+        .source_record()
+        .and_then(|source| crate::source_variant_sites::target(databases, source, token.range))
+        && variants::can_rename_enum_variant(graph, site.owner, &site.variant)
+    {
+        return Some(RenameTarget::EnumVariant(
+            variants::EnumVariantRenameTarget {
+                owner: site.owner,
+                variant: site.variant,
+                token,
+            },
+        ));
+    }
     if let Some(target) = schema::schema_member_declaration_target(databases, source_id, &token) {
         return Some(RenameTarget::SchemaMember(target));
     }
@@ -580,11 +594,6 @@ fn rename_target<'a>(
                 token,
                 placeholder: binding.name.clone(),
             }));
-        }
-        if let Some(target) =
-            variants::enum_variant_use_target(graph, bindings, source_id, text, &token)
-        {
-            return Some(RenameTarget::EnumVariant(target));
         }
         if let Some(declaration_id) = declaration_use_at_token(graph, bindings, &token)
             && let Some(target) = graph.declaration(declaration_id)

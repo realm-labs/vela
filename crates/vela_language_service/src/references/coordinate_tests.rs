@@ -99,6 +99,11 @@ fn source_variant_import_matrix_preserves_source_and_schema_owners() {
 }
 
 #[test]
+fn private_variant_import_matrix_preserves_aliases_and_applied_edits() {
+    run_matrix(oracle::private_variant_import_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }

@@ -1,8 +1,8 @@
-use vela_hir::ids::ModuleId;
+use vela_hir::ids::{HirDeclId, ModuleId};
 
 use crate::{
     LanguageServiceDatabases, LineIndex, QueryContext, ReferenceKind, SourceRecord, TextRange,
-    schema_function_sites, schema_variant_sites,
+    schema_function_sites, schema_variant_sites, source_variant_sites,
 };
 
 struct CaptureSite {
@@ -64,6 +64,28 @@ pub(super) fn variant_name_is_captured(
                 .collect()
         },
     )
+}
+
+pub(super) fn source_variant_name_is_captured(
+    db: &LanguageServiceDatabases,
+    owner: HirDeclId,
+    variant: &str,
+    new_name: &str,
+) -> bool {
+    if variant == new_name {
+        return false;
+    }
+    name_is_captured(db, None, new_name, |source| {
+        source_variant_sites::sites(db, source)
+            .into_iter()
+            .filter(|site| site.owner == owner && site.variant == variant)
+            .map(|site| CaptureSite {
+                kind: site.kind,
+                range: site.range,
+                edit_range: site.edit_range,
+            })
+            .collect()
+    })
 }
 
 fn name_is_captured(
