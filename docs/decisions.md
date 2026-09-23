@@ -4862,3 +4862,7 @@ terminal import path while retaining explicit alias spelling, and rejects
 lexical capture or any change in source variant path ownership after the
 proposed rename, including an unresolved path becoming resolved. Public enum
 variant rename remains unavailable.
+The counterfactual also recomputes the module's import bindings after a variant
+rename. A previously ambiguous bare path must stay unresolved; removing one
+of two same-named direct imports cannot silently make it refer to the other
+variant. Retained explicit aliases keep their binding name.

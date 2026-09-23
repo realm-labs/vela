@@ -81,6 +81,10 @@ pub(crate) fn private_variant_import_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-private-variant-imports", crlf)
 }
 
+pub(crate) fn variant_ambiguity_removal_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-variant-ambiguity-removal", crlf)
+}
+
 pub(crate) fn edits<'a>(spec: &'a Spec, group: &str) -> &'a [Value] {
     let definition = &spec.oracle["groups"][group];
     definition

@@ -45,12 +45,6 @@ pub(super) fn changes_lookup(
             }
         })
         .collect();
-    let target_path = graph.declaration(owner).map(|declaration| {
-        let mut path = crate::symbol_ref::qualified_source_declaration_path(graph, declaration);
-        path.push(variant.to_owned());
-        path
-    });
-
     for source in db.source_db().records().values() {
         let lines = LineIndex::new(source.text());
         for path in graph.paths_in_source(source.source_id()).filter(|path| {
@@ -69,30 +63,38 @@ pub(super) fn changes_lookup(
             let Some(module) = query.module_key().and_then(|key| graph.module_id(key)) else {
                 continue;
             };
-            let Some(mut expanded) = query.expand_import_path(site.path) else {
-                continue;
-            };
-            let original = resolve(graph, module, &before, &expanded);
+            let original = query
+                .expand_import_path(site.path)
+                .as_deref()
+                .and_then(|path| resolve(graph, module, &before, path));
+            let mut edited_path = site.path.to_vec();
             let expected = if original == Some(&target) {
-                *expanded.last_mut().expect("resolved variant path") = new_name.to_owned();
+                let retained_alias = site.path.len() == 1
+                    && graph.imports(module).is_some_and(|imports| {
+                        imports.iter().any(|import| {
+                            import.alias.as_ref() == site.path.first()
+                                && resolve(graph, module, &before, &import.path) == Some(&target)
+                        })
+                    });
+                if !retained_alias {
+                    *edited_path.last_mut().expect("resolved variant path") = new_name.to_owned();
+                }
                 Some(&renamed)
             } else {
-                // A renamed direct import also changes its unaliased local binding.
-                if site.path.first().is_some_and(|name| name == new_name)
-                    && let Some(target_path) = &target_path
-                    && graph.imports(module).is_some_and(|imports| {
-                        imports
-                            .iter()
-                            .any(|import| import.alias.is_none() && import.path == *target_path)
-                    })
-                {
-                    expanded = target_path.clone();
-                    *expanded.last_mut().expect("imported variant path") = new_name.to_owned();
-                    expanded.extend_from_slice(&site.path[1..]);
-                }
                 original
             };
-            if resolve(graph, module, &after, &expanded) != expected {
+            let actual = expand_after(
+                graph,
+                module,
+                &query,
+                &edited_path,
+                &before,
+                &target,
+                new_name,
+            )
+            .as_deref()
+            .and_then(|path| resolve(graph, module, &after, path));
+            if actual != expected {
                 return true;
             }
         }
@@ -114,6 +116,46 @@ pub(super) fn changes_lookup(
             };
             resolve(graph, import.module, &after, &path) != expected
         })
+}
+
+fn expand_after(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    query: &QueryContext<'_>,
+    path: &[String],
+    before: &[VariantName],
+    target: &VariantName,
+    new_name: &str,
+) -> Option<Vec<String>> {
+    let first = path.first()?;
+    if query.visible_scope_names().contains(first) {
+        return None;
+    }
+    if graph.module(module)?.get(first).is_some() {
+        return Some(path.to_vec());
+    }
+    let mut imports = graph.imports(module)?.iter().filter(|import| {
+        let target_import = resolve(graph, module, before, &import.path) == Some(target);
+        import.alias.as_deref().unwrap_or_else(|| {
+            if target_import {
+                new_name
+            } else {
+                import.path.last().map(String::as_str).unwrap_or("")
+            }
+        }) == first
+    });
+    let Some(import) = imports.next() else {
+        return Some(path.to_vec());
+    };
+    if imports.next().is_some() {
+        return None;
+    }
+    let mut expanded = import.path.clone();
+    if resolve(graph, module, before, &import.path) == Some(target) {
+        *expanded.last_mut().expect("target variant import") = new_name.to_owned();
+    }
+    expanded.extend_from_slice(&path[1..]);
+    Some(expanded)
 }
 
 fn resolve<'a>(

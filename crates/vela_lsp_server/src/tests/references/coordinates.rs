@@ -100,6 +100,11 @@ fn private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits() {
 }
 
 #[test]
+fn variant_ambiguity_removal_matrix_preserves_unresolved_imports() {
+    run_matrix(oracle::variant_ambiguity_removal_spec);
+}
+
+#[test]
 fn schema_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -386,6 +391,42 @@ impl Driver {
                 }
             }
         }
+        if let Some(config) = spec.oracle["ambiguityRemoval"].as_object() {
+            self.check_ambiguity_removal(fixture, &json!(config));
+        }
+    }
+
+    fn check_ambiguity_removal(&mut self, fixture: &FixtureWorkspace, config: &Value) {
+        let file = config["file"].as_str().expect("ambiguity file");
+        let new_name = config["newName"].as_str().expect("candidate name");
+        for side in ["first", "second"] {
+            let markers = config[side].as_array().expect("owner markers");
+            let expected = markers.iter().map(|marker| {
+                json!({"uri":self.uri(file),"range":site_range(fixture,&json!({"file":file,"marker":marker}))})
+            }).collect::<Vec<_>>();
+            for marker in markers {
+                let marker = marker.as_str().expect("owner marker");
+                let params = self.params(fixture, &json!({"file":file,"marker":marker}));
+                let refs = self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
+                assert_eq!(
+                    sorted(refs.as_array().expect("references").clone()),
+                    sorted(expected.clone()),
+                    "{marker} references"
+                );
+                let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
+                assert_eq!(prepare["placeholder"], "Clash", "{marker} prepare");
+                let edit = self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":new_name}));
+                assert!(edit.is_null(), "ambiguity removal {marker}");
+            }
+        }
+        let params = self.params(fixture, &json!({"file":file,"marker":config["unresolved"]}));
+        let refs = self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
+        assert_eq!(refs, json!([]));
+        assert!(
+            self.query::<r::PrepareRenameRequest>(params.clone())
+                .is_null()
+        );
+        assert!(self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":new_name})).is_null());
     }
 }
 impl Drop for Driver {

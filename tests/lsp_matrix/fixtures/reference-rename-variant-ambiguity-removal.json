@@ -1,0 +1,852 @@
+{
+  "version": 1,
+  "id": "reference-rename-variant-ambiguity-removal",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_variants\"\nname = \"schema_variants\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]Active[[decl:end]]() {}\n",
+    "scripts/main.vela": "fn main() {\n /* 中😀 */ match host::State::[[scrutinee:start]]Active[[scrutinee:end]] { host::State::[[inline-pattern:start]]Active[[inline-pattern:end]] => { let next = host::State::[[arm-value:start]]Active[[arm-value:end]]; } peer::State::[[peer-pattern:start]]Active[[peer-pattern:end]] => {} }\n match peer::State::[[peer-value:start]]Active[[peer-value:end]] {\n host::State::[[split-pattern:start]]Active[[split-pattern:end]]\n => {}\n }\n let value = host::State::[[comment-value:start]]Active[[comment-value:end]]; // => [[comment:start]]Active[[comment:end]]\n let unknown = missing::State::[[unknown:start]]Active[[unknown:end]];\n let text = \"[[literal:start]]Active[[literal:end]] =>\";\n}\n",
+    "scripts/consumer.vela": "fn closed() { let v = host::State::[[closed:start]]Active[[closed:end]];\n match meta::State::[[meta-value:start]]Active[[meta-value:end]] { meta::State::[[meta-pattern:start]]Active[[meta-pattern:end]] => {} }\n}\n",
+    "scripts/imports.vela": "use host as bridge;\nuse host::State as Status;\nuse host::State::[[direct-import:start]]Active[[direct-import:end]];\nuse host::State::[[alias-path:start]]Active[[alias-path:end]] as [[alias-decl:start]]Selected[[alias-decl:end]];\nuse meta::State as Metadata;\nfn imported() {\n let a = bridge::State::[[module-value:start]]Active[[module-value:end]];\n match Status::[[enum-value:start]]Active[[enum-value:end]] { Status::[[enum-pattern:start]]Active[[enum-pattern:end]] => {} }\n let b = [[direct-value:start]]Active[[direct-value:end]];\n let c = [[alias-value:start]]Selected[[alias-value:end]];\n let d = Metadata::[[meta-alias:start]]Active[[meta-alias:end]];\n}\nfn source_owner() { let x = shadow::State::[[source-qualified:start]]Active[[source-qualified:end]]; }\nfn local_alias([[local-decl:start]]Selected[[local-decl:end]]) { let x = [[local-value:start]]Selected[[local-value:end]]; }\n",
+    "scripts/shadow.vela": "/* 中😀 */ pub enum [[source-type:start]]State[[source-type:end]] { [[source-decl:start]]Active[[source-decl:end]], Done }\nfn own() { let x = State::[[source-value:start]]Active[[source-value:end]]; match x { State::[[source-pattern:start]]Active[[source-pattern:end]] => {} } }\n",
+    "scripts/source_imports.vela": "/* 中😀 */ use shadow::State::[[source-import:start]]Active[[source-import:end]];\nuse shadow::State::[[source-alias-path:start]]Active[[source-alias-path:end]] as [[source-alias:start]]SourceActive[[source-alias:end]];\nuse shadow::State as SourceState;\nfn source_imports() {\n let a = [[source-direct:start]]Active[[source-direct:end]];\n let b = [[source-alias-value:start]]SourceActive[[source-alias-value:end]];\n match SourceState::[[source-type-value:start]]Active[[source-type-value:end]] { SourceState::[[source-type-pattern:start]]Active[[source-type-pattern:end]] => {} }\n}\nuse shadow::State::[[missing-import:start]]Phantom[[missing-import:end]] as PhantomAlias;\nuse hidden_defs::Hidden::[[private-import:start]]Active[[private-import:end]] as HiddenActive;\nfn invalid() { let x = [[missing-use:start]]PhantomAlias[[missing-use:end]]; let y = [[private-use:start]]HiddenActive[[private-use:end]]; }\nfn local_alias([[local-alias-decl:start]]SourceActive[[local-alias-decl:end]]) { let x = [[local-alias-use:start]]SourceActive[[local-alias-use:end]]; }\n",
+    "scripts/hidden_defs.vela": "enum Hidden { Active }\n",
+    "scripts/secret_defs.vela": "/* 中😀 */ enum Secret { [[private-decl:start]]Active[[private-decl:end]], Other }\nuse secret_defs::Secret::[[private-direct-import:start]]Active[[private-direct-import:end]];\nuse secret_defs::Secret::[[private-alias-path:start]]Active[[private-alias-path:end]] as [[private-alias:start]]Kept[[private-alias:end]];\nuse secret_defs::Secret as SecretAlias;\nfn private_uses() {\n let a = [[private-direct-use:start]]Active[[private-direct-use:end]];\n let b = [[private-alias-use:start]]Kept[[private-alias-use:end]];\n match SecretAlias::[[private-type-use:start]]Active[[private-type-use:end]] { SecretAlias::[[private-type-pattern:start]]Active[[private-type-pattern:end]] => {} }\n}\nfn local_alias([[private-local-decl:start]]Kept[[private-local-decl:end]]) { let x = [[private-local-use:start]]Kept[[private-local-use:end]]; }\nfn captured(Shadowed) { let x = [[private-captured:start]]Active[[private-captured:end]]; }\nfn unresolved() { let x = secret_defs::Secret::[[private-unknown:start]]Unresolved[[private-unknown:end]]; }\n",
+    "scripts/ambiguity.vela": "/* 中😀 */ enum First { [[first-decl:start]]Clash[[first-decl:end]] }\nenum Second { [[second-decl:start]]Clash[[second-decl:end]] }\nuse ambiguity::First::[[first-import:start]]Clash[[first-import:end]];\nuse ambiguity::Second::[[second-import:start]]Clash[[second-import:end]];\nfn ambiguous() {\n let a = [[bare:start]]Clash[[bare:end]];\n let b = First::[[first-qualified:start]]Clash[[first-qualified:end]];\n let c = Second::[[second-qualified:start]]Clash[[second-qualified:end]];\n}\nenum Solo { [[solo-decl:start]]Unique[[solo-decl:end]] }\nfn safe() { let x = Solo::[[solo-use:start]]Unique[[solo-use:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "schema": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "host::State::Active",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "scrutinee",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "inline-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "split-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "comment-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-decl",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "module-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-value",
+            "kind": "Read"
+          }
+        ],
+        "schemaEntry": {
+          "collection": "variants",
+          "index": 0
+        },
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "scrutinee",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "inline-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "split-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "comment-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "module-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "enum-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "direct-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "alias-path",
+            "kind": "Import"
+          }
+        ]
+      },
+      "peer": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "peer::State::Active",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "peer-pattern",
+            "kind": "Pattern"
+          }
+        ],
+        "readonly": true
+      },
+      "metadata": {
+        "name": "Active",
+        "rename": "Running",
+        "origin": "schema",
+        "qualified": "meta::State::Active",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "meta-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "meta-alias",
+            "kind": "Read"
+          }
+        ],
+        "readonly": true
+      },
+      "source": {
+        "name": "Active",
+        "rename": "Started",
+        "origin": "source",
+        "qualified": "shadow::State::Active",
+        "sites": [
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/shadow.vela",
+            "marker": "source-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "source-qualified",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-direct",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-alias-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-type-value",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "source-type-pattern",
+            "kind": "Pattern"
+          }
+        ],
+        "readonly": true,
+        "sourceDefinition": true,
+        "typeTarget": {
+          "file": "scripts/shadow.vela",
+          "marker": "source-type"
+        }
+      },
+      "local": {
+        "name": "Selected",
+        "rename": "local_selected",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/imports.vela",
+            "marker": "local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/imports.vela",
+            "marker": "local-value",
+            "kind": "Read"
+          }
+        ]
+      },
+      "alias_local": {
+        "name": "SourceActive",
+        "rename": "local_source_active",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "local-alias-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/source_imports.vela",
+            "marker": "local-alias-use",
+            "kind": "Read"
+          }
+        ]
+      },
+      "private_local": {
+        "name": "Kept",
+        "rename": "local_kept",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-local-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-local-use",
+            "kind": "Read"
+          }
+        ]
+      },
+      "private": {
+        "name": "Active",
+        "rename": "Ready",
+        "origin": "source",
+        "qualified": "secret_defs::Secret::Active",
+        "sites": [
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-direct-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-alias-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-type-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-type-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-captured",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-alias-path",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-direct-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-type-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-type-pattern",
+            "kind": "Pattern"
+          },
+          {
+            "file": "scripts/secret_defs.vela",
+            "marker": "private-captured",
+            "kind": "Read"
+          }
+        ]
+      },
+      "solo": {
+        "name": "Unique",
+        "rename": "Fresh",
+        "origin": "source",
+        "qualified": "ambiguity::Solo::Unique",
+        "sites": [
+          {
+            "file": "scripts/ambiguity.vela",
+            "marker": "solo-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/ambiguity.vela",
+            "marker": "solo-use",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "scrutinee",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "inline-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "split-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-value",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "peer-pattern",
+        "group": "peer"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-value",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "meta-pattern",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "literal"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "comment"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "direct-import",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-decl",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "module-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "enum-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "enum-pattern",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "direct-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-value",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "alias-path",
+        "group": "schema"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "meta-alias",
+        "group": "metadata"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-decl",
+        "group": "source"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-value",
+        "group": "source"
+      },
+      {
+        "file": "scripts/shadow.vela",
+        "marker": "source-pattern",
+        "group": "source"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "source-qualified",
+        "group": "source"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "local-decl",
+        "group": "local"
+      },
+      {
+        "file": "scripts/imports.vela",
+        "marker": "local-value",
+        "group": "local"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-import",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-alias",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-direct",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-alias-value",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-type-value",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-type-pattern",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "source-alias-path",
+        "group": "source"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "missing-import"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "missing-use"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "private-import"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "private-use"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "local-alias-decl",
+        "group": "alias_local"
+      },
+      {
+        "file": "scripts/source_imports.vela",
+        "marker": "local-alias-use",
+        "group": "alias_local"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-local-decl",
+        "group": "private_local"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-local-use",
+        "group": "private_local"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-decl",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-direct-import",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-alias",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-direct-use",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-alias-use",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-type-use",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-type-pattern",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-alias-path",
+        "group": "private"
+      },
+      {
+        "file": "scripts/secret_defs.vela",
+        "marker": "private-captured",
+        "group": "private"
+      },
+      {
+        "file": "scripts/ambiguity.vela",
+        "marker": "solo-decl",
+        "group": "solo"
+      },
+      {
+        "file": "scripts/ambiguity.vela",
+        "marker": "solo-use",
+        "group": "solo"
+      }
+    ],
+    "checkDefinition": true,
+    "rejections": {
+      "schema": [
+        "Done"
+      ],
+      "private": [
+        "Other",
+        "Kept",
+        "Shadowed",
+        "Unresolved"
+      ]
+    },
+    "schema": {
+      "types": [
+        {
+          "name": "host::State",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State"
+          }
+        },
+        {
+          "name": "peer::State",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State"
+          }
+        },
+        {
+          "name": "meta::State",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State"
+          }
+        },
+        {
+          "name": "shadow::State",
+          "fact": {
+            "kind": "enum",
+            "name": "shadow::State"
+          }
+        },
+        {
+          "name": "hidden_defs::Hidden",
+          "fact": {
+            "kind": "enum",
+            "name": "hidden_defs::Hidden"
+          }
+        },
+        {
+          "name": "secret_defs::Secret",
+          "fact": {
+            "kind": "enum",
+            "name": "secret_defs::Secret"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Active"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "decl"
+          }
+        },
+        {
+          "owner": "peer::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "peer::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "meta::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "meta::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "host::State",
+          "name": "Done",
+          "fact": {
+            "kind": "enum",
+            "name": "host::State",
+            "variant": "Done"
+          }
+        },
+        {
+          "owner": "shadow::State",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "shadow::State",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "hidden_defs::Hidden",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "hidden_defs::Hidden",
+            "variant": "Active"
+          }
+        },
+        {
+          "owner": "shadow::State",
+          "name": "Phantom",
+          "fact": {
+            "kind": "enum",
+            "name": "shadow::State",
+            "variant": "Phantom"
+          }
+        },
+        {
+          "owner": "secret_defs::Secret",
+          "name": "Active",
+          "fact": {
+            "kind": "enum",
+            "name": "secret_defs::Secret",
+            "variant": "Active"
+          }
+        }
+      ]
+    },
+    "ambiguityRemoval": {
+      "file": "scripts/ambiguity.vela",
+      "first": [
+        "first-decl",
+        "first-import",
+        "first-qualified"
+      ],
+      "second": [
+        "second-decl",
+        "second-import",
+        "second-qualified"
+      ],
+      "unresolved": "bare",
+      "newName": "Fresh"
+    }
+  }
+}

@@ -104,6 +104,11 @@ fn private_variant_import_matrix_preserves_aliases_and_applied_edits() {
 }
 
 #[test]
+fn variant_ambiguity_removal_matrix_preserves_unresolved_imports() {
+    run_matrix(oracle::variant_ambiguity_removal_spec);
+}
+
+#[test]
 fn schema_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::schema_field_spec);
 }
@@ -336,6 +341,56 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
             }
         }
     }
+    if let Some(config) = spec.oracle["ambiguityRemoval"].as_object() {
+        check_ambiguity_removal(db, fixture, &json!(config));
+    }
+}
+
+fn check_ambiguity_removal(
+    db: &LanguageServiceDatabases,
+    fixture: &FixtureWorkspace,
+    config: &Value,
+) {
+    let file = config["file"].as_str().expect("ambiguity file");
+    let new_name = config["newName"].as_str().expect("candidate name");
+    for (side, owner) in [("first", "First"), ("second", "Second")] {
+        let markers = config[side].as_array().expect("owner markers");
+        let expected_symbol = SymbolRef::Source(format!("ambiguity::{owner}::Clash"));
+        let expected = markers.iter().zip(["Declaration", "Import", "Read"]).map(|(marker, kind)| {
+            json!({"uri":uri(file).as_str(),"range":site_range(fixture,&json!({"file":file,"marker":marker})),"kind":kind})
+        }).collect::<Vec<_>>();
+        for marker in markers {
+            let marker = marker.as_str().expect("owner marker");
+            let point = position(fixture, file, marker);
+            let actual = db.references(&uri(file), point, true).iter().map(|reference| {
+                assert_eq!(reference.symbol(), &expected_symbol, "{marker} owner");
+                json!({"uri":reference.document_id().as_str(),"range":range_json(reference.range()),"kind":format!("{:?}",reference.kind())})
+            }).collect();
+            assert_eq!(
+                sorted(actual),
+                sorted(expected.clone()),
+                "{marker} references"
+            );
+            assert_eq!(
+                db.prepare_rename(&uri(file), point)
+                    .expect("owned variant")
+                    .placeholder(),
+                "Clash"
+            );
+            assert!(
+                db.rename(&uri(file), point, new_name).is_none(),
+                "ambiguity removal {marker}"
+            );
+        }
+    }
+    let point = position(
+        fixture,
+        file,
+        config["unresolved"].as_str().expect("unresolved marker"),
+    );
+    assert!(db.references(&uri(file), point, true).is_empty());
+    assert!(db.prepare_rename(&uri(file), point).is_none());
+    assert!(db.rename(&uri(file), point, new_name).is_none());
 }
 
 fn uri(file: &str) -> DocumentId {
