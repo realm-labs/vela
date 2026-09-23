@@ -73,6 +73,10 @@ pub(crate) fn schema_variant_lookup_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-variant-lookup", crlf)
 }
 
+pub(crate) fn schema_variant_ambiguity_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-variant-ambiguity", crlf)
+}
+
 pub(crate) fn source_variant_import_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-source-variant-imports", crlf)
 }

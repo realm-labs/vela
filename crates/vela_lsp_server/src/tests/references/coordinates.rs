@@ -90,6 +90,11 @@ fn schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits() {
 }
 
 #[test]
+fn schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths() {
+    run_matrix(oracle::schema_variant_ambiguity_spec);
+}
+
+#[test]
 fn source_variant_import_matrix_preserves_source_and_schema_utf16_edits() {
     run_matrix(oracle::source_variant_import_spec);
 }
@@ -393,6 +398,65 @@ impl Driver {
         }
         if let Some(config) = spec.oracle["ambiguityRemoval"].as_object() {
             self.check_ambiguity_removal(fixture, &json!(config));
+        }
+        if let Some(config) = spec.oracle["schemaAmbiguityRemoval"].as_object() {
+            self.check_schema_ambiguity_removal(fixture, &json!(config));
+        }
+    }
+
+    fn check_schema_ambiguity_removal(&mut self, fixture: &FixtureWorkspace, config: &Value) {
+        let new_name = config["newName"].as_str().expect("candidate name");
+        for (case, keys) in [
+            (&config["short"], vec!["declaration", "qualified"]),
+            (
+                &config["import"],
+                vec!["declaration", "terminal", "qualified"],
+            ),
+        ] {
+            let expected = keys.iter().map(|key| {
+                let site = &case[key];
+                json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})
+            }).collect::<Vec<_>>();
+            for key in keys {
+                let site = &case[key];
+                let params = self.params(fixture, site);
+                let refs = self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
+                assert_eq!(
+                    sorted(refs.as_array().expect("references").clone()),
+                    sorted(expected.clone()),
+                    "{key} references"
+                );
+                let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
+                assert!(!prepare.is_null(), "{key} prepare");
+                let edit = self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":new_name}));
+                assert!(edit.is_null(), "ambiguity removal {key}");
+            }
+            let params = self.params(fixture, &case["unresolved"]);
+            let refs = self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
+            assert_eq!(refs, json!([]));
+            assert!(
+                self.query::<r::PrepareRenameRequest>(params.clone())
+                    .is_null()
+            );
+            assert!(self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":new_name})).is_null());
+        }
+        for (site, markers) in [
+            (&config["short"]["other"], vec![&config["short"]["other"]]),
+            (
+                &config["import"]["otherTerminal"],
+                vec![
+                    &config["import"]["otherTerminal"],
+                    &config["import"]["otherQualified"],
+                ],
+            ),
+        ] {
+            let params = self.params(fixture, site);
+            let expected = markers.iter().map(|site| json!({"uri":self.uri(site["file"].as_str().expect("file")),"range":site_range(fixture,site)})).collect::<Vec<_>>();
+            let refs = self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
+            assert_eq!(
+                sorted(refs.as_array().expect("references").clone()),
+                sorted(expected)
+            );
         }
     }
 

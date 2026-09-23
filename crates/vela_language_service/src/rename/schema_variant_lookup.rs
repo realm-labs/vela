@@ -1,8 +1,14 @@
-use vela_hir::body::HirPathKind;
+use vela_hir::{
+    binding::BindingResolution,
+    body::HirPathKind,
+    ids::ModuleId,
+    module_graph::{DeclarationKind, ModuleGraph},
+};
 
 use crate::{
-    LanguageServiceDatabases, LineIndex, QueryContext, hir_path_sites,
-    schema_variant_sites::{names, resolve_names, scoped_path},
+    LanguageServiceDatabases, LineIndex, QueryContext, TextRange, hir_path_sites,
+    query_context::binding_resolution_for_source_range,
+    schema_variant_sites::{names, resolve_names, scoped_path, source_parent_exists},
 };
 
 pub(super) fn changes_lookup(
@@ -28,8 +34,6 @@ pub(super) fn changes_lookup(
         })
         .collect();
     let graph = db.hir_db().graph();
-    let mut target_path: Vec<_> = owner.split("::").map(str::to_owned).collect();
-    target_path.push(variant.to_owned());
     for source in db.source_db().records().values() {
         let lines = LineIndex::new(source.text());
         for path in graph.paths_in_source(source.source_id()).filter(|path| {
@@ -45,36 +49,42 @@ pub(super) fn changes_lookup(
             ) else {
                 continue;
             };
-            let Some(mut expanded) = scoped_path(db, &query, site.path, site.segment_range) else {
-                continue;
-            };
-            let original = resolve_names(&before, &expanded);
+            let original = scoped_path(db, &query, site.path, site.segment_range)
+                .as_deref()
+                .and_then(|path| resolve_names(&before, path));
+            let mut edited_path = site.path.to_vec();
             let expected = if original == Some(&target) {
-                *expanded.last_mut().expect("resolved variant path") = new_name.to_owned();
-                Some(&renamed)
-            } else {
-                // Renaming an unaliased import introduces a new local binding.
-                // Original local/source bindings have already been excluded.
-                if site.path.first().is_some_and(|name| name == new_name)
+                let retained_alias = site.path.len() == 1
                     && query
                         .module_key()
                         .and_then(|key| graph.module_id(key))
                         .and_then(|module| graph.imports(module))
                         .is_some_and(|imports| {
                             imports.iter().any(|import| {
-                                import.resolution.is_none()
-                                    && import.alias.is_none()
-                                    && import.path == target_path
+                                import.alias.as_ref() == site.path.first()
+                                    && import.resolution.is_none()
+                                    && resolve_names(&before, &import.path) == Some(&target)
                             })
-                        })
-                {
-                    expanded = target_path.clone();
-                    *expanded.last_mut().expect("imported variant path") = new_name.to_owned();
-                    expanded.extend_from_slice(&site.path[1..]);
+                        });
+                if !retained_alias {
+                    *edited_path.last_mut().expect("resolved variant path") = new_name.to_owned();
                 }
+                Some(&renamed)
+            } else {
                 original
             };
-            if resolve_names(&after, &expanded) != expected {
+            let actual = scoped_after(
+                db,
+                &query,
+                &edited_path,
+                site.segment_range,
+                &before,
+                &target,
+                new_name,
+            )
+            .as_deref()
+            .and_then(|path| resolve_names(&after, path));
+            if actual != expected {
                 return true;
             }
         }
@@ -97,4 +107,89 @@ pub(super) fn changes_lookup(
             };
             after.iter().find(|candidate| *candidate == identity) != expected
         })
+}
+
+fn scoped_after(
+    db: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    path: &[String],
+    range: TextRange,
+    before: &[(String, String)],
+    target: &(String, String),
+    new_name: &str,
+) -> Option<Vec<String>> {
+    let graph = db.hir_db().graph();
+    if query
+        .bindings()
+        .and_then(|bindings| binding_resolution_for_source_range(graph, bindings, range))
+        .is_some_and(|resolution| {
+            matches!(
+                resolution,
+                BindingResolution::Local(_) | BindingResolution::Declaration(_)
+            )
+        })
+    {
+        return None;
+    }
+    let module = query.module_key().and_then(|key| graph.module_id(key))?;
+    let expanded = expand_after(graph, module, query, path, before, target, new_name)?;
+    if [
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ]
+    .into_iter()
+    .any(|kind| {
+        graph
+            .resolve_visible_declaration_path(module, &expanded, kind)
+            .is_some()
+    }) || source_parent_exists(db, module, &expanded)
+    {
+        return None;
+    }
+    Some(expanded)
+}
+
+fn expand_after(
+    graph: &ModuleGraph,
+    module: ModuleId,
+    query: &QueryContext<'_>,
+    path: &[String],
+    before: &[(String, String)],
+    target: &(String, String),
+    new_name: &str,
+) -> Option<Vec<String>> {
+    let first = path.first()?;
+    if query.visible_scope_names().contains(first) {
+        return None;
+    }
+    if graph.module(module)?.get(first).is_some() {
+        return Some(path.to_vec());
+    }
+    let mut imports = graph.imports(module)?.iter().filter(|import| {
+        let target_import =
+            import.resolution.is_none() && resolve_names(before, &import.path) == Some(target);
+        import.alias.as_deref().unwrap_or_else(|| {
+            if target_import {
+                new_name
+            } else {
+                import.path.last().map(String::as_str).unwrap_or("")
+            }
+        }) == first
+    });
+    let Some(import) = imports.next() else {
+        return Some(path.to_vec());
+    };
+    if imports.next().is_some() {
+        return None;
+    }
+    let mut expanded = import.path.clone();
+    if import.resolution.is_none() && resolve_names(before, &import.path) == Some(target) {
+        *expanded.last_mut().expect("target variant import") = new_name.to_owned();
+    }
+    expanded.extend_from_slice(&path[1..]);
+    Some(expanded)
 }

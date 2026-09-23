@@ -142,7 +142,7 @@ pub(crate) fn scoped_path(
     Some(expanded)
 }
 
-fn source_parent_exists(
+pub(crate) fn source_parent_exists(
     db: &LanguageServiceDatabases,
     module: vela_hir::ids::ModuleId,
     path: &[String],

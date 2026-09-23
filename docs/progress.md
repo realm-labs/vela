@@ -950,7 +950,10 @@ Public source variants remain non-renamable.
 B04.24 checks 55 queries including two same-named direct source imports.
 Private variant rename now rejects removing their ambiguity, while an unrelated
 private variant still renames safely with applied edits.
-Resume B04.25 with schema short-owner ambiguity and remaining parameter/variant ownership, then
+B04.25 checks 40 schema variant queries including short-owner and direct-import
+ambiguity removal. Rename preserves unresolved paths and other owners while
+the existing safe schema group still applies across files.
+Resume B04.26 with remaining parameter/variant ownership, then
 semantic/lifecycle and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.

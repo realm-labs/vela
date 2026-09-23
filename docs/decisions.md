@@ -4853,6 +4853,11 @@ editable sites, preserving qualified references and retained explicit aliases.
 Variant rename also compares lookup identities before and after the proposed
 schema name change, including new bindings from renamed unaliased imports.
 Other paths retain their original identity or unresolved state.
+The schema comparison recomputes import bindings after the proposed rename,
+including paths that were ambiguous before it. Removing one of two same-named
+direct imports must not make a formerly unresolved path refer to the other
+variant. Short owner names remain unresolved when multiple qualified schema
+variants match; local and source declarations keep their existing priority.
 Source enum variant navigation and references share scoped source paths and import
 sites. Source-owned import paths cannot fall back to colliding schema variants,
 including missing members and inaccessible source owners. Public enum rename

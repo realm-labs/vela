@@ -94,6 +94,11 @@ fn schema_variant_lookup_matrix_preserves_unknown_and_short_name_owners() {
 }
 
 #[test]
+fn schema_variant_ambiguity_matrix_preserves_unresolved_paths() {
+    run_matrix(oracle::schema_variant_ambiguity_spec);
+}
+
+#[test]
 fn source_variant_import_matrix_preserves_source_and_schema_owners() {
     run_matrix(oracle::source_variant_import_spec);
 }
@@ -343,6 +348,93 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
     }
     if let Some(config) = spec.oracle["ambiguityRemoval"].as_object() {
         check_ambiguity_removal(db, fixture, &json!(config));
+    }
+    if let Some(config) = spec.oracle["schemaAmbiguityRemoval"].as_object() {
+        check_schema_ambiguity_removal(db, fixture, &json!(config));
+    }
+}
+
+fn check_schema_ambiguity_removal(
+    db: &LanguageServiceDatabases,
+    fixture: &FixtureWorkspace,
+    config: &Value,
+) {
+    let new_name = config["newName"].as_str().expect("candidate name");
+    for (case, sites) in [
+        (
+            &config["short"],
+            vec![("declaration", "Declaration"), ("qualified", "Read")],
+        ),
+        (
+            &config["import"],
+            vec![
+                ("declaration", "Declaration"),
+                ("terminal", "Import"),
+                ("qualified", "Read"),
+            ],
+        ),
+    ] {
+        let owner = case["owner"].as_str().expect("schema variant owner");
+        let symbol = SymbolRef::Schema(owner.into());
+        let expected = sites.iter().map(|(key, kind)| {
+            let site = &case[key];
+            json!({"uri":uri(site["file"].as_str().expect("file")).as_str(),"range":site_range(fixture,site),"kind":kind})
+        }).collect::<Vec<_>>();
+        for (key, _) in sites {
+            let site = &case[key];
+            let file = site["file"].as_str().expect("file");
+            let marker = site["marker"].as_str().expect("marker");
+            let point = position(fixture, file, marker);
+            let actual = db.references(&uri(file), point, true).iter().map(|reference| {
+                assert_eq!(reference.symbol(), &symbol, "{marker} owner");
+                json!({"uri":reference.document_id().as_str(),"range":range_json(reference.range()),"kind":format!("{:?}",reference.kind())})
+            }).collect::<Vec<_>>();
+            assert_eq!(
+                sorted(actual),
+                sorted(expected.clone()),
+                "{marker} references"
+            );
+            assert!(
+                db.prepare_rename(&uri(file), point).is_some(),
+                "{marker} prepare"
+            );
+            assert!(
+                db.rename(&uri(file), point, new_name).is_none(),
+                "ambiguity removal {marker}"
+            );
+        }
+        let site = &case["unresolved"];
+        let file = site["file"].as_str().expect("file");
+        let point = position(fixture, file, site["marker"].as_str().expect("marker"));
+        assert!(db.references(&uri(file), point, true).is_empty());
+        assert!(db.prepare_rename(&uri(file), point).is_none());
+        assert!(db.rename(&uri(file), point, new_name).is_none());
+    }
+    for (site, owner, markers) in [
+        (
+            &config["short"]["other"],
+            "beta::Choice::Shared",
+            vec![&config["short"]["other"]],
+        ),
+        (
+            &config["import"]["otherTerminal"],
+            "delta::Token::Item",
+            vec![
+                &config["import"]["otherTerminal"],
+                &config["import"]["otherQualified"],
+            ],
+        ),
+    ] {
+        let file = site["file"].as_str().expect("file");
+        let point = position(fixture, file, site["marker"].as_str().expect("marker"));
+        let expected = markers.iter().map(|site| {
+            json!({"uri":uri(site["file"].as_str().expect("file")).as_str(),"range":site_range(fixture,site)})
+        }).collect::<Vec<_>>();
+        let actual = db.references(&uri(file), point, true).iter().map(|reference| {
+            assert_eq!(reference.symbol(), &SymbolRef::Schema(owner.into()));
+            json!({"uri":reference.document_id().as_str(),"range":range_json(reference.range())})
+        }).collect();
+        assert_eq!(sorted(actual), sorted(expected));
     }
 }
 
