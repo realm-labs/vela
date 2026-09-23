@@ -3497,10 +3497,33 @@
         "rename/syntax/S8/negative/protocol"
       ],
       "summary": "Advance 48 S2/S4/S8 reference/highlight/prepare-rename/rename cells with 40 queries across seven ownership groups; broad cells remain unreviewed. Two independent schema ambiguity cases use alpha::Choice::Shared and beta::Choice::Shared short-owner lookup, and two unaliased gamma::Token::Item and delta::Token::Item imports. The short Choice::Shared and bare Item paths remain unresolved; complete owner reference sets, prepare results and distinct other-owner sets are asserted. Renaming source-backed alpha or gamma to Fresh from declaration, import or qualified use is rejected because it would make an unresolved path resolve to the other owner. Existing safe schema rename groups retain whole-file applied edits, schema regeneration, parse, requery and restore. Schema variant lookup now recomputes import bindings after proposed rename while preserving local/source priority and retained aliases. Protocol covers Unicode LF/CRLF, UTF-16, encoded paths, open/closed versions, both edit forms and schema ABI markers. Initial gamma false-positive rename failure retained; focused schema variant regression service 11/protocol 12 passed. Final full service 679 plus two historical ignored/protocol 663 passed; fmt, workspace Clippy, Node 75 and Windows VSIX 10 passed. No new full-workspace/native-input/strict acceptance claimed; last strict/native B04.17 and workspace B04.14. Original B00-B03 snapshots unchanged. Audit 236 verified,1089 unreviewed,two N/A,zero failed; remaining1230. Resume B04.26 remaining parameter/variant ownership, semantic/lifecycle and UX05/UX06; fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-eDA6Ru/results.json; audit target/lsp-matrix/run-eS5fkR/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.26",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol"
+      ],
+      "summary": "Advance 16 S5 reference/highlight/prepare-rename/rename cells with 23 schema function queries and six ownership groups; broad cells remain unreviewed. Explicit schema source span and matching terminal source function name join host::grant named labels to the canonical HIR parameter. Closed bare and qualified calls share the parameter; caller locals, same-named source functions, unknown labels, origin stubs and metadata-only functions remain separate. Renaming into an existing unknown label rejects. Five writable groups undergo whole-file applied edits, schema reload, exact requery and restore. Both layers check LF/CRLF, exact sets, definitions, highlights, prepare and edits; protocol checks UTF-16, encoded paths, versions, both edit forms and schema ABI. Initial missing labels and an origin-stub regression were found and resolved. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 679 plus two historical ignored/protocol 663 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.27 schema method parameters and semantic/lifecycle plus UX05/UX06. Fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-nRv7VH/results.json; audit target/lsp-matrix/run-5TkDsz/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.26",
-  "nextTask": "B04.26",
+  "activeChild": "B04.27",
+  "nextTask": "B04.27",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6042,7 +6065,17 @@
     "target/b04-25-clippy.log",
     "target/b04-25-editor.log",
     "target/lsp-matrix/run-eS5fkR/report.json",
-    "editors/vscode/test-results/run-eDA6Ru/results.json"
+    "editors/vscode/test-results/run-eDA6Ru/results.json",
+    "target/b04-26-schema-repro.log",
+    "target/b04-26-nav-service.log",
+    "target/b04-26-schema-service-final.log",
+    "target/b04-26-schema-protocol-final.log",
+    "target/b04-26-workspace-final.log",
+    "target/b04-26-clippy-final.log",
+    "target/b04-26-node.log",
+    "target/b04-26-editor.log",
+    "target/lsp-matrix/run-5TkDsz/report.json",
+    "editors/vscode/test-results/run-nRv7VH/results.json"
   ],
   "openIssues": [
     {

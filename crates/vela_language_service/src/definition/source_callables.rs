@@ -30,6 +30,22 @@ impl LanguageServiceDatabases {
             });
         }
         let graph = self.hir_db().graph();
+        if let Some(SymbolRef::Schema(name)) = callee.symbol()
+            && let Some(span) = self.schema_db().source_locations().function_span(name)
+            && let Some(declaration) = graph.declarations().find(|declaration| {
+                declaration.kind == DeclarationKind::Function
+                    && declaration.name_span == span
+                    && name.rsplit("::").next() == Some(declaration.name.as_str())
+            })
+            && let Some(signature) = graph.function_signature(declaration.id)
+        {
+            return Some(SourceParameters {
+                params: &signature.params,
+                declaration: Some(declaration.id),
+                variant: None,
+                required_method: None,
+            });
+        }
         for declaration in graph.declarations() {
             let Some(shape) = graph.enum_shape(declaration.id) else {
                 continue;

@@ -4871,3 +4871,9 @@ The counterfactual also recomputes the module's import bindings after a variant
 rename. A previously ambiguous bare path must stay unresolved; removing one
 of two same-named direct imports cannot silently make it refer to the other
 variant. Retained explicit aliases keep their binding name.
+Source-backed schema function calls may use their explicitly located source
+function signature for named-argument ownership only when the schema source span
+exactly matches a HIR function name span and the canonical schema terminal name
+matches the declaration name. This joins labels to the declaration's
+canonical local binding; metadata-only schema functions have no source parameter
+target. Rename keeps the existing source-parameter collision policy.
