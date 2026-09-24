@@ -3520,10 +3520,33 @@
         "rename/syntax/S5/negative/protocol"
       ],
       "summary": "Advance 16 S5 reference/highlight/prepare-rename/rename cells with 23 schema function queries and six ownership groups; broad cells remain unreviewed. Explicit schema source span and matching terminal source function name join host::grant named labels to the canonical HIR parameter. Closed bare and qualified calls share the parameter; caller locals, same-named source functions, unknown labels, origin stubs and metadata-only functions remain separate. Renaming into an existing unknown label rejects. Five writable groups undergo whole-file applied edits, schema reload, exact requery and restore. Both layers check LF/CRLF, exact sets, definitions, highlights, prepare and edits; protocol checks UTF-16, encoded paths, versions, both edit forms and schema ABI. Initial missing labels and an origin-stub regression were found and resolved. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 679 plus two historical ignored/protocol 663 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.27 schema method parameters and semantic/lifecycle plus UX05/UX06. Fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-nRv7VH/results.json; audit target/lsp-matrix/run-5TkDsz/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.27",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S5/positive/service",
+        "references/syntax/S5/positive/protocol",
+        "references/syntax/S5/negative/service",
+        "references/syntax/S5/negative/protocol",
+        "highlight/syntax/S5/positive/service",
+        "highlight/syntax/S5/positive/protocol",
+        "highlight/syntax/S5/negative/service",
+        "highlight/syntax/S5/negative/protocol",
+        "prepare-rename/syntax/S5/positive/service",
+        "prepare-rename/syntax/S5/positive/protocol",
+        "prepare-rename/syntax/S5/negative/service",
+        "prepare-rename/syntax/S5/negative/protocol",
+        "rename/syntax/S5/positive/service",
+        "rename/syntax/S5/positive/protocol",
+        "rename/syntax/S5/negative/service",
+        "rename/syntax/S5/negative/protocol"
+      ],
+      "summary": "Advance 16 S5 reference/highlight/prepare-rename/rename cells with 33 schema method queries and ten owner groups; broad cells remain unreviewed. Explicit source spans and matching terminal names join host::Counter.add, third::Counter.add and host::Measure.add labels to separate HIR parameters. Closed, returned-receiver and closure calls participate; caller locals, ordinary source method, unknown labels, unknown receivers and metadata-only methods remain separate. Rename into an existing unknown label rejects. A direct source-shape regression covers impl and required trait method spans; unrelated origin stubs remain null. Nine writable groups undergo whole-file applied edits, schema reload, exact requery and restore. Both layers check LF/CRLF, exact sets, definitions, highlights, prepare and edits; protocol checks UTF-16, encoded paths, versions, both edit forms and schema ABI. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 680 plus two historical ignored/protocol 663 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.28 semantic/lifecycle plus UX05/UX06. Fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-GwxcNe/results.json; audit target/lsp-matrix/run-BtVyVx/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.27",
-  "nextTask": "B04.27",
+  "activeChild": "B04.28",
+  "nextTask": "B04.28",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6075,7 +6098,20 @@
     "target/b04-26-node.log",
     "target/b04-26-editor.log",
     "target/lsp-matrix/run-5TkDsz/report.json",
-    "editors/vscode/test-results/run-nRv7VH/results.json"
+    "editors/vscode/test-results/run-nRv7VH/results.json",
+    "target/b04-27-baseline.log",
+    "target/b04-27-repro.log",
+    "target/b04-27-fix1.log",
+    "target/b04-27-protocol.log",
+    "target/b04-27-source-shapes.log",
+    "target/b04-27-nav.log",
+    "target/b04-27-function-regression.log",
+    "target/b04-27-workspace.log",
+    "target/b04-27-clippy.log",
+    "target/b04-27-node.log",
+    "target/b04-27-editor.log",
+    "target/lsp-matrix/run-BtVyVx/report.json",
+    "editors/vscode/test-results/run-GwxcNe/results.json"
   ],
   "openIssues": [
     {

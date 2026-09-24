@@ -3,10 +3,10 @@
   "id": "reference-rename-schema-methods",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.schema_methods\"\nname = \"schema_methods\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
-    "scripts/helpers.vela": "/* 中😀 */ pub fn [[method-decl:start]]add[[method-decl:end]]() {}\n",
-    "scripts/consumer.vela": "/* 中😀 */ pub fn [[other-decl:start]]add[[other-decl:end]]() {}\nfn closed(item: host::Counter) { item.[[closed-call:start]]add[[closed-call:end]](3); }\n",
-    "scripts/trait_defs.vela": "/* 中😀 */ pub fn [[trait-decl:start]]add[[trait-decl:end]]() {}\n",
-    "scripts/main.vela": "use host::Counter as Count\nuse host::Measure as Measured\nstruct Counter {}\nimpl Counter { fn [[source-decl:start]]add[[source-decl:end]](self, value: i64) -> i64 { return value; } }\nfn returned(item: Count) -> Count { return item; }\n/* 中😀 */ fn main(item: Count, other: third::Counter, measured: Measured, source: Counter, meta: other::Counter) {\n item.[[main-call:start]]add[[main-call:end]](1);\n returned(item).[[returned-call:start]]add[[returned-call:end]](2);\n let call = || item.[[closure-call:start]]add[[closure-call:end]](3);\n other.[[other-call:start]]add[[other-call:end]](4);\n measured.[[trait-call:start]]add[[trait-call:end]](5);\n source.[[source-call:start]]add[[source-call:end]](6);\n meta.[[metadata-call:start]]add[[metadata-call:end]](7);\n meta.[[metadata-again:start]]add[[metadata-again:end]](8);\n item.[[unknown-method:start]]bogus[[unknown-method:end]](9);\n let note = \"[[literal:start]]add[[literal:end]]\";\n}\nfn unknown(item) { item.[[unknown-receiver:start]]add[[unknown-receiver:end]](1); }\n"
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[method-decl:start]]add[[method-decl:end]]([[host-param-decl:start]]amount[[host-param-decl:end]]: i64) {}\n",
+    "scripts/consumer.vela": "/* 中😀 */ pub fn [[other-decl:start]]add[[other-decl:end]]([[other-param-decl:start]]amount[[other-param-decl:end]]: i64) {}\nfn closed(item: host::Counter) { item.[[closed-call:start]]add[[closed-call:end]]([[closed-label:start]]amount[[closed-label:end]] = 3); }\n",
+    "scripts/trait_defs.vela": "/* 中😀 */ pub fn [[trait-decl:start]]add[[trait-decl:end]]([[trait-param-decl:start]]amount[[trait-param-decl:end]]: i64) {}\n",
+    "scripts/main.vela": "use host::Counter as Count\nuse host::Measure as Measured\nstruct Counter {}\nimpl Counter { fn [[source-decl:start]]add[[source-decl:end]](self, [[source-param-decl:start]]value[[source-param-decl:end]]: i64) -> i64 { return [[source-param-use:start]]value[[source-param-use:end]]; } }\nfn returned(item: Count) -> Count { return item; }\n/* 中😀 */ fn main(item: Count, other: third::Counter, measured: Measured, source: Counter, meta: other::Counter, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n item.[[main-call:start]]add[[main-call:end]]([[main-label:start]]amount[[main-label:end]] = [[caller-use:start]]amount[[caller-use:end]]);\n returned(item).[[returned-call:start]]add[[returned-call:end]]([[returned-label:start]]amount[[returned-label:end]] = 2);\n let call = || item.[[closure-call:start]]add[[closure-call:end]]([[closure-label:start]]amount[[closure-label:end]] = 3);\n other.[[other-call:start]]add[[other-call:end]]([[other-label:start]]amount[[other-label:end]] = 4);\n measured.[[trait-call:start]]add[[trait-call:end]]([[trait-label:start]]amount[[trait-label:end]] = 5);\n source.[[source-call:start]]add[[source-call:end]]([[source-label:start]]value[[source-label:end]] = 6);\n meta.[[metadata-call:start]]add[[metadata-call:end]]([[metadata-label:start]]amount[[metadata-label:end]] = 7);\n meta.[[metadata-again:start]]add[[metadata-again:end]](8);\n item.[[unknown-method:start]]bogus[[unknown-method:end]](9);\n item.[[unknown-label-call:start]]add[[unknown-label-call:end]]([[unknown-label:start]]bogus[[unknown-label:end]] = 10);\n let note = \"[[literal:start]]add[[literal:end]]\";\n}\nfn unknown(item) { item.[[unknown-receiver:start]]add[[unknown-receiver:end]](1); }\n"
   },
   "actions": [],
   "oracle": {
@@ -44,6 +44,11 @@
           {
             "file": "scripts/main.vela",
             "marker": "closure-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "unknown-label-call",
             "kind": "Call"
           }
         ]
@@ -128,6 +133,111 @@
             "kind": "Call"
           }
         ]
+      },
+      "hostParameter": {
+        "name": "amount",
+        "rename": "host_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "host-param-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "main-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "returned-label",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "closure-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "otherParameter": {
+        "name": "amount",
+        "rename": "other_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "other-param-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "other-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "traitParameter": {
+        "name": "amount",
+        "rename": "trait_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/trait_defs.vela",
+            "marker": "trait-param-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "sourceParameter": {
+        "name": "value",
+        "rename": "source_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-param-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-param-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "source-label",
+            "kind": "Read"
+          }
+        ]
+      },
+      "caller": {
+        "name": "amount",
+        "rename": "caller_amount",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "caller-use",
+            "kind": "Read"
+          }
+        ]
       }
     },
     "queries": [
@@ -207,6 +317,89 @@
       {
         "file": "scripts/main.vela",
         "marker": "unknown-receiver"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "host-param-decl",
+        "group": "hostParameter"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-label",
+        "group": "hostParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "main-label",
+        "group": "hostParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "returned-label",
+        "group": "hostParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "closure-label",
+        "group": "hostParameter"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "other-param-decl",
+        "group": "otherParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "other-label",
+        "group": "otherParameter"
+      },
+      {
+        "file": "scripts/trait_defs.vela",
+        "marker": "trait-param-decl",
+        "group": "traitParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-label",
+        "group": "traitParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-param-decl",
+        "group": "sourceParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-param-use",
+        "group": "sourceParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "source-label",
+        "group": "sourceParameter"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-decl",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "caller-use",
+        "group": "caller"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label-call",
+        "group": "method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "metadata-label"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-label"
       }
     ],
     "schema": {
@@ -348,6 +541,9 @@
     "rejections": {
       "method": [
         "spare",
+        "bogus"
+      ],
+      "hostParameter": [
         "bogus"
       ]
     }

@@ -4877,3 +4877,7 @@ exactly matches a HIR function name span and the canonical schema terminal name
 matches the declaration name. This joins labels to the declaration's
 canonical local binding; metadata-only schema functions have no source parameter
 target. Rename keeps the existing source-parameter collision policy.
+The same exact-span-and-terminal-name rule applies to source-backed schema
+methods and trait methods. A matching free source function, impl method or trait
+method can supply its canonical parameter binding; a location that only points
+to an unrelated origin stub cannot.
