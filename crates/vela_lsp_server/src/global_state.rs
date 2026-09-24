@@ -1133,6 +1133,7 @@ impl GlobalState {
         let document_id = DocumentId::from(uri.clone());
         self.project.workspace.close_document(&document_id);
         self.project.open_documents.remove(&document_id);
+        self.project.restore_closed_source_from_disk(&uri);
         self.project.refresh_databases();
 
         self.project.publish_sync_diagnostics(&document_id)

@@ -8,6 +8,77 @@ use crate::matrix_fixture::{FixtureWorkspace, Spec, load};
 use crate::tests::notify;
 
 #[test]
+fn closing_a_saved_renamed_source_restores_current_disk_declaration() {
+    let parent = crate::tests::support::unique_temp_root("rename-close-source");
+    let root = parent.join("中文 % rename close");
+    let scripts = root.join("scripts");
+    fs::create_dir_all(&scripts).expect("scripts directory");
+    fs::write(root.join("vela.toml"), "[package]\nid='dev.vela.rename_close'\nname='rename_close'\nversion='0.1.0'\n[source]\nroots=['scripts']\n").expect("package config");
+    let origin = scripts.join("origin.vela");
+    let caller = scripts.join("caller.vela");
+    let old_origin = "/* 中😀 */ pub fn grant(value: i64) -> i64 { value }\n";
+    let new_origin = "/* 中😀 */ pub fn award(value: i64) -> i64 { value }\n";
+    let old_caller = "/* 中😀 */ use origin::grant;\nfn call() { grant(1); }\n";
+    let new_caller = "/* 中😀 */ use origin::award;\nfn call() { award(1); }\n";
+    fs::write(&origin, old_origin).expect("old origin");
+    fs::write(&caller, old_caller).expect("old caller");
+    let root_uri = lsp_types::Url::from_file_path(&root).expect("root URI");
+    let origin_uri = lsp_types::Url::from_file_path(&origin).expect("origin URI");
+    let caller_uri = lsp_types::Url::from_file_path(&caller).expect("caller URI");
+    let mut server = TestServer::new();
+    let _ = response_value(request::<r::Initialize>(
+        &mut server,
+        1,
+        json!({
+            "processId":null,"rootUri":root_uri,"capabilities":{"workspace":{"workspaceEdit":{"documentChanges":true}}}
+        }),
+    ));
+    for (uri, text) in [(&origin_uri, old_origin), (&caller_uri, old_caller)] {
+        let _ = notify::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({
+                "textDocument":{"uri":uri,"languageId":"vela","version":1,"text":text}
+            }),
+        );
+    }
+    fs::write(&origin, new_origin).expect("renamed origin on disk");
+    fs::write(&caller, new_caller).expect("renamed caller on disk");
+    for (uri, text) in [(&caller_uri, new_caller), (&origin_uri, new_origin)] {
+        let _ = notify::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({
+                "textDocument":{"uri":uri,"version":2},"contentChanges":[{"text":text}]
+            }),
+        );
+    }
+    let _ = notify::<n::DidCloseTextDocument>(
+        &mut server,
+        json!({
+            "textDocument":{"uri":origin_uri}
+        }),
+    );
+    let response = response_value(request::<r::References>(
+        &mut server,
+        2,
+        json!({
+            "textDocument":{"uri":caller_uri},"position":{"line":1,"character":13},
+            "context":{"includeDeclaration":true}
+        }),
+    ));
+    let refs = response["result"].as_array().expect("resolved references");
+    assert_eq!(
+        refs.len(),
+        3,
+        "source declaration, import and call must retain one owner: {response}"
+    );
+    assert!(
+        refs.iter()
+            .any(|location| location["uri"] == origin_uri.as_str())
+    );
+    fs::remove_dir_all(parent).expect("remove fixture");
+}
+
+#[test]
 fn reference_rename_lifecycle_projects_overlay_close_and_dependency_states() {
     for crlf in [false, true] {
         let mut spec = load("reference-rename-lifecycle");

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "ux05",
+  "files": {
+    "scripts/rename_origin.vela": "/* 中😀 */ pub fn [[declaration:start]]grant[[declaration:end]](value: i64) -> i64 { value }\n",
+    "scripts/rename_open.vela": "/* 中😀 */ use rename_origin::[[import:start]]grant[[import:end]];\nfn call() { [[cursor:start]]grant[[cursor:end]](1); }\nfn shadow() { let grant = 3; grant; }\n",
+    "scripts/rename_closed.vela": "/* 中😀 */ fn closed() { rename_origin::[[closed:start]]grant[[closed:end]](2); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "rename": "award",
+    "source": "grant",
+    "openFile": "scripts/rename_open.vela",
+    "closedFile": "scripts/rename_closed.vela",
+    "sites": [
+      { "file": "scripts/rename_origin.vela", "marker": "declaration" },
+      { "file": "scripts/rename_open.vela", "marker": "import" },
+      { "file": "scripts/rename_open.vela", "marker": "cursor" },
+      { "file": "scripts/rename_closed.vela", "marker": "closed" }
+    ]
+  }
+}

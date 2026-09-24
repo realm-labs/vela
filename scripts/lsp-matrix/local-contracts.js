@@ -68,9 +68,10 @@ function localContracts(requirements, fixture, platform = "darwin") {
     ...require("./navigation-contracts").navigationContracts(requirements),
     ...require("./peek-contracts").peekContracts(requirements),
     ...require("./completion-contracts").completionContracts(requirements),
+    ...require("./rename-contracts").renameContracts(requirements),
   ];
   if (platform === "win32") {
-    const keys = { "Meta+Shift+P": "Control+Shift+P", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", Meta: "Control" };
+    const keys = { "Meta+Shift+P": "Control+Shift+P", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", "Meta+a": "Control+a", "Meta+Shift+z": "Control+y", Meta: "Control" };
     for (const contract of contracts) {
       for (const action of contract.actions) {
         if (keys[action.key]) action.key = keys[action.key];

@@ -122,6 +122,18 @@ async function run() {
         case "inspect":
           value = await inspect();
           break;
+        case "diagnostics": {
+          const uri = vscode.Uri.joinPath(
+            vscode.workspace.workspaceFolders[0].uri,
+            safeFile(message.file),
+          );
+          value = vscode.languages.getDiagnostics(uri).map((item) => ({
+            code: String(item.code ?? ""),
+            message: item.message,
+            severity: item.severity,
+          }));
+          break;
+        }
         case "setup": {
           const uri = vscode.Uri.joinPath(
             vscode.workspace.workspaceFolders[0].uri,

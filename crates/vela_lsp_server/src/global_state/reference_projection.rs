@@ -74,8 +74,24 @@ pub(super) fn edit(
     for document in edit.document_edits() {
         let text = snapshot_document_text(snapshot, document.document_id());
         let index = LineIndex::new(&text);
-        let uri = lsp_types::Url::parse(document.document_id().as_str())
+        let original_uri = lsp_types::Url::parse(document.document_id().as_str())
             .map_err(|error| error.to_string())?;
+        let uri = client_spelled_edit_uri(&original_uri, &snapshot.open_documents)?;
+        if uri != original_uri {
+            if let Some(changes) = result.changes.as_mut()
+                && let Some(edits) = changes.remove(&original_uri)
+            {
+                changes.insert(uri.clone(), edits);
+            }
+            if let Some(lsp_types::DocumentChanges::Edits(changes)) = &mut result.document_changes {
+                for change in changes
+                    .iter_mut()
+                    .filter(|change| change.text_document.uri == original_uri)
+                {
+                    change.text_document.uri = uri.clone();
+                }
+            }
+        }
         let ranges = document
             .edits()
             .iter()
@@ -105,4 +121,67 @@ pub(super) fn edit(
         }
     }
     Ok(result)
+}
+
+fn client_spelled_edit_uri(
+    uri: &lsp_types::Url,
+    open_documents: &std::collections::BTreeSet<DocumentId>,
+) -> Result<lsp_types::Url, String> {
+    if !cfg!(windows) {
+        return Ok(uri.clone());
+    }
+    let Some(suffix) = uri.as_str().strip_prefix("file:///") else {
+        return Ok(uri.clone());
+    };
+    let Some((drive, tail)) = suffix.split_at_checked(1) else {
+        return Ok(uri.clone());
+    };
+    let Some(tail) = tail.strip_prefix(':') else {
+        return Ok(uri.clone());
+    };
+    for open in open_documents {
+        let Some(spelling) = open.as_str().strip_prefix("file:///") else {
+            continue;
+        };
+        let Some((open_drive, rest)) = spelling.split_at_checked(1) else {
+            continue;
+        };
+        if !open_drive.eq_ignore_ascii_case(drive) {
+            continue;
+        }
+        let colon = if rest.starts_with("%3A") {
+            "%3A"
+        } else if rest.starts_with("%3a") {
+            "%3a"
+        } else if rest.starts_with(':') {
+            ":"
+        } else {
+            continue;
+        };
+        return lsp_types::Url::parse(&format!("file:///{open_drive}{colon}{tail}"))
+            .map_err(|error| error.to_string());
+    }
+    Ok(uri.clone())
+}
+
+#[cfg(all(test, windows))]
+mod tests {
+    use super::client_spelled_edit_uri;
+    use std::collections::BTreeSet;
+    use vela_language_service::DocumentId;
+
+    #[test]
+    fn closed_windows_edit_uses_the_clients_open_drive_uri_spelling() {
+        let open = BTreeSet::from([DocumentId::from(
+            "file:///f%3A/workspace/scripts/open.vela".to_owned(),
+        )]);
+        let closed = lsp_types::Url::parse("file:///F:/workspace/scripts/closed.vela")
+            .expect("closed file URI");
+        assert_eq!(
+            client_spelled_edit_uri(&closed, &open)
+                .expect("client URI")
+                .as_str(),
+            "file:///f%3A/workspace/scripts/closed.vela"
+        );
+    }
 }

@@ -3697,10 +3697,19 @@
         "rename/syntax/S8/negative/protocol"
       ],
       "summary": "Complete the 16 S8 references, highlight, prepare-rename and rename syntax cells at service and protocol layers. A new seven-file schema type/trait fixture runs 32 queries for source-backed struct, enum and trait and metadata-only type through direct, explicit and module aliases, qualified closed-file hints, trait impl headers, Unicode UTF-16 and LF/CRLF. Complete sets cover import-terminal and alias cursors, missing and ambiguous imports, source-backed versus null navigation, namespace collision rejection, and exact editable workspace edits with apply/parse/requery/restore. Shared schema type site resolution now aligns references, definition/typeDefinition and rename ownership; existing source-backed completion terminal expectation is corrected. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed. Ordinary audit service 687 plus two historical ignored/protocol 673 passed: 252 verified, 1073 unreviewed, two N/A, zero failed; remaining 1230 until B04 acceptance. B00-B03 snapshots remain fixed. Resume B04.36 remaining syntax partitions and UX05/UX06; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-0PS6Pr/results.json; audit target/lsp-matrix/run-smU8Hl/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.36",
+      "revision": null,
+      "requirements": [
+        "vscode/UX05/rename-confirm/input/local",
+        "vscode/UX05/rename-confirm/render/local"
+      ],
+      "summary": "Verify UX05 rename-confirm Input and Render on the registered Windows x64 / VS Code 1.137.0 profile. Independent three-file Unicode fixture and actual F2/typing/Enter/Ctrl+Z/Ctrl+Y route assert visible widget focus and confirmation, exact four edits across open and unopened files, unchanged local shadow, document-versus-disk undo/redo policy, and final empty diagnostics. The first run exposed stale unresolved imports after VS Code saved and closed a renamed source. didClose now reloads the current disk source before workspace recomputation; a protocol regression retains declaration/import/call ownership. Rename workspace edit projection also preserves the client's encoded Windows drive URI spelling. Workspace, fmt, Clippy, Node 77, Windows VSIX 10 and selected input route passed. Local audit service 687 plus two historical ignored/protocol 675 passed, 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; both UX05 confirmation interaction obligations verified, remaining 1230 until B04 acceptance. B00-B03 snapshots unchanged. Resume B04.37 UX05 cancel/invalid/collision and UX06, then remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-dH79Eo/results.json; input editors/vscode/test-results/input-X2AtOQ/results.json; audit target/lsp-matrix/run-XPHIuK/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.36",
-  "nextTask": "B04.36",
+  "activeChild": "B04.37",
+  "nextTask": "B04.37",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6313,7 +6322,16 @@
     "target/b04-35-node.log",
     "target/b04-35-vscode.log",
     "target/lsp-matrix/run-smU8Hl/report.json",
-    "editors/vscode/test-results/run-0PS6Pr/results.json"
+    "editors/vscode/test-results/run-0PS6Pr/results.json",
+    "target/b04-36-workspace.log",
+    "target/b04-36-clippy.log",
+    "target/b04-36-node.log",
+    "target/b04-36-vscode.log",
+    "target/b04-36-input-final.log",
+    "target/b04-36-audit-local.log",
+    "target/lsp-matrix/run-XPHIuK/report.json",
+    "editors/vscode/test-results/run-dH79Eo/results.json",
+    "editors/vscode/test-results/input-X2AtOQ/results.json"
   ],
   "openIssues": [
     {

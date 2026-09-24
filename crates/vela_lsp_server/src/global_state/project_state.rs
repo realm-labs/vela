@@ -242,6 +242,24 @@ impl ProjectState {
         }
     }
 
+    pub(super) fn restore_closed_source_from_disk(&mut self, uri: &str) {
+        if !is_source_uri(uri) {
+            return;
+        }
+        let document_id = DocumentId::from(workspace_document_uri(
+            &document_uri_path(uri),
+            &self.workspace_roots,
+        ));
+        if let Some(text) = read_document_uri(uri) {
+            self.disk_sources.insert(
+                document_id.clone(),
+                SourceFileSnapshot::new(document_id, text),
+            );
+        } else {
+            self.disk_sources.remove(&document_id);
+        }
+    }
+
     pub(super) fn schema_path(&self) -> Option<&str> {
         self.config
             .as_ref()
