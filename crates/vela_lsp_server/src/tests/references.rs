@@ -9,6 +9,7 @@ mod degradation;
 mod highlight;
 mod lifecycle;
 mod modules;
+mod recovery;
 mod request_lifecycle;
 mod returned_receivers;
 mod schema;

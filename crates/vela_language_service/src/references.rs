@@ -971,6 +971,8 @@ mod lifecycle_tests;
 #[cfg(test)]
 mod module_tests;
 #[cfg(test)]
+mod recovery_tests;
+#[cfg(test)]
 mod schema_field_tests;
 #[cfg(test)]
 mod schema_lifecycle_tests;

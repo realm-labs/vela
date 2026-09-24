@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "id": "reference-rename-recovery",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.reference_recovery\"\nname = \"reference_recovery\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helper.vela": "/* 中😀 */ pub fn [[definition:start]]increment[[definition:end]](value: i64) -> i64 { value + 1 }\n",
+    "scripts/main.vela": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\n",
+    "scripts/consumer.vela": "fn closed() { helper::[[closed:start]]increment[[closed:end]](2); }\n",
+    "scripts/decoy.vela": "pub fn [[decoy-decl:start]]increment[[decoy-decl:end]](value: i64) -> i64 { value }\nfn side() { [[decoy-call:start]]increment[[decoy-call:end]](3); }\n"
+  },
+  "actions": [
+    {
+      "op": "open",
+      "file": "scripts/main.vela"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: [[bad:start]]increment[[bad:end]]\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: i64) {}\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn broken(\nfn run() { [[call:start]]increment[[call:end]](41); }\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: i64) {}\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: [[bad:start]]increment[[bad:end]]\n"
+    }
+  ],
+  "oracle": {
+    "replacement": "advance",
+    "states": [
+      {
+        "id": "open-main",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "open-helper",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "damaged-after",
+        "syntaxError": true,
+        "bad": true
+      },
+      {
+        "id": "repaired",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "damaged-before",
+        "syntaxError": true,
+        "bad": false
+      },
+      {
+        "id": "repaired-again",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "redamaged-after",
+        "syntaxError": true,
+        "bad": true
+      }
+    ],
+    "sites": [
+      {
+        "file": "scripts/helper.vela",
+        "marker": "definition",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "import",
+        "kind": "Import"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call",
+        "kind": "Call"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "kind": "Call"
+      }
+    ],
+    "decoy": [
+      {
+        "file": "scripts/decoy.vela",
+        "marker": "decoy-decl",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/decoy.vela",
+        "marker": "decoy-call",
+        "kind": "Call"
+      }
+    ]
+  }
+}

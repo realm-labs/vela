@@ -976,8 +976,11 @@ cancellation state cells and rechecks the already verified repeat cells across
 references, highlight, prepare-rename and rename. Duplicate/older document
 versions leave generation and exact results unchanged; close/reopen resets the
 version; cancellation notifications do not poison later synchronous snapshot
-requests. Resume B04.31 with recovery syntax, then remaining partitions and
-UX05/UX06 gates.
+requests. B04.31 checks seven syntax recovery actions at service and protocol
+layers: damage after or before a valid imported call, repair, and redamage.
+`E_PARSE` appears and clears; complete references and edits retain their owner,
+while a damaged same-named type token and independent decoy stay separate.
+Resume B04.32 with remaining syntax partitions and UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

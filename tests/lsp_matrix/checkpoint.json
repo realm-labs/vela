@@ -3594,10 +3594,21 @@
         "rename/states/cancellation/protocol"
       ],
       "summary": "Advance rename stale-version/cancellation protocol cells and recheck four already verified repeat cells; broad state cells remain unreviewed. Three protocol tests use the independent four-file reference fixture under LF/CRLF and Unicode encoded paths. Duplicate and older didChange versions carrying whole, incremental, invalid-range and empty edits leave generation, parse and HIR counts fixed, and all four methods return current exact references, highlights, prepare and rename edits. Closing/reopening resets helper version to -7, then -3 is accepted. Cancellation notifications before or after source changes and after completed requests never poison subsequent synchronous snapshot requests; these methods have no pending task to cancel. Successive valid changes replace results and edit versions without stale publication. Workspace, fmt, Clippy and Node 75 passed; ordinary audit service 682 plus two historical ignored/protocol 668 passed. Audit without new editor evidence reports 230 verified, six mapped, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 accepted snapshots stay fixed. Resume B04.31 recovery syntax, remaining partitions and UX05/UX06; fresh macOS when used; B16 deferred. Audit target/lsp-matrix/run-KhDRo3/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.31",
+      "revision": null,
+      "requirements": [
+        "references/states/recovery/protocol",
+        "highlight/states/recovery/protocol",
+        "prepare-rename/states/recovery/protocol",
+        "rename/states/recovery/protocol"
+      ],
+      "summary": "Advance four recovery protocol state cells for references, highlight, prepare-rename and rename; broad cells remain unreviewed. Independent five-file fixture runs seven actions under LF/CRLF and encoded Unicode paths: valid importer/definition, malformed trailing declaration, repair, malformed preceding declaration, repair and redamage. Service compares incremental and fresh databases; protocol uses real open/change notifications and compares long-lived and fresh servers. E_PARSE appears and clears while the valid four-site owner, exact highlights, prepare target and multi-file edits persist. Same-named malformed type token stays unowned; a closed consumer and independent decoy stay separate. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 683 plus two historical ignored/protocol 669 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 accepted snapshots stay fixed. Resume B04.32 remaining syntax partitions and UX05/UX06; fresh macOS when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-7KFMMO/results.json; audit target/lsp-matrix/run-BiUuUy/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.31",
-  "nextTask": "B04.31",
+  "activeChild": "B04.32",
+  "nextTask": "B04.32",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6192,7 +6203,13 @@
     "target/b04-30-clippy.log",
     "target/b04-30-node.log",
     "target/b04-30-workspace.log",
-    "target/lsp-matrix/run-KhDRo3/report.json"
+    "target/lsp-matrix/run-KhDRo3/report.json",
+    "target/b04-31-clippy.log",
+    "target/b04-31-node.log",
+    "target/b04-31-workspace.log",
+    "target/b04-31-editor.log",
+    "target/lsp-matrix/run-BiUuUy/report.json",
+    "editors/vscode/test-results/run-7KFMMO/results.json"
   ],
   "openIssues": [
     {
