@@ -1,0 +1,161 @@
+{
+  "version": 1,
+  "id": "reference-rename-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid = 'dev.vela.fixture'\nname = 'fixture'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n",
+    "scripts/main.vela": "use helper::[[import:start]]increment[[import:end]];\nfn main() { let text = \"中😀\"; return [[call:start]]increment[[call:end]](41); }\n",
+    "scripts/helper.vela": "pub fn [[definition:start]]increment[[definition:end]](value) { return value + 1; }\n",
+    "scripts/consumer.vela": "/* 中😀 */ fn side() { helper::[[closed:start]]increment[[closed:end]](2); }\n",
+    "scripts/other.vela": "/* 中😀 */ pub fn [[other-decl:start]]increment[[other-decl:end]](value: i64) { return value; }\nfn independent() { [[other-call:start]]increment[[other-call:end]](3); }\n"
+  },
+  "actions": [
+    {
+      "op": "open",
+      "file": "scripts/main.vela"
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "// 未保存😀\n// shifted\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 2; }\n"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "// changed disk\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 3; }\n"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "use other::[[import:start]]increment[[import:end]];\nfn main() { let text = \"中😀\"; return [[call:start]]increment[[call:end]](41); }\n"
+    },
+    {
+      "op": "close",
+      "file": "scripts/main.vela",
+      "source": null
+    },
+    {
+      "op": "open",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "change",
+      "file": "scripts/helper.vela",
+      "source": "// 保存😀\npub fn [[definition:start]]increment[[definition:end]](value) { return value + 4; }\n"
+    },
+    {
+      "op": "save",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "close",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "delete",
+      "file": "scripts/helper.vela"
+    },
+    {
+      "op": "write",
+      "file": "scripts/helper.vela",
+      "source": "pub fn [[definition:start]]increment[[definition:end]](value) { return value + 1; }\n"
+    }
+  ],
+  "oracle": {
+    "target": {
+      "file": "scripts/main.vela",
+      "marker": "call"
+    },
+    "replacement": "advance",
+    "ownerAfterEachAction": [
+      "helper",
+      "helper",
+      "helper",
+      "helper",
+      "helper",
+      "other",
+      "helper",
+      "helper",
+      "helper",
+      "helper",
+      "helper",
+      "unresolved",
+      "helper"
+    ],
+    "sites": [
+      {
+        "file": "scripts/helper.vela",
+        "marker": "definition",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "import",
+        "kind": "Import"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call",
+        "kind": "Call"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "kind": "Call"
+      }
+    ],
+    "independent": [
+      {
+        "file": "scripts/other.vela",
+        "marker": "other-decl",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/other.vela",
+        "marker": "other-call",
+        "kind": "Call"
+      }
+    ],
+    "rebound": [
+      {
+        "file": "scripts/other.vela",
+        "marker": "other-decl",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/other.vela",
+        "marker": "other-call",
+        "kind": "Call"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "import",
+        "kind": "Import"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "call",
+        "kind": "Call"
+      }
+    ],
+    "helperDuringRebind": [
+      {
+        "file": "scripts/helper.vela",
+        "marker": "definition",
+        "kind": "Declaration"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed",
+        "kind": "Call"
+      }
+    ]
+  }
+}

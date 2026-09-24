@@ -961,7 +961,13 @@ B04.27 checks 33 schema method queries across ten groups, including separate
 host, sibling and trait method parameters, ordinary source method bindings,
 caller locals, unknown labels and metadata-only null targets. Method source
 spans join HIR parameters only when the terminal names also match.
-Resume B04.28 with remaining semantic/lifecycle coverage, then UX05/UX06 gates.
+B04.28 checks 13 source lifecycle states for references, highlight, prepare-
+rename and rename: dirty helper positions, disk/overlay precedence, close
+restoration, dirty importer rebinding, dependency deletion and recreation.
+Service results match fresh analysis; protocol checks actual notifications,
+UTF-16 edits and closed-file versions. Broad state cells remain unreviewed.
+Resume B04.29 with recovery, dynamic and schema lifecycle states, then
+UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:

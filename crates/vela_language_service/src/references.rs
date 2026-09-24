@@ -967,6 +967,8 @@ mod field_tests;
 #[cfg(test)]
 mod highlight_tests;
 #[cfg(test)]
+mod lifecycle_tests;
+#[cfg(test)]
 mod module_tests;
 #[cfg(test)]
 mod schema_field_tests;

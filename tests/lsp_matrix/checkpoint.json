@@ -3543,10 +3543,33 @@
         "rename/syntax/S5/negative/protocol"
       ],
       "summary": "Advance 16 S5 reference/highlight/prepare-rename/rename cells with 33 schema method queries and ten owner groups; broad cells remain unreviewed. Explicit source spans and matching terminal names join host::Counter.add, third::Counter.add and host::Measure.add labels to separate HIR parameters. Closed, returned-receiver and closure calls participate; caller locals, ordinary source method, unknown labels, unknown receivers and metadata-only methods remain separate. Rename into an existing unknown label rejects. A direct source-shape regression covers impl and required trait method spans; unrelated origin stubs remain null. Nine writable groups undergo whole-file applied edits, schema reload, exact requery and restore. Both layers check LF/CRLF, exact sets, definitions, highlights, prepare and edits; protocol checks UTF-16, encoded paths, versions, both edit forms and schema ABI. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 680 plus two historical ignored/protocol 663 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.28 semantic/lifecycle plus UX05/UX06. Fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-GwxcNe/results.json; audit target/lsp-matrix/run-BtVyVx/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.28",
+      "revision": null,
+      "requirements": [
+        "references/states/dirty/protocol",
+        "references/states/close_restore/protocol",
+        "references/states/dependency_change/protocol",
+        "references/states/dependency_delete/protocol",
+        "highlight/states/dirty/protocol",
+        "highlight/states/close_restore/protocol",
+        "highlight/states/dependency_change/protocol",
+        "highlight/states/dependency_delete/protocol",
+        "prepare-rename/states/dirty/protocol",
+        "prepare-rename/states/close_restore/protocol",
+        "prepare-rename/states/dependency_change/protocol",
+        "prepare-rename/states/dependency_delete/protocol",
+        "rename/states/dirty/protocol",
+        "rename/states/close_restore/protocol",
+        "rename/states/dependency_change/protocol",
+        "rename/states/dependency_delete/protocol"
+      ],
+      "summary": "Advance 16 dirty/close-restore/dependency-change/dependency-delete protocol state cells for references, highlight, prepare-rename and rename; broad cells remain unreviewed. An independent four-file fixture runs 13 explicit owner states in Unicode LF/CRLF. Dirty helper shifts its declaration; disk write while open leaves overlay authoritative; close restores disk; dirty main import rebinds to other::increment; close restores helper::increment; deleting helper clears ownership; recreation restores it. Closed qualified consumer and same-named other owner stay distinct. Both Rust layers repeat complete reference sets, highlights, prepare and rename edits at every state. Service compares incremental and fresh database results. Protocol uses actual open/change/close/save/watched-file notifications, encoded paths, UTF-16, both edit forms and open/closed versions. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 681 plus two historical ignored/protocol 664 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.29 recovery/dynamic/schema lifecycle and UX05/UX06; fresh macOS when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-Kt6gFt/results.json; audit target/lsp-matrix/run-oZ2Ilu/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.28",
-  "nextTask": "B04.28",
+  "activeChild": "B04.29",
+  "nextTask": "B04.29",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6111,7 +6134,20 @@
     "target/b04-27-node.log",
     "target/b04-27-editor.log",
     "target/lsp-matrix/run-BtVyVx/report.json",
-    "editors/vscode/test-results/run-GwxcNe/results.json"
+    "editors/vscode/test-results/run-GwxcNe/results.json",
+    "target/b04-28-baseline.log",
+    "target/b04-28-service-repro.log",
+    "target/b04-28-protocol-repro.log",
+    "target/b04-28-service-rebind.log",
+    "target/b04-28-protocol-rebind.log",
+    "target/b04-28-clippy.log",
+    "target/b04-28-node.log",
+    "target/b04-28-workspace-final.log",
+    "target/b04-28-architecture.log",
+    "target/b04-28-protocol-final.log",
+    "target/b04-28-editor.log",
+    "target/lsp-matrix/run-oZ2Ilu/report.json",
+    "editors/vscode/test-results/run-Kt6gFt/results.json"
   ],
   "openIssues": [
     {

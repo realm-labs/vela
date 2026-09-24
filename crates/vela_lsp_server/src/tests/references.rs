@@ -7,6 +7,7 @@ mod coordinates;
 mod cross_file;
 mod degradation;
 mod highlight;
+mod lifecycle;
 mod modules;
 mod returned_receivers;
 mod schema;
