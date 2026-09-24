@@ -14,6 +14,40 @@ mod shorthand;
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn lsp_rename_reports_invalid_identifier_without_editing_or_claiming_unknown_targets() {
+    let mut server = TestServer::new();
+    let _ = initialize(&mut server, "file:///workspace/scripts");
+    let text = "fn main() { let value = 1; value; missing; }";
+    let uri = "file:///workspace/scripts/game/main.vela";
+    open_document(&mut server, uri, 1, text);
+    let position = text.find("value;").expect("value use");
+    let invalid = response_value(request::<lsp_types::request::Rename>(
+        &mut server,
+        2,
+        serde_json::json!({
+            "textDocument":{"uri":uri},"position":{"line":0,"character":position},
+            "newName":"1bad"
+        }),
+    ));
+    assert_eq!(invalid["error"]["code"], -32602);
+    assert_eq!(
+        invalid["error"]["message"],
+        "invalid rename identifier `1bad`"
+    );
+    assert!(invalid.get("result").is_none());
+    let unknown = response_value(request::<lsp_types::request::Rename>(
+        &mut server,
+        3,
+        serde_json::json!({
+            "textDocument":{"uri":uri},"position":{"line":0,"character":text.find("missing").expect("unknown use")},
+            "newName":"1bad"
+        }),
+    ));
+    assert!(unknown.get("error").is_none());
+    assert!(unknown["result"].is_null());
+}
+
+#[test]
 fn lsp_prepare_rename_rejects_keywords_and_literals() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server, "file:///workspace/scripts");

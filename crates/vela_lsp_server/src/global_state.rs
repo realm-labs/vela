@@ -5,6 +5,7 @@ mod diagnostics;
 mod documents;
 mod project_state;
 mod reference_projection;
+mod rename;
 mod request_queue;
 mod responses;
 mod watched_files;
@@ -17,9 +18,9 @@ use lsp_types::{
     DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, DocumentHighlightParams, DocumentOnTypeFormattingParams,
     DocumentRangeFormattingParams, DocumentSymbolParams, FoldingRangeParams, HoverParams,
-    InlayHintParams, ReferenceParams, RenameParams, SelectionRangeParams,
-    SemanticTokensDeltaParams, SemanticTokensParams, SemanticTokensRangeParams,
-    SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
+    InlayHintParams, ReferenceParams, SelectionRangeParams, SemanticTokensDeltaParams,
+    SemanticTokensParams, SemanticTokensRangeParams, SignatureHelpParams,
+    TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, GenerationToken, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration,
@@ -598,32 +599,6 @@ impl GlobalStateSnapshot {
                 .map(|rename| reference_projection::prepare(&self, rename))
                 .transpose(),
             "typed prepareRename response",
-        )
-    }
-
-    pub(crate) fn rename(self, id: lsp_server::RequestId, params: RenameParams) -> Vec<Message> {
-        let document_id = from_proto::document_id(&params.text_document_position.text_document.uri);
-        let text = snapshot_document_text(&self, &document_id);
-        let input = match from_proto::rename_params(&text, &params) {
-            Ok(input) => input,
-            Err(error) => {
-                return response_error_messages(
-                    id,
-                    ErrorCode::InvalidRequest,
-                    format!("invalid rename position: {error}"),
-                );
-            }
-        };
-        let edit = self
-            .databases
-            .rename(&input.document_id, input.position, &params.new_name);
-
-        reference_projection::respond(
-            id,
-            edit.as_ref()
-                .map(|edit| reference_projection::edit(&self, edit))
-                .transpose(),
-            "typed rename response",
         )
     }
 

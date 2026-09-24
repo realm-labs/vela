@@ -12,6 +12,11 @@
     "source": "grant",
     "openFile": "scripts/rename_open.vela",
     "closedFile": "scripts/rename_closed.vela",
+    "negativeRoutes": [
+      { "id": "rename-cancel", "newName": "award" },
+      { "id": "invalid-name", "newName": "1bad" },
+      { "id": "colliding-name", "newName": "call" }
+    ],
     "sites": [
       { "file": "scripts/rename_origin.vela", "marker": "declaration" },
       { "file": "scripts/rename_open.vela", "marker": "import" },

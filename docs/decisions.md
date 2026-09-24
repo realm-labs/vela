@@ -4862,6 +4862,13 @@ Source enum variant navigation and references share scoped source paths and impo
 sites. Source-owned import paths cannot fall back to colliding schema variants,
 including missing members and inaccessible source owners. Public enum rename
 policy remains unchanged.
+
+The LSP rename boundary reports malformed replacement names as `InvalidParams`
+and a prepared target whose valid replacement cannot preserve declaration or
+reference ownership as `InvalidRequest`, with a visible reason naming the
+replacement. A target without prepare-rename support still returns `null`.
+The language-service edit API retains `None` for rejected edits; no partial
+workspace edit is sent for a rejection.
 Private source enum variant rename shares those canonical sites. It edits the
 terminal import path while retaining explicit alias spelling, and rejects
 lexical capture or any change in source variant path ownership after the

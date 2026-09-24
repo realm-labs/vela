@@ -59,6 +59,23 @@ pub(crate) struct ProviderIdRenameTarget {
 }
 
 impl LanguageServiceDatabases {
+    /// Explain malformed replacement text for an otherwise renameable target.
+    #[must_use]
+    pub fn rename_name_error(
+        &self,
+        document_id: &DocumentId,
+        position: Position,
+        new_name: &str,
+    ) -> Option<String> {
+        let query = QueryContext::from_databases(self, document_id, position)?;
+        let source_id = query.source_id()?;
+        if provider_id_rename_target(&query, self.hir_db().graph(), source_id).is_some() {
+            return vela_hir::provider::ProviderId::new(new_name.to_owned()).err();
+        }
+        (!is_valid_rename_identifier(new_name))
+            .then(|| format!("invalid rename identifier `{new_name}`"))
+    }
+
     #[must_use]
     pub fn prepare_rename(
         &self,

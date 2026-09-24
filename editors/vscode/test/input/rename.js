@@ -86,17 +86,40 @@ async function runRename({ page, bridge, record, root, workspace, contracts, unt
     check("typed-name", { visible: await widget.isVisible(), value: await input.inputValue() });
     await page.screenshot({ path: path.join(root, `${contract.id}-open.png`) });
     fs.writeFileSync(path.join(root, `${contract.id}-open.aria.txt`), await page.locator('[id="workbench.parts.editor"]').ariaSnapshot());
-    await action("confirm-rename");
-    await widget.waitFor({ state: "hidden" });
-    check("widget-hidden", { visible: await widget.isVisible() });
-    await state("renamed-workspace");
-    const confirmation = page.getByRole("alert").filter({ hasText: "Successfully renamed 'grant' to 'award'" });
-    await confirmation.waitFor({ state: "visible" });
-    check("rename-confirmation", { text: await confirmation.innerText() });
-    await action("undo-rename");
-    await state("undo-workspace");
-    await action("redo-rename");
-    await state("redo-workspace");
+    if (contract.id === "ux05-rename-confirm") {
+      await action("confirm-rename");
+      await widget.waitFor({ state: "hidden" });
+      check("widget-hidden", { visible: await widget.isVisible() });
+      await state("renamed-workspace");
+      const confirmation = page.getByRole("alert").filter({ hasText: "Successfully renamed 'grant' to 'award'" });
+      await confirmation.waitFor({ state: "visible" });
+      check("rename-confirmation", { text: await confirmation.innerText() });
+      await action("undo-rename");
+      await state("undo-workspace");
+      await action("redo-rename");
+      await state("redo-workspace");
+    } else {
+      const cancel = contract.id === "ux05-rename-cancel";
+      await action(cancel ? "cancel-rename" : "submit-name");
+      if (!cancel) {
+        const newName = contract.actions.find((item) => item.id === "type-name").text;
+        const message = await until("visible rename rejection", async () => {
+          const alerts = await page.getByRole("alert").allTextContents();
+          const widgetText = await widget.isVisible() ? await widget.innerText() : "";
+          const candidates = [...alerts, widgetText].map((text) => text.trim()).filter(Boolean);
+          fs.writeFileSync(path.join(root, `${contract.id}-rejection.json`), JSON.stringify(candidates, null, 2));
+          return candidates.find((text) => text.includes(newName) && /invalid|identifier|conflict|collid|rename|failed/i.test(text));
+        });
+        receipt("observation", "rejection-text", { text: message });
+        check("rejection", {
+          visible: true, kind: contract.id.slice(5), text: message,
+        });
+        await action("dismiss-rejection");
+      }
+      await widget.waitFor({ state: "hidden" });
+      check("widget-hidden", { visible: await widget.isVisible() });
+      await state("unchanged-workspace");
+    }
     const diagnostics = await until("rename diagnostics clear", async () => {
       const result = {
         open: await bridge("diagnostics", { file: model.spec.oracle.openFile }),

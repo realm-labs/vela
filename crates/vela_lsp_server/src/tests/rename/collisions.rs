@@ -114,6 +114,17 @@ fn assert_owner(endpoint: &mut TestServer, fixture: &FixtureWorkspace, id: &str)
 pub(super) fn query<R: r::Request>(endpoint: &mut TestServer, params: Value) -> Value {
     let response = response_value(request::<R>(endpoint, 50, params));
     assert_eq!(response["id"], 50);
+    if let Some(error) = response.get("error") {
+        assert_eq!(R::METHOD, "textDocument/rename", "{response}");
+        assert_eq!(error["code"], -32600, "{response}");
+        assert!(
+            error["message"]
+                .as_str()
+                .is_some_and(|message| message.contains("was rejected")),
+            "{response}"
+        );
+        return Value::Null;
+    }
     assert!(response.get("error").is_none(), "{response}");
     response["result"].clone()
 }

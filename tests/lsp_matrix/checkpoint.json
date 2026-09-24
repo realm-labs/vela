@@ -3706,10 +3706,23 @@
         "vscode/UX05/rename-confirm/render/local"
       ],
       "summary": "Verify UX05 rename-confirm Input and Render on the registered Windows x64 / VS Code 1.137.0 profile. Independent three-file Unicode fixture and actual F2/typing/Enter/Ctrl+Z/Ctrl+Y route assert visible widget focus and confirmation, exact four edits across open and unopened files, unchanged local shadow, document-versus-disk undo/redo policy, and final empty diagnostics. The first run exposed stale unresolved imports after VS Code saved and closed a renamed source. didClose now reloads the current disk source before workspace recomputation; a protocol regression retains declaration/import/call ownership. Rename workspace edit projection also preserves the client's encoded Windows drive URI spelling. Workspace, fmt, Clippy, Node 77, Windows VSIX 10 and selected input route passed. Local audit service 687 plus two historical ignored/protocol 675 passed, 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; both UX05 confirmation interaction obligations verified, remaining 1230 until B04 acceptance. B00-B03 snapshots unchanged. Resume B04.37 UX05 cancel/invalid/collision and UX06, then remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-dH79Eo/results.json; input editors/vscode/test-results/input-X2AtOQ/results.json; audit target/lsp-matrix/run-XPHIuK/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.37",
+      "revision": null,
+      "requirements": [
+        "vscode/UX05/rename-cancel/input/local",
+        "vscode/UX05/rename-cancel/render/local",
+        "vscode/UX05/invalid-name/input/local",
+        "vscode/UX05/invalid-name/render/local",
+        "vscode/UX05/colliding-name/input/local",
+        "vscode/UX05/colliding-name/render/local"
+      ],
+      "summary": "Verify UX05 rename cancellation, malformed replacement, and collision rejection as separate Input and Render routes on registered Windows x64 / VS Code 1.137.0. Actual F2, typing, Escape and Enter exercise the installed VSIX; each route checks widget focus, unchanged open and unopened document/disk layers, empty diagnostics, and exact visible errors where rejected. The LSP boundary now reports invalid identifiers and unsafe ownership conflicts explicitly while unknown targets remain null. Existing protocol collision matrices assert rejection code and reason before no-edit checks. Workspace, fmt, Clippy, Node 77, Windows VSIX 10 and all four selected UX05 input routes passed. Final local audit service 687 plus two historical ignored/protocol 676 passed: 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; 274 local execution requirements verified, 1201 unreviewed, two N/A. All eight UX05 interaction obligations verified. B00-B03 snapshots unchanged. Resume B04.38 UX06 references and highlights, then remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-e0IKal/results.json; input editors/vscode/test-results/input-FmEN07/results.json; audit target/lsp-matrix/run-WjiSHw/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.37",
-  "nextTask": "B04.37",
+  "activeChild": "B04.38",
+  "nextTask": "B04.38",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
