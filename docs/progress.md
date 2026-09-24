@@ -971,8 +971,13 @@ prepare-rename and rename: host function retarget/removal, invalid artifact,
 deletion and restoration, metadata-only ownership, and unknown/dynamic
 receiver isolation. Service compares incremental and fresh results; protocol
 checks watched-file diagnostics, exact edit sets and closed-file versions.
-Broad state cells remain unreviewed. Resume B04.30 with recovery,
-stale-version and cancellation states, then UX05/UX06 gates.
+Broad state cells remain unreviewed. B04.30 advances rename stale-version and
+cancellation state cells and rechecks the already verified repeat cells across
+references, highlight, prepare-rename and rename. Duplicate/older document
+versions leave generation and exact results unchanged; close/reopen resets the
+version; cancellation notifications do not poison later synchronous snapshot
+requests. Resume B04.31 with recovery syntax, then remaining partitions and
+UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
