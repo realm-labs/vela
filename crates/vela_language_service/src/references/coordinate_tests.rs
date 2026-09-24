@@ -69,6 +69,11 @@ fn import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_i
 }
 
 #[test]
+fn imported_value_matrix_preserves_const_state_and_visibility_boundaries() {
+    run_matrix(oracle::imported_values_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_edits() {
     run_matrix(oracle::schema_capture_spec);
 }
@@ -336,6 +341,13 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                             .risks()
                             .iter()
                             .any(|risk| risk.kind() == crate::RenameRiskKind::SchemaAbi)
+                    );
+                }
+                if spec.oracle["groups"][group]["risk"] == "hotReloadAbi" {
+                    assert_eq!(renamed.risks().len(), 1);
+                    assert_eq!(
+                        renamed.risks()[0].kind(),
+                        crate::RenameRiskKind::HotReloadAbi
                     );
                 }
                 let actual = renamed.document_edits().iter().flat_map(|document| document.edits().iter().map(|edit|

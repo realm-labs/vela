@@ -88,7 +88,7 @@ pub(crate) fn imported_declaration(
         })
 }
 
-pub(crate) fn qualified_function_declaration(
+pub(crate) fn qualified_value_declaration(
     databases: &LanguageServiceDatabases,
     span: Span,
     path: &[String],
@@ -110,13 +110,18 @@ pub(crate) fn qualified_function_declaration(
     )?;
     let module = graph.module_id(query.module_key()?)?;
     let expanded = query.expand_import_path(path)?;
-    let declaration =
-        graph.resolve_visible_declaration_path(module, &expanded, DeclarationKind::Function)?;
+    let declaration = [
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .find_map(|kind| graph.resolve_visible_declaration_path(module, &expanded, kind))?;
     (declaration.module == module || declaration.visibility == Visibility::Public)
         .then_some(declaration.id)
 }
 
-pub(crate) fn imported_module_function_for_expression(
+pub(crate) fn imported_module_value_for_expression(
     databases: &LanguageServiceDatabases,
     expression: HirExprId,
     imported_name: &str,
@@ -127,10 +132,10 @@ pub(crate) fn imported_module_function_for_expression(
         .paths_in_source(span.source)
         .find(|path| path.owner == HirPathOwner::Expression(expression))?;
     (path.path.first().is_some_and(|name| name == imported_name))
-        .then(|| qualified_function_declaration(databases, span, &path.path))?
+        .then(|| qualified_value_declaration(databases, span, &path.path))?
 }
 
-pub(crate) fn qualified_function_at_range(
+pub(crate) fn qualified_value_at_range(
     databases: &LanguageServiceDatabases,
     bindings: &BindingMap,
     range: TextRange,
@@ -148,10 +153,10 @@ pub(crate) fn qualified_function_at_range(
     }
     match bindings.resolution(expression)? {
         BindingResolution::QualifiedPath(path) => {
-            qualified_function_declaration(databases, span, path)
+            qualified_value_declaration(databases, span, path)
         }
         BindingResolution::Import(name) => {
-            imported_module_function_for_expression(databases, expression, name)
+            imported_module_value_for_expression(databases, expression, name)
         }
         BindingResolution::Declaration(_) | BindingResolution::Local(_) => None,
     }

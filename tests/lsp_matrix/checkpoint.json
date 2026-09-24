@@ -3628,10 +3628,33 @@
         "rename/syntax/S8/negative/protocol"
       ],
       "summary": "Advance 16 S8 source-function import boundary paths for references, highlight, prepare-rename and rename; broad syntax cells remain unreviewed. Independent eight-script fixture runs 17 queries under LF/CRLF with Unicode UTF-16 and encoded paths: public direct/qualified calls, direct and explicit alias imports, module alias calls, closed consumer, and negative private, stdlib and missing imports. Both layers compare complete reference/highlight sets and exact versioned rename edits, apply changes across files, parse, requery and restore. Fixed omitted module-alias function references/edits and source import-alias query targeting through scoped visible declaration resolution. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 684 plus two historical ignored/protocol 670 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.33 remaining syntax partitions and UX05/UX06; fresh macOS when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-FM0Q8d/results.json; audit target/lsp-matrix/run-fqELCn/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.33",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S8/positive/service",
+        "references/syntax/S8/positive/protocol",
+        "references/syntax/S8/negative/service",
+        "references/syntax/S8/negative/protocol",
+        "highlight/syntax/S8/positive/service",
+        "highlight/syntax/S8/positive/protocol",
+        "highlight/syntax/S8/negative/service",
+        "highlight/syntax/S8/negative/protocol",
+        "prepare-rename/syntax/S8/positive/service",
+        "prepare-rename/syntax/S8/positive/protocol",
+        "prepare-rename/syntax/S8/negative/service",
+        "prepare-rename/syntax/S8/negative/protocol",
+        "rename/syntax/S8/positive/service",
+        "rename/syntax/S8/positive/protocol",
+        "rename/syntax/S8/negative/service",
+        "rename/syntax/S8/negative/protocol"
+      ],
+      "summary": "Advance 16 S8 source-value import paths for references, highlight, prepare-rename and rename; broad syntax cells remain unreviewed. Independent eight-script fixture runs 22 queries across public const, public extern state and private const under LF/CRLF with Unicode UTF-16 and encoded paths. Complete sets include direct imports, explicit aliases, qualified paths, module aliases and a closed consumer; private cross-module and missing imports stay unowned. Public const is read-only, private const renames inside its module, and state rename applies multi-file edits while retaining aliases and exact hotReloadAbi risk annotations. Both layers compare complete references/highlights/prepare/edits, apply edits, parse, requery and restore. Initial module-alias constant reference was missing; shared visible source value resolution now includes functions, consts and states. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 685 plus two historical ignored/protocol 671 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.34 imported source type/trait boundaries and remaining syntax partitions plus UX05/UX06; fresh macOS when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-dsy1ld/results.json; audit target/lsp-matrix/run-EHgFA6/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.33",
-  "nextTask": "B04.33",
+  "activeChild": "B04.34",
+  "nextTask": "B04.34",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

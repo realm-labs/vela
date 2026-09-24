@@ -282,10 +282,10 @@ impl LanguageServiceDatabases {
                 let resolved = match resolution {
                     BindingResolution::Declaration(resolved) => Some(*resolved),
                     BindingResolution::QualifiedPath(path) => {
-                        crate::hir_path_sites::qualified_function_declaration(self, span, path)
+                        crate::hir_path_sites::qualified_value_declaration(self, span, path)
                     }
                     BindingResolution::Import(name) => {
-                        crate::hir_path_sites::imported_module_function_for_expression(
+                        crate::hir_path_sites::imported_module_value_for_expression(
                             self, expression, name,
                         )
                     }
@@ -606,7 +606,7 @@ fn rename_target<'a>(
         }
         if let Some(declaration_id) =
             declaration_use_at_token(graph, bindings, &token).or_else(|| {
-                crate::hir_path_sites::qualified_function_at_range(databases, bindings, token.range)
+                crate::hir_path_sites::qualified_value_at_range(databases, bindings, token.range)
             })
             && let Some(target) = graph.declaration(declaration_id)
             && can_rename_declaration_target(target)

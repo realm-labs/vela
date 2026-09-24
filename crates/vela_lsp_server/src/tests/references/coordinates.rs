@@ -65,6 +65,11 @@ fn import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_i
 }
 
 #[test]
+fn imported_value_matrix_preserves_const_state_and_visibility_boundaries() {
+    run_matrix(oracle::imported_values_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
     run_matrix(oracle::schema_capture_spec);
 }
@@ -348,6 +353,16 @@ impl Driver {
                                 .any(|value| value["description"] == "schemaAbi"
                                     && value["needsConfirmation"] == true)
                         );
+                    }
+                    if spec.oracle["groups"][group]["risk"] == "hotReloadAbi" {
+                        let annotations = edit["changeAnnotations"]
+                            .as_object()
+                            .expect("hot reload ABI warnings");
+                        assert_eq!(annotations.len(), 1);
+                        assert!(annotations.values().any(|value| {
+                            value["description"] == "hotReloadAbi"
+                                && value["needsConfirmation"] == true
+                        }));
                     }
                     if spec.oracle["checkDefinition"] == true {
                         let site = &sites[0];
