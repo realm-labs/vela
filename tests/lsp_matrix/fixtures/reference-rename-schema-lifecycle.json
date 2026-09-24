@@ -1,0 +1,209 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_reference_lifecycle\"\nname = \"schema_reference_lifecycle\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[grant-decl:start]]grant[[grant-decl:end]]() {}\npub fn [[award-decl:start]]award[[award-decl:end]]() {}\n",
+    "scripts/main.vela": "/* 中😀 */ fn main(dynamic) { host::[[grant-call:start]]grant[[grant-call:end]](); host::[[award-call:start]]award[[award-call:end]](); meta::[[ping-call:start]]ping[[ping-call:end]](); missing::[[unknown:start]]grant[[unknown:end]](); dynamic.[[dynamic:start]]grant[[dynamic:end]](); }\n",
+    "scripts/consumer.vela": "fn closed() { host::[[grant-closed:start]]grant[[grant-closed:end]](); host::[[award-closed:start]]award[[award-closed:end]](); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "functions": [
+        {
+          "name": "host::grant",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "grant-decl"
+          }
+        },
+        {
+          "name": "meta::ping",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "i64"
+            }
+          }
+        }
+      ]
+    },
+    "replacement": "bestow",
+    "groups": {
+      "grant": {
+        "qualified": "host::grant",
+        "name": "grant",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "grant-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "grant-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "grant-closed",
+            "kind": "Call"
+          }
+        ]
+      },
+      "award": {
+        "qualified": "host::award",
+        "name": "award",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "award-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "award-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "award-closed",
+            "kind": "Call"
+          }
+        ]
+      },
+      "metadata": {
+        "qualified": "meta::ping",
+        "name": "ping",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "ping-call",
+            "kind": "Call"
+          }
+        ]
+      }
+    },
+    "states": [
+      {
+        "id": "initial",
+        "op": "restore",
+        "owner": "grant",
+        "metadata": true
+      },
+      {
+        "id": "retarget",
+        "op": "replace",
+        "owner": "award",
+        "metadata": true,
+        "patches": [
+          {
+            "path": "/functions/0",
+            "value": {
+              "name": "host::award",
+              "fact": {
+                "kind": "function",
+                "params": [],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "i64"
+                }
+              },
+              "sourceSpan": {
+                "file": "scripts/helpers.vela",
+                "marker": "award-decl"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "remove-host",
+        "op": "replace",
+        "owner": "none",
+        "metadata": true,
+        "patches": [
+          {
+            "path": "/functions",
+            "value": [
+              {
+                "name": "meta::ping",
+                "fact": {
+                  "kind": "function",
+                  "params": [],
+                  "returns": {
+                    "kind": "primitive",
+                    "name": "i64"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "invalid",
+        "op": "invalid",
+        "owner": "none",
+        "metadata": false,
+        "diagnostic": "schema"
+      },
+      {
+        "id": "restore-invalid",
+        "op": "restore",
+        "owner": "grant",
+        "metadata": true
+      },
+      {
+        "id": "delete",
+        "op": "delete",
+        "owner": "none",
+        "metadata": false,
+        "diagnostic": "schema"
+      },
+      {
+        "id": "recreate",
+        "op": "restore",
+        "owner": "award",
+        "metadata": true,
+        "patches": [
+          {
+            "path": "/functions/0",
+            "value": {
+              "name": "host::award",
+              "fact": {
+                "kind": "function",
+                "params": [],
+                "returns": {
+                  "kind": "primitive",
+                  "name": "i64"
+                }
+              },
+              "sourceSpan": {
+                "file": "scripts/helpers.vela",
+                "marker": "award-decl"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": "restore-original",
+        "op": "restore",
+        "owner": "grant",
+        "metadata": true
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ mod modules;
 mod returned_receivers;
 mod schema;
 mod schema_fields;
+mod schema_lifecycle;
 mod schema_method_return_receivers;
 mod schema_variant_fields;
 mod source_method_return_receivers;

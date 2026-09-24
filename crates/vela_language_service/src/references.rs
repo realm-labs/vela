@@ -973,6 +973,8 @@ mod module_tests;
 #[cfg(test)]
 mod schema_field_tests;
 #[cfg(test)]
+mod schema_lifecycle_tests;
+#[cfg(test)]
 mod schema_return_tests;
 #[cfg(test)]
 mod schema_tests;

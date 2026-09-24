@@ -966,8 +966,13 @@ rename and rename: dirty helper positions, disk/overlay precedence, close
 restoration, dirty importer rebinding, dependency deletion and recreation.
 Service results match fresh analysis; protocol checks actual notifications,
 UTF-16 edits and closed-file versions. Broad state cells remain unreviewed.
-Resume B04.29 with recovery, dynamic and schema lifecycle states, then
-UX05/UX06 gates.
+B04.29 checks eight schema lifecycle states for references, highlight,
+prepare-rename and rename: host function retarget/removal, invalid artifact,
+deletion and restoration, metadata-only ownership, and unknown/dynamic
+receiver isolation. Service compares incremental and fresh results; protocol
+checks watched-file diagnostics, exact edit sets and closed-file versions.
+Broad state cells remain unreviewed. Resume B04.30 with recovery,
+stale-version and cancellation states, then UX05/UX06 gates.
 B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
 1230 requirements while B04 is open.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
