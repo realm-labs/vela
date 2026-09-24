@@ -60,6 +60,11 @@ fn schema_import_matrix_preserves_aliases_and_applied_utf16_edits() {
 }
 
 #[test]
+fn import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports() {
+    run_matrix(oracle::import_boundary_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
     run_matrix(oracle::schema_capture_spec);
 }

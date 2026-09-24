@@ -1,8 +1,12 @@
 use vela_common::Span;
-use vela_hir::body::{HirPath, HirPathKind};
-use vela_hir::module_graph::{Declaration, ImportResolution, ModuleGraph};
+use vela_hir::binding::{BindingMap, BindingResolution};
+use vela_hir::body::{HirPath, HirPathKind, HirPathOwner};
+use vela_hir::ids::{HirDeclId, HirExprId};
+use vela_hir::module_graph::{
+    Declaration, DeclarationKind, ImportResolution, ModuleGraph, Visibility,
+};
 
-use crate::TextRange;
+use crate::{LanguageServiceDatabases, LineIndex, QueryContext, TextRange};
 
 pub(crate) fn binding_maps(
     graph: &ModuleGraph,
@@ -67,17 +71,88 @@ pub(crate) fn imported_declaration(
         .filter_map(|module| graph.imports(module))
         .flatten()
         .find_map(|import| {
-            if import.span.source != source
-                || import
-                    .path_spans
-                    .last()
-                    .copied()
-                    .and_then(text_range_for_span)
-                    != Some(range)
-            {
+            if import.span.source != source {
+                return None;
+            }
+            let terminal = import
+                .path_spans
+                .last()
+                .copied()
+                .and_then(text_range_for_span);
+            let alias = import.alias_span.and_then(text_range_for_span);
+            if terminal != Some(range) && alias != Some(range) {
                 return None;
             }
             let ImportResolution::Declaration(declaration) = import.resolution?;
             graph.declaration(declaration)
         })
+}
+
+pub(crate) fn qualified_function_declaration(
+    databases: &LanguageServiceDatabases,
+    span: Span,
+    path: &[String],
+) -> Option<HirDeclId> {
+    if path.len() < 2 {
+        return None;
+    }
+    let graph = databases.hir_db().graph();
+    let source = databases
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == span.source)?;
+    let range = resolved_use_range(graph, span)?;
+    let query = QueryContext::from_databases(
+        databases,
+        source.document_id(),
+        LineIndex::new(source.text()).position(range.start),
+    )?;
+    let module = graph.module_id(query.module_key()?)?;
+    let expanded = query.expand_import_path(path)?;
+    let declaration =
+        graph.resolve_visible_declaration_path(module, &expanded, DeclarationKind::Function)?;
+    (declaration.module == module || declaration.visibility == Visibility::Public)
+        .then_some(declaration.id)
+}
+
+pub(crate) fn imported_module_function_for_expression(
+    databases: &LanguageServiceDatabases,
+    expression: HirExprId,
+    imported_name: &str,
+) -> Option<HirDeclId> {
+    let graph = databases.hir_db().graph();
+    let span = graph.expression_span(expression)?;
+    let path = graph
+        .paths_in_source(span.source)
+        .find(|path| path.owner == HirPathOwner::Expression(expression))?;
+    (path.path.first().is_some_and(|name| name == imported_name))
+        .then(|| qualified_function_declaration(databases, span, &path.path))?
+}
+
+pub(crate) fn qualified_function_at_range(
+    databases: &LanguageServiceDatabases,
+    bindings: &BindingMap,
+    range: TextRange,
+) -> Option<HirDeclId> {
+    let graph = databases.hir_db().graph();
+    let source = graph.declaration(bindings.declaration)?.span.source;
+    let expression = graph.expression_containing_span(Span::new(
+        source,
+        u32::try_from(range.start).ok()?,
+        u32::try_from(range.end).ok()?,
+    ))?;
+    let span = graph.expression_span(expression)?;
+    if resolved_use_range(graph, span)? != range {
+        return None;
+    }
+    match bindings.resolution(expression)? {
+        BindingResolution::QualifiedPath(path) => {
+            qualified_function_declaration(databases, span, path)
+        }
+        BindingResolution::Import(name) => {
+            imported_module_function_for_expression(databases, expression, name)
+        }
+        BindingResolution::Declaration(_) | BindingResolution::Local(_) => None,
+    }
 }

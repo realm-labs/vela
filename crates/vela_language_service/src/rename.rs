@@ -276,15 +276,24 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         for bindings in crate::hir_path_sites::binding_maps(graph) {
             for (expression, resolution) in bindings.resolutions() {
-                let BindingResolution::Declaration(resolved) = resolution else {
-                    continue;
-                };
-                if *resolved != declaration.id {
-                    continue;
-                }
                 let Some(span) = graph.expression_span(expression) else {
                     continue;
                 };
+                let resolved = match resolution {
+                    BindingResolution::Declaration(resolved) => Some(*resolved),
+                    BindingResolution::QualifiedPath(path) => {
+                        crate::hir_path_sites::qualified_function_declaration(self, span, path)
+                    }
+                    BindingResolution::Import(name) => {
+                        crate::hir_path_sites::imported_module_function_for_expression(
+                            self, expression, name,
+                        )
+                    }
+                    BindingResolution::Local(_) => None,
+                };
+                if resolved != Some(declaration.id) {
+                    continue;
+                }
                 let Some(source) = self.source_record_for_rename(span.source) else {
                     continue;
                 };
@@ -595,7 +604,10 @@ fn rename_target<'a>(
                 placeholder: binding.name.clone(),
             }));
         }
-        if let Some(declaration_id) = declaration_use_at_token(graph, bindings, &token)
+        if let Some(declaration_id) =
+            declaration_use_at_token(graph, bindings, &token).or_else(|| {
+                crate::hir_path_sites::qualified_function_at_range(databases, bindings, token.range)
+            })
             && let Some(target) = graph.declaration(declaration_id)
             && can_rename_declaration_target(target)
         {

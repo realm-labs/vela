@@ -49,6 +49,10 @@ pub(crate) fn schema_import_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-imports", crlf)
 }
 
+pub(crate) fn import_boundary_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-import-boundaries", crlf)
+}
+
 pub(crate) fn schema_capture_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-capture", crlf)
 }

@@ -291,7 +291,11 @@ impl LanguageServiceDatabases {
             if let Some(local) = local_reference_target(graph, bindings, &token) {
                 return self.local_references(bindings, local, include_declaration);
             }
-            if let Some(declaration) = declaration_reference_target(graph, bindings, &token) {
+            if let Some(declaration) = declaration_reference_target(graph, bindings, &token)
+                .or_else(|| {
+                    hir_path_sites::qualified_function_at_range(self, bindings, token.range)
+                })
+            {
                 return self.declaration_references(declaration, include_declaration);
             }
             let member_receiver = query
@@ -475,10 +479,20 @@ impl LanguageServiceDatabases {
                                 symbol.clone(),
                             )
                         }
-                        BindingResolution::Declaration(_)
-                        | BindingResolution::Local(_)
-                        | BindingResolution::Import(_)
-                        | BindingResolution::QualifiedPath(_) => None,
+                        BindingResolution::QualifiedPath(path) => {
+                            let span = graph.expression_span(expression)?;
+                            (hir_path_sites::qualified_function_declaration(self, span, path)
+                                == Some(declaration))
+                            .then(|| self.reference_for_resolved_use_span(span, symbol.clone()))?
+                        }
+                        BindingResolution::Import(name) => {
+                            let span = graph.expression_span(expression)?;
+                            (hir_path_sites::imported_module_function_for_expression(
+                                self, expression, name,
+                            ) == Some(declaration))
+                            .then(|| self.reference_for_resolved_use_span(span, symbol.clone()))?
+                        }
+                        BindingResolution::Declaration(_) | BindingResolution::Local(_) => None,
                     }),
             );
         }

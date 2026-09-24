@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "id": "reference-rename-import-boundaries",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.import_boundaries\"\nname = \"import_boundaries\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[decl:start]]grant[[decl:end]](value: i64) -> i64 { value }\nfn [[private-decl:start]]hidden[[private-decl:end]](value: i64) -> i64 { value }\nfn own() { [[private-internal:start]]hidden[[private-internal:end]](1); }\n",
+    "scripts/main.vela": "/* 中😀 */ use helpers::[[direct-import:start]]grant[[direct-import:end]];\nfn main() { [[direct-call:start]]grant[[direct-call:end]](1); helpers::[[qualified-call:start]]grant[[qualified-call:end]](2); }\n",
+    "scripts/consumer.vela": "/* 中😀 */ fn closed() { helpers::[[closed-call:start]]grant[[closed-call:end]](3); }\n",
+    "scripts/alias.vela": "/* 中😀 */ use helpers::[[alias-terminal:start]]grant[[alias-terminal:end]] as [[alias-decl:start]]issue[[alias-decl:end]];\nfn alias_call() { [[alias-call:start]]issue[[alias-call:end]](4); }\n",
+    "scripts/module.vela": "/* 中😀 */ use helpers as h;\nfn module_call() { h::[[module-call:start]]grant[[module-call:end]](5); }\n",
+    "scripts/private.vela": "/* 中😀 */ use helpers::[[private-import:start]]hidden[[private-import:end]] as secret;\nfn forbidden() { [[private-use:start]]secret[[private-use:end]](1); }\n",
+    "scripts/stdlib.vela": "/* 中😀 */ use math::[[stdlib-terminal:start]]max[[stdlib-terminal:end]] as [[stdlib-alias:start]]top[[stdlib-alias:end]];\nuse math as m;\nfn native() { [[stdlib-call:start]]top[[stdlib-call:end]](1, 2); m::[[stdlib-module:start]]max[[stdlib-module:end]](2, 3); }\n",
+    "scripts/missing.vela": "/* 中😀 */ use absent::[[missing-import:start]]grant[[missing-import:end]] as ghost;\nfn unknown() { [[missing-use:start]]ghost[[missing-use:end]](1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "public": {
+        "name": "grant",
+        "rename": "award",
+        "origin": "source",
+        "qualified": "helpers::grant",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "direct-import",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "direct-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "qualified-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/alias.vela",
+            "marker": "alias-decl",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/alias.vela",
+            "marker": "alias-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "module-call",
+            "kind": "Call"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "decl"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "direct-import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "direct-call"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "qualified-call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "closed-call"
+          },
+          {
+            "file": "scripts/alias.vela",
+            "marker": "alias-terminal"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "module-call"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "decl",
+        "group": "public"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "direct-import",
+        "group": "public"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "direct-call",
+        "group": "public"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "qualified-call",
+        "group": "public"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "closed-call",
+        "group": "public"
+      },
+      {
+        "file": "scripts/alias.vela",
+        "marker": "alias-terminal",
+        "group": "public"
+      },
+      {
+        "file": "scripts/alias.vela",
+        "marker": "alias-decl",
+        "group": "public"
+      },
+      {
+        "file": "scripts/alias.vela",
+        "marker": "alias-call",
+        "group": "public"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "module-call",
+        "group": "public"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-import"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-use"
+      },
+      {
+        "file": "scripts/stdlib.vela",
+        "marker": "stdlib-terminal"
+      },
+      {
+        "file": "scripts/stdlib.vela",
+        "marker": "stdlib-alias"
+      },
+      {
+        "file": "scripts/stdlib.vela",
+        "marker": "stdlib-call"
+      },
+      {
+        "file": "scripts/stdlib.vela",
+        "marker": "stdlib-module"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-import"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-use"
+      }
+    ],
+    "rejections": {
+      "public": []
+    }
+  }
+}
