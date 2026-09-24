@@ -3,8 +3,9 @@ use vela_common::SourceId;
 
 use crate::{
     LanguageServiceDatabases, SymbolRef, query_context,
+    schema_type_sites::{SchemaTypeIdentity, sites as schema_type_sites},
     symbol_ref::{
-        schema_member_symbol as shared_schema_member_symbol,
+        schema_member_symbol as shared_schema_member_symbol, schema_symbol,
         schema_variant_symbol as shared_schema_variant_symbol,
     },
 };
@@ -37,6 +38,34 @@ pub(crate) struct SchemaMethodReferenceTarget {
 pub(crate) enum SchemaMethodReferenceKind {
     Method,
     TraitMethod,
+}
+
+pub(super) fn schema_type_references(
+    databases: &LanguageServiceDatabases,
+    target: &SchemaTypeIdentity,
+    include_declaration: bool,
+) -> Vec<Reference> {
+    let mut references = Vec::new();
+    for source in databases.source_db().records().values() {
+        references.extend(
+            schema_type_sites(databases, source)
+                .into_iter()
+                .filter(|site| {
+                    site.identity == *target
+                        && (include_declaration || site.kind != ReferenceKind::Declaration)
+                })
+                .map(|site| Reference {
+                    document_id: source.document_id().clone(),
+                    range: diagnostic_range(source.text(), site.range),
+                    kind: site.kind,
+                    symbol: schema_symbol(&target.name),
+                }),
+        );
+    }
+    sort_references(&mut references);
+    references
+        .dedup_by(|a, b| a.document_id == b.document_id && a.range == b.range && a.kind == b.kind);
+    references
 }
 
 pub(super) fn schema_method_references(

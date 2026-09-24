@@ -79,6 +79,11 @@ fn imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries() 
 }
 
 #[test]
+fn schema_type_import_matrix_preserves_source_backed_and_metadata_owners() {
+    run_matrix(oracle::schema_type_import_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_edits() {
     run_matrix(oracle::schema_capture_spec);
 }
@@ -282,7 +287,11 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 .collect();
             assert_eq!(sorted(actual), sorted(expected), "highlights {marker}");
             let prepared = db.prepare_rename(&uri(file), point);
-            let renamed = db.rename(&uri(file), point, "renamed_symbol");
+            let query_rename = query["group"]
+                .as_str()
+                .and_then(|group| spec.oracle["groups"][group]["queryRename"].as_str())
+                .unwrap_or("renamed_symbol");
+            let renamed = db.rename(&uri(file), point, query_rename);
             if let Some(group) = query["group"].as_str() {
                 if let Some(target) = spec.oracle["groups"][group]["typeTarget"].as_object() {
                     let target = &json!(target);
@@ -315,7 +324,9 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 }
                 if spec.oracle["checkDefinition"] == true {
                     let site = &sites[0];
-                    let definition = db.definition(&uri(file), point).expect("owned definition");
+                    let definition = db
+                        .definition(&uri(file), point)
+                        .unwrap_or_else(|| panic!("owned definition {marker}"));
                     assert_eq!(
                         definition.document_id(),
                         &uri(site["file"].as_str().expect("file"))
@@ -339,7 +350,7 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                         .expect("fixture string")
                 );
                 assert_eq!(Some(prepared.symbol()), symbol.as_ref());
-                let renamed = renamed.expect("rename plan");
+                let renamed = renamed.unwrap_or_else(|| panic!("rename plan {marker}"));
                 assert_eq!(renamed.symbol(), symbol.as_ref());
                 if spec.oracle["groups"][group]["origin"] == "schema" {
                     assert!(
@@ -358,7 +369,7 @@ fn check_queries(db: &LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWo
                 }
                 let actual = renamed.document_edits().iter().flat_map(|document| document.edits().iter().map(|edit|
                     json!({"uri":document.document_id().as_str(),"range":range_json(edit.range()),"newText":edit.new_text()}))).collect();
-                let expected = oracle::edits(spec, group).iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")})).collect();
+                let expected = oracle::edits(spec, group).iter().map(|site| json!({"uri":uri(site["file"].as_str().expect("fixture string")).as_str(),"range":site_range(fixture,site),"newText":oracle::replacement(site,query_rename)})).collect();
                 assert_eq!(sorted(actual), sorted(expected), "rename {marker}");
             } else {
                 assert!(

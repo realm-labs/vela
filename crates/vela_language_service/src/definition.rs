@@ -103,6 +103,9 @@ impl LanguageServiceDatabases {
                     )
                 });
         }
+        if let Some(definition) = self.schema_type_site_definition(&query) {
+            return definition;
+        }
         if let Some(parameter) = crate::signature_parameters::target(self, &query) {
             return self.definition_from_span_with_symbol(
                 parameter.parameter.span,
@@ -204,6 +207,9 @@ impl LanguageServiceDatabases {
                 .declaration(site.owner)
                 .and_then(|owner| self.definition_from_declaration(owner));
         }
+        if let Some(definition) = self.schema_type_site_definition(&query) {
+            return definition;
+        }
         let target = SymbolTarget::from_query(self, &query)?;
 
         if target.is_module_symbol(self) {
@@ -281,6 +287,19 @@ impl LanguageServiceDatabases {
         }
 
         None
+    }
+
+    fn schema_type_site_definition(&self, query: &QueryContext<'_>) -> Option<Option<Definition>> {
+        let source = query.source_record()?;
+        let range = query.identifier_range()?;
+        let site = crate::schema_type_sites::target(self, source, range)?;
+        let span = crate::schema_type_sites::declaration_span(self, &site.identity);
+        Some(span.and_then(|span| {
+            self.definition_from_span_with_symbol(
+                span,
+                Some(crate::symbol_ref::schema_symbol(&site.identity.name)),
+            )
+        }))
     }
 
     fn definition_from_span_with_symbol(

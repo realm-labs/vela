@@ -1,5 +1,8 @@
 # Imported source type and trait ownership
 
+The later [B04.35 S8 review](rename-s8-imports.md) closes the schema type
+import gap recorded below.
+
 B04.34 advances the S8 positive and negative service/protocol paths for
 `references`, `highlight`, `prepare-rename` and `rename`. The broad S8 cells
 remain unreviewed: schema type imports still lack a complete reference and

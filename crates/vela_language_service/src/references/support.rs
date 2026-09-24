@@ -88,7 +88,7 @@ pub(super) fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Op
     })
 }
 
-pub(super) fn last_name_range_in_text(
+pub(crate) fn last_name_range_in_text(
     text: &str,
     range: TextRange,
     name: &str,

@@ -5377,6 +5377,742 @@
           "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
       ]
+    },
+    {
+      "requirement": "references/syntax/S8/positive/service",
+      "assertion": "Reviewed every S8 ownership partition in reviews/rename-s8-imports.md. Complete reference sets with and without declarations cover qualified and imported source functions, const/state, struct/enum/trait, variants, source-backed schema functions/types/traits/variants, direct and explicit aliases, module aliases and unopened consumers under LF/CRLF. Import terminals and aliases share the same owner; metadata-only schema types retain uses without a declaration.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S8/positive/protocol",
+      "assertion": "Reviewed every S8 ownership partition in reviews/rename-s8-imports.md. Complete reference sets with and without declarations cover qualified and imported source functions, const/state, struct/enum/trait, variants, source-backed schema functions/types/traits/variants, direct and explicit aliases, module aliases and unopened consumers under LF/CRLF. Import terminals and aliases share the same owner; metadata-only schema types retain uses without a declaration.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S8/negative/service",
+      "assertion": "Reviewed S8 negatives in reviews/rename-s8-imports.md. Exact empty or separate reference sets reject private cross-module targets, missing/ambiguous imports, stdlib-only and unresolved paths, source/schema collisions and changed variant owners. Metadata-only schema types do not fabricate declaration references.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S8/negative/protocol",
+      "assertion": "Reviewed S8 negatives in reviews/rename-s8-imports.md. Exact empty or separate reference sets reject private cross-module targets, missing/ambiguous imports, stdlib-only and unresolved paths, source/schema collisions and changed variant owners. Metadata-only schema types do not fabricate declaration references.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S8/positive/service",
+      "assertion": "Reviewed every S8 partition in reviews/rename-s8-imports.md. For each source/schema import and alias query, document highlights equal the complete same-document subset of marked references with exact Read/Write/Call/Text kinds under LF/CRLF; protocol assertions project UTF-16 positions after Chinese and emoji.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S8/positive/protocol",
+      "assertion": "Reviewed every S8 partition in reviews/rename-s8-imports.md. For each source/schema import and alias query, document highlights equal the complete same-document subset of marked references with exact Read/Write/Call/Text kinds under LF/CRLF; protocol assertions project UTF-16 positions after Chinese and emoji.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S8/negative/service",
+      "assertion": "Reviewed S8 negatives in reviews/rename-s8-imports.md. Missing, private, ambiguous and unrelated source/schema import targets produce no borrowed highlights; aliases, qualified paths and metadata-only schema types stay with their own document and owner.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S8/negative/protocol",
+      "assertion": "Reviewed S8 negatives in reviews/rename-s8-imports.md. Missing, private, ambiguous and unrelated source/schema import targets produce no borrowed highlights; aliases, qualified paths and metadata-only schema types stay with their own document and owner.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S8/positive/service",
+      "assertion": "Reviewed every S8 editable partition in reviews/rename-s8-imports.md. Direct/import-alias/module queries for source-owned editable declarations and source-backed schema functions/types/traits/variants expose exact token range, terminal placeholder and owner symbol across LF/CRLF and UTF-16.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S8/positive/protocol",
+      "assertion": "Reviewed every S8 editable partition in reviews/rename-s8-imports.md. Direct/import-alias/module queries for source-owned editable declarations and source-backed schema functions/types/traits/variants expose exact token range, terminal placeholder and owner symbol across LF/CRLF and UTF-16.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S8/negative/service",
+      "assertion": "Reviewed S8 rename ineligibility in reviews/rename-s8-imports.md. Public source types and consts, metadata-only schema targets, private cross-module imports, stdlib-only and missing/ambiguous paths return null; owner collisions do not lend a different prepare target.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S8/negative/protocol",
+      "assertion": "Reviewed S8 rename ineligibility in reviews/rename-s8-imports.md. Public source types and consts, metadata-only schema targets, private cross-module imports, stdlib-only and missing/ambiguous paths return null; owner collisions do not lend a different prepare target.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S8/positive/service",
+      "assertion": "Reviewed every S8 editable partition in reviews/rename-s8-imports.md. Complete source/schema workspace edits update declarations, import terminals, qualified uses, type hints, trait impl headers, variants and state ABI annotations while preserving explicit aliases. Both layers apply edits, parse, requery and restore under LF/CRLF; protocol checks versioned UTF-16 edits and annotations.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S8/positive/protocol",
+      "assertion": "Reviewed every S8 editable partition in reviews/rename-s8-imports.md. Complete source/schema workspace edits update declarations, import terminals, qualified uses, type hints, trait impl headers, variants and state ABI annotations while preserving explicit aliases. Both layers apply edits, parse, requery and restore under LF/CRLF; protocol checks versioned UTF-16 edits and annotations.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S8/negative/service",
+      "assertion": "Reviewed S8 rename rejection in reviews/rename-s8-imports.md. Public read-only source types/consts, metadata-only schema targets, private/missing/ambiguous imports and namespaced schema type collisions produce no edits. Ambiguity-removal cases reject an edit that would change owner identity; exact edit sets exclude aliases that remain valid.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S8/negative/protocol",
+      "assertion": "Reviewed S8 rename rejection in reviews/rename-s8-imports.md. Public read-only source types/consts, metadata-only schema targets, private/missing/ambiguous imports and namespaced schema type collisions produce no edits. Ambiguity-removal cases reject an edit that would change owner identity; exact edit sets exclude aliases that remain valid.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -1,0 +1,514 @@
+{
+  "version": 1,
+  "id": "reference-rename-schema-type-imports",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_types\"\nname = \"schema_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub struct [[parcel-decl:start]]Parcel[[parcel-decl:end]] { value: i64 }\npub enum [[mode-decl:start]]Mode[[mode-decl:end]] { Idle }\npub trait [[trait-decl:start]]Readable[[trait-decl:end]] { fn read(self) -> i64; }\n",
+    "scripts/main.vela": "/* 中😀 */ use host::[[parcel-terminal:start]]Parcel[[parcel-terminal:end]] as [[parcel-alias:start]]Boxed[[parcel-alias:end]];\nuse host::[[mode-terminal:start]]Mode[[mode-terminal:end]] as [[mode-alias:start]]Stage[[mode-alias:end]];\nuse host::[[trait-terminal:start]]Readable[[trait-terminal:end]] as [[trait-alias:start]]R[[trait-alias:end]];\nuse host::[[opaque-terminal:start]]Opaque[[opaque-terminal:end]] as [[opaque-alias:start]]Ghost[[opaque-alias:end]];\nfn inspect(value: [[parcel-param:start]]Boxed[[parcel-param:end]], mode: [[mode-param:start]]Stage[[mode-param:end]], rule: [[trait-param:start]]R[[trait-param:end]], ghost: [[opaque-param:start]]Ghost[[opaque-param:end]]) -> [[parcel-return:start]]Boxed[[parcel-return:end]] { return value; }\nstruct MainLocal { value: i64 }\nimpl [[trait-impl-alias:start]]R[[trait-impl-alias:end]] for MainLocal { fn read(self) -> i64 { return self.value; } }\n",
+    "scripts/consumer.vela": "/* 中😀 */ fn consume(value: host::[[parcel-consumer:start]]Parcel[[parcel-consumer:end]], mode: host::[[mode-consumer:start]]Mode[[mode-consumer:end]], rule: host::[[trait-consumer:start]]Readable[[trait-consumer:end]]) -> host::[[parcel-consumer-return:start]]Parcel[[parcel-consumer-return:end]] { return value; }\nstruct ConsumerLocal { value: i64 }\nimpl host::[[trait-impl-qualified:start]]Readable[[trait-impl-qualified:end]] for ConsumerLocal { fn read(self) -> i64 { return self.value; } }\n",
+    "scripts/module.vela": "/* 中😀 */ use host as h;\nfn via_module(value: h::[[parcel-module:start]]Parcel[[parcel-module:end]], mode: h::[[mode-module:start]]Mode[[mode-module:end]], rule: h::[[trait-module:start]]Readable[[trait-module:end]]) -> h::[[parcel-module-return:start]]Parcel[[parcel-module-return:end]] { return value; }\nstruct ModuleLocal { value: i64 }\nimpl h::[[trait-impl-module:start]]Readable[[trait-impl-module:end]] for ModuleLocal { fn read(self) -> i64 { return self.value; } }\n",
+    "scripts/direct.vela": "/* 中😀 */ use host::[[parcel-direct-terminal:start]]Parcel[[parcel-direct-terminal:end]];\nfn direct(value: [[parcel-direct-use:start]]Parcel[[parcel-direct-use:end]]) -> [[parcel-direct-return:start]]Parcel[[parcel-direct-return:end]] { return value; }\n",
+    "scripts/missing.vela": "/* 中😀 */ use absent::[[missing-terminal:start]]Parcel[[missing-terminal:end]] as Unknown;\nfn missing(value: [[missing-use:start]]Unknown[[missing-use:end]]) {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "parcel": {
+        "name": "Parcel",
+        "rename": "ParcelNext",
+        "origin": "schema",
+        "qualified": "host::Parcel",
+        "schemaEntry": {
+          "collection": "types",
+          "index": 0
+        },
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "parcel-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "parcel-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "parcel-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "parcel-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "parcel-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "parcel-consumer-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "parcel-module",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "parcel-module-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-return",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "parcel-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "parcel-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "parcel-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "parcel-consumer-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "parcel-module",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "parcel-module-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-use",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/direct.vela",
+            "marker": "parcel-direct-return",
+            "kind": "Read"
+          }
+        ],
+        "queryRename": "ParcelNext"
+      },
+      "mode": {
+        "name": "Mode",
+        "rename": "ModeNext",
+        "origin": "schema",
+        "qualified": "host::Mode",
+        "schemaEntry": {
+          "collection": "types",
+          "index": 1
+        },
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "mode-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "mode-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "mode-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "mode-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "mode-module",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "mode-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "mode-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "mode-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "mode-module",
+            "kind": "Read"
+          }
+        ],
+        "queryRename": "ModeNext"
+      },
+      "trait": {
+        "name": "Readable",
+        "rename": "ReadableNext",
+        "origin": "schema",
+        "qualified": "host::Readable",
+        "schemaEntry": {
+          "collection": "traits",
+          "index": 0
+        },
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "trait-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "trait-module",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-impl-alias",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "trait-impl-qualified",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "trait-impl-module",
+            "kind": "Read"
+          }
+        ],
+        "edits": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-terminal",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "trait-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "trait-module",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "trait-impl-qualified",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "trait-impl-module",
+            "kind": "Read"
+          }
+        ],
+        "queryRename": "ReadableNext"
+      },
+      "opaque": {
+        "name": "Opaque",
+        "origin": "schema",
+        "qualified": "host::Opaque",
+        "readonly": true,
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "opaque-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "opaque-param",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "parcel-decl",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "parcel-alias",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "parcel-param",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "parcel-return",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "parcel-consumer",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "parcel-consumer-return",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "parcel-module",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "parcel-module-return",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/direct.vela",
+        "marker": "parcel-direct-terminal",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/direct.vela",
+        "marker": "parcel-direct-use",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/direct.vela",
+        "marker": "parcel-direct-return",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "mode-decl",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "mode-alias",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "mode-param",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "mode-consumer",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "mode-module",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-decl",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-alias",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-param",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "trait-consumer",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "trait-module",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-impl-alias",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "trait-impl-qualified",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "trait-impl-module",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "opaque-alias",
+        "group": "opaque"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "opaque-param",
+        "group": "opaque"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "parcel-terminal",
+        "group": "parcel"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "mode-terminal",
+        "group": "mode"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-terminal",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "opaque-terminal",
+        "group": "opaque"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-terminal"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-use"
+      }
+    ],
+    "checkDefinition": true,
+    "rejectionGroups": {
+      "parcel": [
+        "mode"
+      ],
+      "mode": [
+        "parcel"
+      ],
+      "trait": [
+        "parcel"
+      ]
+    },
+    "schema": {
+      "types": [
+        {
+          "name": "host::Parcel",
+          "fact": {
+            "kind": "host",
+            "name": "host::Parcel"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "parcel-decl"
+          }
+        },
+        {
+          "name": "host::Mode",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Mode"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "mode-decl"
+          }
+        },
+        {
+          "name": "host::Opaque",
+          "fact": {
+            "kind": "host",
+            "name": "host::Opaque"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "host::Readable",
+          "fact": {
+            "kind": "trait",
+            "name": "host::Readable"
+          },
+          "sourceSpan": {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-decl"
+          }
+        }
+      ]
+    }
+  }
+}

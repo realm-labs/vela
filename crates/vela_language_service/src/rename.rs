@@ -426,7 +426,7 @@ impl RenameTarget<'_> {
             Self::ScriptField(target) => &target.field,
             Self::ScriptMethod(target) => &target.method,
             Self::SchemaMember(target) => &target.member,
-            Self::SchemaType(target) => &target.name,
+            Self::SchemaType(target) => target.name.rsplit("::").next().unwrap_or(&target.name),
             Self::SchemaFunction(target) => target.name.rsplit("::").next().unwrap_or(&target.name),
             Self::SchemaVariant(target) => &target.variant,
             Self::EnumVariant(target) => &target.variant,
@@ -544,7 +544,10 @@ fn rename_target<'a>(
     if let Some(target) = schema::schema_member_declaration_target(databases, source_id, &token) {
         return Some(RenameTarget::SchemaMember(target));
     }
-    if let Some(target) = schema::schema_type_declaration_target(databases, source_id, &token) {
+    if let Some(target) = query
+        .source_record()
+        .and_then(|source| schema::schema_type_site_target(databases, source, &token))
+    {
         return Some(RenameTarget::SchemaType(target));
     }
     if let Some(target) = schema::schema_function_declaration_target(databases, source_id, &token) {
@@ -633,9 +636,6 @@ fn rename_target<'a>(
                 declaration: target,
                 token,
             }));
-        }
-        if let Some(target) = schema::schema_type_use_target(databases, declaration, text, &token) {
-            return Some(RenameTarget::SchemaType(target));
         }
         if let Some(target) = member_receiver_fact.and_then(|receiver| {
             token_text(text, token.range).and_then(|field| {

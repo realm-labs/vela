@@ -27,6 +27,7 @@ mod rename;
 mod schema;
 mod schema_function_sites;
 mod schema_record_fields;
+mod schema_type_sites;
 mod schema_variant_sites;
 mod selection;
 mod semantic_tokens;

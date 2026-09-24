@@ -75,6 +75,11 @@ fn imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries() 
 }
 
 #[test]
+fn schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners() {
+    run_matrix(oracle::schema_type_import_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
     run_matrix(oracle::schema_capture_spec);
 }
@@ -324,7 +329,11 @@ impl Driver {
                     "highlights {marker}"
                 );
                 let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
-                let edit=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":"renamed_symbol"}));
+                let query_rename = query["group"]
+                    .as_str()
+                    .and_then(|group| spec.oracle["groups"][group]["queryRename"].as_str())
+                    .unwrap_or("renamed_symbol");
+                let edit=self.query::<r::Rename>(json!({"textDocument":params["textDocument"],"position":params["position"],"newName":query_rename}));
                 if let Some(group) = query["group"].as_str() {
                     if let Some(target) = spec.oracle["groups"][group]["typeTarget"].as_object() {
                         let site = &json!(target);
@@ -388,7 +397,7 @@ impl Driver {
                     );
                     let mut expected = BTreeMap::<String, Vec<Value>>::new();
                     for site in oracle::edits(spec, group) {
-                        expected.entry(self.uri(site["file"].as_str().expect("fixture string"))).or_default().push(json!({"range":site_range(fixture,site),"newText":oracle::replacement(site,"renamed_symbol")}));
+                        expected.entry(self.uri(site["file"].as_str().expect("fixture string"))).or_default().push(json!({"range":site_range(fixture,site),"newText":oracle::replacement(site,query_rename)}));
                     }
                     let actual: BTreeMap<String, Vec<Value>> =
                         serde_json::from_value(edit["changes"].clone()).expect("changes");

@@ -61,6 +61,10 @@ pub(crate) fn imported_types_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-imported-types", crlf)
 }
 
+pub(crate) fn schema_type_import_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-schema-type-imports", crlf)
+}
+
 pub(crate) fn schema_capture_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-capture", crlf)
 }
@@ -199,15 +203,18 @@ pub(crate) fn renamed(spec: &Spec, group: &str, new_name: &str) -> Spec {
         let original = result.oracle["schema"][collection][index]["name"]
             .as_str()
             .expect("schema name");
-        result.oracle["schema"][collection][index]["name"] = if collection == "functions" {
+        let renamed_schema_name = if matches!(collection, "functions" | "types" | "traits") {
             original.rsplit_once("::").map_or_else(
                 || new_name.to_owned(),
                 |(owner, _)| format!("{owner}::{new_name}"),
             )
         } else {
             new_name.to_owned()
+        };
+        result.oracle["schema"][collection][index]["name"] = renamed_schema_name.clone().into();
+        if matches!(collection, "types" | "traits") {
+            result.oracle["schema"][collection][index]["fact"]["name"] = renamed_schema_name.into();
         }
-        .into();
         if collection == "variants" {
             result.oracle["schema"][collection][index]["fact"]["variant"] = new_name.into();
         }

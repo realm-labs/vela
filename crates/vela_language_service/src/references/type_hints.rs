@@ -123,7 +123,7 @@ fn source_type_hint_name_range(
         .or_else(|| last_name_range_in_text(text, span_range, name))
 }
 
-fn for_each_type_hint_in_declaration(
+pub(crate) fn for_each_type_hint_in_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
     mut visit: impl FnMut(&HirTypeHint),

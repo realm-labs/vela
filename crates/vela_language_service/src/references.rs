@@ -23,8 +23,8 @@ mod modules;
 pub(crate) mod schema;
 mod schema_functions;
 mod signatures;
-mod support;
-mod type_hints;
+pub(crate) mod support;
+pub(crate) mod type_hints;
 
 use support::{
     diagnostic_range, is_call_callee, is_identifier_boundary, last_name_range_in_text,
@@ -228,6 +228,9 @@ impl LanguageServiceDatabases {
             schema::schema_variant_use_target(self, source_id, source.text(), &token)
         {
             return schema::schema_variant_references(self, &target, include_declaration);
+        }
+        if let Some(site) = crate::schema_type_sites::target(self, source, token.range) {
+            return schema::schema_type_references(self, &site.identity, include_declaration);
         }
 
         if let Some(target) = crate::signature_parameters::target(self, &query) {

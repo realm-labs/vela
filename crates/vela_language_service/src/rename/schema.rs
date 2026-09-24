@@ -3,14 +3,16 @@ use std::collections::BTreeMap;
 use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::body::HirField;
-use vela_hir::module_graph::{Declaration, ModuleGraph};
-use vela_hir::type_hint::HirTypeHint;
+use vela_hir::module_graph::ModuleGraph;
 
-use crate::{DocumentId, LanguageServiceDatabases, QueryContext, TextRange, query_context};
+use crate::{
+    DocumentId, LanguageServiceDatabases, QueryContext, SourceRecord, TextRange, query_context,
+    schema_type_sites::{self, SchemaTypeKind},
+};
 
 use super::{
     RenameRisk, RenameRiskKind, RenameToken, TextEdit, WorkspaceEdit, diagnostic_range,
-    span_text_range, type_hint_name_range, workspace_edit_for_rename,
+    span_text_range, workspace_edit_for_rename,
 };
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -129,8 +131,8 @@ pub(super) fn rename_schema_type(
     }
 
     let mut edits_by_document = BTreeMap::<DocumentId, Vec<TextEdit>>::new();
-    push_schema_type_declaration_edit(databases, &target, new_name, &mut edits_by_document)?;
-    push_schema_type_hint_edits(databases, &target, new_name, &mut edits_by_document);
+    schema_type_span(databases, &target)?;
+    push_schema_type_site_edits(databases, &target, new_name, &mut edits_by_document);
 
     workspace_edit_for_rename(
         databases,
@@ -171,41 +173,23 @@ fn schema_rename_risk(symbol: &str) -> Vec<RenameRisk> {
     }]
 }
 
-pub(super) fn schema_type_declaration_target(
+pub(super) fn schema_type_site_target(
     databases: &LanguageServiceDatabases,
-    source_id: SourceId,
+    source: &SourceRecord,
     token: &RenameToken,
 ) -> Option<SchemaTypeRenameTarget> {
-    let locations = databases.schema_db().source_locations();
-    let facts = databases.schema_db().facts();
-
-    for (name, _) in facts.types() {
-        let Some(span) = locations.type_span(name) else {
-            continue;
-        };
-        if source_span_contains_token(span, source_id, token) {
-            return Some(SchemaTypeRenameTarget {
-                name: name.to_owned(),
-                kind: SchemaTypeRenameKind::Type,
-                token: token.clone(),
-            });
-        }
-    }
-
-    for (name, _) in facts.traits() {
-        let Some(span) = locations.trait_span(name) else {
-            continue;
-        };
-        if source_span_contains_token(span, source_id, token) {
-            return Some(SchemaTypeRenameTarget {
-                name: name.to_owned(),
-                kind: SchemaTypeRenameKind::Trait,
-                token: token.clone(),
-            });
-        }
-    }
-
-    None
+    let site = schema_type_sites::target(databases, source, token.range)?;
+    source_backed_schema_type_target(
+        databases,
+        SchemaTypeRenameTarget {
+            name: site.identity.name,
+            kind: match site.identity.kind {
+                SchemaTypeKind::Type => SchemaTypeRenameKind::Type,
+                SchemaTypeKind::Trait => SchemaTypeRenameKind::Trait,
+            },
+            token: token.clone(),
+        },
+    )
 }
 
 pub(super) fn schema_function_declaration_target(
@@ -308,22 +292,6 @@ pub(super) fn schema_member_declaration_target(
     None
 }
 
-pub(super) fn schema_type_use_target(
-    databases: &LanguageServiceDatabases,
-    owner: &Declaration,
-    text: &str,
-    token: &RenameToken,
-) -> Option<SchemaTypeRenameTarget> {
-    let graph = databases.hir_db().graph();
-    let mut target = None;
-    super::for_each_type_hint_in_declaration(graph, owner, |hint| {
-        if target.is_none() {
-            target = schema_type_target_for_hint_at_token(databases, text, hint, token);
-        }
-    });
-    target
-}
-
 pub(super) fn schema_function_use_target(
     databases: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
@@ -384,23 +352,33 @@ pub(super) fn schema_member_target_for_receiver_fact(
     source_backed_schema_target(databases, target)
 }
 
-fn push_schema_type_declaration_edit(
+fn push_schema_type_site_edits(
     databases: &LanguageServiceDatabases,
     target: &SchemaTypeRenameTarget,
     new_name: &str,
     edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
-) -> Option<()> {
-    let span = schema_type_span(databases, target)?;
-    let source = databases.source_record_for_rename(span.source)?;
-    let range = span_text_range(span)?;
-    edits_by_document
-        .entry(source.document_id().clone())
-        .or_default()
-        .push(TextEdit {
-            range: diagnostic_range(source.text(), range),
-            new_text: new_name.to_owned(),
-        });
-    Some(())
+) {
+    let kind = match target.kind {
+        SchemaTypeRenameKind::Type => SchemaTypeKind::Type,
+        SchemaTypeRenameKind::Trait => SchemaTypeKind::Trait,
+    };
+    for source in databases.source_db().records().values() {
+        for site in schema_type_sites::sites(databases, source) {
+            if site.identity.name != target.name || site.identity.kind != kind {
+                continue;
+            }
+            let Some(range) = site.edit_range else {
+                continue;
+            };
+            edits_by_document
+                .entry(source.document_id().clone())
+                .or_default()
+                .push(TextEdit {
+                    range: diagnostic_range(source.text(), range),
+                    new_text: new_name.to_owned(),
+                });
+        }
+    }
 }
 
 fn push_schema_function_declaration_edit(
@@ -458,32 +436,6 @@ fn push_schema_variant_declaration_edit(
             new_text: new_name.to_owned(),
         });
     Some(())
-}
-
-fn push_schema_type_hint_edits(
-    databases: &LanguageServiceDatabases,
-    target: &SchemaTypeRenameTarget,
-    new_name: &str,
-    edits_by_document: &mut BTreeMap<DocumentId, Vec<TextEdit>>,
-) {
-    let graph = databases.hir_db().graph();
-    for owner in graph.declarations() {
-        super::for_each_type_hint_in_declaration(graph, owner, |hint| {
-            if schema_type_target_for_hint(databases, hint)
-                .is_some_and(|found| found.name == target.name && found.kind == target.kind)
-                && let Some(source) = databases.source_record_for_rename(hint.span.source)
-                && let Some(range) = schema_type_hint_name_range(source.text(), hint, target)
-            {
-                edits_by_document
-                    .entry(source.document_id().clone())
-                    .or_default()
-                    .push(TextEdit {
-                        range: diagnostic_range(source.text(), range),
-                        new_text: new_name.to_owned(),
-                    });
-            }
-        });
-    }
 }
 
 fn push_schema_function_use_edits(
@@ -670,65 +622,6 @@ fn push_schema_member_site_edit(
     }
 }
 
-fn schema_type_target_for_hint_at_token(
-    databases: &LanguageServiceDatabases,
-    text: &str,
-    hint: &HirTypeHint,
-    token: &RenameToken,
-) -> Option<SchemaTypeRenameTarget> {
-    let target = schema_type_target_for_hint(databases, hint)?;
-    let range = schema_type_hint_name_range(text, hint, &target)?;
-    (range.start <= token.range.start && token.range.end <= range.end).then(|| {
-        let mut target = target;
-        target.token = token.clone();
-        target
-    })
-}
-
-fn schema_type_target_for_hint(
-    databases: &LanguageServiceDatabases,
-    hint: &HirTypeHint,
-) -> Option<SchemaTypeRenameTarget> {
-    if !hint.args.is_empty() {
-        return None;
-    }
-    let schema = databases.schema_db().facts();
-    let qualified = hint.path.join("::");
-    let candidates = [qualified.as_str(), hint.path.last()?.as_str()];
-    for name in candidates {
-        if schema.type_fact(name).is_some() {
-            let target = SchemaTypeRenameTarget {
-                name: name.to_owned(),
-                kind: SchemaTypeRenameKind::Type,
-                token: RenameToken {
-                    range: TextRange::new(0, 0),
-                },
-            };
-            return source_backed_schema_type_target(databases, target);
-        }
-        if schema.trait_fact(name).is_some() {
-            let target = SchemaTypeRenameTarget {
-                name: name.to_owned(),
-                kind: SchemaTypeRenameKind::Trait,
-                token: RenameToken {
-                    range: TextRange::new(0, 0),
-                },
-            };
-            return source_backed_schema_type_target(databases, target);
-        }
-    }
-    None
-}
-
-fn schema_type_hint_name_range(
-    text: &str,
-    hint: &HirTypeHint,
-    target: &SchemaTypeRenameTarget,
-) -> Option<TextRange> {
-    let name = target.name.rsplit("::").next().unwrap_or(&target.name);
-    type_hint_name_range(text, hint, name)
-}
-
 fn schema_function_span(
     databases: &LanguageServiceDatabases,
     target: &SchemaFunctionRenameTarget,
@@ -759,11 +652,16 @@ fn schema_type_span(
     databases: &LanguageServiceDatabases,
     target: &SchemaTypeRenameTarget,
 ) -> Option<Span> {
-    let locations = databases.schema_db().source_locations();
-    match target.kind {
-        SchemaTypeRenameKind::Type => locations.type_span(&target.name),
-        SchemaTypeRenameKind::Trait => locations.trait_span(&target.name),
-    }
+    schema_type_sites::declaration_span(
+        databases,
+        &schema_type_sites::SchemaTypeIdentity {
+            name: target.name.clone(),
+            kind: match target.kind {
+                SchemaTypeRenameKind::Type => SchemaTypeKind::Type,
+                SchemaTypeRenameKind::Trait => SchemaTypeKind::Trait,
+            },
+        },
+    )
 }
 
 fn schema_member_span(
@@ -821,10 +719,14 @@ fn schema_type_name_conflicts(
     target: &SchemaTypeRenameTarget,
     new_name: &str,
 ) -> bool {
-    if new_name == target.name {
+    if new_name == target.name.rsplit("::").next().unwrap_or(&target.name) {
         return false;
     }
-    schema.type_fact(new_name).is_some() || schema.trait_fact(new_name).is_some()
+    let renamed = target.name.rsplit_once("::").map_or_else(
+        || new_name.to_owned(),
+        |(owner, _)| format!("{owner}::{new_name}"),
+    );
+    schema.type_fact(&renamed).is_some() || schema.trait_fact(&renamed).is_some()
 }
 
 fn schema_function_name_conflicts(

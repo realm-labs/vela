@@ -212,7 +212,7 @@
             "origin": "schema",
             "symbol": "host::ZzType",
             "docs": "Registered type docs.",
-            "target": null,
+            "target": "scripts/origins.vela",
             "marker": "type",
             "insertFormat": "PlainText"
           }
