@@ -3651,10 +3651,33 @@
         "rename/syntax/S8/negative/protocol"
       ],
       "summary": "Advance 16 S8 source-value import paths for references, highlight, prepare-rename and rename; broad syntax cells remain unreviewed. Independent eight-script fixture runs 22 queries across public const, public extern state and private const under LF/CRLF with Unicode UTF-16 and encoded paths. Complete sets include direct imports, explicit aliases, qualified paths, module aliases and a closed consumer; private cross-module and missing imports stay unowned. Public const is read-only, private const renames inside its module, and state rename applies multi-file edits while retaining aliases and exact hotReloadAbi risk annotations. Both layers compare complete references/highlights/prepare/edits, apply edits, parse, requery and restore. Initial module-alias constant reference was missing; shared visible source value resolution now includes functions, consts and states. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 685 plus two historical ignored/protocol 671 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. B00-B03 snapshots stay fixed. Resume B04.34 imported source type/trait boundaries and remaining syntax partitions plus UX05/UX06; fresh macOS when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-dsy1ld/results.json; audit target/lsp-matrix/run-EHgFA6/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.34",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S8/positive/service",
+        "references/syntax/S8/positive/protocol",
+        "references/syntax/S8/negative/service",
+        "references/syntax/S8/negative/protocol",
+        "highlight/syntax/S8/positive/service",
+        "highlight/syntax/S8/positive/protocol",
+        "highlight/syntax/S8/negative/service",
+        "highlight/syntax/S8/negative/protocol",
+        "prepare-rename/syntax/S8/positive/service",
+        "prepare-rename/syntax/S8/positive/protocol",
+        "prepare-rename/syntax/S8/negative/service",
+        "prepare-rename/syntax/S8/negative/protocol",
+        "rename/syntax/S8/positive/service",
+        "rename/syntax/S8/positive/protocol",
+        "rename/syntax/S8/negative/service",
+        "rename/syntax/S8/negative/protocol"
+      ],
+      "summary": "Advance 16 S8 imported source type and trait paths for references, highlight, prepare-rename and rename; broad syntax cells remain unreviewed pending schema type imports. Independent seven-file fixture runs 33 queries in five struct, enum, public trait, private struct and private trait groups under LF/CRLF with Unicode UTF-16 and encoded paths. Exact service/protocol sets cover direct and module aliases, qualified closed consumers, record constructors, aliased and qualified trait impl headers, inaccessible private imports and missing paths. Public source types remain read-only; private struct and trait renames apply exact edits, requery and restore. Fixed record-constructor reference range, module alias type-hint ownership, trait import and impl reference collection, aliased impl navigation and private trait impl rename. Workspace, fmt, Clippy, Node 75 and Windows VSIX 10 passed; ordinary audit service 686 plus two historical ignored/protocol 672 passed. Audit remains 236 verified, 1089 unreviewed, two N/A, zero failed; remaining 1230. An initial concurrent Windows audit timed out after VSIX interactions passed; the serialized rerun passed and the failure log is retained. B00-B03 snapshots stay fixed. Resume B04.35 schema type imports and remaining syntax partitions plus UX05/UX06; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-5xfErc/results.json; audit target/lsp-matrix/run-fn1XH5/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.34",
-  "nextTask": "B04.34",
+  "activeChild": "B04.35",
+  "nextTask": "B04.35",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6255,7 +6278,13 @@
     "target/b04-31-workspace.log",
     "target/b04-31-editor.log",
     "target/lsp-matrix/run-BiUuUy/report.json",
-    "editors/vscode/test-results/run-7KFMMO/results.json"
+    "editors/vscode/test-results/run-7KFMMO/results.json",
+    "target/b04-34-workspace.log",
+    "target/b04-34-clippy.log",
+    "target/b04-34-vscode.log",
+    "target/b04-34-vscode-rerun.log",
+    "target/lsp-matrix/run-fn1XH5/report.json",
+    "editors/vscode/test-results/run-5xfErc/results.json"
   ],
   "openIssues": [
     {

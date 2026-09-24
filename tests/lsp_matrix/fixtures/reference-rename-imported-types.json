@@ -1,0 +1,349 @@
+{
+  "version": 1,
+  "id": "reference-rename-imported-types",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.imported_types\"\nname = \"imported_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub struct [[struct-decl:start]]Inventory[[struct-decl:end]] { slots: i64 }\npub enum [[enum-decl:start]]Phase[[enum-decl:end]] { Ready, Done }\npub trait [[trait-decl:start]]Rewardable[[trait-decl:end]] { fn grant(self) -> i64; }\nstruct [[private-decl:start]]Secret[[private-decl:end]] { value: i64 }\nfn own(value: [[private-param:start]]Secret[[private-param:end]]) -> [[private-return:start]]Secret[[private-return:end]] { return value; }\ntrait [[private-trait-decl:start]]HiddenTrait[[private-trait-decl:end]] { fn read(self) -> i64; }\nstruct HiddenOwner { value: i64 }\nimpl [[private-trait-impl:start]]HiddenTrait[[private-trait-impl:end]] for HiddenOwner { fn read(self) -> i64 { return self.value; } }\n",
+    "scripts/main.vela": "/* 中😀 */ use helpers::[[struct-terminal:start]]Inventory[[struct-terminal:end]] as [[struct-alias:start]]Bag[[struct-alias:end]];\nuse helpers::[[enum-terminal:start]]Phase[[enum-terminal:end]] as [[enum-alias:start]]Stage[[enum-alias:end]];\nuse helpers::[[trait-terminal:start]]Rewardable[[trait-terminal:end]] as [[trait-alias:start]]R[[trait-alias:end]];\nstruct Local { value: i64 }\nimpl [[trait-impl-alias:start]]R[[trait-impl-alias:end]] for Local { fn grant(self) -> i64 { return self.value; } }\nfn inspect(item: [[struct-param:start]]Bag[[struct-param:end]], stage: [[enum-param:start]]Stage[[enum-param:end]]) -> [[struct-return:start]]Bag[[struct-return:end]] { let made = [[struct-constructor:start]]Bag[[struct-constructor:end]] { slots: 2 }; return item; }\n",
+    "scripts/consumer.vela": "/* 中😀 */ struct LocalConsumer { value: i64 }\nimpl helpers::[[trait-qualified:start]]Rewardable[[trait-qualified:end]] for LocalConsumer { fn grant(self) -> i64 { return self.value; } }\nfn closed(item: helpers::[[struct-consumer:start]]Inventory[[struct-consumer:end]], phase: helpers::[[enum-consumer:start]]Phase[[enum-consumer:end]]) -> helpers::[[struct-consumer-return:start]]Inventory[[struct-consumer-return:end]] { return item; }\n",
+    "scripts/module.vela": "/* 中😀 */ use helpers as h;\nstruct LocalModule { value: i64 }\nimpl h::[[trait-module:start]]Rewardable[[trait-module:end]] for LocalModule { fn grant(self) -> i64 { return self.value; } }\nfn module_types(item: h::[[struct-module:start]]Inventory[[struct-module:end]], phase: h::[[enum-module:start]]Phase[[enum-module:end]]) -> h::[[struct-module-return:start]]Inventory[[struct-module-return:end]] { return item; }\n",
+    "scripts/private.vela": "/* 中😀 */ use helpers::[[private-import:start]]Secret[[private-import:end]] as Hidden;\nfn invalid(value: [[private-use:start]]Hidden[[private-use:end]]) { }\nuse helpers::[[private-trait-import:start]]HiddenTrait[[private-trait-import:end]] as H;\nfn invalid_trait(value: [[private-trait-use:start]]H[[private-trait-use:end]]) {}\n",
+    "scripts/missing.vela": "/* 中😀 */ use absent::[[missing-import:start]]Inventory[[missing-import:end]] as Unknown;\nfn invalid(value: [[missing-use:start]]Unknown[[missing-use:end]]) { }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "struct": {
+        "name": "Inventory",
+        "origin": "source",
+        "qualified": "helpers::Inventory",
+        "readonly": true,
+        "sourceDefinition": true,
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "struct-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "struct-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "struct-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "struct-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "struct-constructor",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "struct-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "struct-consumer-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "struct-module",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "struct-module-return",
+            "kind": "Read"
+          }
+        ]
+      },
+      "enum": {
+        "name": "Phase",
+        "origin": "source",
+        "qualified": "helpers::Phase",
+        "readonly": true,
+        "sourceDefinition": true,
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "enum-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "enum-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "enum-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "enum-consumer",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "enum-module",
+            "kind": "Read"
+          }
+        ]
+      },
+      "trait": {
+        "name": "Rewardable",
+        "origin": "source",
+        "qualified": "helpers::Rewardable",
+        "readonly": true,
+        "sourceDefinition": true,
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "trait-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-alias",
+            "kind": "Import"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "trait-impl-alias",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "trait-qualified",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/module.vela",
+            "marker": "trait-module",
+            "kind": "Read"
+          }
+        ]
+      },
+      "private": {
+        "name": "Secret",
+        "rename": "HiddenType",
+        "origin": "source",
+        "qualified": "helpers::Secret",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-param",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-return",
+            "kind": "Read"
+          }
+        ]
+      },
+      "private_trait": {
+        "name": "HiddenTrait",
+        "rename": "OtherTrait",
+        "origin": "source",
+        "qualified": "helpers::HiddenTrait",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-trait-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-trait-impl",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "struct-decl",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "struct-alias",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "struct-param",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "struct-return",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "struct-constructor",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "struct-consumer",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "struct-consumer-return",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "struct-module",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "struct-module-return",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "enum-decl",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "enum-alias",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "enum-param",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "enum-consumer",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "enum-module",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "trait-decl",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-alias",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-impl-alias",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/consumer.vela",
+        "marker": "trait-qualified",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/module.vela",
+        "marker": "trait-module",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-decl",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-param",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-return",
+        "group": "private"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "struct-terminal",
+        "group": "struct"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "enum-terminal",
+        "group": "enum"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "trait-terminal",
+        "group": "trait"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-import"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-use"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-import"
+      },
+      {
+        "file": "scripts/missing.vela",
+        "marker": "missing-use"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-trait-decl",
+        "group": "private_trait"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-trait-impl",
+        "group": "private_trait"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-trait-import"
+      },
+      {
+        "file": "scripts/private.vela",
+        "marker": "private-trait-use"
+      }
+    ],
+    "rejections": {
+      "struct": [],
+      "enum": [],
+      "trait": [],
+      "private": [],
+      "private_trait": []
+    }
+  }
+}

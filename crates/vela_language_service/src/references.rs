@@ -3,8 +3,8 @@ use crate::{
     QueryContext, SymbolRef, TextRange, hir_path_sites,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
-        qualified_source_declaration_name, source_enum_variant_symbol, source_impl_method_symbol,
-        source_member_symbol, source_symbol_for_declaration, source_symbol_for_declaration_id,
+        source_enum_variant_symbol, source_impl_method_symbol, source_member_symbol,
+        source_symbol_for_declaration,
     },
     symbol_target::SymbolTarget,
 };
@@ -12,7 +12,9 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
-use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{
+    Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph, Visibility,
+};
 use vela_hir::type_hint::ImplMetadataKind;
 
 mod fields;
@@ -495,6 +497,21 @@ impl LanguageServiceDatabases {
             );
         }
 
+        if graph
+            .declaration(declaration)
+            .is_some_and(|owner| owner.kind == DeclarationKind::Trait)
+        {
+            let target = TraitReferenceTarget { owner: declaration };
+            for source in self.source_db().records().values() {
+                references.extend(trait_impl_use_references_for_source(
+                    graph,
+                    source,
+                    &target,
+                    symbol.clone(),
+                ));
+            }
+        }
+
         references.sort_by_key(|reference| {
             let start = reference.range.start();
             (
@@ -518,39 +535,7 @@ impl LanguageServiceDatabases {
         target: &TraitReferenceTarget,
         include_declaration: bool,
     ) -> Vec<Reference> {
-        let graph = self.hir_db().graph();
-        let mut references = Vec::new();
-
-        if include_declaration
-            && let Some(declaration) = graph.declaration(target.owner)
-            && let Some(reference) =
-                self.reference_for_declaration(declaration, ReferenceKind::Declaration)
-        {
-            references.push(reference);
-        }
-        let Some(symbol) = source_symbol_for_declaration_id(graph, target.owner) else {
-            return references;
-        };
-
-        for source in self.source_db().records().values() {
-            references.extend(trait_impl_use_references_for_source(
-                graph,
-                source,
-                target,
-                symbol.clone(),
-            ));
-        }
-
-        references.sort_by_key(|reference| {
-            let start = reference.range.start();
-            (
-                reference.document_id.as_str().to_owned(),
-                start.line,
-                start.character,
-                reference.kind,
-            )
-        });
-        references
+        self.declaration_references(target.owner, include_declaration)
     }
 
     fn enum_variant_references(
@@ -750,7 +735,8 @@ fn trait_impl_use_target(
         if !(name_range.start <= token.range.start && token.range.end <= name_range.end) {
             return None;
         }
-        trait_declaration_for_path(graph, trait_path).map(|owner| TraitReferenceTarget { owner })
+        trait_declaration_for_path(graph, declaration.module, trait_path)
+            .map(|owner| TraitReferenceTarget { owner })
     })
 }
 
@@ -771,7 +757,8 @@ fn trait_impl_use_references_for_source(
             continue;
         };
         if declaration.span.source != source_id
-            || trait_declaration_for_path(graph, trait_path) != Some(target.owner)
+            || trait_declaration_for_path(graph, declaration.module, trait_path)
+                != Some(target.owner)
         {
             continue;
         }
@@ -791,26 +778,19 @@ fn trait_impl_use_references_for_source(
     references
 }
 
-fn trait_declaration_for_path(graph: &ModuleGraph, trait_path: &[String]) -> Option<HirDeclId> {
-    graph.declarations().find_map(|declaration| {
-        (declaration.kind == DeclarationKind::Trait
-            && declaration_path_matches(graph, declaration, trait_path))
-        .then_some(declaration.id)
-    })
-}
-
-fn declaration_path_matches(
+pub(crate) fn trait_declaration_for_path(
     graph: &ModuleGraph,
-    declaration: &Declaration,
+    module: vela_hir::ids::ModuleId,
     path: &[String],
-) -> bool {
-    if path.len() == 1 {
-        return path.first().is_some_and(|name| name == &declaration.name);
-    }
-    qualified_source_declaration_name(graph, declaration) == path.join("::")
+) -> Option<HirDeclId> {
+    let expanded = graph.expand_import_path(module, path)?;
+    let declaration =
+        graph.resolve_visible_declaration_path(module, &expanded, DeclarationKind::Trait)?;
+    (declaration.module == module || declaration.visibility == Visibility::Public)
+        .then_some(declaration.id)
 }
 
-fn trait_path_name_range_in_text(
+pub(crate) fn trait_path_name_range_in_text(
     text: &str,
     range: TextRange,
     trait_path: &[String],

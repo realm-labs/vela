@@ -41,6 +41,7 @@ mod shorthand;
 mod shorthand_tests;
 mod signatures;
 mod source_variant_lookup;
+mod trait_impls;
 mod variants;
 
 pub use edit::{
@@ -202,6 +203,7 @@ impl LanguageServiceDatabases {
         self.push_import_edits(target.declaration, new_name, &mut edits_by_document);
         self.push_declaration_use_edits(target.declaration, new_name, &mut edits_by_document);
         self.push_type_hint_use_edits(target.declaration, new_name, &mut edits_by_document);
+        self.push_trait_impl_use_edits(target.declaration, new_name, &mut edits_by_document);
 
         workspace_edit_for_rename(
             self,
@@ -560,6 +562,14 @@ fn rename_target<'a>(
 
     if let Some(declaration) =
         crate::hir_path_sites::imported_declaration(graph, source_id, token.range)
+        && can_rename_declaration_target(declaration)
+    {
+        return Some(RenameTarget::Declaration(DeclarationRenameTarget {
+            declaration,
+            token,
+        }));
+    }
+    if let Some(declaration) = trait_impls::declaration_at_token(graph, source_id, text, &token)
         && can_rename_declaration_target(declaration)
     {
         return Some(RenameTarget::Declaration(DeclarationRenameTarget {

@@ -70,6 +70,11 @@ fn imported_value_matrix_preserves_const_state_and_visibility_boundaries() {
 }
 
 #[test]
+fn imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries() {
+    run_matrix(oracle::imported_types_spec);
+}
+
+#[test]
 fn schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits() {
     run_matrix(oracle::schema_capture_spec);
 }

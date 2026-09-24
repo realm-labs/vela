@@ -40,8 +40,11 @@ impl LanguageServiceDatabases {
                 if index + 1 != tokens.len() {
                     return Some(None);
                 }
+                let Some(expanded) = graph.expand_import_path(module, &path) else {
+                    return Some(None);
+                };
                 if let Some(declaration) =
-                    graph.resolve_visible_declaration_path(module, &path, kind)
+                    graph.resolve_visible_declaration_path(module, &expanded, kind)
                 {
                     return Some(
                         (declaration.module == module
@@ -50,7 +53,7 @@ impl LanguageServiceDatabases {
                             .flatten(),
                     );
                 }
-                let name = path.join("::");
+                let name = expanded.join("::");
                 return Some(match kind {
                     DeclarationKind::Trait => self.schema_trait_definition_for_name(&name),
                     _ => self.schema_type_definition_for_name(&name),

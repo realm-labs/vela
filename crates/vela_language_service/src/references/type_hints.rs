@@ -1,7 +1,7 @@
 use vela_common::SourceId;
 use vela_hir::{
     ids::HirDeclId,
-    module_graph::{Declaration, DeclarationKind, ImportResolution, ModuleGraph},
+    module_graph::{Declaration, DeclarationKind, ModuleGraph, Visibility},
     type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
 };
 
@@ -96,38 +96,16 @@ fn type_declaration_for_hint_path<'a>(
     owner: &Declaration,
     path: &[String],
 ) -> Option<&'a Declaration> {
+    let expanded = graph.expand_import_path(owner.module, path)?;
     [
         DeclarationKind::Struct,
         DeclarationKind::Enum,
         DeclarationKind::Trait,
     ]
     .into_iter()
-    .find_map(|kind| {
-        graph
-            .module_key(owner.module)
-            .and_then(|module_key| graph.declaration_by_type_path(path, module_key, kind))
-            .or_else(|| imported_type_declaration_for_hint_path(graph, owner, path, kind))
-    })
-}
-
-fn imported_type_declaration_for_hint_path<'a>(
-    graph: &'a ModuleGraph,
-    owner: &Declaration,
-    path: &[String],
-    kind: DeclarationKind,
-) -> Option<&'a Declaration> {
-    let [name] = path else {
-        return None;
-    };
-    graph.imports(owner.module)?.iter().find_map(|import| {
-        let binding_name = import.alias.as_ref().or_else(|| import.path.last())?;
-        if binding_name != name {
-            return None;
-        }
-        let ImportResolution::Declaration(declaration) = import.resolution?;
-        graph
-            .declaration(declaration)
-            .filter(|declaration| declaration.kind == kind)
+    .find_map(|kind| graph.resolve_visible_declaration_path(owner.module, &expanded, kind))
+    .filter(|declaration| {
+        declaration.module == owner.module || declaration.visibility == Visibility::Public
     })
 }
 

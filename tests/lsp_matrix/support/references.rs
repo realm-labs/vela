@@ -57,6 +57,10 @@ pub(crate) fn imported_values_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-imported-values", crlf)
 }
 
+pub(crate) fn imported_types_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-imported-types", crlf)
+}
+
 pub(crate) fn schema_capture_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-schema-capture", crlf)
 }

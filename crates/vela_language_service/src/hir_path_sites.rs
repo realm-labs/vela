@@ -51,9 +51,10 @@ pub(crate) fn resolved_use_range(graph: &ModuleGraph, span: Span) -> Option<Text
         graph
             .paths_in_source(span.source)
             .filter(|path| is_expression_path(path.kind))
+            .filter(|path| path.origin.span.start == span.start)
             .filter_map(site)
             .filter(|site| {
-                range.start <= site.segment_range.start && site.segment_range.end == range.end
+                range.start <= site.segment_range.start && site.segment_range.end <= range.end
             })
             .map(|site| site.segment_range)
             .max_by_key(|segment| segment.start)
