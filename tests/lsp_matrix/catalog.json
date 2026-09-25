@@ -243,6 +243,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-dependency-lifecycle.md. With a dirty importer and closed defining file, renaming grant to award and restoring grant preserves the exact two unresolved-name and independent Array diagnostics, including UTF-16 ranges and candidate metadata; long-lived publications equal fresh servers under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::dependency_lifecycle::dependency_lifecycle_updates_diagnostics_and_import_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-dependency-lifecycle.md. Deleting the closed defining file publishes the exact dirty-importer diagnostic set while a private same-name decoy remains unavailable; full long-lived diagnostics equal a fresh workspace under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::dependency_lifecycle::dependency_lifecycle_updates_diagnostics_and_import_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-dependency-lifecycle.md. Renaming the defining export changes the exact one-edit import action from grant to award and restoring it reverses the choice, while three Array repairs persist. Applied imports match whole source oracles, clear only the selected diagnostic and leave no stale action; complete actions equal fresh servers under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::dependency_lifecycle::dependency_lifecycle_updates_diagnostics_and_import_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-dependency-lifecycle.md. Deleting the defining module suppresses both import Quick Fix sets, including a private decoy, but retains three exact versioned Array repairs. The dirty importer's complete actions equal a fresh server under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::dependency_lifecycle::dependency_lifecycle_updates_diagnostics_and_import_actions" }
+      ]
+    },
+    {
       "requirement": "references/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
       "tests": [

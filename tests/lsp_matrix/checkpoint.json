@@ -5275,10 +5275,21 @@
         "code-action/states/stale_schema/protocol"
       ],
       "summary": "Close four diagnostics/code-action missing and stale schema protocol states with one encoded Unicode workspace and LF/CRLF fixture. A live schema moves through level, deletion, rank, malformed JSON and restored level. Every phase pins complete source diagnostic codes, messages, severities, UTF-16 ranges and candidate replacements; missing/invalid states publish one controlled warning, suppress host guesses and preserve the source-owned Array error. Exact action titles, kinds and single marked edits in legacy/versioned projections change from level to rank and back; source Array fixes persist. Fresh servers agree with long-lived complete diagnostics and actions at every phase. Applying current level/rank actions in fresh open documents matches whole independent source oracles, clears only the selected error and leaves no stale action. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 454 catalog verified, 871 unreviewed, two N/A, zero failed; B05 execution has 38 verified and 56 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-hkg5GM/results.json; input editors/vscode/test-results/input-htcrcH/results.json; audit target/lsp-matrix/run-g1kCoP/report.json. Resume B05.9. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.9",
+      "revision": null,
+      "requirements": [
+        "diagnostics/states/dependency_change/protocol",
+        "diagnostics/states/dependency_delete/protocol",
+        "code-action/states/dependency_change/protocol",
+        "code-action/states/dependency_delete/protocol"
+      ],
+      "summary": "Close four diagnostics/code-action dependency change and delete protocol states with a closed defining module and dirty importer in an encoded Unicode workspace under LF/CRLF. Changing the public export from grant to award, deleting the module and restoring grant publish exact importer diagnostics and change only the available import Quick Fix; a private same-name decoy never becomes importable. The independent Array diagnostic and three exact actions persist. Every phase pins codes, messages, severity, UTF-16 ranges, candidates, action titles, kinds, target URI and single legacy/versioned edit; complete long-lived results equal fresh servers. Applying current imports matches independent whole-source oracles, clears only the selected name and leaves no stale action; CRLF checks include the actual LF import insertion. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 458 catalog verified, 867 unreviewed, two N/A, zero failed; B05 execution has 42 verified and 52 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-5UjL2n/results.json; input editors/vscode/test-results/input-aOdtce/results.json; audit target/lsp-matrix/run-Dq94aF/report.json. Resume B05.10. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.9",
+  "nextTask": "B05.10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7686,7 +7697,8 @@
     "target/lsp-matrix/run-Y5cTMZ/report.json",
     "target/lsp-matrix/run-H2Ai45/report.json",
     "target/lsp-matrix/run-GBrFyB/report.json",
-    "target/lsp-matrix/run-g1kCoP/report.json"
+    "target/lsp-matrix/run-g1kCoP/report.json",
+    "target/lsp-matrix/run-Dq94aF/report.json"
   ],
   "openIssues": [
     {
@@ -9613,8 +9625,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "feff15c05d5d0f584937ab15893387d31b3bc274",
-          "treeSha256": "349bf90734116b5cbec4652f4d7b9341bef89fb5322fbdb366954b9388427c62"
+          "revision": "32425f60c46b8437e6abb2e8a8f771fbda6840fe",
+          "treeSha256": "64d02e1eba7fdebe58a6b14fc455b9f05d47f37864e23c884a30e21e758be946"
         },
         "profile": {
           "platform": "win32",
@@ -9622,11 +9634,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-g1kCoP/report.json"
+          "target/lsp-matrix/run-Dq94aF/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-hkg5GM/results.json --local-results editors/vscode/test-results/input-htcrcH/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-5UjL2n/results.json --local-results editors/vscode/test-results/input-aOdtce/results.json",
             "exitCode": 0
           }
         ]

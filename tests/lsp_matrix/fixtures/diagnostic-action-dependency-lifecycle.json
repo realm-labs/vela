@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-dependency-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_dependency\"\nname = \"diagnostic_dependency\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/game/reward.vela": "/* 中😀 */ pub fn grant() {}\n",
+    "scripts/game/decoy.vela": "fn grant() {}\n",
+    "scripts/game/main.vela": "fn missing_grant() { return [[grant:start]]grant[[grant:end]]; }\nfn missing_award() { return [[award:start]]award[[award:end]]; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[control:start]]frist[[control:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "states": [
+      { "id": "disk", "available": "grant" },
+      { "id": "dirty", "available": "grant" },
+      { "id": "changed", "available": "award" },
+      { "id": "deleted", "available": null },
+      { "id": "recreated", "available": "grant" }
+    ],
+    "dirty": "// dirty importer😀\nfn missing_grant() { return [[grant:start]]grant[[grant:end]]; }\nfn missing_award() { return [[award:start]]award[[award:end]]; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[control:start]]frist[[control:end]]();\n}\n",
+    "changedDependency": "/* 中😀 */ pub fn award() {}\n",
+    "recreatedDependency": "/* 中😀 */ pub fn grant() {}\n",
+    "appliedGrant": "use game::reward::grant\n// dirty importer😀\nfn missing_grant() { return [[grant:start]]grant[[grant:end]]; }\nfn missing_award() { return [[award:start]]award[[award:end]]; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[control:start]]frist[[control:end]]();\n}\n",
+    "appliedAward": "use game::reward::award\n// dirty importer😀\nfn missing_grant() { return [[grant:start]]grant[[grant:end]]; }\nfn missing_award() { return [[award:start]]award[[award:end]]; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[control:start]]frist[[control:end]]();\n}\n"
+  }
+}
