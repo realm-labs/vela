@@ -35,6 +35,11 @@ fn control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits() {
 }
 
 #[test]
+fn body_scope_matrix_projects_branch_closure_and_loop_bindings() {
+    run_matrix(oracle::body_scopes_spec);
+}
+
+#[test]
 fn variant_field_matrix_projects_exact_sets_and_applied_utf16_edits() {
     run_matrix(oracle::variant_field_spec);
 }

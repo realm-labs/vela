@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "id": "reference-rename-body-scopes",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.body_scopes\"\nname = \"body_scopes\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helpers.vela": "fn helper() {}\n",
+    "scripts/main.vela": "/* 中😀 */ fn consume(arg: i64) {}\nfn main([[param-decl:start]]value[[param-decl:end]]: i64) -> i64 {\n [[let-keyword:start]]let[[let-keyword:end]] [[local-decl:start]]total[[local-decl:end]] = [[param-init:start]]value[[param-init:end]];\n [[local-write:start]]total[[local-write:end]] += 1;\n if [[param-condition:start]]value[[param-condition:end]] > 0 {\n  let [[shadow-decl:start]]total[[shadow-decl:end]] = 2;\n  [[shadow-write:start]]total[[shadow-write:end]] += 1;\n  consume([[shadow-read:start]]total[[shadow-read:end]]);\n } else { [[local-else-write:start]]total[[local-else-write:end]] += 1; }\n let callback = || { [[local-closure-write:start]]total[[local-closure-write:end]] += 1; consume([[local-closure-read:start]]total[[local-closure-read:end]]); };\n callback();\n match [[param-match:start]]value[[param-match:end]] { n if n > 0 => { [[local-match-write:start]]total[[local-match-write:end]] += n; }, _ => {} };\n for item in [1] { [[local-loop-write:start]]total[[local-loop-write:end]] += item; if item > 0 { [[break-keyword:start]]break[[break-keyword:end]]; } }\n [[return-keyword:start]]return[[return-keyword:end]] [[local-return:start]]total[[local-return:end]];\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "parameter": {
+        "name": "value",
+        "rename": "seed",
+        "origin": "local",
+        "sites": [
+          { "file": "scripts/main.vela", "marker": "param-decl", "kind": "Declaration" },
+          { "file": "scripts/main.vela", "marker": "param-init", "kind": "Read" },
+          { "file": "scripts/main.vela", "marker": "param-condition", "kind": "Read" },
+          { "file": "scripts/main.vela", "marker": "param-match", "kind": "Read" }
+        ]
+      },
+      "local": {
+        "name": "total",
+        "rename": "sum",
+        "origin": "local",
+        "sites": [
+          { "file": "scripts/main.vela", "marker": "local-decl", "kind": "Declaration" },
+          { "file": "scripts/main.vela", "marker": "local-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "local-else-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "local-closure-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "local-closure-read", "kind": "Read" },
+          { "file": "scripts/main.vela", "marker": "local-match-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "local-loop-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "local-return", "kind": "Read" }
+        ]
+      },
+      "shadow": {
+        "name": "total",
+        "rename": "inner_sum",
+        "origin": "local",
+        "sites": [
+          { "file": "scripts/main.vela", "marker": "shadow-decl", "kind": "Declaration" },
+          { "file": "scripts/main.vela", "marker": "shadow-write", "kind": "Write" },
+          { "file": "scripts/main.vela", "marker": "shadow-read", "kind": "Read" }
+        ]
+      }
+    },
+    "queries": [
+      { "file": "scripts/main.vela", "marker": "param-decl", "group": "parameter" },
+      { "file": "scripts/main.vela", "marker": "param-init", "group": "parameter" },
+      { "file": "scripts/main.vela", "marker": "param-condition", "group": "parameter" },
+      { "file": "scripts/main.vela", "marker": "param-match", "group": "parameter" },
+      { "file": "scripts/main.vela", "marker": "local-decl", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-write", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-else-write", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-closure-write", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-closure-read", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-match-write", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-loop-write", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "local-return", "group": "local" },
+      { "file": "scripts/main.vela", "marker": "shadow-decl", "group": "shadow" },
+      { "file": "scripts/main.vela", "marker": "shadow-write", "group": "shadow" },
+      { "file": "scripts/main.vela", "marker": "shadow-read", "group": "shadow" },
+      { "file": "scripts/main.vela", "marker": "let-keyword", "group": null },
+      { "file": "scripts/main.vela", "marker": "break-keyword", "group": null },
+      { "file": "scripts/main.vela", "marker": "return-keyword", "group": null }
+    ],
+    "checkDefinition": true
+  }
+}

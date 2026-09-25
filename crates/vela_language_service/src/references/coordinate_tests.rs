@@ -39,6 +39,11 @@ fn control_flow_matrix_preserves_nested_binding_sets_and_applied_edits() {
 }
 
 #[test]
+fn body_scope_matrix_preserves_branch_closure_and_loop_bindings() {
+    run_matrix(oracle::body_scopes_spec);
+}
+
+#[test]
 fn variant_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::variant_field_spec);
 }

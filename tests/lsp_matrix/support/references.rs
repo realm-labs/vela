@@ -25,6 +25,10 @@ pub(crate) fn control_flow_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-control-flow", crlf)
 }
 
+pub(crate) fn body_scopes_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-body-scopes", crlf)
+}
+
 pub(crate) fn variant_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-variant-fields", crlf)
 }

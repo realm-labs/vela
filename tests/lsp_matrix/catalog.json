@@ -63,6 +63,742 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Let, break and return keywords have no reference set. Same-spelled shadow locals, sibling arms, caller values, type-hint owners and unknown names cannot borrow the surrounding body binding. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Let, break and return keywords have no reference set. Same-spelled shadow locals, sibling arms, caller values, type-hint owners and unknown names cannot borrow the surrounding body binding. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Body declarations, reads and compound writes retain exact same-document highlight ranges and kinds across branches, loops, closures, defaults, methods and returns. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Body declarations, reads and compound writes retain exact same-document highlight ranges and kinds across branches, loops, closures, defaults, methods and returns. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Keywords have no highlights, and shadowed, sibling or wrong-owner body sites cannot leak a different binding highlight or a cross-file site. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Keywords have no highlights, and shadowed, sibling or wrong-owner body sites cannot leak a different binding highlight or a cross-file site. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Editable parameters and locals in nested bodies, closures, defaults, assignments and returns have exact prepare ranges, placeholders and identities; member and label targets stay distinct. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Editable parameters and locals in nested bodies, closures, defaults, assignments and returns have exact prepare ranges, placeholders and identities; member and label targets stay distinct. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Body keywords, unresolved names, invalid labels and read-only facts have no prepare target. A shadowed or colliding binding cannot borrow another binding’s prepare range. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Body keywords, unresolved names, invalid labels and read-only facts have no prepare target. A shadowed or colliding binding cannot borrow another binding’s prepare range. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Editable body bindings yield complete exact edits across nested blocks, branches, loops, closures, callbacks and returns; full applied files parse, re-query and restore under LF/CRLF. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Editable body bindings yield complete exact edits across nested blocks, branches, loops, closures, callbacks and returns; full applied files parse, re-query and restore under LF/CRLF. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Keywords and unresolved names have no edit plan. Same-scope or captured-name collisions reject, and shadow locals, field labels and caller values cannot contaminate another body edit set. Service checks byte ranges and canonical local/source symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::body_scope_matrix_preserves_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s2.md. Keywords and unresolved names have no edit plan. Same-scope or captured-name collisions reject, and shadow locals, field labels and caller values cannot contaminate another body edit set. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::body_scope_matrix_projects_branch_closure_and_loop_bindings"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S1/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s1.md. Names of const, initialized and extern state, functions, parameters, structs, fields, enums, variants, traits and methods retain exact declaration-to-use reference sets across imports, defaults, impls and aliases; read-only owners still retain references. Service checks byte ranges and canonical local/source/schema symbols.",
       "tests": [
