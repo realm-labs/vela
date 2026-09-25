@@ -5255,10 +5255,19 @@
         "code-action/states/dynamic/protocol"
       ],
       "summary": "Close four diagnostics/code-action unresolved and dynamic protocol state obligations. A shared Unicode fixture pairs a known Array typo, an explicit source Any return member and an unrelated unknown method. Exact LF/CRLF publications have only the two known-receiver errors; the unresolved site has three ordered one-edit fixes with current version while the dynamic site has none even with real diagnostic context. Applying first matches the whole source, clears only the target and leaves no stale actions. Fix the installed VSIX diagnostic test helper to await the post-edit publication count before its complete exact assertion, after a stale intermediate event exposed the race. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 448 catalog verified, 877 unreviewed, two N/A, zero failed; B05 execution has 32 verified and 62 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-CDJZGp/results.json; input editors/vscode/test-results/input-enSgdD/results.json; audit target/lsp-matrix/run-H2Ai45/report.json. Resume B05.7. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.7",
+      "revision": null,
+      "requirements": [
+        "diagnostics/states/recovery/protocol",
+        "code-action/states/recovery/protocol"
+      ],
+      "summary": "Close diagnostics and code-action recovery protocol states with one LF/CRLF marker fixture. Opening, appending an unclosed declaration, applying first Quick Fix while damaged, restoring the typo and repairing only syntax give exact complete E_PARSE and unknown-method publication sets. Three ordered one-edit actions remain available on the valid neighbor, the malformed site has no guessed action, the applied fix clears only its target, and requery at that site is empty. Long-lived and fresh servers agree on complete damaged and repaired diagnostics and actions at the same text and version. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 450 catalog verified, 875 unreviewed, two N/A, zero failed; B05 execution has 34 verified and 60 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-xDEDLs/results.json; input editors/vscode/test-results/input-RD2NoD/results.json; audit target/lsp-matrix/run-GBrFyB/report.json. Resume B05.8. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.7",
+  "nextTask": "B05.8",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7664,7 +7673,8 @@
     "target/lsp-matrix/run-G59WbD/report.json",
     "target/lsp-matrix/run-jDElMX/report.json",
     "target/lsp-matrix/run-Y5cTMZ/report.json",
-    "target/lsp-matrix/run-H2Ai45/report.json"
+    "target/lsp-matrix/run-H2Ai45/report.json",
+    "target/lsp-matrix/run-GBrFyB/report.json"
   ],
   "openIssues": [
     {
@@ -9591,8 +9601,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "d722d6f1a44cf58dce363013978c9c82ca0b51b2",
-          "treeSha256": "beb1ba07edbd511616567db7d3c13156d50f5fde29018654b3ea1f4d6c199413"
+          "revision": "bdf0c9de481050bf802eaee2b29612c065394b11",
+          "treeSha256": "8ba4145346d86d0948f24960129c8c172210eab628be94c715392c972429abff"
         },
         "profile": {
           "platform": "win32",
@@ -9600,11 +9610,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-H2Ai45/report.json"
+          "target/lsp-matrix/run-GBrFyB/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-CDJZGp/results.json --local-results editors/vscode/test-results/input-enSgdD/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-xDEDLs/results.json --local-results editors/vscode/test-results/input-RD2NoD/results.json",
             "exitCode": 0
           }
         ]

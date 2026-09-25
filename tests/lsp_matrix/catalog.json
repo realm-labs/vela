@@ -201,6 +201,20 @@
       ]
     },
     {
+      "requirement": "diagnostics/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-recovery.md. Opening, damaging, applying a fix, restoring it and repairing an adjacent unclosed declaration publish complete exact E_PARSE and known-method diagnostic sets under LF/CRLF; damaged and repaired long-lived results equal fresh servers at the same text and version.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::malformed_neighbor_preserves_diagnostics_and_quick_fixes_through_repair" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-recovery.md. Three exact versioned one-edit method fixes survive an adjacent unclosed declaration; the malformed site has no unsafe fix. Applying first to the damaged source clears only its target, requery is empty, restoring the typo restores actions, and damaged/repaired results equal fresh servers under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::malformed_neighbor_preserves_diagnostics_and_quick_fixes_through_repair" }
+      ]
+    },
+    {
       "requirement": "references/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
       "tests": [

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-recovery",
+  "files": {
+    "scripts/game/main.vela": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]frist[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "damaged": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]frist[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\nfn broken[[bad:start]]([[bad:end]]\n",
+    "appliedDamaged": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]first[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\nfn broken[[bad:start]]([[bad:end]]\n",
+    "repaired": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]frist[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\nfn broken(value: i64) {}\n",
+    "parse": { "marker": "bad", "code": "E_PARSE", "message": "expected `)`" },
+    "diagnostics": [
+      {
+        "marker": "fix",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `frist` for `Array(i64)`"
+      },
+      {
+        "marker": "unrelated",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `foobar` for `Array(i64)`"
+      }
+    ],
+    "actionTitles": ["Replace with `first`", "Replace with `find`", "Replace with `last`"],
+    "actionReplacements": ["first", "find", "last"]
+  }
+}

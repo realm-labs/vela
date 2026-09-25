@@ -302,6 +302,145 @@ fn unresolved_method_actions_do_not_leak_to_dynamic_any_receiver() {
 }
 
 #[test]
+fn malformed_neighbor_preserves_diagnostics_and_quick_fixes_through_repair() {
+    for crlf in [false, true] {
+        let mut spec = load("diagnostic-action-recovery");
+        if crlf {
+            for source in spec.files.values_mut() {
+                *source = source.replace('\n', "\r\n");
+            }
+        }
+        let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+        let file = "scripts/game/main.vela";
+        let source = &fixture.disk[file];
+        let marked = |name: &str| {
+            let text = spec.oracle[name].as_str().expect("marked source");
+            parse_markers(&if crlf {
+                text.replace('\n', "\r\n")
+            } else {
+                text.to_owned()
+            })
+            .expect("source markers")
+        };
+        let damaged = marked("damaged");
+        let applied_damaged = marked("appliedDamaged");
+        let repaired = marked("repaired");
+        let expected = spec.oracle["diagnostics"].as_array().expect("diagnostics");
+        let damaged_expected = [
+            spec.oracle["parse"].clone(),
+            expected[0].clone(),
+            expected[1].clone(),
+        ];
+        let applied_expected = [spec.oracle["parse"].clone(), expected[1].clone()];
+        let uri = "file:///workspace/scripts/game/main.vela";
+        let mut server = TestServer::new();
+        let _ = response_value(request::<r::Initialize>(
+            &mut server,
+            1,
+            json!({"processId": null, "rootUri": "file:///workspace/scripts", "capabilities": {}}),
+        ));
+        let opened = sync_diagnostics::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "languageId": "vela", "version": 1, "text": source.text}}),
+        );
+        check_diagnostics(&opened, source, expected);
+        action_result(&mut server, 2, uri, source, &spec.oracle, Some(1));
+
+        let broken = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "version": 2}, "contentChanges": [{"text": damaged.text}]}),
+        );
+        check_diagnostics(&broken, &damaged, &damaged_expected);
+        let damaged_actions = action_result(&mut server, 3, uri, &damaged, &spec.oracle, Some(2));
+        let no_bad_fix = response_value(request::<r::CodeActionRequest>(
+            &mut server,
+            4,
+            json!({
+                "textDocument": {"uri": uri},
+                "range": range(damaged.markers["bad"]),
+                "context": {"diagnostics": broken["params"]["diagnostics"]}
+            }),
+        ));
+        assert_eq!(
+            no_bad_fix["result"],
+            json!([]),
+            "no guessed malformed fix {crlf}"
+        );
+
+        let fix = damaged.markers["fix"];
+        let selected = &damaged_actions[0]["edit"]["changes"][uri][0];
+        assert_eq!(selected["range"], range(fix));
+        let mut applied_text = damaged.text.clone();
+        applied_text.replace_range(
+            fix.start.byte..fix.end.byte,
+            selected["newText"].as_str().expect("replacement"),
+        );
+        assert_eq!(
+            applied_text, applied_damaged.text,
+            "whole applied source {crlf}"
+        );
+        let applied = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "version": 3}, "contentChanges": [{"text": applied_text}]}),
+        );
+        check_diagnostics(&applied, &applied_damaged, &applied_expected);
+        let no_stale_fix = response_value(request::<r::CodeActionRequest>(
+            &mut server,
+            5,
+            json!({
+                "textDocument": {"uri": uri},
+                "range": range(applied_damaged.markers["fix"]),
+                "context": {"diagnostics": applied["params"]["diagnostics"]}
+            }),
+        ));
+        assert_eq!(
+            no_stale_fix["result"],
+            json!([]),
+            "no stale fixed action {crlf}"
+        );
+
+        let restored = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "version": 4}, "contentChanges": [{"text": damaged.text}]}),
+        );
+        check_diagnostics(&restored, &damaged, &damaged_expected);
+        action_result(&mut server, 6, uri, &damaged, &spec.oracle, Some(4));
+
+        let fixed = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "version": 5}, "contentChanges": [{"text": repaired.text}]}),
+        );
+        check_diagnostics(&fixed, &repaired, expected);
+        let repaired_actions = action_result(&mut server, 7, uri, &repaired, &spec.oracle, Some(5));
+
+        for (document, publication, actions, version) in [
+            (&damaged, &broken, &damaged_actions, 2),
+            (&repaired, &fixed, &repaired_actions, 5),
+        ] {
+            let mut fresh = TestServer::new();
+            let _ = response_value(request::<r::Initialize>(
+                &mut fresh,
+                1,
+                json!({"processId": null, "rootUri": "file:///workspace/scripts", "capabilities": {}}),
+            ));
+            let fresh_publication = sync_diagnostics::<n::DidOpenTextDocument>(
+                &mut fresh,
+                json!({"textDocument": {"uri": uri, "languageId": "vela", "version": version, "text": document.text}}),
+            );
+            assert_eq!(
+                publication["params"]["diagnostics"], fresh_publication["params"]["diagnostics"],
+                "long-lived and fresh diagnostics agree {version} {crlf}"
+            );
+            assert_eq!(
+                *actions,
+                action_result(&mut fresh, 2, uri, document, &spec.oracle, Some(version)),
+                "long-lived and fresh quick fixes agree {version} {crlf}"
+            );
+        }
+    }
+}
+
+#[test]
 fn encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions() {
     for crlf in [false, true] {
         let mut spec = load("diagnostic-action-method-typo");
