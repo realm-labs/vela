@@ -288,14 +288,42 @@
       "requirement": "diagnostics/syntax/S9/positive/protocol",
       "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Sequential LF/CRLF didChange states publish complete exact codes, messages, severities, UTF-16 ranges and candidate replacements for unresolved and misspelled members beside incomplete member, call, type and declaration forms; each publication equals a fresh server and restoration recovers baseline facts.",
       "tests": [
-        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_source_diagnostics" }
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_diagnostics_and_safe_actions" }
       ]
     },
     {
       "requirement": "diagnostics/syntax/S9/negative/protocol",
       "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Complete protocol diagnostic arrays exclude an empty-field guess at scores. and a guessed call error at scores.first(, preserve only the expected type-arity or parse error when those forms are incomplete, and equal fresh-server arrays under LF/CRLF.",
       "tests": [
-        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_source_diagnostics" }
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_diagnostics_and_safe_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. The valid Array method typo retains three exact single-edit Quick Fixes through incomplete member, call, type and declaration neighbors and a Unicode prefix shift under LF/CRLF. Applying first matches an independent whole-source oracle, clears only the selected diagnostic and preserves unrelated errors; fresh service actions agree.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::recovery_tests::incomplete_neighbors_keep_exact_actions_and_applied_repairs" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. An unresolved name with no import candidate, every incomplete site, the previously valid but repaired typo, and the old byte range after a Unicode prefix shift all return empty service action sets under LF/CRLF; restoration recovers only current actions.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::recovery_tests::incomplete_neighbors_keep_exact_actions_and_applied_repairs" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. Sequential LF/CRLF LSP edits preserve three exact ordered Quick Fixes at a valid typo beside each incomplete neighbor, with title, kind, sole URI, UTF-16 range, replacement and versioned edit checked. Applying first matches whole-source oracles, clears only the target and agrees with fresh servers.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_diagnostics_and_safe_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. Unresolved and incomplete sites, a repaired typo and the stale UTF-16 range after a Unicode prefix shift return exact empty action arrays; full live and fresh action sets agree under LF/CRLF, and restoration binds fixes to the current version.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_diagnostics_and_safe_actions" }
       ]
     },
     {

@@ -4,7 +4,8 @@ B05.10 covers the four service/protocol positive and negative S9 diagnostic
 cells. A marked source contains an unresolved name and a misspelled Array
 method after Chinese and emoji. Consecutive edits append an incomplete member
 (`scores.`), call (`scores.first(`), type (`Array<>`) or declaration (`fn
-broken(`), then restore the original source. Every state runs with LF and CRLF.
+broken(`), then add a Unicode prefix line and restore the original source.
+Every state runs with LF and CRLF.
 
 The service test pins the complete ordered diagnostics: codes, messages, error
 severity, byte ranges and candidate replacements. The protocol test pins the
