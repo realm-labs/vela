@@ -160,6 +160,11 @@ async function run() {
       referenceRename.checkPrepareRename(vscode, workspace));
     await check("rename provider applies exact Unicode workspace edits and rejects collisions", () =>
       referenceRename.checkRename(vscode, workspace));
+    const diagnosticAction = require("./diagnostic-action-provider");
+    await check("diagnostic provider clears only the repaired Unicode method typo", () =>
+      diagnosticAction.checkDiagnosticProvider(vscode, workspace));
+    await check("code action provider applies the exact Unicode quick fix", () =>
+      diagnosticAction.checkCodeActionProvider(vscode, workspace));
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

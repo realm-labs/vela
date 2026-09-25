@@ -63,6 +63,20 @@
   ],
   "evidence": [
     {
+      "requirement": "diagnostics/editor/smoke",
+      "assertion": "Reviewed in reviews/diagnostic-action-editor.md. The installed VSIX publishes the exact two unknown-method diagnostics from the shared Unicode fixture, including code, severity, message, full UTF-16 range and empty related locations. An unsaved editor repair matches the whole expected source and clears only the target diagnostic.",
+      "tests": [
+        { "layer": "editor", "name": "diagnostic provider clears only the repaired Unicode method typo" }
+      ]
+    },
+    {
+      "requirement": "code-action/editor/smoke",
+      "assertion": "Reviewed in reviews/diagnostic-action-editor.md. The installed VSIX returns exactly three ordered quick fixes with exact replacement text and one marked UTF-16 edit in the current file; applying first yields the whole expected source, clears its diagnostic and leaves no fix at the repaired location.",
+      "tests": [
+        { "layer": "editor", "name": "code action provider applies the exact Unicode quick fix" }
+      ]
+    },
+    {
       "requirement": "diagnostics/environments/encoded_uri/protocol",
       "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. A real root containing Chinese, spaces and percent signs produces an encoded file URI; exact diagnostic publications preserve that URI and marker-derived ranges through open, dirty edit, repair, close and reopen.",
       "tests": [
