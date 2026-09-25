@@ -3,7 +3,7 @@
   "id": "reference-rename-imported-types",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.imported_types\"\nname = \"imported_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
-    "scripts/helpers.vela": "/* 中😀 */ pub struct [[struct-decl:start]]Inventory[[struct-decl:end]] { slots: i64 }\npub enum [[enum-decl:start]]Phase[[enum-decl:end]] { Ready, Done }\npub trait [[trait-decl:start]]Rewardable[[trait-decl:end]] { fn grant(self) -> i64; }\nstruct [[private-decl:start]]Secret[[private-decl:end]] { value: i64 }\nfn own(value: [[private-param:start]]Secret[[private-param:end]]) -> [[private-return:start]]Secret[[private-return:end]] { return value; }\ntrait [[private-trait-decl:start]]HiddenTrait[[private-trait-decl:end]] { fn read(self) -> i64; }\nstruct HiddenOwner { value: i64 }\nimpl [[private-trait-impl:start]]HiddenTrait[[private-trait-impl:end]] for HiddenOwner { fn read(self) -> i64 { return self.value; } }\n",
+    "scripts/helpers.vela": "/* 中😀 */ pub struct [[struct-decl:start]]Inventory[[struct-decl:end]] { slots: i64 }\npub enum [[enum-decl:start]]Phase[[enum-decl:end]] { Ready, Done }\npub trait [[trait-decl:start]]Rewardable[[trait-decl:end]] { fn grant(self) -> i64; }\nstruct [[private-decl:start]]Secret[[private-decl:end]] { value: i64 }\nfn own(value: [[private-param:start]]Secret[[private-param:end]]) -> [[private-return:start]]Secret[[private-return:end]] { return value; }\ntrait [[private-trait-decl:start]]HiddenTrait[[private-trait-decl:end]] { fn read(self) -> i64; }\nstruct HiddenOwner { value: i64 }\nimpl [[private-trait-impl:start]]HiddenTrait[[private-trait-impl:end]] for HiddenOwner { fn read(self) -> i64 { return self.value; } }\nfn wrapped(items: [[array:start]]Array[[array:end]]<[[array-secret:start]]Secret[[array-secret:end]]>, maybe: [[option:start]]Option[[option:end]]<[[option-secret:start]]Secret[[option-secret:end]]>, result: [[result:start]]Result[[result:end]]<[[result-secret:start]]Secret[[result-secret:end]], [[primitive:start]]i64[[primitive:end]]>, map: [[map:start]]Map[[map:end]]<[[key:start]]String[[key:end]], [[map-secret:start]]Secret[[map-secret:end]]>, erased: [[any:start]]Any[[any:end]], missing: [[unknown-type:start]]Missing[[unknown-type:end]]) {}\n",
     "scripts/main.vela": "/* 中😀 */ use helpers::[[struct-terminal:start]]Inventory[[struct-terminal:end]] as [[struct-alias:start]]Bag[[struct-alias:end]];\nuse helpers::[[enum-terminal:start]]Phase[[enum-terminal:end]] as [[enum-alias:start]]Stage[[enum-alias:end]];\nuse helpers::[[trait-terminal:start]]Rewardable[[trait-terminal:end]] as [[trait-alias:start]]R[[trait-alias:end]];\nstruct Local { value: i64 }\nimpl [[trait-impl-alias:start]]R[[trait-impl-alias:end]] for Local { fn grant(self) -> i64 { return self.value; } }\nfn inspect(item: [[struct-param:start]]Bag[[struct-param:end]], stage: [[enum-param:start]]Stage[[enum-param:end]]) -> [[struct-return:start]]Bag[[struct-return:end]] { let made = [[struct-constructor:start]]Bag[[struct-constructor:end]] { slots: 2 }; return item; }\n",
     "scripts/consumer.vela": "/* 中😀 */ struct LocalConsumer { value: i64 }\nimpl helpers::[[trait-qualified:start]]Rewardable[[trait-qualified:end]] for LocalConsumer { fn grant(self) -> i64 { return self.value; } }\nfn closed(item: helpers::[[struct-consumer:start]]Inventory[[struct-consumer:end]], phase: helpers::[[enum-consumer:start]]Phase[[enum-consumer:end]]) -> helpers::[[struct-consumer-return:start]]Inventory[[struct-consumer-return:end]] { return item; }\n",
     "scripts/module.vela": "/* 中😀 */ use helpers as h;\nstruct LocalModule { value: i64 }\nimpl h::[[trait-module:start]]Rewardable[[trait-module:end]] for LocalModule { fn grant(self) -> i64 { return self.value; } }\nfn module_types(item: h::[[struct-module:start]]Inventory[[struct-module:end]], phase: h::[[enum-module:start]]Phase[[enum-module:end]]) -> h::[[struct-module-return:start]]Inventory[[struct-module-return:end]] { return item; }\n",
@@ -154,6 +154,26 @@
           {
             "file": "scripts/helpers.vela",
             "marker": "private-return",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "array-secret",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "option-secret",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "result-secret",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "map-secret",
             "kind": "Read"
           }
         ]
@@ -336,6 +356,58 @@
       {
         "file": "scripts/private.vela",
         "marker": "private-trait-use"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "array-secret",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "option-secret",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "result-secret",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "map-secret",
+        "group": "private"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "array"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "option"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "result"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "primitive"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "map"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "key"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "any"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "unknown-type"
       }
     ],
     "rejections": {

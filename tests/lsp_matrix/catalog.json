@@ -63,6 +63,230 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. LF/CRLF source struct, enum and trait hints and source-backed schema type hints resolve to complete owner-specific reference sets; private Secret inside Array, Option, Result and Map wrappers joins its declaration, direct hints and nested uses. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. LF/CRLF source struct, enum and trait hints and source-backed schema type hints resolve to complete owner-specific reference sets; private Secret inside Array, Option, Result and Map wrappers joins its declaration, direct hints and nested uses. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Container names, primitive hints, Any, unknown/private-inaccessible types and metadata-only schema facts cannot borrow a source type reference set; public/private/source/schema owners remain separate. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Container names, primitive hints, Any, unknown/private-inaccessible types and metadata-only schema facts cannot borrow a source type reference set; public/private/source/schema owners remain separate. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Source and source-backed schema type hints keep exact same-document highlight ranges and kinds; nested Secret uses in Array, Option, Result and Map remain owned by the source type. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Source and source-backed schema type hints keep exact same-document highlight ranges and kinds; nested Secret uses in Array, Option, Result and Map remain owned by the source type. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Container names, primitive hints, Any and unknown/private-inaccessible types have no highlights; metadata-only schema types remain separate from source-backed owners and cross-file sites never leak into the active document. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Container names, primitive hints, Any and unknown/private-inaccessible types have no highlights; metadata-only schema types remain separate from source-backed owners and cross-file sites never leak into the active document. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Private source types and source-backed schema types retain exact type-token prepare ranges and placeholders across direct, aliased, qualified and nested container hints. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Private source types and source-backed schema types retain exact type-token prepare ranges and placeholders across direct, aliased, qualified and nested container hints. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Public read-only types, metadata-only schema types, builtin container and primitive names, Any and missing or inaccessible types cannot produce a prepare target. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Public read-only types, metadata-only schema types, builtin container and primitive names, Any and missing or inaccessible types cannot produce a prepare target. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Private source types and source-backed schema types yield complete exact edits across direct, aliased, qualified and nested container hints; edits are applied, parsed and queried again. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Private source types and source-backed schema types yield complete exact edits across direct, aliased, qualified and nested container hints; edits are applied, parsed and queried again. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Public read-only types, metadata-only schema types, builtin container and primitive names, Any and missing or inaccessible types cannot produce an edit or contaminate a source-owned edit set. The service driver checks exact byte ranges and symbol identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s3.md. Public read-only types, metadata-only schema types, builtin container and primitive names, Any and missing or inaccessible types cannot produce an edit or contaminate a source-owned edit set. The protocol driver checks UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S10/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s10.md. Source, local, parameter, member, variant, schema and module owners retain complete exact reference sets with and without declarations across Unicode LF/CRLF coordinate matrices; source/schema/local identities are checked at service level. Service symbol identities and ranges are checked where applicable.",
       "tests": [
