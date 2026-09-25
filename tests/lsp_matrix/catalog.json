@@ -271,6 +271,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Public source and source-backed schema function aliases produce no false errors while an unused public import produces one exact warning. Complete diagnostic sets, byte ranges and related owners agree across LF/CRLF and dependency change/delete/restore.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Misspelled, private and missing-module imports retain exact HIR codes, messages, source byte ranges and related labels without duplicate project diagnostics or guessed schema resolution; dependency deletion clears stale private/unused results.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Valid source/schema aliases and an unused public import project the full expected diagnostic set to exact UTF-16 positions in encoded URIs under LF/CRLF; dependency change/delete/restore publications equal fresh servers.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Full published arrays pin misspelled, private and absent-module errors, suggestion and related owner locations, code/severity/range/metadata, and clear stale errors on dependency change/delete/restore without duplicate zero-range project diagnostics under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
+      ]
+    },
+    {
       "requirement": "diagnostics/syntax/S9/positive/service",
       "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Under LF/CRLF, incomplete member, call, type and declaration neighbors retain exact unresolved-name and unknown-method diagnostics with byte ranges and ordered repair candidates; malformed type and declaration forms add only their expected errors. Restoration returns the baseline and fresh service facts agree.",
       "tests": [

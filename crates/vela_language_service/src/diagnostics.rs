@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use vela_analysis::completion::global_completions;
 use vela_common::{Diagnostic, Severity, SourceId, Span};
 use vela_hir::{
     binding::{BindingMap, BindingResolution},
@@ -410,6 +411,7 @@ impl LanguageServiceDatabases {
             .collect::<Vec<_>>();
 
         if let Some(source) = self.parse_db().source_id(document_id) {
+            let external_import_spans = self.external_import_spans(document_id);
             diagnostics.extend(
                 self.hir_db()
                     .graph()
@@ -417,6 +419,14 @@ impl LanguageServiceDatabases {
                     .iter()
                     .filter(|diagnostic| is_hir_diagnostic(diagnostic))
                     .filter(|diagnostic| diagnostic_mentions_source(diagnostic, source))
+                    .filter(|diagnostic| {
+                        !matches!(
+                            diagnostic.code.as_deref(),
+                            Some("hir::unresolved_module" | "hir::unresolved_import")
+                        ) || !diagnostic
+                            .span
+                            .is_some_and(|span| external_import_spans.contains(&span))
+                    })
                     .map(|diagnostic| self.convert_diagnostic(diagnostic)),
             );
         }
@@ -449,6 +459,36 @@ impl LanguageServiceDatabases {
         diagnostics.extend(self.schema_db().diagnostics().iter().map(schema_diagnostic));
 
         diagnostics
+    }
+
+    fn external_import_spans(&self, document_id: &DocumentId) -> Vec<Span> {
+        let graph = self.hir_db().graph();
+        let Some(module) = self
+            .project_db()
+            .module_by_document()
+            .get(document_id)
+            .and_then(|path| graph.module_id(path))
+        else {
+            return Vec::new();
+        };
+        let Some(imports) = graph.imports(module) else {
+            return Vec::new();
+        };
+        let external = global_completions(self.schema_db().facts())
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        imports
+            .iter()
+            .filter(|import| {
+                let path = import.path.join("::");
+                let namespace = format!("{path}::");
+                external
+                    .iter()
+                    .any(|name| name == &path || name.starts_with(&namespace))
+            })
+            .map(|import| import.span)
+            .collect()
     }
 
     fn unused_import_diagnostics(&self, document_id: &DocumentId) -> Vec<ServiceDiagnostic> {
@@ -778,3 +818,6 @@ mod tests;
 
 #[cfg(test)]
 mod recovery_tests;
+
+#[cfg(test)]
+mod import_tests;

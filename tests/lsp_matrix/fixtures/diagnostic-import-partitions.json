@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "diagnostic-import-partitions",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_imports\"\nname = \"diagnostic_imports\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/game/reward.vela": "/* 中😀 */ pub fn [[grant:start]]grant[[grant:end]]() { return 1; }\npub fn award() { return 2; }\nfn secret() { return 3; }\n",
+    "scripts/schema_defs.vela": "pub fn [[stamp:start]]stamp[[stamp:end]]() { return 4; }\n",
+    "scripts/game/main.vela": "/* 中😀 */ use game::reward::[[valid-import:start]]grant[[valid-import:end]] as gift\nuse game::reward::[[unused-import:start]]award[[unused-import:end]] as spare\nuse game::reward::[[typo-import:start]]grnat[[typo-import:end]] as typo\nuse game::reward::[[private-import:start]]secret[[private-import:end]] as hidden\nuse game::absent::[[missing-module:start]]ghost[[missing-module:end]] as missing\nuse host::[[schema-import:start]]stamp[[schema-import:end]] as stamped\nfn main() { let granted = [[alias-use:start]]gift[[alias-use:end]]; let host_value = [[schema-use:start]]stamped[[schema-use:end]]; return granted; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "changedDependency": "/* 中😀 */ pub fn grnat() { return 1; }\npub fn award() { return 2; }\nfn secret() { return 3; }\n",
+    "schema": {
+      "functions": [
+        {
+          "name": "host::stamp",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": { "kind": "primitive", "name": "i64" }
+          },
+          "sourceSpan": { "file": "scripts/schema_defs.vela", "marker": "stamp" }
+        }
+      ]
+    }
+  }
+}

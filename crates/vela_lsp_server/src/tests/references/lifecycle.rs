@@ -186,7 +186,7 @@ impl Driver {
                             "restored importer diagnostics: {diagnostics:?}"
                         );
                     } else {
-                        assert_eq!(codes, ["hir::unresolved_module", "project::diagnostic"]);
+                        assert_eq!(codes, ["hir::unresolved_module"]);
                     }
                 }
             }

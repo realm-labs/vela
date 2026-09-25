@@ -78,7 +78,7 @@ fn package_workspace_alias_preserves_overlay_navigation_and_deleted_file_events(
                     .as_array()
                     .is_some_and(|diagnostics| {
                         diagnostics.iter().any(|diagnostic| {
-                            diagnostic["code"] == "project::diagnostic"
+                            diagnostic["code"] == "hir::unresolved_module"
                                 && diagnostic["message"]
                                     .as_str()
                                     .is_some_and(|text| text.contains("unresolved module"))

@@ -412,10 +412,6 @@
           {
             "code": "hir::unresolved_module",
             "message": "unresolved module `helper`"
-          },
-          {
-            "code": "project::diagnostic",
-            "message": "unresolved module"
           }
         ]
       },

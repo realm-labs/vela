@@ -2142,10 +2142,6 @@
           {
             "code": "hir::unresolved_module",
             "message": "unresolved module `api`"
-          },
-          {
-            "code": "project::diagnostic",
-            "message": "unresolved module"
           }
         ]
       },

@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, ProjectDiagnostic, ProjectSources, SourceFileSnapshot,
-    Workspace, WorkspaceConfig, WorkspaceSnapshot, assemble_package_project_sources,
-    assemble_project_sources, load_package_project, missing_import_diagnostics,
+    DocumentId, LanguageServiceDatabases, ProjectDiagnostic, SourceFileSnapshot, Workspace,
+    WorkspaceConfig, WorkspaceSnapshot, assemble_package_project_sources, assemble_project_sources,
+    load_package_project,
 };
 use vela_package::PackageGraph;
 
@@ -313,7 +313,7 @@ impl ProjectState {
         } else {
             Arc::make_mut(databases).update_with_open_documents(&project, open_documents);
         }
-        self.analysis_diagnostics = project_diagnostics(&project);
+        self.analysis_diagnostics = project.diagnostics().to_vec();
     }
 
     fn reload_schema_from_config(&mut self) {
@@ -399,12 +399,6 @@ impl ProjectState {
             self.refresh_databases();
         }
     }
-}
-
-fn project_diagnostics(project: &ProjectSources) -> Vec<ProjectDiagnostic> {
-    let mut diagnostics = project.diagnostics().to_vec();
-    diagnostics.extend(missing_import_diagnostics(project));
-    diagnostics
 }
 
 fn is_config_uri(uri: &str) -> bool {

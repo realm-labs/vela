@@ -125,11 +125,7 @@ fn assert_has_unresolved_import(notification: &JsonValue) {
         diagnostics
             .iter()
             .any(|diagnostic| diagnostic["code"] == "hir::unresolved_module"
-                || diagnostic["code"] == "hir::unresolved_import"
-                || diagnostic["code"] == "project::diagnostic"
-                    && diagnostic["message"]
-                        .as_str()
-                        .is_some_and(|message| message.contains("unresolved module"))),
+                || diagnostic["code"] == "hir::unresolved_import"),
         "{diagnostics:?}"
     );
 }
@@ -551,7 +547,7 @@ fn file_delete_reports_removed_imports() {
     assert!(
         diagnostics
             .iter()
-            .any(|diagnostic| diagnostic["code"] == "project::diagnostic"
+            .any(|diagnostic| diagnostic["code"] == "hir::unresolved_module"
                 && diagnostic["message"]
                     .as_str()
                     .is_some_and(|message| message.contains("unresolved module"))),

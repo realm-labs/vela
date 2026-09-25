@@ -4898,3 +4898,11 @@ The same exact-span-and-terminal-name rule applies to source-backed schema
 methods and trait methods. A matching free source function, impl method or trait
 method can supply its canonical parameter binding; a location that only points
 to an unrelated origin stub cannot.
+
+Import source diagnostics are published from the HIR and language-service path,
+which retains the source range and related declaration labels. The project-level
+missing-import preflight remains available for project validation, but the LSP
+does not publish it beside the equivalent HIR diagnostic. A HIR unresolved
+module/import diagnostic for an exact registered schema or stdlib import path is
+suppressed at the service boundary; other missing and private source imports
+retain their HIR diagnostics.

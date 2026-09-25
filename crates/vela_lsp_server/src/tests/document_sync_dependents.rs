@@ -82,11 +82,7 @@ fn assert_publications(
         .expect("importer publication")["params"]["diagnostics"]
         .as_array()
         .expect("diagnostics");
-    assert_eq!(
-        diagnostics.len(),
-        2 * usize::from(missing),
-        "{diagnostics:?}"
-    );
+    assert_eq!(diagnostics.len(), usize::from(missing), "{diagnostics:?}");
     if missing {
         assert_eq!(diagnostics[0]["code"], "hir::unresolved_import");
         assert_eq!(diagnostics[0]["severity"], 1);
@@ -101,16 +97,6 @@ fn assert_publications(
         assert_eq!(
             diagnostics[0]["data"]["labels"],
             json!([{"uri":main,"range":diagnostics[0]["range"],"message":"no similar declarations found"}])
-        );
-        assert_eq!(diagnostics[1]["code"], "project::diagnostic");
-        assert_eq!(diagnostics[1]["severity"], 1);
-        assert_eq!(
-            diagnostics[1]["message"],
-            "unresolved import `make` in module `helper`"
-        );
-        assert_eq!(
-            diagnostics[1]["range"],
-            json!({"start":{"line":0,"character":0},"end":{"line":0,"character":0}})
         );
     }
 }
