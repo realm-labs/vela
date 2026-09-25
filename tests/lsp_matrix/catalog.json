@@ -63,6 +63,598 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Source, local, parameter, member, variant, schema and module owners retain complete exact reference sets with and without declarations across Unicode LF/CRLF coordinate matrices; source/schema/local identities are checked at service level. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::references_find_imported_module_segments"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Source, local, parameter, member, variant, schema and module owners retain complete exact reference sets with and without declarations across Unicode LF/CRLF coordinate matrices; source/schema/local identities are checked at service level. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_references_find_imported_module_segments"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Wrong-owner, private, missing, metadata-only, stdlib, builtin, dynamic and unresolved positions do not borrow another reference set; module segments stay separate from callable targets. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "references::tests::reference_query_reports_dynamic_any_resolution"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Wrong-owner, private, missing, metadata-only, stdlib, builtin, dynamic and unresolved positions do not borrow another reference set; module segments stay separate from callable targets. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Source, local, parameter, member, variant, schema and module owners retain exact same-document highlight ranges and kinds across Unicode LF/CRLF coordinate matrices. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::document_highlight_marks_imported_module_segments"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Source, local, parameter, member, variant, schema and module owners retain exact same-document highlight ranges and kinds across Unicode LF/CRLF coordinate matrices. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_document_highlight_marks_imported_module_segments"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Wrong-owner, private, missing, metadata-only, stdlib, builtin, dynamic and unresolved positions have no borrowed highlights; cross-file occurrences do not leak into the active document. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "references::highlight_tests::document_highlight_returns_empty_for_dynamic_and_unresolved_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Wrong-owner, private, missing, metadata-only, stdlib, builtin, dynamic and unresolved positions have no borrowed highlights; cross-file occurrences do not leak into the active document. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Editable source, local, parameter, member, variant and source-backed schema owners retain exact prepare ranges, placeholders and identities across Unicode LF/CRLF coordinate matrices. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Editable source, local, parameter, member, variant and source-backed schema owners retain exact prepare ranges, placeholders and identities across Unicode LF/CRLF coordinate matrices. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Read-only metadata, module, stdlib, builtin, dynamic, unresolved and wrong-owner positions have no prepare range; source/schema collisions cannot guess an owner. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "rename::tests::prepare_rename_rejects_non_source_query_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Read-only metadata, module, stdlib, builtin, dynamic, unresolved and wrong-owner positions have no prepare range; source/schema collisions cannot guess an owner. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Editable source, local, parameter, member, variant and source-backed schema owners yield complete exact, applied and re-queried edits across Unicode LF/CRLF coordinate matrices. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Editable source, local, parameter, member, variant and source-backed schema owners yield complete exact, applied and re-queried edits across Unicode LF/CRLF coordinate matrices. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Read-only metadata, module, stdlib, builtin, dynamic, unresolved, ambiguous and wrong-owner positions cannot produce a rename edit or contaminate an owned edit set. Service symbol identities and ranges are checked where applicable.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_ambiguity_matrix_preserves_unresolved_paths"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "service",
+          "name": "rename::source_return_tests::rename_rejects_source_any_return_receiver_member"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s10.md. Read-only metadata, module, stdlib, builtin, dynamic, unresolved, ambiguous and wrong-owner positions cannot produce a rename edit or contaminate an owned edit set. Actual LSP results and ranges are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S9/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s9.md. Exact reference sets with and without declarations persist across eleven LF/CRLF recovery states and agree with marker oracles and fresh analysis. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
       "tests": [
@@ -1166,60 +1758,96 @@
       "requirement": "references/states/dynamic/protocol",
       "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. Known source/schema function and method calls resolve to exact origins, but all twelve direct, imported, local-bound, method-chain and shadowed Any downstream members return an empty reference set with and without declarations under Unicode LF/CRLF.",
       "tests": [
-        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
-        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
       ]
     },
     {
       "requirement": "highlight/states/dynamic/protocol",
       "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. Exact source/schema callable origins remain known while all twelve Any downstream members have an empty same-document highlight set under Unicode LF/CRLF, even beside real same-named source/schema members.",
       "tests": [
-        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
-        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
       ]
     },
     {
       "requirement": "prepare-rename/states/dynamic/protocol",
       "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. All twelve Any downstream members reject prepareRename with JSON null after source/schema callable resolution, including imported and local-bound receivers under Unicode LF/CRLF.",
       "tests": [
-        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
-        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
       ]
     },
     {
       "requirement": "rename/states/dynamic/protocol",
       "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. All twelve Any downstream members reject rename without workspace edits after source/schema callable resolution, including imported and local-bound receivers under Unicode LF/CRLF.",
       "tests": [
-        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
-        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+        {
+          "layer": "protocol",
+          "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
       ]
     },
     {
       "requirement": "references/editor/smoke",
       "assertion": "Installed VSIX reference provider returns the independently marked complete four-site Unicode set across origin, importer and closed consumer; every returned range selects grant and leaves source unchanged.",
       "tests": [
-        { "layer": "editor", "name": "references provider returns exact cross-file Unicode sites" }
+        {
+          "layer": "editor",
+          "name": "references provider returns exact cross-file Unicode sites"
+        }
       ]
     },
     {
       "requirement": "highlight/editor/smoke",
       "assertion": "Installed VSIX document-highlight provider returns exact declaration Text, compound-write Write and read Read ranges for one local; moving to its shadow returns only the two shadow ranges.",
       "tests": [
-        { "layer": "editor", "name": "document highlights separate local reads writes and shadow scope" }
+        {
+          "layer": "editor",
+          "name": "document highlights separate local reads writes and shadow scope"
+        }
       ]
     },
     {
       "requirement": "prepare-rename/editor/smoke",
       "assertion": "Installed VSIX prepare-rename command returns the exact owned UTF-16 call range and source placeholder while rejecting a keyword without editing the document.",
       "tests": [
-        { "layer": "editor", "name": "prepare rename accepts owned source and rejects keywords" }
+        {
+          "layer": "editor",
+          "name": "prepare rename accepts owned source and rejects keywords"
+        }
       ]
     },
     {
       "requirement": "rename/editor/smoke",
       "assertion": "Installed VSIX rename provider rejects a colliding function name; a valid replacement produces only the four independently marked cross-file edits, applies them and preserves the same-named shadow and all unrelated source.",
       "tests": [
-        { "layer": "editor", "name": "rename provider applies exact Unicode workspace edits and rejects collisions" }
+        {
+          "layer": "editor",
+          "name": "rename provider applies exact Unicode workspace edits and rejects collisions"
+        }
       ]
     },
     {

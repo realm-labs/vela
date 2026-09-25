@@ -3868,10 +3868,33 @@
         "rename/syntax/S9/negative/protocol"
       ],
       "summary": "Close sixteen S9 positive/negative service/protocol syntax cells for references, highlight, prepare-rename and rename. The shared five-file LF/CRLF recovery fixture now runs eleven actions, adding incomplete member and call contexts after repair to existing malformed type and declaration states. Exact marker oracles prove the valid imported function retains complete cross-file references and edits, local highlights and prepare range; malformed targets remain empty/null and the same-named decoy stays separate. Long-lived and fresh service/server results agree; E_PARSE appears and clears, and protocol edits retain correct versions. Focused service/protocol tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 688 plus two historical ignored/protocol 682 passed: 318 obligations verified, 1007 unreviewed, two N/A, zero failed. B04 has 98 verified and 112 unreviewed cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-AgIgq6/results.json; audit target/lsp-matrix/run-Ssq0w2/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.49",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S10/positive/service",
+        "references/syntax/S10/negative/service",
+        "references/syntax/S10/positive/protocol",
+        "references/syntax/S10/negative/protocol",
+        "highlight/syntax/S10/positive/service",
+        "highlight/syntax/S10/negative/service",
+        "highlight/syntax/S10/positive/protocol",
+        "highlight/syntax/S10/negative/protocol",
+        "prepare-rename/syntax/S10/positive/service",
+        "prepare-rename/syntax/S10/negative/service",
+        "prepare-rename/syntax/S10/positive/protocol",
+        "prepare-rename/syntax/S10/negative/protocol",
+        "rename/syntax/S10/positive/service",
+        "rename/syntax/S10/negative/service",
+        "rename/syntax/S10/positive/protocol",
+        "rename/syntax/S10/negative/protocol"
+      ],
+      "summary": "Close sixteen S10 positive/negative service/protocol ownership cells for references, highlight, prepare-rename and rename. Existing LF/CRLF coordinate matrices prove exact sites, kinds, source/schema/local identities, editable ranges, complete applied edits and negative exclusions across locals, parameters, source declarations/members/variants and source-backed or read-only schema facts. New service/protocol tests separate source module segments from stdlib max and builtin i64: module references/highlights retain their owner, while module paths and stdlib/builtin facts have no prepare or rename target and stdlib/builtin queries have no reference or highlight result. Dynamic Any, unresolved, private, missing and ambiguous boundaries remain negative. Focused tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 689 plus two historical ignored/protocol 683 passed: 334 obligations verified, 991 unreviewed, two N/A, zero failed. B04 has 114 verified and 96 unreviewed cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-LwblC0/results.json; audit target/lsp-matrix/run-iEGnXZ/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.49",
-  "nextTask": "B04.49",
+  "activeChild": "B04.50",
+  "nextTask": "B04.50",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

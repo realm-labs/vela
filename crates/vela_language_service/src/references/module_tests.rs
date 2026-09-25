@@ -98,6 +98,45 @@ pub fn main() -> i64 {
     );
 }
 
+#[test]
+fn module_segments_stay_distinct_from_builtin_and_stdlib_query_targets() {
+    let main = DocumentId::from("/workspace/scripts/game/main.vela");
+    let helper = DocumentId::from("/workspace/scripts/game/reward.vela");
+    let text = "\
+use game::reward::grant
+use game::reward::bonus
+fn main(amount: i64) -> i64 {
+    let next = max(amount, 1)
+    return grant() + bonus() + next
+}";
+    let databases = databases_for(vec![
+        SourceFileSnapshot::new(main.clone(), text),
+        SourceFileSnapshot::new(
+            helper,
+            "pub fn grant() -> i64 { return 1 }\npub fn bonus() -> i64 { return 2 }",
+        ),
+    ]);
+    let module = Position::new(0, line(text, 0).find("reward").expect("module"));
+    let module_refs = databases.references(&main, module, true);
+    assert_eq!(module_refs.len(), 2);
+    assert_eq!(module_refs[0].symbol(), module_refs[1].symbol());
+    assert!(matches!(module_refs[0].symbol(), SymbolRef::Source(_)));
+    assert_eq!(databases.document_highlights(&main, module).len(), 2);
+    assert!(databases.prepare_rename(&main, module).is_none());
+    assert!(databases.rename(&main, module, "awards").is_none());
+
+    for point in [
+        Position::new(2, line(text, 2).find("i64").expect("builtin type")),
+        Position::new(3, line(text, 3).find("max").expect("stdlib function")),
+    ] {
+        assert!(databases.references(&main, point, true).is_empty());
+        assert!(databases.references(&main, point, false).is_empty());
+        assert!(databases.document_highlights(&main, point).is_empty());
+        assert!(databases.prepare_rename(&main, point).is_none());
+        assert!(databases.rename(&main, point, "renamed").is_none());
+    }
+}
+
 fn assert_reference_in_document(
     references: &[Reference],
     document_id: &DocumentId,

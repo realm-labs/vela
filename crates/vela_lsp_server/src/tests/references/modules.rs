@@ -141,3 +141,77 @@ pub fn main() -> i64 {
         1,
     );
 }
+
+#[test]
+fn lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets() {
+    use lsp_types::{notification as n, request as r};
+    use serde_json::json;
+
+    let mut server = TestServer::new();
+    let _ = response_value(request::<r::Initialize>(
+        &mut server,
+        1,
+        json!({"processId":null,"rootUri":"file:///workspace/scripts","capabilities":{}}),
+    ));
+    let text = "\
+use game::reward::grant
+use game::reward::bonus
+fn main(amount: i64) -> i64 {
+    let next = max(amount, 1)
+    return grant() + bonus() + next
+}";
+    let main = "file:///workspace/scripts/game/main.vela";
+    let helper = "file:///workspace/scripts/game/reward.vela";
+    for (uri, source) in [
+        (
+            helper,
+            "pub fn grant() -> i64 { return 1 }\npub fn bonus() -> i64 { return 2 }",
+        ),
+        (main, text),
+    ] {
+        let _ = crate::tests::sync_diagnostics::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":source}}),
+        );
+    }
+    let mut id = 1;
+    for (line_index, needle, owned) in [(0, "reward", true), (2, "i64", false), (3, "max", false)] {
+        let position = json!({
+            "line":line_index,
+            "character":line(text, line_index).find(needle).expect("query token")
+        });
+        let base = json!({"textDocument":{"uri":main},"position":position});
+        for include in [true, false] {
+            let mut params = base.clone();
+            params["context"] = json!({"includeDeclaration":include});
+            let refs = query_value::<r::References>(&mut server, &mut id, params);
+            assert_eq!(
+                refs.as_array().expect("references").len(),
+                if owned { 2 } else { 0 }
+            );
+        }
+        let highlights =
+            query_value::<r::DocumentHighlightRequest>(&mut server, &mut id, base.clone());
+        assert_eq!(
+            highlights.as_array().expect("highlights").len(),
+            if owned { 2 } else { 0 }
+        );
+        assert!(
+            query_value::<r::PrepareRenameRequest>(&mut server, &mut id, base.clone()).is_null()
+        );
+        let mut params = base;
+        params["newName"] = json!("awards");
+        assert!(query_value::<r::Rename>(&mut server, &mut id, params).is_null());
+    }
+}
+
+fn query_value<R: lsp_types::request::Request>(
+    server: &mut TestServer,
+    id: &mut i32,
+    params: serde_json::Value,
+) -> serde_json::Value {
+    *id += 1;
+    let response = response_value(request::<R>(server, *id, params));
+    assert!(response.get("error").is_none(), "{response}");
+    response["result"].clone()
+}
