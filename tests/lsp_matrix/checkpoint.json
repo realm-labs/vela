@@ -5396,10 +5396,21 @@
         "code-action/syntax/S3/negative/protocol"
       ],
       "summary": "Close four S3 type-position code-action cells. Complete unsupported source-type arguments now carry one exact removal repair hint; unclosed lists, wrong arity, non-keyable Map/Set hints and one-element tuples never guess a type. LF/CRLF service and encoded-URI UTF-16 protocol tests pin the full one-edit Quick Fix, apply it to the whole source, prove only the target diagnostic clears while eleven exact errors remain, then manually repair all positions and verify empty live/fresh results. Closing dirty protocol source restores disk diagnostics and the one safe action. Prior S3 diagnostic fixtures now pin full repair metadata; syntax tests, Node 83, fmt, workspace Clippy and full tests passed. Windows installed VSIX 16 and native input 29 passed; an initial Peek-menu timeout retained its failed artifacts, and a full rerun passed. Current-source strict B04 gate passed: 498 catalog verified, 827 unreviewed, two N/A, zero failed; B05 execution has 82 verified and 12 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-qP1CXb/results.json; input editors/vscode/test-results/input-Rah3O0/results.json; audit target/lsp-matrix/run-buQbdH/report.json. Resume B05.20. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.20",
+      "revision": null,
+      "requirements": [
+        "code-action/syntax/S4/positive/service",
+        "code-action/syntax/S4/negative/service",
+        "code-action/syntax/S4/positive/protocol",
+        "code-action/syntax/S4/negative/protocol"
+      ],
+      "summary": "Close four S4 member/constructor code-action cells. A shared LF/CRLF fixture covers source fields and writes, inherent/trait methods, unit/tuple/record variants, named and shorthand constructors, unknown labels and dynamic receivers. One missing required struct field has a complete one-edit Quick Fix at a same-line Unicode UTF-16 position; service and protocol apply it to an independent whole-source oracle, clear its diagnostic, agree with fresh instances, and restore the disk action after close. Unsupported source typos, unknown variants and fields, dynamic access and an unclosed constructor return exact empty action sets. Focused tests, Node 83, fmt, workspace Clippy and full tests passed. Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 502 catalog verified, 823 unreviewed, two N/A, zero failed; B05 execution has 86 verified and 8 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-qepNPl/results.json; input editors/vscode/test-results/input-Uoevhh/results.json; audit target/lsp-matrix/run-VliD0U/report.json. Resume B05.21. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.20",
+  "nextTask": "B05.21",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7818,7 +7829,8 @@
     "target/lsp-matrix/run-zYwMx0/report.json",
     "target/lsp-matrix/run-G2oq7c/report.json",
     "target/lsp-matrix/run-wleWbF/report.json",
-    "target/lsp-matrix/run-buQbdH/report.json"
+    "target/lsp-matrix/run-buQbdH/report.json",
+    "target/lsp-matrix/run-VliD0U/report.json"
   ],
   "openIssues": [
     {
@@ -9745,8 +9757,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "02bdaa5bd5c5d6b66d4332cbd922e4cf98c4a747",
-          "treeSha256": "2c0c8272699648306c167436e43ab37e2ffec1736cc2204fc16c0c059b99fbf0"
+          "revision": "4a6e844056e94dae27c06f37a71b04e45abc46ee",
+          "treeSha256": "b1bef792b5f14b0d428c95c1aec3c0d0829467c79b85f7000cfa6b1a2d908659"
         },
         "profile": {
           "platform": "win32",
@@ -9754,11 +9766,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-buQbdH/report.json"
+          "target/lsp-matrix/run-VliD0U/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-qP1CXb/results.json --local-results editors/vscode/test-results/input-Rah3O0/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-qepNPl/results.json --local-results editors/vscode/test-results/input-Uoevhh/results.json",
             "exitCode": 0
           }
         ]

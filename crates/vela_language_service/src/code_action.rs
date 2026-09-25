@@ -232,6 +232,9 @@ mod top_level_tests;
 #[cfg(test)]
 mod type_position_tests;
 
+#[cfg(test)]
+mod member_constructor_tests;
+
 fn line_indent_at(text: &str, offset: usize) -> &str {
     let start = text[..offset.min(text.len())]
         .rfind('\n')

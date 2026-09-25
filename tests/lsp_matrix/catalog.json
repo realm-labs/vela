@@ -515,6 +515,36 @@
       ]
     },
     {
+      "requirement": "code-action/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/code-action-members-constructors.md. LF/CRLF source struct, method, trait, enum and constructor forms remain action-free when valid. A missing required struct field yields one exact one-edit Quick Fix at a same-line Unicode site; applying it matches the whole independent source, clears its diagnostic, and agrees with a fresh service. Existing schema lifecycle coverage applies typed host-field replacements.",
+      "tests": [
+        { "layer": "service", "name": "code_action::member_constructor_tests::member_and_constructor_actions_apply_only_the_supported_record_fix" },
+        { "layer": "service", "name": "code_action::tests::code_action_fixes_unknown_field_typo" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/code-action-members-constructors.md. Exact empty action sets at source-owned field reads/writes, impl and trait method misspellings, unknown variants and constructor labels, and Any receivers prevent invented replacements. Valid unit, tuple, record and shorthand constructors also remain action-free under LF/CRLF; restoring the original missing-field source restores only its supported fix.",
+      "tests": [
+        { "layer": "service", "name": "code_action::member_constructor_tests::member_and_constructor_actions_apply_only_the_supported_record_fix" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/code-action-members-constructors.md. LF/CRLF encoded-URI requests return the complete versioned one-edit missing-field Quick Fix, with exact UTF-16 insertion position after a same-line Chinese and non-BMP prefix. Applying it matches the full source and clears the published diagnostic; a fresh server agrees and closing the dirty overlay restores the disk action. Existing schema lifecycle tests apply typed host-field replacements.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::member_constructor::member_and_constructor_actions_keep_utf16_edits_and_overlay_state" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/code-action-members-constructors.md. Exact empty LSP action arrays cover valid source members and constructor shapes, source field/method misspellings, unknown enum variant and field label, and dynamic Any access. LF/CRLF Unicode ranges and encoded URIs are pinned; dirty application and fresh-server parity leave no stale action, while close restores the sole safe disk fix.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::member_constructor::member_and_constructor_actions_keep_utf16_edits_and_overlay_state" }
+      ]
+    },
+    {
       "requirement": "code-action/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/code-action-import-partitions.md. Function, const, state, struct, enum and trait names each yield exactly one public source import Quick Fix; an unused aliased import yields one removal. LF/CRLF service byte edits have exact title, kind, URI, range and text. Applying each action matches whole source and removes only its target diagnostic, including when another alias names the same declaration.",
       "tests": [

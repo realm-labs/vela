@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-members-constructors",
+  "files": {
+    "scripts/valid.vela": "struct Cell { value: i64 }\nstruct Box { item: Cell, extra: Any }\nimpl Box { fn get(self) -> Cell { return self.item; } }\ntrait Reader { fn read(self) -> Cell; }\nimpl Reader for Box { fn read(self) -> Cell { return self.item; } }\nenum Choice { Empty, Tuple(item: Cell), Record { item: Cell } }\nfn valid(boxed: Box, cell: Cell, reader: Reader) {\n boxed.item.value = 1; boxed.get(); reader.read();\n Box { item: cell, extra: 1 };\n Choice::Empty; Choice::Tuple(cell); Choice::Tuple(item = cell); Choice::Record { item: cell };\n}\nfn shorthand(item: Cell) { Box { item, extra: 1 }; }\n",
+    "scripts/invalid.vela": "struct Cell { value: i64 }\nstruct Box { item: Cell, extra: Any }\nimpl Box { fn get(self) -> Cell { return self.item; } }\ntrait Reader { fn read(self) -> Cell; }\nimpl Reader for Box { fn read(self) -> Cell { return self.item; } }\nenum Choice { Empty, Tuple(item: Cell), Record { item: Cell } }\nfn broken(boxed: Box, cell: Cell, reader: Reader, dynamic: Any) {\n /* 中😀 */ boxed.[[field:start]]itme[[field:end]];\n boxed.item.[[write:start]]vlaue[[write:end]] = 1;\n boxed.[[method:start]]gte[[method:end]]();\n reader.[[trait:start]]raed[[trait:end]]();\n /* 中😀 */ [[missing:start]]Box { item: cell[[missing-insert]]}[[missing:end]];\n Choice::[[variant:start]]Missing[[variant:end]];\n Box { [[unknown-field:start]]wrong[[unknown-field:end]]: cell, item: cell, extra: 1 };\n dynamic.[[dynamic:start]]itme[[dynamic:end]];\n}\n",
+    "scripts/incomplete.vela": "struct Cell { value: i64 }\nstruct Box { item: Cell, extra: Any }\nfn broken(cell: Cell) { Box { item: [[incomplete:start]]cell[[incomplete:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "selected": [
+      {
+        "marker": "missing",
+        "title": "Add missing field `extra`",
+        "newText": ", extra: ()",
+        "editMarker": "missing-insert"
+      }
+    ],
+    "negative": [
+      "field",
+      "write",
+      "method",
+      "trait",
+      "variant",
+      "unknown-field",
+      "dynamic"
+    ],
+    "applied": "struct Cell { value: i64 }\nstruct Box { item: Cell, extra: Any }\nimpl Box { fn get(self) -> Cell { return self.item; } }\ntrait Reader { fn read(self) -> Cell; }\nimpl Reader for Box { fn read(self) -> Cell { return self.item; } }\nenum Choice { Empty, Tuple(item: Cell), Record { item: Cell } }\nfn broken(boxed: Box, cell: Cell, reader: Reader, dynamic: Any) {\n /* 中😀 */ boxed.itme;\n boxed.item.vlaue = 1;\n boxed.gte();\n reader.raed();\n /* 中😀 */ Box { item: cell, extra: ()};\n Choice::Missing;\n Box { wrong: cell, item: cell, extra: 1 };\n dynamic.itme;\n}\n"
+  }
+}

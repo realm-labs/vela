@@ -7,6 +7,7 @@ use std::{
 mod dependency_lifecycle;
 mod import_matrix;
 mod matrix;
+mod member_constructor;
 mod schema_lifecycle;
 mod top_level;
 mod type_positions;
