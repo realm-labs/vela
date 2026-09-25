@@ -5229,10 +5229,25 @@
         "vscode/UX07/valid-location/render/local"
       ],
       "summary": "Close all six UX07 local Input/Render obligations with a real typed lexical error and an unrelated semantic error. A shared marker fixture and LF/CRLF protocol test pin E_LEX_CHAR, exact ranges and after-repair publication. The installed VSIX driver types @, opens Problems with the platform shortcut, verifies visible codes, Error labels, messages and locations, selects the target row and checks the exact editor selection and aligned squiggle. The repair route physically focuses the editor then deletes @ without saving; full source, remaining foobar problem and decoration are exact. The valid-neighbor route leaves source and diagnostics intact with no target decoration. Node 81, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 25 passed. Current-source strict B04 gate passed with fresh matching evidence: 444 catalog obligations verified, 881 unreviewed, two N/A, zero failed; B05 execution has 20 verified and 74 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. UX08 and other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-bsjrUU/results.json; input editors/vscode/test-results/input-u9yJrI/results.json; audit target/lsp-matrix/run-jDElMX/report.json. Resume B05.5. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.5",
+      "revision": null,
+      "requirements": [
+        "vscode/UX08/shortcut-fix/input/local",
+        "vscode/UX08/shortcut-fix/render/local",
+        "vscode/UX08/lightbulb-fix/input/local",
+        "vscode/UX08/lightbulb-fix/render/local",
+        "vscode/UX08/dismiss/input/local",
+        "vscode/UX08/dismiss/render/local",
+        "vscode/UX08/no-fix/input/local",
+        "vscode/UX08/no-fix/render/local"
+      ],
+      "summary": "Close all eight UX08 local Input/Render obligations with installed VSIX Quick Fix interaction. Shortcut and visible lightbulb routes show exactly three ordered actions and the focused first choice; Enter replaces only frist with first, clears only that diagnostic, and physical editor focus plus undo restores disk text and both diagnostics. Escape hides the action menu without editing. Invoking Quick Fix on the valid main name shows no unsafe action and leaves source and diagnostics unchanged. Node matrix 83, JS syntax, fmt and diff checks passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 444 catalog obligations verified, 881 unreviewed, two N/A, zero failed; B05 execution has 28 verified and 66 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-9Bz5YN/results.json; input editors/vscode/test-results/input-PoLZJO/results.json; audit target/lsp-matrix/run-Y5cTMZ/report.json. Resume B05.6. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.5",
+  "nextTask": "B05.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7636,7 +7651,8 @@
     "target/lsp-matrix/run-UpOY5U/report.json",
     "target/lsp-matrix/run-UEV1Dt/report.json",
     "target/lsp-matrix/run-G59WbD/report.json",
-    "target/lsp-matrix/run-jDElMX/report.json"
+    "target/lsp-matrix/run-jDElMX/report.json",
+    "target/lsp-matrix/run-Y5cTMZ/report.json"
   ],
   "openIssues": [
     {
@@ -9563,8 +9579,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "d412b1adf82ef5b104edd6a8cd09e076e71e55f5",
-          "treeSha256": "070cf4ca10619848dcc839719f6db221b03fddd2c116f3e6d0600dd919ebe432"
+          "revision": "d2371f1ef26124c76015ddb48f5e28578f16608d",
+          "treeSha256": "c133502bb17b889a3604abdea273983ad8c9369007783f4e3336b5c6ab246a7a"
         },
         "profile": {
           "platform": "win32",
@@ -9572,11 +9588,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-jDElMX/report.json"
+          "target/lsp-matrix/run-Y5cTMZ/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-bsjrUU/results.json --local-results editors/vscode/test-results/input-u9yJrI/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-9Bz5YN/results.json --local-results editors/vscode/test-results/input-PoLZJO/results.json",
             "exitCode": 0
           }
         ]
