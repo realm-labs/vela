@@ -190,6 +190,7 @@ mod completion_struct;
 mod completion_type;
 mod completion_type_ownership;
 mod diagnostic_imports;
+mod diagnostic_incremental;
 mod diagnostic_recovery;
 mod diagnostic_source_state;
 mod document_sync;

@@ -913,3 +913,6 @@ mod import_tests;
 
 #[cfg(test)]
 mod source_state_tests;
+
+#[cfg(test)]
+mod incremental_tests;

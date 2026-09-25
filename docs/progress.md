@@ -617,7 +617,7 @@ success or failure. The execution checkpoint records fresh strict batch
 acceptance. B14 still owns the later semantic
 partition completeness review.
 
-B03 is accepted; B04 is active. Current completion proof covers source/schema/stdlib
+B00-B04 are accepted; B05 is active, with its next child recorded in the execution checkpoint. Current completion proof covers source/schema/stdlib
 types and members, enum construction and patterns, named arguments, import and
 namespace aliases, direct dependency types, and compiler-owned Service paths.
 Shared service/protocol fixtures use frozen complete candidate sets, canonical
@@ -980,9 +980,10 @@ requests. B04.31 checks seven syntax recovery actions at service and protocol
 layers: damage after or before a valid imported call, repair, and redamage.
 `E_PARSE` appears and clears; complete references and edits retain their owner,
 while a damaged same-named type token and independent decoy stay separate.
-Resume B04.32 with remaining syntax partitions and UX05/UX06 gates.
-B00-B03 acceptance snapshots stay fixed; the remaining whole-batch inventory is
-1230 requirements while B04 is open.
+The execution checkpoint records the remaining B05 cells and next child;
+accepted B00-B04 snapshots stay fixed. Each Windows audit reports current B05
+counts, while macOS needs fresh independent evidence when that registered
+machine is used.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
 exact Unicode targets and no-jump outcomes. The original macOS acceptance is
@@ -1022,9 +1023,9 @@ provides it.
 
 ## Next Up
 
-1. Continue LSP B04 references, highlights and rename coverage from
-   the execution checkpoint; B00-B03 are accepted. Then complete B05-B15 and
-   B17-B19; B16 stays deferred.
+1. Continue LSP B05 diagnostics and code-action coverage from the execution
+   checkpoint; B00-B04 are accepted. Then complete B06-B15 and B17-B19;
+   B16 stays deferred.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.
 3. Audit the parameterized container and value-keyed Map/Set plans against

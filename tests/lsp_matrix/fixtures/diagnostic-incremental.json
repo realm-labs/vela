@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "diagnostic-incremental",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_incremental\"\nname = \"diagnostic_incremental\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/helper.vela": "pub fn make() { return 1 }\n",
+    "scripts/main.vela": "[[import:start]]use helper::make as choose[[import:end]]\npub fn main(scores: Array<i64>) { /* 中😀 */ [[call:start]]choose[[call:end]](); scores.[[typo:start]]frist[[typo:end]](); }\n",
+    "scripts/relay.vela": "use main::main as entry\npub fn relay(scores: Array<i64>) { entry(scores); }\n",
+    "scripts/unrelated.vela": "pub fn unrelated() { return 0 }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "steps": [
+      {
+        "id": "body_only",
+        "file": "scripts/helper.vela",
+        "source": "pub fn make() { return 2 }\n",
+        "declarationChanged": false,
+        "importChanged": false,
+        "invalidated": ["helper"]
+      },
+      {
+        "id": "declaration_renamed",
+        "file": "scripts/helper.vela",
+        "source": "pub fn build() { return 2 }\n",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": ["helper", "main", "relay"]
+      },
+      {
+        "id": "import_rebound",
+        "file": "scripts/main.vela",
+        "source": "[[import:start]]use helper::build as choose[[import:end]]\npub fn main(scores: Array<i64>) { /* 中😀 */ [[call:start]]choose[[call:end]](); scores.[[typo:start]]frist[[typo:end]](); }\n",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": ["main", "relay"]
+      }
+    ]
+  }
+}

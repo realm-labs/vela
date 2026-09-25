@@ -307,6 +307,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-incremental.md. LF/CRLF multi-file phases pin exact byte diagnostics and candidates after body-only, declaration, and import edits; fingerprints, project rebuilds, reverse invalidations, repeated queries and fresh analysis agree.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::incremental_tests::incremental_diagnostics_follow_fingerprints_and_reject_stale_generations" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-incremental.md. Old-generation diagnostic requests are stale and empty; a body-only edit does not rebuild project facts or invalidate reverse dependents, while unrelated modules remain diagnostic-free through dependency and import changes.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::incremental_tests::incremental_diagnostics_follow_fingerprints_and_reject_stale_generations" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-incremental.md. Exact LF/CRLF encoded-URI publication sets follow body-only, declaration and import invalidation; current full UTF-16 diagnostics and same-text repeat publications agree with fresh servers.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_incremental::incremental_diagnostics_publish_current_reverse_dependencies_only" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-incremental.md. Unrelated documents never republish, same/older client versions publish nothing, and unknown cancellation does not poison subsequent current diagnostics; live and fresh server facts remain equal.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_incremental::incremental_diagnostics_publish_current_reverse_dependencies_only" }
+      ]
+    },
+    {
       "requirement": "diagnostics/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Public source and source-backed schema function aliases produce no false errors while an unused public import produces one exact warning. Complete diagnostic sets, byte ranges and related owners agree across LF/CRLF and dependency change/delete/restore.",
       "tests": [
