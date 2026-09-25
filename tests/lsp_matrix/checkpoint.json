@@ -5286,10 +5286,21 @@
         "code-action/states/dependency_delete/protocol"
       ],
       "summary": "Close four diagnostics/code-action dependency change and delete protocol states with a closed defining module and dirty importer in an encoded Unicode workspace under LF/CRLF. Changing the public export from grant to award, deleting the module and restoring grant publish exact importer diagnostics and change only the available import Quick Fix; a private same-name decoy never becomes importable. The independent Array diagnostic and three exact actions persist. Every phase pins codes, messages, severity, UTF-16 ranges, candidates, action titles, kinds, target URI and single legacy/versioned edit; complete long-lived results equal fresh servers. Applying current imports matches independent whole-source oracles, clears only the selected name and leaves no stale action; CRLF checks include the actual LF import insertion. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 458 catalog verified, 867 unreviewed, two N/A, zero failed; B05 execution has 42 verified and 52 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-5UjL2n/results.json; input editors/vscode/test-results/input-aOdtce/results.json; audit target/lsp-matrix/run-Dq94aF/report.json. Resume B05.10. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.10",
+      "revision": null,
+      "requirements": [
+        "diagnostics/syntax/S9/positive/service",
+        "diagnostics/syntax/S9/negative/service",
+        "diagnostics/syntax/S9/positive/protocol",
+        "diagnostics/syntax/S9/negative/protocol"
+      ],
+      "summary": "Close four S9 diagnostics service/protocol positive and negative cells. One LF/CRLF Unicode marked source retains an unresolved name and a misspelled Array method through incomplete member, call, type and declaration neighbors, then restoration. Service tests pin complete codes, messages, severity, byte ranges and candidates, reject stale-generation facts and compare fresh workspaces. Protocol tests pin complete UTF-16 publications and fresh-server parity. The member phase exposed an erroneous unknown-field diagnostic with an empty name for scores.; production diagnostics now suppress empty member names without hiding actual misspellings. Incomplete call/member states produce no guessed errors, while Array<> and malformed fn produce exact type-arity and parse errors. Focused service/protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 462 catalog verified, 863 unreviewed, two N/A, zero failed; B05 execution has 46 verified and 48 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-1QhKuf/results.json; input editors/vscode/test-results/input-qoWYkm/results.json; audit target/lsp-matrix/run-WeaSzn/report.json. Resume B05.11. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.10",
+  "nextTask": "B05.11",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7698,7 +7709,8 @@
     "target/lsp-matrix/run-H2Ai45/report.json",
     "target/lsp-matrix/run-GBrFyB/report.json",
     "target/lsp-matrix/run-g1kCoP/report.json",
-    "target/lsp-matrix/run-Dq94aF/report.json"
+    "target/lsp-matrix/run-Dq94aF/report.json",
+    "target/lsp-matrix/run-WeaSzn/report.json"
   ],
   "openIssues": [
     {
@@ -9625,8 +9637,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "32425f60c46b8437e6abb2e8a8f771fbda6840fe",
-          "treeSha256": "64d02e1eba7fdebe58a6b14fc455b9f05d47f37864e23c884a30e21e758be946"
+          "revision": "f495fb10234ee1055a36228822ee811bb7578acd",
+          "treeSha256": "789edf541900f2fd4f3e41adf59d799abf840a72d459e088c6e3514180bcb40e"
         },
         "profile": {
           "platform": "win32",
@@ -9634,11 +9646,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-Dq94aF/report.json"
+          "target/lsp-matrix/run-WeaSzn/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-5UjL2n/results.json --local-results editors/vscode/test-results/input-aOdtce/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-1QhKuf/results.json --local-results editors/vscode/test-results/input-qoWYkm/results.json",
             "exitCode": 0
           }
         ]

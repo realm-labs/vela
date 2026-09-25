@@ -775,3 +775,6 @@ fn diagnostic_mentions_source(diagnostic: &Diagnostic, source: SourceId) -> bool
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod recovery_tests;

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "id": "diagnostic-recovery-partitions",
+  "files": {
+    "scripts/game/main.vela": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "states": [
+      {
+        "id": "member",
+        "text": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\nfn broken(scores: Array<i64>) { scores.[[bad:start]][[bad:end]] }\n"
+      },
+      {
+        "id": "call",
+        "text": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\nfn broken(scores: Array<i64>) { scores.first[[bad:start]]([[bad:end]] }\n"
+      },
+      {
+        "id": "type",
+        "text": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\nfn broken(value: Array[[bad:start]]<>[[bad:end]]) {}\n"
+      },
+      {
+        "id": "declaration",
+        "text": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[typo:start]]frist[[typo:end]]();\n return [[missing:start]]missing[[missing:end]];\n}\nfn broken[[bad:start]]([[bad:end]]\n"
+      }
+    ]
+  }
+}

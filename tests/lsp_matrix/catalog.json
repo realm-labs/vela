@@ -271,6 +271,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Under LF/CRLF, incomplete member, call, type and declaration neighbors retain exact unresolved-name and unknown-method diagnostics with byte ranges and ordered repair candidates; malformed type and declaration forms add only their expected errors. Restoration returns the baseline and fresh service facts agree.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::recovery_tests::incomplete_neighbors_keep_precise_diagnostics_without_empty_member_guess" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Incomplete scores. and scores.first( forms produce no guessed member or call diagnostic; stale-generation queries return no facts after each edit. Exact service diagnostic counts and ranges prevent ghost errors under LF/CRLF.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::recovery_tests::incomplete_neighbors_keep_precise_diagnostics_without_empty_member_guess" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Sequential LF/CRLF didChange states publish complete exact codes, messages, severities, UTF-16 ranges and candidate replacements for unresolved and misspelled members beside incomplete member, call, type and declaration forms; each publication equals a fresh server and restoration recovers baseline facts.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_source_diagnostics" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-recovery-partitions.md. Complete protocol diagnostic arrays exclude an empty-field guess at scores. and a guessed call error at scores.first(, preserve only the expected type-arity or parse error when those forms are incomplete, and equal fresh-server arrays under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_recovery::incomplete_neighbors_preserve_source_diagnostics" }
+      ]
+    },
+    {
       "requirement": "references/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
       "tests": [

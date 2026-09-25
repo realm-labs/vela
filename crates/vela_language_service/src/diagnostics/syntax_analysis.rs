@@ -686,6 +686,9 @@ fn member_site_diagnostic(
     member: &str,
     kind: AnalysisCompletionKind,
 ) -> Option<Diagnostic> {
+    if member.is_empty() {
+        return None;
+    }
     let receiver =
         context
             .expression_facts

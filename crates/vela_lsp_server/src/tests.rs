@@ -189,6 +189,7 @@ mod completion_resolve;
 mod completion_struct;
 mod completion_type;
 mod completion_type_ownership;
+mod diagnostic_recovery;
 mod document_sync;
 mod document_sync_dependents;
 mod file_watching;
