@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-unresolved-dynamic",
+  "files": {
+    "scripts/game/main.vela": "fn source_any() -> Any { return 1; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]frist[[fix:end]]();\n source_any().[[dynamic:start]]levle[[dynamic:end]];\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "applied": "fn source_any() -> Any { return 1; }\nfn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]first[[fix:end]]();\n source_any().[[dynamic:start]]levle[[dynamic:end]];\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n",
+    "diagnostics": [
+      {
+        "marker": "fix",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `frist` for `Array(i64)`"
+      },
+      {
+        "marker": "unrelated",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `foobar` for `Array(i64)`"
+      }
+    ],
+    "actionTitles": [
+      "Replace with `first`",
+      "Replace with `find`",
+      "Replace with `last`"
+    ],
+    "actionReplacements": ["first", "find", "last"]
+  }
+}

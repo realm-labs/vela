@@ -173,6 +173,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-unresolved-dynamic.md. A missing method on a known Array receiver publishes the exact unknown-method diagnostic while a separate unrelated error remains current; applying the chosen repair clears only its target under LF and CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::unresolved_method_actions_do_not_leak_to_dynamic_any_receiver" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-unresolved-dynamic.md. A member on a source callable explicitly returning Any produces no guessed diagnostic in the same LF/CRLF document that still publishes two exact known-receiver errors, before and after an unrelated repair.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::unresolved_method_actions_do_not_leak_to_dynamic_any_receiver" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-unresolved-dynamic.md. The unresolved known-Array typo yields exactly three ordered actions with exact UTF-16 replacement ranges, one edit per action in both projections and current document version; first application matches the whole repaired source, then requery is empty.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::unresolved_method_actions_do_not_leak_to_dynamic_any_receiver" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-unresolved-dynamic.md. A Quick Fix request at a member on an explicit source Any return yields the exact empty action array even when unrelated diagnostics are in the request context, both before and after repair under LF and CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::unresolved_method_actions_do_not_leak_to_dynamic_any_receiver" }
+      ]
+    },
+    {
       "requirement": "references/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
       "tests": [

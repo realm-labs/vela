@@ -208,6 +208,100 @@ fn action_result(
 }
 
 #[test]
+fn unresolved_method_actions_do_not_leak_to_dynamic_any_receiver() {
+    for crlf in [false, true] {
+        let mut spec = load("diagnostic-action-unresolved-dynamic");
+        if crlf {
+            for source in spec.files.values_mut() {
+                *source = source.replace('\n', "\r\n");
+            }
+        }
+        let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+        let file = "scripts/game/main.vela";
+        let source = &fixture.disk[file];
+        let applied = parse_markers(&if crlf {
+            spec.oracle["applied"]
+                .as_str()
+                .expect("applied source")
+                .replace('\n', "\r\n")
+        } else {
+            spec.oracle["applied"]
+                .as_str()
+                .expect("applied source")
+                .to_owned()
+        })
+        .expect("applied markers");
+        let expected = spec.oracle["diagnostics"].as_array().expect("diagnostics");
+        let uri = "file:///workspace/scripts/game/main.vela";
+        let mut server = TestServer::new();
+        let _ = response_value(request::<r::Initialize>(
+            &mut server,
+            1,
+            json!({"processId": null, "rootUri": "file:///workspace/scripts", "capabilities": {}}),
+        ));
+        let opened = sync_diagnostics::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument": {"uri": uri, "languageId": "vela", "version": 1, "text": source.text}}),
+        );
+        check_diagnostics(&opened, source, expected);
+        let actions = action_result(&mut server, 2, uri, source, &spec.oracle, Some(1));
+        let dynamic = source.markers["dynamic"];
+        assert_ne!(dynamic.start.line, source.markers["fix"].start.line);
+        let no_dynamic_fix = response_value(request::<r::CodeActionRequest>(
+            &mut server,
+            3,
+            json!({
+                "textDocument": {"uri": uri},
+                "range": range(dynamic),
+                "context": {"diagnostics": opened["params"]["diagnostics"]}
+            }),
+        ));
+        assert_eq!(
+            no_dynamic_fix["result"],
+            json!([]),
+            "dynamic Any has no guessed fix {crlf}"
+        );
+
+        let fix = source.markers["fix"];
+        let selected = &actions[0]["edit"]["changes"][uri][0];
+        assert_eq!(selected["range"], range(fix));
+        let mut repaired_text = source.text.clone();
+        repaired_text.replace_range(
+            fix.start.byte..fix.end.byte,
+            selected["newText"].as_str().expect("replacement"),
+        );
+        assert_eq!(
+            repaired_text, applied.text,
+            "complete repaired source {crlf}"
+        );
+        let repaired = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({
+                "textDocument": {"uri": uri, "version": 2},
+                "contentChanges": [{"text": repaired_text}]
+            }),
+        );
+        check_diagnostics(&repaired, &applied, &expected[1..]);
+        for marker in ["fix", "dynamic"] {
+            let response = response_value(request::<r::CodeActionRequest>(
+                &mut server,
+                if marker == "fix" { 4 } else { 5 },
+                json!({
+                    "textDocument": {"uri": uri},
+                    "range": range(applied.markers[marker]),
+                    "context": {"diagnostics": repaired["params"]["diagnostics"]}
+                }),
+            ));
+            assert_eq!(
+                response["result"],
+                json!([]),
+                "no stale fix at {marker} {crlf}"
+            );
+        }
+    }
+}
+
+#[test]
 fn encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions() {
     for crlf in [false, true] {
         let mut spec = load("diagnostic-action-method-typo");

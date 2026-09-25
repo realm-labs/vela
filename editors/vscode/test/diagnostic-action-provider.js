@@ -29,14 +29,14 @@ async function initialDiagnostics(uri) {
   throw new Error("initial diagnostic publication timed out");
 }
 
-async function changedDiagnostics(uri, edit) {
+async function changedDiagnostics(uri, edit, expectedCount) {
   let timer, subscription;
   const changed = new Promise((resolve, reject) => {
     timer = setTimeout(() => reject(new Error("updated diagnostic publication timed out")), 10000);
     subscription = vscode.languages.onDidChangeDiagnostics((event) => {
-      if (event.uris.some((item) => item.toString() === uri.toString())) {
-        resolve(vscode.languages.getDiagnostics(uri));
-      }
+      if (!event.uris.some((item) => item.toString() === uri.toString())) return;
+      const diagnostics = vscode.languages.getDiagnostics(uri);
+      if (diagnostics.length === expectedCount) resolve(diagnostics);
     });
   });
   try {
@@ -82,7 +82,7 @@ async function open(vscode, workspace) {
 async function checkDiagnosticProvider(vscode, workspace) {
   const { uri, document, editor } = await open(vscode, workspace);
   const remaining = await changedDiagnostics(uri, () => editor.edit((builder) =>
-    builder.replace(targetRange("fix"), "first")));
+    builder.replace(targetRange("fix"), "first")), 1);
   assert.equal(document.getText(), applied.text, "repair preserves unrelated source");
   assert.ok(document.isDirty, "repair is not saved");
   checkDiagnostics(remaining, ["unrelated"]);
@@ -105,7 +105,7 @@ async function checkCodeActionProvider(vscode, workspace) {
   }
   const selected = actions.find((action) => action.title === spec.oracle.action.title);
   assert.ok(selected, "selected quick fix");
-  const remaining = await changedDiagnostics(uri, () => vscode.workspace.applyEdit(selected.edit));
+  const remaining = await changedDiagnostics(uri, () => vscode.workspace.applyEdit(selected.edit), 1);
   assert.equal(document.getText(), applied.text, "applied fix changes only the typo");
   assert.ok(document.isDirty, "applied fix is not saved");
   checkDiagnostics(remaining, ["unrelated"]);
