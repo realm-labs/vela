@@ -203,6 +203,7 @@ fn typed_prepare_rename_response(
 
 fn typed_references_response(
     state: &mut GlobalState,
+    receiver: &Receiver<Message>,
     id: i32,
     document: &DocumentId,
     line: u32,
@@ -234,7 +235,20 @@ fn typed_references_response(
     let result = state
         .handle_message(&request)
         .expect("message should dispatch");
-    let response = response_message(result, "typed references should return a response");
+    assert_no_messages(result);
+    let task = state
+        .task_scheduler()
+        .worker_results()
+        .recv_timeout(Duration::from_secs(5))
+        .expect("references worker should complete");
+    let summary = state
+        .send_task_result(task)
+        .expect("publish references task");
+    assert_eq!(summary.outcome(), TaskOutcome::Completed);
+    let response = receiver
+        .recv_timeout(Duration::from_secs(5))
+        .expect("typed references should return a response");
+    let response = response_message(vec![response], "typed references should return a response");
     response_json(response)
 }
 

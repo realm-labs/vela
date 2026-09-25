@@ -1,9 +1,9 @@
 use serde_json::{Value, json};
 
-use crate::matrix_fixture::{FixtureWorkspace, Point, Spec, load};
+use crate::matrix_fixture::{Action, FixtureWorkspace, Point, Spec, load};
 use crate::{
-    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, SymbolRef, Workspace,
-    WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
+    BackgroundResult, DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot,
+    SymbolRef, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 
 #[test]
@@ -33,6 +33,78 @@ fn reference_rename_lifecycle_tracks_overlay_disk_close_and_dependency_states() 
             update(&mut fresh, &fixture);
             check(&fresh, &fixture, &spec, owner, index, crlf);
         }
+    }
+}
+
+#[test]
+fn reference_rename_background_results_require_current_uncancelled_generation() {
+    for crlf in [false, true] {
+        let mut spec = load("reference-rename-lifecycle");
+        if crlf {
+            for source in spec.files.values_mut() {
+                *source = source.replace('\n', "\r\n");
+            }
+            for action in &mut spec.actions {
+                if let Some(source) = &mut action.source {
+                    *source = source.replace('\n', "\r\n");
+                }
+            }
+        }
+        let mut fixture = FixtureWorkspace::new(&spec).expect("lifecycle fixture");
+        for action in spec.actions.iter().take(2) {
+            fixture.apply(action).expect("open fixture");
+        }
+        let mut db = LanguageServiceDatabases::new();
+        update(&mut db, &fixture);
+        let main = "scripts/main.vela";
+        let point = byte_position(
+            &fixture.document(main).expect("main").text,
+            marker(&fixture, main, "call").start,
+        );
+        let (token, cancellation) = db.begin_cancellable_background_request();
+        let current_refs =
+            BackgroundResult::new(token.clone(), db.references(&uri(main), point, true));
+        let current_edit = BackgroundResult::new(
+            token.clone(),
+            db.rename(&uri(main), point, "advance")
+                .expect("current rename"),
+        );
+        assert!(db.accept_background_result(current_refs).is_some());
+        assert!(db.accept_background_result(current_edit).is_some());
+        let cancelled_refs =
+            BackgroundResult::new(token.clone(), db.references(&uri(main), point, true));
+        let cancelled_edit = BackgroundResult::new(
+            token,
+            db.rename(&uri(main), point, "advance")
+                .expect("cancelled rename"),
+        );
+        cancellation.cancel();
+        assert!(db.accept_background_result(cancelled_refs).is_none());
+        assert!(db.accept_background_result(cancelled_edit).is_none());
+
+        let stale_token = db.begin_background_request();
+        let stale_refs =
+            BackgroundResult::new(stale_token.clone(), db.references(&uri(main), point, true));
+        let stale_edit = BackgroundResult::new(
+            stale_token,
+            db.rename(&uri(main), point, "advance")
+                .expect("stale rename"),
+        );
+        let source = spec.files["scripts/helper.vela"].replace("value + 1", "value + 9");
+        fixture
+            .apply(&Action {
+                op: "change".into(),
+                file: "scripts/helper.vela".into(),
+                source: Some(source),
+            })
+            .expect("body-only edit");
+        update(&mut db, &fixture);
+        assert!(db.accept_background_result(stale_refs).is_none());
+        assert!(db.accept_background_result(stale_edit).is_none());
+        check(&db, &fixture, &spec, "helper", 2, crlf);
+        let mut fresh = LanguageServiceDatabases::new();
+        update(&mut fresh, &fixture);
+        check(&fresh, &fixture, &spec, "helper", 2, crlf);
     }
 }
 

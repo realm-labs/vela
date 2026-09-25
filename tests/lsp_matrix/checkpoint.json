@@ -3830,10 +3830,25 @@
         "rename/states/cancellation/protocol"
       ],
       "summary": "Close rename stale-version and cancellation protocol state cells. Duplicate/older whole, incremental, invalid-range and empty didChange versions cannot replace current facts, generation or analysis counts; close/reopen resets version ordering. Rename now runs as a cancellable worker snapshot task. Deterministic queued-task tests prove cancellation publishes only RequestCancelled without edits, stale-generation publication returns ContentModified rather than old edits, and later requests produce complete current multi-file edits under LF/CRLF. Updated the typed GlobalState test to publish its worker result and recorded the dispatch decision. Focused tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 687 plus two historical ignored/protocol 679 passed: 294 obligations verified, 1031 unreviewed, two N/A, zero failed. B04 has 74 verified and 136 unreviewed protocol/editor cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-lIiAtY/results.json; audit target/lsp-matrix/run-b4XjCy/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.47",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S11/positive/service",
+        "references/syntax/S11/negative/service",
+        "references/syntax/S11/positive/protocol",
+        "references/syntax/S11/negative/protocol",
+        "rename/syntax/S11/positive/service",
+        "rename/syntax/S11/negative/service",
+        "rename/syntax/S11/positive/protocol",
+        "rename/syntax/S11/negative/protocol"
+      ],
+      "summary": "Close eight S11 syntax cells for references and rename across positive/negative service/protocol evidence. The LF/CRLF lifecycle fixture verifies repeated exact cross-file locations and edits against independent markers and fresh state through body-only edits, shifted declarations, import rebinding, dependency delete/recreate, overlay and close. Service rejects cancelled and old-generation results. References now uses a cancellable worker snapshot task like rename; queued protocol tasks prove cancellation and stale generation publish only errors, with later requests returning current results. Old document versions cannot replace facts. Focused tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 688 plus two historical ignored/protocol 682 passed: 302 obligations verified, 1023 unreviewed, two N/A, zero failed. B04 has 82 verified and 128 unreviewed protocol/editor cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-zZmONQ/results.json; audit target/lsp-matrix/run-G9g1bh/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.47",
-  "nextTask": "B04.47",
+  "activeChild": "B04.48",
+  "nextTask": "B04.48",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

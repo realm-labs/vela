@@ -63,6 +63,150 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. The LF/CRLF lifecycle checks complete current reference sets with and without declarations after overlay, disk, import-rebinding, close, dependency delete/recreate and repeated queries against an independent oracle and fresh database. A body-only edit preserves exact sites and current generation results are accepted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_lifecycle_tracks_overlay_disk_close_and_dependency_states"
+        },
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_background_results_require_current_uncancelled_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. Deleted dependencies and rebound imports cannot retain stale reference locations; decoy owners stay separate. Real reference results wrapped in cancelled or pre-edit service generation tokens are rejected, while current and fresh database results remain exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_lifecycle_tracks_overlay_disk_close_and_dependency_states"
+        },
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_background_results_require_current_uncancelled_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. LF/CRLF protocol requests return exact current cross-file reference sets after repeated queries, body-only edits, shifted declarations, importer rebinding, dependency changes/deletion and close/reopen. The body-only edit advances generation without moving the declaration, and older didChange versions cannot replace current facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::body_only_edit_preserves_exact_reference_and_rename_locations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_document_versions_leave_reference_and_rename_facts_unchanged"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::successive_reference_and_rename_requests_use_current_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. LF/CRLF protocol rejects duplicate/older document versions without rebuilding, clears locations after dependency deletion, and keeps decoy ownership separate. A cancelled queued reference task publishes only RequestCancelled and a pre-edit queued task only ContentModified; neither publishes old locations, and later requests return exact current results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_document_versions_leave_reference_and_rename_facts_unchanged"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::cancelled_queued_references_discard_locations_and_preserve_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_queued_references_discard_old_locations_and_use_current_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. The LF/CRLF lifecycle checks complete current multi-file rename edits after overlay, disk, import-rebinding, close, dependency delete/recreate and repeated queries against an independent oracle and fresh database. A body-only edit preserves exact sites and current generation results are accepted.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_lifecycle_tracks_overlay_disk_close_and_dependency_states"
+        },
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_background_results_require_current_uncancelled_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. Deleted dependencies and rebound imports cannot retain stale rename edits; decoy owners stay separate. Real rename results wrapped in cancelled or pre-edit service generation tokens are rejected, while current and fresh database results remain exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_lifecycle_tracks_overlay_disk_close_and_dependency_states"
+        },
+        {
+          "layer": "service",
+          "name": "references::lifecycle_tests::reference_rename_background_results_require_current_uncancelled_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. LF/CRLF protocol requests return exact current versioned multi-file rename edits after repeated queries, body-only edits, shifted declarations, importer rebinding, dependency changes/deletion and close/reopen. The body-only edit advances generation without moving the declaration, and older didChange versions cannot replace current facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::body_only_edit_preserves_exact_reference_and_rename_locations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_document_versions_leave_reference_and_rename_facts_unchanged"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::successive_reference_and_rename_requests_use_current_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s11.md. LF/CRLF protocol rejects duplicate/older document versions without rebuilding, clears locations after dependency deletion, and keeps decoy ownership separate. A cancelled queued rename task publishes only RequestCancelled and a pre-edit queued task only ContentModified; neither publishes old edits, and later requests return exact current results.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_document_versions_leave_reference_and_rename_facts_unchanged"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::cancelled_queued_rename_discards_edits_and_preserves_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_queued_rename_discards_old_edits_and_uses_current_generation"
+        }
+      ]
+    },
+    {
       "requirement": "rename/states/stale_version/protocol",
       "assertion": "Reviewed in reviews/reference-rename-request-lifecycle.md. Duplicate and older whole-document, incremental, invalid-range and empty didChange versions leave generation, parse and HIR counts unchanged and preserve exact current rename edits; close/reopen resets the version. A queued rename from an earlier generation publishes only ContentModified after a helper edit, and the next request yields the current exact multi-file edit set and versions under LF/CRLF.",
       "tests": [

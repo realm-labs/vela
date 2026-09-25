@@ -221,7 +221,7 @@ fn main(player: Player) { grant(); return player.inventory }";
 
 #[test]
 fn typed_references_dispatch_projects_location_array() {
-    let (sender, _receiver) = unbounded();
+    let (sender, receiver) = unbounded();
     let mut state = GlobalState::new(sender, LaunchConfiguration::new());
     state.initialized = true;
     state.initialized = true;
@@ -242,7 +242,8 @@ pub fn main(amount: i64) -> i64 {
         .find("amount")
         .expect("return line should contain amount");
 
-    let response = typed_references_response(&mut state, 13, &document, 2, character, true);
+    let response =
+        typed_references_response(&mut state, &receiver, 13, &document, 2, character, true);
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");
@@ -253,7 +254,8 @@ pub fn main(amount: i64) -> i64 {
     assert_eq!(references[2]["range"]["start"]["line"], 2);
     assert_eq!(references[2]["range"]["start"]["character"], 18);
 
-    let response = typed_references_response(&mut state, 14, &document, 2, character, false);
+    let response =
+        typed_references_response(&mut state, &receiver, 14, &document, 2, character, false);
     let references = response["result"]
         .as_array()
         .expect("references response should be an array");

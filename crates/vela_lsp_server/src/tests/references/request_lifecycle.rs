@@ -149,6 +149,79 @@ fn stale_queued_rename_discards_old_edits_and_uses_current_generation() {
 }
 
 #[test]
+fn cancelled_queued_references_discard_locations_and_preserve_later_requests() {
+    for crlf in [false, true] {
+        let mut fixture = Fixture::new(crlf);
+        fixture.change(2, 4);
+        let params = fixture.params("textDocument/references");
+        fixture
+            .live
+            .queue_request(122, "textDocument/references", params);
+        let task = fixture.live.receive_task();
+        assert!(notify::<n::Cancel>(&mut fixture.live, json!({"id":122})).is_empty());
+        let (outcome, messages) = fixture.live.publish_task(task);
+        assert_eq!(outcome, TaskOutcome::Cancelled);
+        let response = response_value(messages);
+        assert_eq!(response["id"], 122);
+        assert_eq!(response["error"]["code"], -32800);
+        assert!(response.get("result").is_none_or(Value::is_null));
+        fixture.assert_current("textDocument/references");
+        fixture.check_all();
+    }
+}
+
+#[test]
+fn stale_queued_references_discard_old_locations_and_use_current_generation() {
+    for crlf in [false, true] {
+        let mut fixture = Fixture::new(crlf);
+        let params = fixture.params("textDocument/references");
+        fixture
+            .live
+            .queue_request(123, "textDocument/references", params);
+        let task = fixture.live.receive_task();
+        fixture.change(2, 4);
+        let (outcome, messages) = fixture.live.publish_task(task);
+        assert_eq!(outcome, TaskOutcome::StaleDiscarded);
+        let response = response_value(messages);
+        assert_eq!(response["id"], 123);
+        assert_eq!(response["error"]["code"], -32801);
+        assert!(response.get("result").is_none_or(Value::is_null));
+        fixture.assert_current("textDocument/references");
+        fixture.check_all();
+    }
+}
+
+#[test]
+fn body_only_edit_preserves_exact_reference_and_rename_locations() {
+    for crlf in [false, true] {
+        let mut fixture = Fixture::new(crlf);
+        let original_range = fixture.range("scripts/helper.vela", "definition");
+        let original_generation = fixture.live.snapshot().databases().generation();
+        let source = fixture.spec.files["scripts/helper.vela"].replace("value + 1", "value + 9");
+        fixture
+            .workspace
+            .apply(&Action {
+                op: "change".into(),
+                file: "scripts/helper.vela".into(),
+                source: Some(source),
+            })
+            .expect("body-only fixture edit");
+        let text = fixture.workspace.open["scripts/helper.vela"].text.clone();
+        assert!(!fixture.change_raw(2, json!([{"text":text}])).is_empty());
+        fixture.version = Some(2);
+        assert_ne!(
+            fixture.live.snapshot().databases().generation(),
+            original_generation
+        );
+        assert_eq!(
+            fixture.range("scripts/helper.vela", "definition"),
+            original_range
+        );
+        fixture.check_all();
+    }
+}
+
+#[test]
 fn successive_reference_and_rename_requests_use_current_generation() {
     for crlf in [false, true] {
         for method in METHODS {
