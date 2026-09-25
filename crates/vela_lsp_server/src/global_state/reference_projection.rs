@@ -1,7 +1,8 @@
 use super::{GlobalStateSnapshot, documents::snapshot_document_text};
 use crate::{ErrorCode, line_index::LineIndex, lsp::to_proto};
 use vela_language_service::{
-    DiagnosticRange, DocumentHighlight, DocumentId, PrepareRename, Reference, WorkspaceEdit,
+    CodeAction, DiagnosticRange, DocumentHighlight, DocumentId, PrepareRename, Reference,
+    WorkspaceEdit,
 };
 
 pub(super) fn respond<T: serde::Serialize>(
@@ -119,6 +120,20 @@ pub(super) fn edit(
                 }
             }
         }
+    }
+    Ok(result)
+}
+
+pub(super) fn code_actions(
+    snapshot: &GlobalStateSnapshot,
+    actions: &[CodeAction],
+) -> Result<lsp_types::CodeActionResponse, String> {
+    let mut result = to_proto::code_actions(actions);
+    for (projected, source) in result.iter_mut().zip(actions) {
+        let lsp_types::CodeActionOrCommand::CodeAction(projected) = projected else {
+            return Err("code action projection produced a command".to_owned());
+        };
+        projected.edit = Some(edit(snapshot, source.edit())?);
     }
     Ok(result)
 }

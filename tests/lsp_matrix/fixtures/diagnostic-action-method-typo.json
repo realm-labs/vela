@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-method-typo",
+  "files": {
+    "scripts/game/main.vela": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]frist[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "applied": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]first[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n",
+    "diagnostics": [
+      {
+        "marker": "fix",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `frist` for `Array(i64)`"
+      },
+      {
+        "marker": "unrelated",
+        "code": "analysis::unknown_method",
+        "message": "unknown method `foobar` for `Array(i64)`"
+      }
+    ],
+    "action": {
+      "title": "Replace with `first`",
+      "kind": "quickfix",
+      "newText": "first"
+    },
+    "actionTitles": [
+      "Replace with `first`",
+      "Replace with `find`",
+      "Replace with `last`"
+    ],
+    "actionReplacements": [
+      "first",
+      "find",
+      "last"
+    ]
+  }
+}

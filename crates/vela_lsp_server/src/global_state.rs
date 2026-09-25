@@ -702,9 +702,9 @@ impl GlobalStateSnapshot {
         };
         let actions = self.databases.code_actions(&input.document_id, input.range);
 
-        response_ok_typed_messages(
+        reference_projection::respond(
             id,
-            to_proto::code_actions(&actions),
+            reference_projection::code_actions(&self, &actions),
             "typed codeAction response",
         )
     }

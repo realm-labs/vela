@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod matrix;
+
 #[test]
 fn lsp_code_action_fixes_unknown_field_typo() {
     let mut server = TestServer::new();
