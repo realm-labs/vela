@@ -3,7 +3,7 @@
   "id": "reference-rename-imported-values",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.imported_values\"\nname = \"imported_values\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
-    "scripts/helpers.vela": "/* 中😀 */ pub const [[const-decl:start]]BASE_REWARD[[const-decl:end]]: i64 = 4;\npub extern state [[state-decl:start]]reward_scale[[state-decl:end]]: i64;\nconst [[private-decl:start]]SECRET[[private-decl:end]]: i64 = 7;\nfn own() { let value = [[private-own:start]]SECRET[[private-own:end]]; }\n",
+    "scripts/helpers.vela": "/* 中😀 */ [[pub-keyword:start]]pub[[pub-keyword:end]] [[const-keyword:start]]const[[const-keyword:end]] [[const-decl:start]]BASE_REWARD[[const-decl:end]]: i64 = 4;\npub [[extern-keyword:start]]extern[[extern-keyword:end]] [[state-keyword:start]]state[[state-keyword:end]] [[state-decl:start]]reward_scale[[state-decl:end]]: i64;\nconst [[private-decl:start]]SECRET[[private-decl:end]]: i64 = 7;\n[[private-state-keyword:start]]state[[private-state-keyword:end]] [[private-state-decl:start]]internal_total[[private-state-decl:end]]: i64 = 1;\nfn bump() { [[private-state-write:start]]internal_total[[private-state-write:end]] += 1; [[private-state-read:start]]internal_total[[private-state-read:end]]; }\nfn own() { let value = [[private-own:start]]SECRET[[private-own:end]]; }\n",
     "scripts/main.vela": "/* 中😀 */ use helpers::[[const-import:start]]BASE_REWARD[[const-import:end]];\nuse helpers::[[state-import:start]]reward_scale[[state-import:end]];\nfn main() { let value = [[const-use:start]]BASE_REWARD[[const-use:end]]; [[state-write:start]]reward_scale[[state-write:end]] += value; let other = helpers::[[const-qualified:start]]BASE_REWARD[[const-qualified:end]]; helpers::[[state-qualified:start]]reward_scale[[state-qualified:end]]; }\n",
     "scripts/consumer.vela": "/* 中😀 */ fn side() { let value = helpers::[[const-consumer:start]]BASE_REWARD[[const-consumer:end]]; helpers::[[state-consumer:start]]reward_scale[[state-consumer:end]]; }\n",
     "scripts/alias.vela": "/* 中😀 */ use helpers::[[const-alias-terminal:start]]BASE_REWARD[[const-alias-terminal:end]] as [[const-alias-decl:start]]BASE[[const-alias-decl:end]];\nuse helpers::[[state-alias-terminal:start]]reward_scale[[state-alias-terminal:end]] as [[state-alias-decl:start]]scale[[state-alias-decl:end]];\nfn aliases() { let value = [[const-alias-use:start]]BASE[[const-alias-use:end]]; [[state-alias-use:start]]scale[[state-alias-use:end]] += value; }\n",
@@ -160,6 +160,29 @@
             "kind": "Read"
           }
         ]
+      },
+      "privateState": {
+        "name": "internal_total",
+        "rename": "internal_count",
+        "origin": "source",
+        "qualified": "helpers::internal_total",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-state-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-state-write",
+            "kind": "Write"
+          },
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "private-state-read",
+            "kind": "Read"
+          }
+        ]
       }
     },
     "queries": [
@@ -268,6 +291,46 @@
       {
         "file": "scripts/missing.vela",
         "marker": "missing-use"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-state-decl",
+        "group": "privateState"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-state-write",
+        "group": "privateState"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-state-read",
+        "group": "privateState"
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "pub-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "const-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "extern-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "state-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/helpers.vela",
+        "marker": "private-state-keyword",
+        "group": null
       }
     ],
     "rejections": {

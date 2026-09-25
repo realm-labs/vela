@@ -63,6 +63,870 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Names of const, initialized and extern state, functions, parameters, structs, fields, enums, variants, traits and methods retain exact declaration-to-use reference sets across imports, defaults, impls and aliases; read-only owners still retain references. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Names of const, initialized and extern state, functions, parameters, structs, fields, enums, variants, traits and methods retain exact declaration-to-use reference sets across imports, defaults, impls and aliases; read-only owners still retain references. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier and declaration keywords have no borrowed reference set. Private/missing imports, unknown labels, wrong type/member owners and schema collisions do not inherit a same-spelled source declaration. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier and declaration keywords have no borrowed reference set. Private/missing imports, unknown labels, wrong type/member owners and schema collisions do not inherit a same-spelled source declaration. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Declaration names and their active-document uses retain exact highlight ranges and kinds across values, types, parameters, members, variants and impl methods, including initialized private state writes. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Declaration names and their active-document uses retain exact highlight ranges and kinds across values, types, parameters, members, variants and impl methods, including initialized private state writes. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. The pub, const, extern and state keywords have no highlights. Wrong-owner, unresolved, private-import and metadata-only positions do not borrow a source declaration highlight. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. The pub, const, extern and state keywords have no highlights. Wrong-owner, unresolved, private-import and metadata-only positions do not borrow a source declaration highlight. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Editable source declarations, including private const and initialized state, source functions, parameters, member/variant names and eligible source-backed owners have exact prepare ranges, placeholders and identities. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Editable source declarations, including private const and initialized state, source functions, parameters, member/variant names and eligible source-backed owners have exact prepare ranges, placeholders and identities. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier keywords, public read-only constants/types, metadata-only schema facts, private/missing imports and unresolved owners have no editable prepare target; colliding declarations remain separate. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier keywords, public read-only constants/types, metadata-only schema facts, private/missing imports and unresolved owners have no editable prepare target; colliding declarations remain separate. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Editable declaration owners yield complete exact cross-file edits, including initialized private state read/write sites, import terminals, default bindings, variants and impl methods; applied files parse and re-query. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Editable declaration owners yield complete exact cross-file edits, including initialized private state read/write sites, import terminals, default bindings, variants and impl methods; applied files parse and re-query. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier keywords and read-only public or metadata-only declarations yield no edit. Private/missing imports, wrong-owner names and collisions cannot contaminate another declaration edit plan. Service checks byte ranges and canonical local/source/schema symbols.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s1.md. Modifier keywords and read-only public or metadata-only declarations yield no edit. Private/missing imports, wrong-owner names and collisions cannot contaminate another declaration edit plan. Protocol checks actual UTF-16 LSP responses, versioned changes and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S6/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s6.md. Outer parameter, for binding and guarded match binding with identical spelling retain three complete separate reference sets, with and without declarations. Source/schema enum, record and tuple pattern sites retain their own owners. Service checks byte ranges and canonical local/source/schema identities.",
       "tests": [
