@@ -4906,3 +4906,9 @@ does not publish it beside the equivalent HIR diagnostic. A HIR unresolved
 module/import diagnostic for an exact registered schema or stdlib import path is
 suppressed at the service boundary; other missing and private source imports
 retain their HIR diagnostics.
+
+Unused-import ownership is tracked per local import binding when multiple
+imports resolve to the same declaration. Using an unaliased import does not
+consume a separate unused alias of that declaration; a Quick Fix that inserts
+the unaliased import therefore leaves the alias warning visible. The service
+uses resolved HIR paths and type hints for this distinction.

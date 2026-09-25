@@ -5,6 +5,7 @@ use std::{
 };
 
 mod dependency_lifecycle;
+mod import_matrix;
 mod matrix;
 mod schema_lifecycle;
 

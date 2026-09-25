@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "code-action-import-partitions",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.code_action_imports\"\nname = \"code_action_imports\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
+    "scripts/game/reward.vela": "pub fn grant() { return 1; }\npub fn award() { return 2; }\nfn secret() { return 3; }\npub fn clash() { return 4; }\npub const FLAG: i64 = 7;\npub state score: i64 = 8;\npub struct Row {}\npub enum Mode { Ready }\npub trait Reader {}\n",
+    "scripts/game/other.vela": "pub fn clash() { return 5; }\n",
+    "scripts/schema_defs.vela": "pub fn [[stamp:start]]stamp[[stamp:end]]() { return 6; }\n",
+    "scripts/game/main.vela": "use game::reward::[[unused-import:start]]award[[unused-import:end]] as spare\nuse game::reward::[[valid-import:start]]grant[[valid-import:end]] as gift\nuse game::reward::[[typo-import:start]]grnat[[typo-import:end]] as typo\nuse game::reward::[[private-import:start]]secret[[private-import:end]] as hidden\nuse game::absent::[[missing-module:start]]ghost[[missing-module:end]] as missing\nuse host::[[schema-import:start]]stamp[[schema-import:end]] as stamped\nuse math::[[stdlib-import:start]]max[[stdlib-import:end]] as maximum\n/* 中😀 */ fn main() { let a = [[alias-use:start]]gift[[alias-use:end]]; let b = [[missing-name:start]]award[[missing-name:end]]; let c = [[ambiguous-name:start]]clash[[ambiguous-name:end]]; let d = [[schema-use:start]]stamped[[schema-use:end]]; let e = [[stdlib-use:start]]maximum[[stdlib-use:end]]; let p = [[private-name:start]]secret[[private-name:end]]; return a; }\nfn others() { let f = [[missing-const:start]]FLAG[[missing-const:end]]; let s = [[missing-state:start]]score[[missing-state:end]]; let r = [[missing-struct:start]]Row[[missing-struct:end]]; let m = [[missing-enum:start]]Mode[[missing-enum:end]]; let t = [[missing-trait:start]]Reader[[missing-trait:end]]; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "schema": {
+      "functions": [
+        {
+          "name": "host::stamp",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": { "kind": "primitive", "name": "i64" }
+          },
+          "sourceSpan": { "file": "scripts/schema_defs.vela", "marker": "stamp" }
+        }
+      ]
+    }
+  }
+}

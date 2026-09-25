@@ -327,6 +327,34 @@
       ]
     },
     {
+      "requirement": "code-action/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/code-action-import-partitions.md. Function, const, state, struct, enum and trait names each yield exactly one public source import Quick Fix; an unused aliased import yields one removal. LF/CRLF service byte edits have exact title, kind, URI, range and text. Applying each action matches whole source and removes only its target diagnostic, including when another alias names the same declaration.",
+      "tests": [
+        { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/code-action-import-partitions.md. Valid source/schema/stdlib aliases, misspelled and private imports, missing module, private unqualified name and two public owners with the same name yield no speculative import actions. Exact empty sets hold under LF/CRLF while valid neighbor actions remain available.",
+      "tests": [
+        { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/code-action-import-partitions.md. Six public declaration kinds and unused alias removal return exact one-edit, versioned LSP Quick Fix arrays in encoded Unicode URIs. LF/CRLF tests apply actual UTF-16 edits, compare whole source, remove only the selected diagnostic and match fresh-server publications.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/code-action-import-partitions.md. Complete LSP action arrays are empty at valid source/schema/stdlib aliases, bad/private/missing import paths, a private name and an ambiguous public name. Applied actions leave those unrelated diagnostics current and fresh servers agree under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" }
+      ]
+    },
+    {
       "requirement": "code-action/syntax/S9/positive/service",
       "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. The valid Array method typo retains three exact single-edit Quick Fixes through incomplete member, call, type and declaration neighbors and a Unicode prefix shift under LF/CRLF. Applying first matches an independent whole-source oracle, clears only the selected diagnostic and preserves unrelated errors; fresh service actions agree.",
       "tests": [

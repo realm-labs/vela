@@ -223,6 +223,9 @@ impl LanguageServiceDatabases {
 #[cfg(test)]
 mod matrix_tests;
 
+#[cfg(test)]
+mod import_matrix_tests;
+
 fn line_indent_at(text: &str, offset: usize) -> &str {
     let start = text[..offset.min(text.len())]
         .rfind('\n')

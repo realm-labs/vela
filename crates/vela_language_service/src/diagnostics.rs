@@ -1,9 +1,10 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use vela_analysis::completion::global_completions;
 use vela_common::{Diagnostic, Severity, SourceId, Span};
 use vela_hir::{
     binding::{BindingMap, BindingResolution},
+    body::HirPathOwner,
     ids::{HirDeclId, ModuleId},
     module_graph::{Declaration, Import, ImportResolution, ModuleGraph},
     type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
@@ -504,14 +505,30 @@ impl LanguageServiceDatabases {
         };
 
         let used_declarations = used_declarations_in_module(graph, module);
+        let mut import_counts = BTreeMap::new();
+        for import in imports {
+            if let Some(ImportResolution::Declaration(declaration)) = import.resolution {
+                *import_counts.entry(declaration).or_insert(0usize) += 1;
+            }
+        }
+        let used_bindings = if import_counts.values().any(|count| *count > 1) {
+            used_import_binding_names_in_module(graph, module)
+        } else {
+            BTreeSet::new()
+        };
         imports
             .iter()
             .filter_map(|import| {
                 let ImportResolution::Declaration(declaration) = import.resolution?;
-                if used_declarations.contains(&declaration) {
+                let binding_name = import_binding_name(import)?;
+                let used = if import_counts.get(&declaration).copied().unwrap_or_default() > 1 {
+                    used_bindings.contains(&(declaration, binding_name.to_owned()))
+                } else {
+                    used_declarations.contains(&declaration)
+                };
+                if used {
                     return None;
                 }
-                let binding_name = import_binding_name(import)?;
                 let symbol = graph
                     .declaration(declaration)
                     .map(|declaration| source_symbol_for_declaration(graph, declaration));
@@ -623,6 +640,78 @@ fn used_declarations_in_module(graph: &ModuleGraph, module: ModuleId) -> BTreeSe
         });
     }
     used
+}
+
+fn used_import_binding_names_in_module(
+    graph: &ModuleGraph,
+    module: ModuleId,
+) -> BTreeSet<(HirDeclId, String)> {
+    let mut used = BTreeSet::new();
+    for declaration in graph
+        .declarations()
+        .filter(|declaration| declaration.module == module)
+    {
+        if let Some(bindings) = graph.bindings(declaration.id) {
+            collect_binding_name_uses(graph, bindings, &mut used);
+        }
+        if let Some(shape) = graph.trait_shape(declaration.id) {
+            for method in &shape.methods {
+                if let Some(node) = method.default_body_node
+                    && let Some(bindings) = graph.trait_default_method_bindings(node)
+                {
+                    collect_binding_name_uses(graph, bindings, &mut used);
+                }
+            }
+        }
+        if let Some(metadata) = graph.impl_metadata(declaration.id) {
+            for method in &metadata.methods {
+                if let Some(bindings) = graph.impl_method_bindings(method.node) {
+                    collect_binding_name_uses(graph, bindings, &mut used);
+                }
+            }
+        }
+        for_each_type_hint_in_declaration(graph, declaration, |hint| {
+            if let (Some(name), Some(target)) = (
+                hint.path.first(),
+                type_hint_target_declaration(graph, declaration, hint),
+            ) {
+                used.insert((target.id, name.clone()));
+            }
+        });
+    }
+    used
+}
+
+fn collect_binding_name_uses(
+    graph: &ModuleGraph,
+    bindings: &BindingMap,
+    used: &mut BTreeSet<(HirDeclId, String)>,
+) {
+    let Some(body) = graph.body(bindings.body()) else {
+        return;
+    };
+    let paths = body
+        .paths
+        .values()
+        .filter_map(|path| {
+            let HirPathOwner::Expression(expression) = path.owner else {
+                return None;
+            };
+            Some((expression, path.path.first()?))
+        })
+        .collect::<BTreeMap<_, _>>();
+    for (expression, resolution) in bindings.resolutions() {
+        if let BindingResolution::Declaration(target) = resolution
+            && let Some(name) = paths.get(&expression)
+        {
+            used.insert((*target, (*name).clone()));
+        }
+    }
+    for (path, resolution) in bindings.pattern_resolutions() {
+        if let (Some(name), BindingResolution::Declaration(target)) = (path.first(), resolution) {
+            used.insert((*target, name.clone()));
+        }
+    }
 }
 
 fn collect_body_declaration_uses(

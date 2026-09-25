@@ -5319,10 +5319,21 @@
         "diagnostics/syntax/S8/negative/protocol"
       ],
       "summary": "Close four S8 import diagnostics cells. Shared LF/CRLF Unicode fixture pins source and source-backed schema aliases, unused public imports, misspelled exports, private declarations with owner labels and missing modules. Service byte ranges and complete protocol UTF-16 publications are exact; dependency change/delete/restore clears stale diagnostics and agrees with fresh servers. Fix schema import false positives and duplicate zero-range project errors; update prior expectations to the single positioned HIR diagnostic. Focused tests, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 470 catalog verified, 855 unreviewed, two N/A, zero failed; B05 execution has 54 verified and 40 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-rY2WUD/results.json; input editors/vscode/test-results/input-fak4vO/results.json; audit target/lsp-matrix/run-ovrMo7/report.json. Resume B05.13. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.13",
+      "revision": null,
+      "requirements": [
+        "code-action/syntax/S8/positive/service",
+        "code-action/syntax/S8/negative/service",
+        "code-action/syntax/S8/positive/protocol",
+        "code-action/syntax/S8/negative/protocol"
+      ],
+      "summary": "Close four S8 import code-action cells. LF/CRLF shared fixture covers public function, const, state, struct, enum and trait import fixes; unused alias removal; valid source/schema/stdlib aliases; misspelled/private/missing imports; and private or ambiguous unqualified names. Service and protocol pin complete one-edit Quick Fix sets, versioned UTF-16 projection, encoded URI, applied whole source and current diagnostics against fresh servers. Fix duplicate-declaration unused-import ownership: an unaliased import no longer consumes a separate unused alias, while actual alias use clears its warning. Focused tests, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 474 catalog verified, 851 unreviewed, two N/A, zero failed; B05 execution has 58 verified and 36 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-5XHzTp/results.json; input editors/vscode/test-results/input-GX22Mw/results.json; audit target/lsp-matrix/run-TwQmEg/report.json. Resume B05.14. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.13",
+  "nextTask": "B05.14",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7734,7 +7745,8 @@
     "target/lsp-matrix/run-Dq94aF/report.json",
     "target/lsp-matrix/run-WeaSzn/report.json",
     "target/lsp-matrix/run-aWnzdt/report.json",
-    "target/lsp-matrix/run-ovrMo7/report.json"
+    "target/lsp-matrix/run-ovrMo7/report.json",
+    "target/lsp-matrix/run-TwQmEg/report.json"
   ],
   "openIssues": [
     {
@@ -9661,8 +9673,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b5816ccf65c177151edcea068fa0626e0cf6084a",
-          "treeSha256": "1ad45278f832f69da23aadc802dd883758de7ffc83463eddbbc44942db2a62d0"
+          "revision": "77a9cd5f06b7dd17aacef45a199bab455c9c4cee",
+          "treeSha256": "f1b05791ca418bcc7c6480139d18d0af3a397801e5321f897ecc1bb3e6c9c537"
         },
         "profile": {
           "platform": "win32",
@@ -9670,11 +9682,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ovrMo7/report.json"
+          "target/lsp-matrix/run-TwQmEg/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-rY2WUD/results.json --local-results editors/vscode/test-results/input-fak4vO/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-5XHzTp/results.json --local-results editors/vscode/test-results/input-GX22Mw/results.json",
             "exitCode": 0
           }
         ]
