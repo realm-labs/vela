@@ -63,6 +63,34 @@
   ],
   "evidence": [
     {
+      "requirement": "rename/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-request-lifecycle.md. Duplicate and older whole-document, incremental, invalid-range and empty didChange versions leave generation, parse and HIR counts unchanged and preserve exact current rename edits; close/reopen resets the version. A queued rename from an earlier generation publishes only ContentModified after a helper edit, and the next request yields the current exact multi-file edit set and versions under LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_document_versions_leave_reference_and_rename_facts_unchanged"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::stale_queued_rename_discards_old_edits_and_uses_current_generation"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-request-lifecycle.md. A real queued rename task cancelled before publication emits only RequestCancelled with no workspace edit; a later rename and all neighboring reference requests return exact current results under LF/CRLF. Early, late and unknown cancellation notifications do not poison later requests.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::cancelled_queued_rename_discards_edits_and_preserves_later_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::request_lifecycle::cancellation_notifications_do_not_poison_reference_and_rename_requests"
+        }
+      ]
+    },
+    {
       "requirement": "references/states/missing_schema/protocol",
       "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Invalidating or deleting the schema removes source-backed host and metadata-only reference sets while the independent source-only function retains its exact declaration and two calls. The importer publishes schema::unavailable, and restoration clears it; incremental and fresh servers agree. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
       "tests": [

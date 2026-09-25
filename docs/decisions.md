@@ -706,6 +706,12 @@ JSON handling is limited to protocol serialization/projection boundaries,
 extension payloads, tracing/profiling byte counts, and tests that inspect final
 protocol shapes.
 
+Rename uses a cancellable worker snapshot task. The main loop rejects a
+cancelled task's edit and discards an edit computed for an older project
+generation before publication; the client can issue a fresh rename request
+against current facts. This keeps workspace edits tied to one generation
+without retrying an edit after the user's source changes.
+
 Workspace symbol detail metadata is a Vela protocol extension carried in
 `WorkspaceSymbol.data.detail`. Upstream `lsp_types::WorkspaceSymbol` has no
 top-level `detail` field, so typed projection keeps module/type detail there

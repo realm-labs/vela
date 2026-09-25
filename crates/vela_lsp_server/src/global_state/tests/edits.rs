@@ -30,7 +30,7 @@ pub fn main(amount: i64) -> i64 {
 
 #[test]
 fn typed_rename_dispatch_projects_workspace_edit() {
-    let (sender, _receiver) = unbounded();
+    let (sender, receiver) = unbounded();
     let mut state = GlobalState::new(sender, LaunchConfiguration::new());
     state.initialized = true;
     state.initialized = true;
@@ -50,7 +50,8 @@ pub fn main(amount: i64) -> i64 {
         .find("amount")
         .expect("return line should contain amount");
 
-    let response = typed_rename_response(&mut state, 16, &document, 1, character, "total");
+    let response =
+        typed_rename_response(&mut state, &receiver, 16, &document, 1, character, "total");
 
     let edits = response["result"]["changes"][document.as_str()]
         .as_array()

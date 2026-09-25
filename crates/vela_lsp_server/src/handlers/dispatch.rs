@@ -106,7 +106,7 @@ fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Mes
         .on_worker_snapshot_messages_typed::<PrepareRenameRequest>(
             GlobalStateSnapshot::prepare_rename,
         )
-        .on_worker_snapshot_messages_typed::<Rename>(GlobalStateSnapshot::rename)
+        .on_worker_task_snapshot_messages_typed::<Rename>(GlobalStateSnapshot::rename)
         .on_worker_snapshot_messages_typed::<CallHierarchyPrepare>(
             GlobalStateSnapshot::prepare_call_hierarchy,
         )
@@ -418,6 +418,18 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_messages_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_worker_task_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + Serialize + 'static,
+    {
+        self.dispatch_snapshot_messages_task_typed::<R>(TaskLane::Worker, f);
         self
     }
 

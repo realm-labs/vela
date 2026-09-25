@@ -5,6 +5,7 @@ use lsp_types::notification as n;
 use serde_json::{Value, json};
 
 use crate::matrix_fixture::{Action, FixtureWorkspace, Spec, load};
+use crate::task::TaskOutcome;
 use crate::tests::{TestServer, notify, response_value};
 
 const METHODS: [&str; 4] = [
@@ -101,6 +102,49 @@ fn cancellation_notifications_do_not_poison_reference_and_rename_requests() {
                 fixture.assert_response(method, response, 91);
             }
         }
+    }
+}
+
+#[test]
+fn cancelled_queued_rename_discards_edits_and_preserves_later_requests() {
+    for crlf in [false, true] {
+        let mut fixture = Fixture::new(crlf);
+        fixture.change(2, 4);
+        let params = fixture.params("textDocument/rename");
+        fixture
+            .live
+            .queue_request(120, "textDocument/rename", params);
+        let task = fixture.live.receive_task();
+        assert!(notify::<n::Cancel>(&mut fixture.live, json!({"id":120})).is_empty());
+        let (outcome, messages) = fixture.live.publish_task(task);
+        assert_eq!(outcome, TaskOutcome::Cancelled);
+        let response = response_value(messages);
+        assert_eq!(response["id"], 120);
+        assert_eq!(response["error"]["code"], -32800);
+        assert!(response.get("result").is_none_or(Value::is_null));
+        fixture.assert_current("textDocument/rename");
+        fixture.check_all();
+    }
+}
+
+#[test]
+fn stale_queued_rename_discards_old_edits_and_uses_current_generation() {
+    for crlf in [false, true] {
+        let mut fixture = Fixture::new(crlf);
+        let params = fixture.params("textDocument/rename");
+        fixture
+            .live
+            .queue_request(121, "textDocument/rename", params);
+        let task = fixture.live.receive_task();
+        fixture.change(2, 4);
+        let (outcome, messages) = fixture.live.publish_task(task);
+        assert_eq!(outcome, TaskOutcome::StaleDiscarded);
+        let response = response_value(messages);
+        assert_eq!(response["id"], 121);
+        assert_eq!(response["error"]["code"], -32801);
+        assert!(response.get("result").is_none_or(Value::is_null));
+        fixture.assert_current("textDocument/rename");
+        fixture.check_all();
     }
 }
 

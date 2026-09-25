@@ -129,6 +129,7 @@ fn typed_outgoing_calls_response(
 
 fn typed_rename_response(
     state: &mut GlobalState,
+    receiver: &Receiver<Message>,
     id: i32,
     document: &DocumentId,
     line: u32,
@@ -157,7 +158,18 @@ fn typed_rename_response(
     let result = state
         .handle_message(&request)
         .expect("message should dispatch");
-    let response = response_message(result, "typed rename should return a response");
+    assert_no_messages(result);
+    let task = state
+        .task_scheduler()
+        .worker_results()
+        .recv_timeout(Duration::from_secs(5))
+        .expect("rename worker should complete");
+    let summary = state.send_task_result(task).expect("publish rename task");
+    assert_eq!(summary.outcome(), TaskOutcome::Completed);
+    let response = receiver
+        .recv_timeout(Duration::from_secs(5))
+        .expect("typed rename should return a response");
+    let response = response_message(vec![response], "typed rename should return a response");
     response_json(response)
 }
 
