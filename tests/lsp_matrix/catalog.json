@@ -63,6 +63,166 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Exact reference sets with and without declarations persist across eleven LF/CRLF recovery states and agree with marker oracles and fresh analysis. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Exact reference sets with and without declarations persist across eleven LF/CRLF recovery states and agree with marker oracles and fresh analysis. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no references; a same-named decoy stays separate and parse errors clear after repair. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no references; a same-named decoy stays separate and parse errors clear after repair. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The imported call retains exact same-document import and call highlight ranges and kinds through eleven LF/CRLF recovery states, including malformed neighbors. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The imported call retains exact same-document import and call highlight ranges and kinds through eleven LF/CRLF recovery states, including malformed neighbors. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no highlights; fresh and incremental state agree after repair. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no highlights; fresh and incremental state agree after repair. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The valid imported call retains its exact source-owned prepare range and placeholder through eleven LF/CRLF recovery states. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The valid imported call retains its exact source-owned prepare range and placeholder through eleven LF/CRLF recovery states. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no prepare-rename target, while the valid neighbor remains editable. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no prepare-rename target, while the valid neighbor remains editable. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The valid imported call retains complete exact cross-file rename edits through eleven LF/CRLF recovery states; the protocol checks legacy and versioned workspace edits. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. The valid imported call retains complete exact cross-file rename edits through eleven LF/CRLF recovery states; the protocol checks legacy and versioned workspace edits. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no rename edit, and neither the damaged syntax nor the decoy leaks into the valid edit set. Service diagnostics track E_PARSE; long-lived and fresh databases agree.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::recovery_tests::reference_rename_recovery_keeps_valid_neighbors_and_drops_malformed_names"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s9.md. Malformed type, incomplete member and call locations have no rename edit, and neither the damaged syntax nor the decoy leaks into the valid edit set. Real didOpen/didChange notifications publish and clear E_PARSE; long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S11/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s11.md. The LF/CRLF lifecycle checks complete current reference sets with and without declarations after overlay, disk, import-rebinding, close, dependency delete/recreate and repeated queries against an independent oracle and fresh database. A body-only edit preserves exact sites and current generation results are accepted.",
       "tests": [
@@ -316,7 +476,7 @@
     },
     {
       "requirement": "references/states/recovery/protocol",
-      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks exact source-owned reference sets with and without declarations through trailing and preceding damage, repair and redamage; malformed same-name syntax stays empty and decoy references stay separate. Long-lived and fresh servers agree with the independent site oracle.",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The eleven-action LF/CRLF recovery fixture checks exact source-owned reference sets with and without declarations through trailing and preceding damage, repair and redamage; malformed same-name syntax stays empty and decoy references stay separate. Long-lived and fresh servers agree with the independent site oracle.",
       "tests": [
         {
           "layer": "protocol",
@@ -326,7 +486,7 @@
     },
     {
       "requirement": "highlight/states/recovery/protocol",
-      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks exact import and call highlight ranges and kinds through damage, repair and redamage; malformed same-name syntax has no highlights. Long-lived and fresh servers agree with the independent range oracle.",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The eleven-action LF/CRLF recovery fixture checks exact import and call highlight ranges and kinds through damage, repair and redamage; malformed same-name syntax has no highlights. Long-lived and fresh servers agree with the independent range oracle.",
       "tests": [
         {
           "layer": "protocol",
@@ -336,7 +496,7 @@
     },
     {
       "requirement": "prepare-rename/states/recovery/protocol",
-      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture keeps the valid call's exact prepare range and placeholder through damage, repair and redamage while a malformed same-name type position returns null. Long-lived and fresh servers agree.",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The eleven-action LF/CRLF recovery fixture keeps the valid call's exact prepare range and placeholder through damage, repair and redamage while a malformed same-name type position returns null. Long-lived and fresh servers agree.",
       "tests": [
         {
           "layer": "protocol",
@@ -346,7 +506,7 @@
     },
     {
       "requirement": "rename/states/recovery/protocol",
-      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks complete legacy and versioned multi-file rename edits through damage, repair and redamage, including closed-file versions and exclusion of malformed same-name syntax and decoys. Long-lived and fresh servers agree with the independent site oracle.",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The eleven-action LF/CRLF recovery fixture checks complete legacy and versioned multi-file rename edits through damage, repair and redamage, including closed-file versions and exclusion of malformed same-name syntax and decoys. Long-lived and fresh servers agree with the independent site oracle.",
       "tests": [
         {
           "layer": "protocol",

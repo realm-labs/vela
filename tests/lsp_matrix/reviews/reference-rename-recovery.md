@@ -4,12 +4,13 @@ B04.31 established the syntax-recovery fixture. B04.44 completes its four
 protocol state cells for references, highlight, prepare-rename and rename.
 Syntax partitions and editor interactions remain separate obligations.
 
-The independent five-file fixture runs seven explicit actions: open importer,
-open definition, damage a trailing declaration, repair it, damage a preceding
-declaration, repair it again and redamage the trailing declaration. A closed
-qualified consumer and a separate same-named decoy stay in the workspace.
-The damaged trailing type position contains the same word as the imported
-function but must never acquire its references, highlights or rename target.
+The independent five-file fixture runs eleven explicit actions: open importer
+and definition, damage and repair trailing and preceding declarations, then
+repair and exercise incomplete member and call contexts. A closed qualified
+consumer and a separate same-named decoy stay in the workspace. The damaged
+trailing type position contains the same word as the imported function but
+must never acquire its references, highlights or rename target. The incomplete
+member receiver and call target remain unresolved too.
 
 At every state, service and protocol repeat complete references with and
 without the declaration, both document highlights, exact definition and

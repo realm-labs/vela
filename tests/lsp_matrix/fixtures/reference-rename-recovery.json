@@ -41,6 +41,26 @@
       "op": "change",
       "file": "scripts/main.vela",
       "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: [[bad:start]]increment[[bad:end]]\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: i64) {}\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken() { [[bad:start]]mystery[[bad:end]].\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken(value: i64) {}\n"
+    },
+    {
+      "op": "change",
+      "file": "scripts/main.vela",
+      "source": "/* 中😀 */ use helper::[[import:start]]increment[[import:end]];\nfn run() { [[call:start]]increment[[call:end]](41); }\nfn broken() { [[bad:start]]ghost[[bad:end]]( \n"
     }
   ],
   "oracle": {
@@ -78,6 +98,26 @@
       },
       {
         "id": "redamaged-after",
+        "syntaxError": true,
+        "bad": true
+      },
+      {
+        "id": "repaired-third",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "incomplete-member",
+        "syntaxError": true,
+        "bad": true
+      },
+      {
+        "id": "repaired-fourth",
+        "syntaxError": false,
+        "bad": false
+      },
+      {
+        "id": "incomplete-call",
         "syntaxError": true,
         "bad": true
       }
