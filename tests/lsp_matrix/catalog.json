@@ -63,6 +63,614 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. LF/CRLF source and schema fields, methods, trait methods and unit/tuple/record variants retain complete owner-specific references across constructors, shorthand labels, member reads/writes and value/pattern sites. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. LF/CRLF source and schema fields, methods, trait methods and unit/tuple/record variants retain complete owner-specific references across constructors, shorthand labels, member reads/writes and value/pattern sites. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Wrong owner, invalid constructor form, unknown label, local shadow, metadata-only boundary and dynamic or primitive receivers cannot borrow references from same-named source/schema members. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Wrong owner, invalid constructor form, unknown label, local shadow, metadata-only boundary and dynamic or primitive receivers cannot borrow references from same-named source/schema members. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Exact same-document highlights and Read/Write/Text/Call kinds follow source/schema members and variants through constructors, shorthand labels, member writes and value/pattern sites. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Exact same-document highlights and Read/Write/Text/Call kinds follow source/schema members and variants through constructors, shorthand labels, member writes and value/pattern sites. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Wrong owner, invalid constructor form, unknown label, local shadow and dynamic or primitive receiver positions have no borrowed highlights or cross-file leakage. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Wrong owner, invalid constructor form, unknown label, local shadow and dynamic or primitive receiver positions have no borrowed highlights or cross-file leakage. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Editable source and source-backed schema members, fields, trait methods and variants retain exact prepare ranges, placeholders and owner identities at declaration and use sites. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Editable source and source-backed schema members, fields, trait methods and variants retain exact prepare ranges, placeholders and owner identities at declaration and use sites. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Metadata-only, wrong-owner, invalid-form, ambiguous, unknown, dynamic and primitive member positions cannot yield an editable prepare target or capture a neighboring symbol. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Metadata-only, wrong-owner, invalid-form, ambiguous, unknown, dynamic and primitive member positions cannot yield an editable prepare target or capture a neighboring symbol. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Editable source and source-backed schema fields, methods and variants yield complete exact edits through constructors, shorthand labels, patterns and member reads/writes; applied files parse and retain intended references. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Editable source and source-backed schema fields, methods and variants yield complete exact edits through constructors, shorthand labels, patterns and member reads/writes; applied files parse and retain intended references. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Metadata-only, wrong-owner, invalid-form, ambiguous, unknown, dynamic and primitive positions cannot produce or contaminate a rename edit; existing-field and label-capture collisions are rejected. The service driver verifies exact byte ranges and canonical symbol ownership.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s4.md. Metadata-only, wrong-owner, invalid-form, ambiguous, unknown, dynamic and primitive positions cannot produce or contaminate a rename edit; existing-field and label-capture collisions are rejected. The protocol driver verifies UTF-16, encoded URIs and client versions.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S3/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s3.md. LF/CRLF source struct, enum and trait hints and source-backed schema type hints resolve to complete owner-specific reference sets; private Secret inside Array, Option, Result and Map wrappers joins its declaration, direct hints and nested uses. The service driver checks exact byte ranges and symbol identities.",
       "tests": [

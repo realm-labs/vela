@@ -5,7 +5,7 @@
     "vela.toml": "[package]\nid = \"dev.vela.schema_fields\"\nname = \"schema_fields\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
     "scripts/helpers.vela": "/* 中😀 */ pub fn [[field-decl:start]]value[[field-decl:end]]() {}\n",
     "scripts/consumer.vela": "/* 中😀 */ pub fn [[other-decl:start]]value[[other-decl:end]]() {}\nfn closed([[other-param:start]]value[[other-param:end]]: i64) { host::Record { [[closed-label:start]]value[[closed-label:end]]: 3 }; third::Record { [[other-shorthand:start]]value[[other-shorthand:end]] }; }\n",
-    "scripts/main.vela": "use host::Record as Alias\n/* 中😀 */ pub struct Record { [[source-decl:start]]value[[source-decl:end]]: i64 }\nfn main([[main-param:start]]value[[main-param:end]]: i64, item: host::Record) {\n let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };\n let b = Alias { [[short:start]]value[[short:end]] };\n match a { Alias { [[pattern:start]]value[[pattern:end]]: bound } => bound };\n match b { host::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]] } => [[pattern-body:start]]value[[pattern-body:end]] };\n item.[[dot-read:start]]value[[dot-read:end]];\n item.[[dot-write:start]]value[[dot-write:end]] += 1;\n Record { [[source-label:start]]value[[source-label:end]]: 1 };\n third::Record { [[other-label:start]]value[[other-label:end]]: 2 };\n other::Record { [[metadata-label:start]]value[[metadata-label:end]]: 3 };\n host::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 };\n Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 5 };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\n"
+    "scripts/main.vela": "use host::Record as Alias\n/* 中😀 */ pub struct Record { [[source-decl:start]]value[[source-decl:end]]: i64 }\nfn main([[main-param:start]]value[[main-param:end]]: i64, item: host::Record) {\n let a = host::Record { [[explicit:start]]value[[explicit:end]]: value };\n let b = Alias { [[short:start]]value[[short:end]] };\n match a { Alias { [[pattern:start]]value[[pattern:end]]: bound } => bound };\n match b { host::Record { [[pattern-shorthand:start]]value[[pattern-shorthand:end]] } => [[pattern-body:start]]value[[pattern-body:end]] };\n item.[[dot-read:start]]value[[dot-read:end]];\n item.[[dot-write:start]]value[[dot-write:end]] += 1;\n Record { [[source-label:start]]value[[source-label:end]]: 1 };\n third::Record { [[other-label:start]]value[[other-label:end]]: 2 };\n other::Record { [[metadata-label:start]]value[[metadata-label:end]]: 3 };\n host::Record { [[unknown-label:start]]bogus[[unknown-label:end]]: 4 };\n Missing { [[unknown-owner:start]]value[[unknown-owner:end]]: 5 };\n let note = \"[[literal:start]]value[[literal:end]]\";\n}\nfn dynamic(boxed: Any, number: i64) { boxed.[[dynamic-field:start]]value[[dynamic-field:end]]; number.[[primitive-field:start]]value[[primitive-field:end]]; }\n"
   },
   "actions": [],
   "oracle": {
@@ -195,6 +195,14 @@
         "file": "scripts/main.vela",
         "marker": "literal",
         "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-field"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "primitive-field"
       }
     ],
     "localChecks": [

@@ -3914,10 +3914,33 @@
         "rename/syntax/S3/negative/protocol"
       ],
       "summary": "Close sixteen S3 positive/negative service/protocol type-position cells for references, highlight, prepare-rename and rename. The imported-type fixture now marks private source Secret within Array, Option, Result and Map hints, plus container names, primitive hints, Any and an unknown type. Exact LF/CRLF marker oracles prove nested Secret belongs to its declaration and direct hints, while builtin and unknown positions stay empty/null. Source struct/enum/trait imports and source-backed versus metadata-only schema types retain separate ownership and rename policy; editable edits are applied, parsed, re-queried and restored. Focused service/protocol tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 689 plus two historical ignored/protocol 683 passed: 350 obligations verified, 975 unreviewed, two N/A, zero failed. B04 has 130 verified and 80 unreviewed cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-wl9YUe/results.json; audit target/lsp-matrix/run-aO5g3j/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.51",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S4/positive/service",
+        "references/syntax/S4/negative/service",
+        "references/syntax/S4/positive/protocol",
+        "references/syntax/S4/negative/protocol",
+        "highlight/syntax/S4/positive/service",
+        "highlight/syntax/S4/negative/service",
+        "highlight/syntax/S4/positive/protocol",
+        "highlight/syntax/S4/negative/protocol",
+        "prepare-rename/syntax/S4/positive/service",
+        "prepare-rename/syntax/S4/negative/service",
+        "prepare-rename/syntax/S4/positive/protocol",
+        "prepare-rename/syntax/S4/negative/protocol",
+        "rename/syntax/S4/positive/service",
+        "rename/syntax/S4/negative/service",
+        "rename/syntax/S4/positive/protocol",
+        "rename/syntax/S4/negative/protocol"
+      ],
+      "summary": "Close sixteen S4 positive/negative service/protocol member and constructor cells for references, highlight, prepare-rename and rename. Existing LF/CRLF marker matrices prove complete owner-specific references, highlight kinds, prepare targets and applied multi-file edits for source/schema fields and methods, trait methods, unit/tuple/record variants, explicit and shorthand constructors/patterns, and member reads/writes. The schema-field fixture now adds Any.value and i64.value beside genuine same-named source/schema fields; both remain empty/null while owned facts stay exact. Wrong owners, invalid forms, ambiguous variants, metadata-only facts and collisions retain separate negative outcomes. Focused service/protocol tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 689 plus two historical ignored/protocol 683 passed: 366 obligations verified, 959 unreviewed, two N/A, zero failed. B04 has 146 verified and 64 unreviewed cells; remaining syntax cells and fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-Rhdftb/results.json; audit target/lsp-matrix/run-hquxoh/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.51",
-  "nextTask": "B04.51",
+  "activeChild": "B04.52",
+  "nextTask": "B04.52",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
