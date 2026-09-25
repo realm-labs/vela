@@ -63,6 +63,46 @@
   ],
   "evidence": [
     {
+      "requirement": "references/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks exact source-owned reference sets with and without declarations through trailing and preceding damage, repair and redamage; malformed same-name syntax stays empty and decoy references stay separate. Long-lived and fresh servers agree with the independent site oracle.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks exact import and call highlight ranges and kinds through damage, repair and redamage; malformed same-name syntax has no highlights. Long-lived and fresh servers agree with the independent range oracle.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture keeps the valid call's exact prepare range and placeholder through damage, repair and redamage while a malformed same-name type position returns null. Long-lived and fresh servers agree.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks complete legacy and versioned multi-file rename edits through damage, repair and redamage, including closed-file versions and exclusion of malformed same-name syntax and decoys. Long-lived and fresh servers agree with the independent site oracle.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
       "requirement": "references/states/dirty/protocol",
       "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. After unsaved didChange shifts the helper declaration, exact cross-file references with and without the declaration use the new UTF-16 range and current overlay; independent owner sites remain separate. LF/CRLF and encoded Unicode paths are exercised.",
       "tests": [

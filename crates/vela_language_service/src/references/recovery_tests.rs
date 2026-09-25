@@ -113,6 +113,15 @@ fn check(
         ]),
         "highlights {context}"
     );
+    let definition = db
+        .definition(&uri(main), point)
+        .expect("valid neighbor definition");
+    assert_eq!(definition.document_id(), &uri("scripts/helper.vela"));
+    assert_eq!(
+        range(definition.range()),
+        marker_range(fixture, "scripts/helper.vela", "definition"),
+        "definition {context}"
+    );
     let prepare = db.prepare_rename(&uri(main), point).expect("valid prepare");
     assert_eq!(
         prepare.symbol(),
@@ -151,6 +160,10 @@ fn check(
         assert!(
             db.document_highlights(&uri(main), bad).is_empty(),
             "bad highlights {context}"
+        );
+        assert!(
+            db.definition(&uri(main), bad).is_none(),
+            "bad definition {context}"
         );
         assert!(
             db.prepare_rename(&uri(main), bad).is_none(),

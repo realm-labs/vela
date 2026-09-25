@@ -1,8 +1,8 @@
 # Reference and rename syntax recovery
 
-B04.31 advances the recovery protocol state cells for references, highlight,
-prepare-rename and rename (four IDs). These broad state cells remain unreviewed
-until their other syntax and interaction cases are complete.
+B04.31 established the syntax-recovery fixture. B04.44 completes its four
+protocol state cells for references, highlight, prepare-rename and rename.
+Syntax partitions and editor interactions remain separate obligations.
 
 The independent five-file fixture runs seven explicit actions: open importer,
 open definition, damage a trailing declaration, repair it, damage a preceding
@@ -13,7 +13,9 @@ function but must never acquire its references, highlights or rename target.
 
 At every state, service and protocol repeat complete references with and
 without the declaration, both document highlights, exact definition and
-prepare targets, and complete multi-file rename edits. Service compares
+prepare targets, and complete multi-file rename edits. Malformed same-named
+type positions have no definition, references, highlights or rename target.
+Service compares
 incrementally updated and fresh databases. Protocol applies real didOpen and
 didChange notifications, checks `E_PARSE` publication and clearing, and
 compares long-lived and fresh servers. Both layers use LF and CRLF variants

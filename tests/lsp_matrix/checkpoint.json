@@ -3795,10 +3795,21 @@
         "rename/states/dependency_delete/protocol"
       ],
       "summary": "Close sixteen source lifecycle protocol state cells for references, highlight, prepare-rename and rename: dirty overlay, close restore, dependency change and dependency delete. The LF/CRLF Unicode fixture now has sixteen owner states, including deleted-dependency importer diagnostics and their clearing after recreation. At every state the long-lived protocol server and a fresh server satisfy exact independent reference, highlight, prepare and complete workspace-edit oracles. Focused service/protocol tests, Node 79, fmt, workspace Clippy, installed Windows VSIX 14 and local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 280 obligations verified, 1045 unreviewed, two N/A, zero failed. B04 has 60 verified and 150 unreviewed protocol/editor cells; remaining state and syntax cells plus fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-GgFMEH/results.json; audit target/lsp-matrix/run-brhroT/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.44",
+      "revision": null,
+      "requirements": [
+        "references/states/recovery/protocol",
+        "highlight/states/recovery/protocol",
+        "prepare-rename/states/recovery/protocol",
+        "rename/states/recovery/protocol"
+      ],
+      "summary": "Close four recovery protocol state cells after reviewing the seven-action LF/CRLF source damage, repair and redamage fixture. Valid imported call references, highlights, prepare range and complete workspace rename edits remain exact while malformed same-named type syntax has no target and a decoy keeps separate ownership. Added service assertions that valid neighboring syntax retains the exact helper definition and malformed syntax has none. Both long-lived and fresh protocol servers satisfy the independent oracle and E_PARSE publishes/clears. Focused service/protocol tests, Node 79, fmt, workspace Clippy, Windows installed VSIX 14 and local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 284 obligations verified, 1041 unreviewed, two N/A, zero failed. B04 has 64 verified and 146 unreviewed protocol/editor cells; remaining schema state and syntax cells plus fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-Y5InsC/results.json; audit target/lsp-matrix/run-EGeeEU/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.44",
-  "nextTask": "B04.44",
+  "activeChild": "B04.45",
+  "nextTask": "B04.45",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
