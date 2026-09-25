@@ -188,6 +188,7 @@ fn run_matrix(spec_for: fn(bool) -> Spec) {
             json!({"textDocument":{"uri":uri}}),
         );
         driver.versions.remove(closed);
+        driver.texts.remove(closed);
         driver.check(&spec, &fixture);
     }
 }
@@ -197,6 +198,7 @@ struct Driver {
     endpoint: TestServer,
     id: i32,
     versions: BTreeMap<String, i32>,
+    texts: BTreeMap<String, String>,
 }
 impl Driver {
     fn new(fixture: &FixtureWorkspace) -> Self {
@@ -207,6 +209,7 @@ impl Driver {
             endpoint: TestServer::new(),
             id: 0,
             versions: BTreeMap::new(),
+            texts: BTreeMap::new(),
         };
         let initialized = driver
             .query::<r::Initialize>(json!({"processId":null,"rootUri":driver.uri(""),
@@ -264,6 +267,7 @@ impl Driver {
     }
     fn open(&mut self, file: &str, text: &str) {
         self.versions.insert(file.into(), 1);
+        self.texts.insert(file.into(), text.into());
         let _ = notify::<n::DidOpenTextDocument>(
             &mut self.endpoint,
             json!({"textDocument":{
@@ -277,12 +281,16 @@ impl Driver {
             .filter(|(file, _)| file.ends_with(".vela"))
         {
             if let Some(version) = self.versions.get_mut(file) {
+                if self.texts.get(file).is_some_and(|text| text == &doc.text) {
+                    continue;
+                }
                 *version += 1;
                 let _ = notify::<n::DidChangeTextDocument>(
                     &mut self.endpoint,
                     json!({"textDocument":{
                     "uri":lsp_types::Url::from_file_path(self.root.join(file)).expect("valid fixture value"),"version":version},"contentChanges":[{"text":doc.text}]}),
                 );
+                self.texts.insert(file.clone(), doc.text.clone());
             } else {
                 self.open(file, &doc.text);
             }
