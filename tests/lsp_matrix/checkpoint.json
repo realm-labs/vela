@@ -3719,10 +3719,19 @@
         "vscode/UX05/colliding-name/render/local"
       ],
       "summary": "Verify UX05 rename cancellation, malformed replacement, and collision rejection as separate Input and Render routes on registered Windows x64 / VS Code 1.137.0. Actual F2, typing, Escape and Enter exercise the installed VSIX; each route checks widget focus, unchanged open and unopened document/disk layers, empty diagnostics, and exact visible errors where rejected. The LSP boundary now reports invalid identifiers and unsafe ownership conflicts explicitly while unknown targets remain null. Existing protocol collision matrices assert rejection code and reason before no-edit checks. Workspace, fmt, Clippy, Node 77, Windows VSIX 10 and all four selected UX05 input routes passed. Final local audit service 687 plus two historical ignored/protocol 676 passed: 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; 274 local execution requirements verified, 1201 unreviewed, two N/A. All eight UX05 interaction obligations verified. B00-B03 snapshots unchanged. Resume B04.38 UX06 references and highlights, then remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-e0IKal/results.json; input editors/vscode/test-results/input-FmEN07/results.json; audit target/lsp-matrix/run-WjiSHw/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.38",
+      "revision": null,
+      "requirements": [
+        "vscode/UX06/references-select/input/local",
+        "vscode/UX06/references-select/render/local"
+      ],
+      "summary": "Verify the UX06 references-select Input and Render route on registered Windows x64 / VS Code 1.137.0. An independent three-file Unicode fixture has a public declaration, direct import and call, qualified closed-file call, and local/shadow names for later UX06 work. The installed-VSIX driver presses Shift+F12, checks the exact four visible UTF-16 references and 1/2/1 file groups, then physically double-clicks all four results and verifies exact destination file, clean source, and selected identifier range. Origin and closed targets are unopened before the first query. Node 79, fmt, Windows VSIX 10, and selected input route passed. Local audit service 687 plus two historical ignored/protocol 676 passed: 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; both references-select interaction obligations verified. The selected local bundle has 268 verified, 1207 unreviewed, two N/A because prior UX05 route proofs are historical and are not reused across changed sources. B00-B03 accepted snapshots unchanged. Resume B04.39 UX06 highlights-caret and shadow-exclusion, then remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-0HIXcs/results.json; input editors/vscode/test-results/input-JQLDnj/results.json; audit target/lsp-matrix/run-PLzTNs/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.38",
-  "nextTask": "B04.38",
+  "activeChild": "B04.39",
+  "nextTask": "B04.39",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

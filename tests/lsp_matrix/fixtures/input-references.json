@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "ux06",
+  "files": {
+    "scripts/refs_origin.vela": "/* 中😀 */ pub fn [[declaration:start]]grant[[declaration:end]](value: i64) -> i64 { value }\n",
+    "scripts/refs_open.vela": "/* 中😀 */ use refs_origin::[[import:start]]grant[[import:end]];\nfn main() { [[call:start]]grant[[call:end]](1); let [[local-decl:start]]score[[local-decl:end]] = 1; [[local-write:start]]score[[local-write:end]] += 1; [[local-read:start]]score[[local-read:end]]; }\nfn shadow() { let [[shadow-decl:start]]score[[shadow-decl:end]] = 2; [[shadow-read:start]]score[[shadow-read:end]]; }\n",
+    "scripts/refs_closed.vela": "/* 中😀 */ fn more() { refs_origin::[[closed:start]]grant[[closed:end]](2); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "openFile": "scripts/refs_open.vela",
+    "referenceSites": [
+      { "file": "scripts/refs_origin.vela", "marker": "declaration" },
+      { "file": "scripts/refs_open.vela", "marker": "import" },
+      { "file": "scripts/refs_open.vela", "marker": "call" },
+      { "file": "scripts/refs_closed.vela", "marker": "closed" }
+    ],
+    "localSites": ["local-decl", "local-write", "local-read"],
+    "shadowSites": ["shadow-decl", "shadow-read"]
+  }
+}
