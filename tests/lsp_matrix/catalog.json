@@ -63,6 +63,598 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S5/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. LF/CRLF source/schema functions and methods, named/default/required parameters and tuple-variant call labels retain complete exact owner-specific references across direct, aliased, qualified, closure and closed-file call sites. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S5/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. LF/CRLF source/schema functions and methods, named/default/required parameters and tuple-variant call labels retain complete exact owner-specific references across direct, aliased, qualified, closure and closed-file call sites. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S5/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Unknown or private callees, wrong-owner or unknown labels, stdlib/builtin calls and dynamic Any methods cannot borrow source/schema callable or parameter references. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S5/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Unknown or private callees, wrong-owner or unknown labels, stdlib/builtin calls and dynamic Any methods cannot borrow source/schema callable or parameter references. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S5/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Known source/schema calls and named/default/required argument labels retain exact same-document highlight ranges and kinds, with caller values and callee parameters kept separate. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S5/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Known source/schema calls and named/default/required argument labels retain exact same-document highlight ranges and kinds, with caller values and callee parameters kept separate. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S5/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Unknown or private callees, wrong-owner or unknown labels, stdlib/builtin calls and dynamic Any methods have no borrowed highlights. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S5/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Unknown or private callees, wrong-owner or unknown labels, stdlib/builtin calls and dynamic Any methods have no borrowed highlights. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S5/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Editable source and source-backed schema callables and parameters retain exact prepare ranges and placeholders on declarations, calls and named argument labels. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S5/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Editable source and source-backed schema callables and parameters retain exact prepare ranges and placeholders on declarations, calls and named argument labels. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S5/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Metadata-only, stdlib, builtin, unresolved or dynamic call targets and unknown/wrong-owner argument labels yield no prepare target; parameter capture collisions are rejected. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S5/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Metadata-only, stdlib, builtin, unresolved or dynamic call targets and unknown/wrong-owner argument labels yield no prepare target; parameter capture collisions are rejected. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S5/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Editable source and source-backed schema callables and parameters yield complete exact, applied and re-queried multi-file edits across direct/aliased calls, methods, defaults and named labels. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::reference_rename_coordinate_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::required_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::default_binding_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S5/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Editable source and source-backed schema callables and parameters yield complete exact, applied and re-queried multi-file edits across direct/aliased calls, methods, defaults and named labels. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S5/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Metadata-only, stdlib, builtin, unresolved or dynamic calls and unknown/wrong-owner labels cannot produce or contaminate a rename edit; callee and label capture collisions are rejected. Service byte ranges and canonical symbol identities are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::named_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::method_parameter_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_function_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "service",
+          "name": "references::module_tests::module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S5/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s5.md. Metadata-only, stdlib, builtin, unresolved or dynamic calls and unknown/wrong-owner labels cannot produce or contaminate a rename edit; callee and label capture collisions are rejected. Actual LSP UTF-16 results, edit forms and client versions are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::modules::lsp_module_segments_stay_distinct_from_builtin_and_stdlib_query_targets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S4/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s4.md. LF/CRLF source and schema fields, methods, trait methods and unit/tuple/record variants retain complete owner-specific references across constructors, shorthand labels, member reads/writes and value/pattern sites. The service driver verifies exact byte ranges and canonical symbol ownership.",
       "tests": [

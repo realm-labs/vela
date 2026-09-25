@@ -5,7 +5,7 @@
     "vela.toml": "[package]\nid = \"dev.vela.method_parameters\"\nname = \"method_parameters\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
     "scripts/helpers.vela": "pub struct Counter {}\nimpl Counter {\n /* 中😀 */ pub fn add(self, [[method-decl:start]]amount[[method-decl:end]]: i64, spare: i64 = 0) -> i64 { return [[method-read:start]]amount[[method-read:end]] + spare; }\n pub fn sibling(self, [[sibling-decl:start]]amount[[sibling-decl:end]]: i64) -> i64 { return [[sibling-read:start]]amount[[sibling-read:end]]; }\n}\npub trait Measure {\n fn measure(self, [[default-decl:start]]amount[[default-decl:end]]: i64) -> i64 { return [[default-read:start]]amount[[default-read:end]]; }\n}\n",
     "scripts/consumer.vela": "pub struct Counter {}\nimpl Counter { pub fn add(self, [[other-decl:start]]amount[[other-decl:end]]: i64) -> i64 { return [[other-read:start]]amount[[other-read:end]]; } }\nfn closed(item: helpers::Counter) { item.add([[closed-label:start]]amount[[closed-label:end]] = 3); }\nimpl helpers::Measure for Counter { fn measure(self, [[override-decl:start]]amount[[override-decl:end]]: i64) -> i64 { return [[override-read:start]]amount[[override-read:end]]; } }\n",
-    "scripts/main.vela": "use helpers::Counter as Count\nuse helpers::Measure as Measured\n/* 中😀 */ fn main(item: Count, other: consumer::Counter, measured: Measured, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n item.add([[method-label:start]]amount[[method-label:end]] = [[caller-read:start]]amount[[caller-read:end]]);\n item.sibling([[sibling-label:start]]amount[[sibling-label:end]] = 2);\n other.add([[other-label:start]]amount[[other-label:end]] = 4);\n measured.measure([[default-label:start]]amount[[default-label:end]] = 5);\n let callback = || item.add([[closure-label:start]]amount[[closure-label:end]] = 6);\n item.add([[unknown-label:start]]bogus[[unknown-label:end]] = 7);\n let text = \"[[literal:start]]amount[[literal:end]]\";\n}\nfn incomplete(item: Count) { item.add([[recovery-label:start]]amount[[recovery-label:end]] = ); }\nfn overridden(item: consumer::Counter) { item.measure([[override-label:start]]amount[[override-label:end]] = 8); }\nfn unknown(item) { item.add([[unknown-callee:start]]amount[[unknown-callee:end]] = 1); }\n"
+    "scripts/main.vela": "use helpers::Counter as Count\nuse helpers::Measure as Measured\n/* 中😀 */ fn main(item: Count, other: consumer::Counter, measured: Measured, [[caller-decl:start]]amount[[caller-decl:end]]: i64) {\n item.add([[method-label:start]]amount[[method-label:end]] = [[caller-read:start]]amount[[caller-read:end]]);\n item.sibling([[sibling-label:start]]amount[[sibling-label:end]] = 2);\n other.add([[other-label:start]]amount[[other-label:end]] = 4);\n measured.measure([[default-label:start]]amount[[default-label:end]] = 5);\n let callback = || item.add([[closure-label:start]]amount[[closure-label:end]] = 6);\n item.add([[unknown-label:start]]bogus[[unknown-label:end]] = 7);\n let text = \"[[literal:start]]amount[[literal:end]]\";\n}\nfn incomplete(item: Count) { item.add([[recovery-label:start]]amount[[recovery-label:end]] = ); }\nfn overridden(item: consumer::Counter) { item.measure([[override-label:start]]amount[[override-label:end]] = 8); }\nfn unknown(item) { item.add([[unknown-callee:start]]amount[[unknown-callee:end]] = 1); }\nfn dynamic(item: Any) { item.[[dynamic-method:start]]add[[dynamic-method:end]]([[dynamic-label:start]]amount[[dynamic-label:end]] = 1); }\n"
   },
   "actions": [],
   "oracle": {
@@ -268,6 +268,14 @@
         "file": "scripts/main.vela",
         "marker": "unknown-callee",
         "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-method"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-label"
       }
     ],
     "checkDefinition": true,
