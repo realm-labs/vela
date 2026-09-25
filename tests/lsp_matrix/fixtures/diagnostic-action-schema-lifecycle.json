@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-schema-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_schema\"\nname = \"diagnostic_schema\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "scripts/main.vela": "fn main(player: Player, scores: Array<i64>) {\n /* 中😀 */ player.[[old:start]]levle[[old:end]];\n player.[[new:start]]rnak[[new:end]];\n scores.[[control:start]]frist[[control:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "appliedLevel": "fn main(player: Player, scores: Array<i64>) {\n /* 中😀 */ player.[[old:start]]level[[old:end]];\n player.[[new:start]]rnak[[new:end]];\n scores.[[control:start]]frist[[control:end]]();\n}\n",
+    "appliedRank": "fn main(player: Player, scores: Array<i64>) {\n /* 中😀 */ player.[[old:start]]levle[[old:end]];\n player.[[new:start]]rank[[new:end]];\n scores.[[control:start]]frist[[control:end]]();\n}\n",
+    "states": [
+      { "id": "level", "operation": "level", "field": "level" },
+      { "id": "missing", "operation": "delete", "warning": "is unavailable; host facts degrade to Any" },
+      { "id": "rank", "operation": "rank", "field": "rank" },
+      { "id": "invalid", "operation": "invalid", "warning": "is invalid: invalid schema artifact: key must be a string at line 1 column 3; host facts degrade to Any" },
+      { "id": "restored", "operation": "level", "field": "level" }
+    ],
+    "levelSchema": {
+      "formatVersion": 1,
+      "facts": {
+        "types": [{ "name": "Player", "fact": { "kind": "host", "name": "Player" } }],
+        "fields": [{ "owner": "Player", "name": "level", "fact": { "kind": "primitive", "name": "i64" } }]
+      }
+    },
+    "rankSchema": {
+      "formatVersion": 1,
+      "facts": {
+        "types": [{ "name": "Player", "fact": { "kind": "host", "name": "Player" } }],
+        "fields": [{ "owner": "Player", "name": "rank", "fact": { "kind": "primitive", "name": "i64" } }]
+      }
+    }
+  }
+}

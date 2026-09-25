@@ -215,6 +215,34 @@
       ]
     },
     {
+      "requirement": "diagnostics/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-schema-lifecycle.md. Deleting or invalidating a real host schema publishes exactly one controlled schema warning, suppresses guessed Player field errors, and retains the exact independent Array diagnostic under LF/CRLF; fresh and long-lived servers agree.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-schema-lifecycle.md. Replacing level with rank updates both Player diagnostic candidate sets without stale level metadata, preserves the source-owned Array error, and restoring level restores exact original diagnostics; full publications equal fresh servers under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-schema-lifecycle.md. Missing and invalid schema states return no host field actions at either marked typo but retain exactly three versioned source Array repairs with one marked edit each; fresh and long-lived servers agree under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-schema-lifecycle.md. Replacing level with rank changes exact one-edit host actions to rank without retaining level, and restoration reverses them. Applying current actions matches whole marked source, clears only the target and leaves no stale action; fresh and long-lived results agree under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
       "requirement": "references/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s2.md. Function and method body parameters, locals, assignments, nested blocks, branch and match arms, loop bodies, captured callback closures and returns retain complete exact owner-specific reference sets with and without declarations. Service checks byte ranges and canonical local/source symbol identities.",
       "tests": [

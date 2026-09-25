@@ -5264,10 +5264,21 @@
         "code-action/states/recovery/protocol"
       ],
       "summary": "Close diagnostics and code-action recovery protocol states with one LF/CRLF marker fixture. Opening, appending an unclosed declaration, applying first Quick Fix while damaged, restoring the typo and repairing only syntax give exact complete E_PARSE and unknown-method publication sets. Three ordered one-edit actions remain available on the valid neighbor, the malformed site has no guessed action, the applied fix clears only its target, and requery at that site is empty. Long-lived and fresh servers agree on complete damaged and repaired diagnostics and actions at the same text and version. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 450 catalog verified, 875 unreviewed, two N/A, zero failed; B05 execution has 34 verified and 60 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-xDEDLs/results.json; input editors/vscode/test-results/input-RD2NoD/results.json; audit target/lsp-matrix/run-GBrFyB/report.json. Resume B05.8. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.8",
+      "revision": null,
+      "requirements": [
+        "diagnostics/states/missing_schema/protocol",
+        "diagnostics/states/stale_schema/protocol",
+        "code-action/states/missing_schema/protocol",
+        "code-action/states/stale_schema/protocol"
+      ],
+      "summary": "Close four diagnostics/code-action missing and stale schema protocol states with one encoded Unicode workspace and LF/CRLF fixture. A live schema moves through level, deletion, rank, malformed JSON and restored level. Every phase pins complete source diagnostic codes, messages, severities, UTF-16 ranges and candidate replacements; missing/invalid states publish one controlled warning, suppress host guesses and preserve the source-owned Array error. Exact action titles, kinds and single marked edits in legacy/versioned projections change from level to rank and back; source Array fixes persist. Fresh servers agree with long-lived complete diagnostics and actions at every phase. Applying current level/rank actions in fresh open documents matches whole independent source oracles, clears only the selected error and leaves no stale action. Focused protocol, Node 83, fmt, workspace Clippy and tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 454 catalog verified, 871 unreviewed, two N/A, zero failed; B05 execution has 38 verified and 56 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-hkg5GM/results.json; input editors/vscode/test-results/input-htcrcH/results.json; audit target/lsp-matrix/run-g1kCoP/report.json. Resume B05.9. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.8",
+  "nextTask": "B05.9",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7674,7 +7685,8 @@
     "target/lsp-matrix/run-jDElMX/report.json",
     "target/lsp-matrix/run-Y5cTMZ/report.json",
     "target/lsp-matrix/run-H2Ai45/report.json",
-    "target/lsp-matrix/run-GBrFyB/report.json"
+    "target/lsp-matrix/run-GBrFyB/report.json",
+    "target/lsp-matrix/run-g1kCoP/report.json"
   ],
   "openIssues": [
     {
@@ -9601,8 +9613,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "bdf0c9de481050bf802eaee2b29612c065394b11",
-          "treeSha256": "8ba4145346d86d0948f24960129c8c172210eab628be94c715392c972429abff"
+          "revision": "feff15c05d5d0f584937ab15893387d31b3bc274",
+          "treeSha256": "349bf90734116b5cbec4652f4d7b9341bef89fb5322fbdb366954b9388427c62"
         },
         "profile": {
           "platform": "win32",
@@ -9610,11 +9622,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-GBrFyB/report.json"
+          "target/lsp-matrix/run-g1kCoP/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-xDEDLs/results.json --local-results editors/vscode/test-results/input-RD2NoD/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-hkg5GM/results.json --local-results editors/vscode/test-results/input-htcrcH/results.json",
             "exitCode": 0
           }
         ]

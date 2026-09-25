@@ -5,6 +5,7 @@ use std::{
 };
 
 mod matrix;
+mod schema_lifecycle;
 
 #[test]
 fn lsp_code_action_fixes_unknown_field_typo() {
