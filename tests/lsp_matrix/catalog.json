@@ -63,6 +63,494 @@
   ],
   "evidence": [
     {
+      "requirement": "references/states/unresolved/protocol",
+      "assertion": "Reviewed all unresolved partitions in reviews/reference-rename-unresolved.md. No-group queries in all 26 LF/CRLF coordinate fixtures return the exact empty reference set both with and without declarations across missing locals, calls, labels, members, variants, imports, private/ambiguous paths and non-target tokens. Lifecycle, schema removal and recovery retain empty results beside exact owned and decoy controls.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_lookup_matrix_preserves_unknown_and_exact_owners_after_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/unresolved/protocol",
+      "assertion": "Reviewed all unresolved partitions in reviews/reference-rename-unresolved.md. No-group queries in all 26 LF/CRLF coordinate fixtures return the exact empty same-document highlight set across source/schema and lexical missing targets. Lifecycle, schema removal and recovery keep unknown highlights empty beside exact owned and decoy controls.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_lookup_matrix_preserves_unknown_and_exact_owners_after_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/unresolved/protocol",
+      "assertion": "Reviewed all unresolved partitions in reviews/reference-rename-unresolved.md. No-group queries in all 26 LF/CRLF coordinate fixtures return JSON null for prepareRename across missing source/schema owners, labels, members, variants, imports and lexical non-targets. Lifecycle, schema removal and recovery preserve null after invalidation while owned controls retain exact prepare ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_lookup_matrix_preserves_unknown_and_exact_owners_after_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/unresolved/protocol",
+      "assertion": "Reviewed all unresolved partitions in reviews/reference-rename-unresolved.md. No-group queries in all 26 LF/CRLF coordinate fixtures return JSON null for rename and cannot produce workspace edits across missing source/schema owners, labels, members, variants, imports and lexical non-targets. Lifecycle, schema removal and recovery preserve rejection beside exact owned edit controls.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::reference_rename_coordinate_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::named_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::method_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::required_parameter_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::default_binding_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_function_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::import_boundary_matrix_preserves_public_aliases_and_excludes_private_stdlib_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_value_matrix_preserves_const_state_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::imported_type_matrix_preserves_struct_enum_trait_and_visibility_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_lookup_matrix_preserves_unknown_and_exact_owners_after_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_capture_matrix_rejects_changed_owners_and_applies_safe_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_lookup_matrix_preserves_unknown_and_short_name_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_ambiguity_removal_matrix_preserves_unresolved_imports"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::recovery::reference_rename_recovery_publishes_current_facts_and_parse_diagnostics"
+        }
+      ]
+    },
+    {
       "requirement": "references/states/dynamic/protocol",
       "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. Known source/schema function and method calls resolve to exact origins, but all twelve direct, imported, local-bound, method-chain and shadowed Any downstream members return an empty reference set with and without declarations under Unicode LF/CRLF.",
       "tests": [

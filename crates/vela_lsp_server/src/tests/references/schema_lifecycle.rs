@@ -208,6 +208,11 @@ impl Driver {
         let unknown = self.params(fixture, main, "unknown");
         let refs=self.query::<r::References>(json!({"textDocument":unknown["textDocument"],"position":unknown["position"],"context":{"includeDeclaration":true}}));
         assert_eq!(refs, json!([]));
+        assert_eq!(
+            self.query::<r::DocumentHighlightRequest>(unknown.clone()),
+            json!([]),
+            "unknown schema module highlights {context}"
+        );
         assert!(
             self.query::<r::PrepareRenameRequest>(unknown.clone())
                 .is_null()

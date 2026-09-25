@@ -196,6 +196,7 @@ fn check(
     assert!(db.rename(&uri(main), point, "new_ping").is_none());
     let unknown = marker_point(fixture, main, "unknown");
     assert!(db.references(&uri(main), unknown, true).is_empty());
+    assert!(db.document_highlights(&uri(main), unknown).is_empty());
     assert!(db.prepare_rename(&uri(main), unknown).is_none());
     assert!(db.rename(&uri(main), unknown, "new_grant").is_none());
     let dynamic = marker_point(fixture, main, "dynamic");
