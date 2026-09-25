@@ -3750,10 +3750,21 @@
         "rename/editor/smoke"
       ],
       "summary": "Verify four B04 installed-VSIX editor smoke cells on registered Windows x64 / VS Code 1.137.0. Independent UX05/UX06 fixtures check exact four-site Unicode references across three files, local Text/Write/Read highlights and shadow exclusion, prepare range/placeholder and keyword rejection, collision rejection and applied four-site workspace rename with unrelated source preserved. Ignore downloaded root VS Code cache to keep source identity stable across local machines. Node 79, fmt and Windows VSIX 14 passed. Ordinary local audit service 687 plus two historical ignored/protocol 676 passed: 256 protocol obligations verified, 1069 unreviewed, two N/A, zero failed. Four editor smoke cells are verified; remaining B04 syntax/state cells and fresh local interaction evidence stay open before batch acceptance. B00-B03 snapshots unchanged; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-w8CcYt/results.json; audit target/lsp-matrix/run-U9tfPM/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.41",
+      "revision": null,
+      "requirements": [
+        "references/states/dynamic/protocol",
+        "highlight/states/dynamic/protocol",
+        "prepare-rename/states/dynamic/protocol",
+        "rename/states/dynamic/protocol"
+      ],
+      "summary": "Close four dynamic Any protocol state cells. The shared navigation-dynamic fixture has 12 downstream field/method positions after known source, imported, source-method, schema-function and schema-method Any returns, plus local-bound and shadowed receivers; seven nearby source/schema owners remain resolved controls. Exact navigation origins are checked separately, while every dynamic position returns empty references with and without declarations, empty highlights, and null prepare/rename under LF/CRLF with Unicode and encoded workspace URI. Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 260 obligations verified, 1065 unreviewed, two N/A, zero failed. B04 has 40 verified and 170 unreviewed protocol/editor cells; syntax, other state and fresh interaction proof remain open before acceptance. B00-B03 snapshots unchanged; macOS needs independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-gWMAcC/results.json; audit target/lsp-matrix/run-LXOyu4/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.41",
-  "nextTask": "B04.41",
+  "activeChild": "B04.42",
+  "nextTask": "B04.42",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

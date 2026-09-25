@@ -63,6 +63,38 @@
   ],
   "evidence": [
     {
+      "requirement": "references/states/dynamic/protocol",
+      "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. Known source/schema function and method calls resolve to exact origins, but all twelve direct, imported, local-bound, method-chain and shadowed Any downstream members return an empty reference set with and without declarations under Unicode LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
+        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+      ]
+    },
+    {
+      "requirement": "highlight/states/dynamic/protocol",
+      "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. Exact source/schema callable origins remain known while all twelve Any downstream members have an empty same-document highlight set under Unicode LF/CRLF, even beside real same-named source/schema members.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
+        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/dynamic/protocol",
+      "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. All twelve Any downstream members reject prepareRename with JSON null after source/schema callable resolution, including imported and local-bound receivers under Unicode LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
+        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+      ]
+    },
+    {
+      "requirement": "rename/states/dynamic/protocol",
+      "assertion": "Reviewed dynamic return partitions in reviews/reference-rename-dynamic.md. All twelve Any downstream members reject rename without workspace edits after source/schema callable resolution, including imported and local-bound receivers under Unicode LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns" },
+        { "layer": "protocol", "name": "tests::references::dynamic_matrix::dynamic_any_return_matrix_rejects_all_reference_and_rename_targets" }
+      ]
+    },
+    {
       "requirement": "references/editor/smoke",
       "assertion": "Installed VSIX reference provider returns the independently marked complete four-site Unicode set across origin, importer and closed consumer; every returned range selects grant and leaves source unchanged.",
       "tests": [

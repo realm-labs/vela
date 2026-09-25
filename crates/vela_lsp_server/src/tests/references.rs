@@ -6,6 +6,7 @@ use super::{TestServer, request, response_value};
 mod coordinates;
 mod cross_file;
 mod degradation;
+mod dynamic_matrix;
 mod highlight;
 mod lifecycle;
 mod modules;
