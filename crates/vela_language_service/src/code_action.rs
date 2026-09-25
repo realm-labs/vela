@@ -226,6 +226,9 @@ mod matrix_tests;
 #[cfg(test)]
 mod import_matrix_tests;
 
+#[cfg(test)]
+mod top_level_tests;
+
 fn line_indent_at(text: &str, offset: usize) -> &str {
     let start = text[..offset.min(text.len())]
         .rfind('\n')
@@ -258,6 +261,12 @@ fn candidate_actions(
     text: &str,
     diagnostic: &ServiceDiagnostic,
 ) -> Vec<CodeAction> {
+    // Legacy global candidates describe migration forms, not replacements for
+    // the `global` token. Applying either form there would leave the old name
+    // and type behind and produce a malformed declaration.
+    if diagnostic.code() == Some("syntax::legacy_global_decl") {
+        return Vec::new();
+    }
     let Some(diagnostic_range) = diagnostic.range() else {
         return Vec::new();
     };

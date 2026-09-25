@@ -4912,3 +4912,9 @@ imports resolve to the same declaration. Using an unaliased import does not
 consume a separate unused alias of that declaration; a Quick Fix that inserts
 the unaliased import therefore leaves the alias warning visible. The service
 uses resolved HIR paths and type hints for this distinction.
+
+Legacy `global` migration examples remain diagnostic candidates, not automatic
+code actions. The examples contain placeholder names and initializers; the
+diagnostic span covers only the `global` token, so applying them as replacement
+edits would leave the old declaration tail and produce malformed source. A
+Quick Fix requires a concrete edit that preserves the whole declaration.

@@ -8,6 +8,7 @@ mod dependency_lifecycle;
 mod import_matrix;
 mod matrix;
 mod schema_lifecycle;
+mod top_level;
 
 #[test]
 fn lsp_code_action_fixes_unknown_field_typo() {
