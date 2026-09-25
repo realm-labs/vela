@@ -4918,3 +4918,8 @@ code actions. The examples contain placeholder names and initializers; the
 diagnostic span covers only the `global` token, so applying them as replacement
 edits would leave the old declaration tail and produce malformed source. A
 Quick Fix requires a concrete edit that preserves the whole declaration.
+
+For unsupported type arguments on a source type, a complete `<...>` list may
+offer one Quick Fix that removes that list. This resolves the syntax error
+without choosing a replacement type. Incomplete lists and arity, keyability or
+tuple errors remain diagnostic-only because a fix would have to guess intent.

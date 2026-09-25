@@ -34,10 +34,22 @@ fn expected(spec: &Spec, document: &Document, uri: &str) -> Value {
                     "start":{"line":marker.start.line,"character":marker.start.character},
                     "end":{"line":marker.end.line,"character":marker.end.character}
                 });
+                let repairs = if item["marker"] == spec.oracle["codeAction"]["requestMarker"] {
+                    let edit = document.markers[spec.oracle["codeAction"]["editMarker"]
+                        .as_str()
+                        .expect("edit marker")];
+                    json!([{"uri":uri,"range":{
+                        "start":{"line":edit.start.line,"character":edit.start.character},
+                        "end":{"line":edit.end.line,"character":edit.end.character}},
+                        "title":spec.oracle["codeAction"]["title"],
+                        "replacement":spec.oracle["codeAction"]["replacement"]}])
+                } else {
+                    json!([])
+                };
                 json!({"code":item["code"],"message":item["message"],
                 "severity":1,"source":"vela","range":span,
                 "data":{"labels":[{"uri":uri,"range":span,"message":item["label"]}],
-                    "candidates":[],"repairHints":[]}})
+                    "candidates":[],"repairHints":repairs}})
             })
             .collect::<Vec<_>>()
     )

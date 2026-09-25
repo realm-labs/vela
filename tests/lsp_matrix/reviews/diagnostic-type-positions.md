@@ -10,8 +10,9 @@ unsupported source-type arguments, scalar and tuple non-keyable Map/Set
 arguments, and a one-element tuple type.
 
 Service tests assert the complete ordered diagnostics, messages, severity,
-source byte ranges, related labels and empty candidate/repair metadata under
-LF and CRLF. Protocol tests assert the complete UTF-16 publication objects in
+source byte ranges, related labels and candidate/repair metadata under LF and
+CRLF. The complete unsupported source-generic list has one exact removal
+repair hint; every other error has none. Protocol tests assert the complete UTF-16 publication objects in
 an encoded Unicode/space/percent workspace URI. The fixture's separate repair
 oracle replaces every marked invalid span; the whole repaired source parses,
 all diagnostics clear, and live and fresh analysis agree. Closing the dirty

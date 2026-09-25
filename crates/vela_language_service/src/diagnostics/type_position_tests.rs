@@ -32,9 +32,15 @@ fn expected(spec: &Spec, document: &Document) -> Value {
             .iter()
             .map(|item| {
                 let span = byte_range(document, item["marker"].as_str().expect("marker"));
+                let repairs = if item["marker"] == spec.oracle["codeAction"]["requestMarker"] {
+                    json!([{"uri":invalid.as_str(),
+                        "range":byte_range(document, spec.oracle["codeAction"]["editMarker"].as_str().expect("edit marker")),
+                        "title":spec.oracle["codeAction"]["title"],
+                        "replacement":spec.oracle["codeAction"]["replacement"]}])
+                } else { json!([]) };
                 json!({"code":item["code"],"message":item["message"],"severity":"error",
                 "range":span,"labels":[{"uri":invalid.as_str(),"range":span,
-                    "message":item["label"]}],"candidates":[],"repairHints":0})
+                    "message":item["label"]}],"candidates":[],"repairHints":repairs})
             })
             .collect::<Vec<_>>()
     )
@@ -58,7 +64,10 @@ fn diagnostic(value: &ServiceDiagnostic) -> Value {
             "message":label.message()
         })).collect::<Vec<_>>(),
         "candidates":value.candidates().iter().map(|candidate| candidate.replacement()).collect::<Vec<_>>(),
-        "repairHints":value.repair_hints().len()
+        "repairHints":value.repair_hints().iter().map(|hint| json!({
+            "uri":hint.document_id().as_str(),"range":range(hint.range()),
+            "title":hint.title(),"replacement":hint.replacement()
+        })).collect::<Vec<_>>()
     })
 }
 

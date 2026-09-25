@@ -23,6 +23,7 @@
       {"marker":"set-tuple","code":"syntax::set_element_type_argument","message":"`Set` type hints require a keyable element type","label":"use a ValueKey-supported element type or an unparameterized Set"},
       {"marker":"tuple","code":"syntax::one_element_tuple_type","message":"one-element tuple type hints are not supported","label":"use the element type directly or add another tuple element"}
     ],
+    "codeAction": {"requestMarker":"generic","editMarker":"generic-args","title":"Remove unsupported type arguments","replacement":""},
     "repairs": {
       "array":"<i64>",
       "map":"<String, i64>",

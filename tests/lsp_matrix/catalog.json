@@ -487,6 +487,34 @@
       ]
     },
     {
+      "requirement": "code-action/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/code-action-type-positions.md. A complete unsupported source-type argument list has one exact Quick Fix that removes only the argument list; applying it clears only that diagnostic and retains eleven unrelated type errors under LF/CRLF. Valid primitive, container, source, Any and unknown type positions have no false actions.",
+      "tests": [
+        { "layer": "service", "name": "code_action::type_position_tests::type_position_actions_reject_speculative_edits_and_clear_after_manual_repair" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/code-action-type-positions.md. Incorrect arity, non-keyable Map/Set arguments and one-element tuple errors offer no guessed replacement; an unclosed source generic list has no destructive removal action. All twelve independent manual repairs clear diagnostics and actions under LF/CRLF.",
+      "tests": [
+        { "layer": "service", "name": "code_action::type_position_tests::type_position_actions_reject_speculative_edits_and_clear_after_manual_repair" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/code-action-type-positions.md. The source-generic fix projects one exact versioned UTF-16 edit in an encoded Unicode workspace; applying it leaves eleven exact current diagnostics, clears the selected error/action and agrees with a fresh server under LF/CRLF. Valid and fully repaired type positions return empty action arrays.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::type_positions::type_position_actions_project_safe_edit_and_reject_guesses" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/code-action-type-positions.md. Complete UTF-16 action arrays are empty for all eleven type errors requiring a choice and for an unclosed generic list; full manual repair clears results and close restores the original disk diagnostic and its one safe action. LF/CRLF and encoded URI are exact.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::type_positions::type_position_actions_project_safe_edit_and_reject_guesses" }
+      ]
+    },
+    {
       "requirement": "code-action/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/code-action-import-partitions.md. Function, const, state, struct, enum and trait names each yield exactly one public source import Quick Fix; an unused aliased import yields one removal. LF/CRLF service byte edits have exact title, kind, URI, range and text. Applying each action matches whole source and removes only its target diagnostic, including when another alias names the same declaration.",
       "tests": [

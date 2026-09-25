@@ -127,17 +127,23 @@ fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic
             || span_for(source, args.syntax().text_range()),
             |token| span_for(source, token.text_range()),
         );
-        diagnostics.push(
-            Diagnostic::error(
-                "only builtin container, Option, and Result type hints support type arguments",
-            )
-            .with_code("syntax::generic_type_hint")
-            .with_span(span)
-            .with_label(
-                span,
-                "use a builtin parameterized type hint or remove these type arguments",
-            ),
+        let mut diagnostic = Diagnostic::error(
+            "only builtin container, Option, and Result type hints support type arguments",
+        )
+        .with_code("syntax::generic_type_hint")
+        .with_span(span)
+        .with_label(
+            span,
+            "use a builtin parameterized type hint or remove these type arguments",
         );
+        if args.less_token().is_some() && args.greater_token().is_some() {
+            diagnostic = diagnostic.with_repair(
+                "Remove unsupported type arguments",
+                span_for(source, args.syntax().text_range()),
+                "",
+            );
+        }
+        diagnostics.push(diagnostic);
         return diagnostics;
     };
 

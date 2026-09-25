@@ -9,6 +9,7 @@ mod import_matrix;
 mod matrix;
 mod schema_lifecycle;
 mod top_level;
+mod type_positions;
 
 #[test]
 fn lsp_code_action_fixes_unknown_field_typo() {
