@@ -5192,10 +5192,25 @@
         "code-action/environments/crlf/protocol"
       ],
       "summary": "Verify exact unknown-method diagnostic publication and three quick-fix candidates with one shared Unicode LF/CRLF fixture at service and protocol layers. A real code-action bug projected edits as byte columns; reuse snapshot-aware workspace-edit projection so both changes and versioned documentChanges use UTF-16. Apply frist to first, compare the whole source, parse and requery: only the unrelated foobar diagnostic remains. Focused tests, Node 79, fmt, workspace Clippy and full workspace tests passed; Windows installed VSIX 14 and native input 22 passed. Current-source strict B04 gate with fresh VSIX and input evidence passed: 434 verified, 891 unreviewed, two N/A, zero failed; B05 has four verified and 90 unreviewed. B00-B04 acceptance snapshots remain fixed, Windows profile audit refreshed; macOS needs independent current evidence when used. B16 deferred. VSIX editors/vscode/test-results/run-CWVoup/results.json; input editors/vscode/test-results/input-7p8D17/results.json; audit target/lsp-matrix/run-XSVKcr/report.json. Resume B05.2. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.2",
+      "revision": null,
+      "requirements": [
+        "diagnostics/environments/encoded_uri/protocol",
+        "diagnostics/states/dirty/protocol",
+        "diagnostics/states/repeat/protocol",
+        "diagnostics/states/close_restore/protocol",
+        "code-action/environments/encoded_uri/protocol",
+        "code-action/states/dirty/protocol",
+        "code-action/states/repeat/protocol",
+        "code-action/states/close_restore/protocol"
+      ],
+      "summary": "Verify encoded URI and overlay lifecycle protocol cells for diagnostics and code actions in the shared unknown-method fixture, under LF and CRLF. A materialized Unicode/space/percent workspace records exact publications and three exact quick-fix edits in both edit forms. Repeated text and requests agree; an unsaved Unicode-prefix edit shifts ranges and client versions; applying first clears only its diagnostic; closing without saving restores disk diagnostics and null-version actions, and reopening uses the new version. Focused protocol, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and native input 22 passed. Current-source strict B04 gate passed with fresh matching evidence: 442 verified, 883 unreviewed, two N/A, zero failed; B05 has 12 verified and 82 unreviewed. B00-B04 acceptance snapshots remain fixed, Windows profile audit refreshed; macOS needs independent current evidence when used. B16 deferred. VSIX editors/vscode/test-results/run-E0dUGy/results.json; input editors/vscode/test-results/input-Hlnmrq/results.json; audit target/lsp-matrix/run-UpOY5U/report.json. Resume B05.3. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.2",
+  "nextTask": "B05.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7595,7 +7610,8 @@
     "editors/vscode/test-results/run-dH79Eo/results.json",
     "editors/vscode/test-results/input-X2AtOQ/results.json",
     "target/lsp-matrix/run-WJ0vIc/report.json",
-    "target/lsp-matrix/run-XSVKcr/report.json"
+    "target/lsp-matrix/run-XSVKcr/report.json",
+    "target/lsp-matrix/run-UpOY5U/report.json"
   ],
   "openIssues": [
     {
@@ -9522,8 +9538,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "af092acf6f8e61da26d1463eb41cd03e8b681e27",
-          "treeSha256": "ec76a43428d3031655f75d438bd5989b5c189ad08b8590e9b5c99dd510f25251"
+          "revision": "9a035fc54b27332e8a60ac4d2ff2d40386f3c222",
+          "treeSha256": "ec8b250033a76a8a467b641b4152e3c8a481d96c60292543dd70eaaf464f5e2c"
         },
         "profile": {
           "platform": "win32",
@@ -9531,11 +9547,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-XSVKcr/report.json"
+          "target/lsp-matrix/run-UpOY5U/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-CWVoup/results.json --local-results editors/vscode/test-results/input-7p8D17/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-E0dUGy/results.json --local-results editors/vscode/test-results/input-Hlnmrq/results.json",
             "exitCode": 0
           }
         ]

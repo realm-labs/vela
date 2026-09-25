@@ -63,6 +63,62 @@
   ],
   "evidence": [
     {
+      "requirement": "diagnostics/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. A real root containing Chinese, spaces and percent signs produces an encoded file URI; exact diagnostic publications preserve that URI and marker-derived ranges through open, dirty edit, repair, close and reopen.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. An unsaved didChange shifts the typo after a Unicode comment; the published complete diagnostic set has exact codes, messages, severities and new ranges. Applying the fix clears only the target diagnostic without writing to disk.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. Repeating the same document text in a new version publishes an identical complete diagnostic array; exact diagnostic sets are also checked after changed text, repair and reopening.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. Closing a repaired but unsaved overlay republishes the two exact disk diagnostics; reopening the disk text preserves them, so an overlay-only repair cannot leak into disk state.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. Every quick-fix candidate uses the exact encoded client file URI in changes and documentChanges with marker-derived UTF-16 ranges and the current open or closed document version.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. After an unsaved Unicode-prefix edit, all three exact quick fixes target the shifted typo and version 3; applying the selected edit yields the complete expected dirty source and clears only its diagnostic.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. Two requests at the same source and version return identical full candidate/action/edit arrays, both before and after an unsaved edit; a repeated text notification updates only the document version.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "code-action/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-action-lifecycle.md. After closing an unsaved repair, disk quick fixes return with a null closed-document version; reopening restores the exact three actions with the new client version, URI and ranges.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::matrix::encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions" }
+      ]
+    },
+    {
       "requirement": "diagnostics/environments/utf16/protocol",
       "assertion": "Reviewed in reviews/diagnostic-action-method-typo.md. Chinese text and a non-BMP character precede a method typo on its line. Actual published diagnostics have the exact two codes, messages, severities and UTF-16 ranges; after a versioned applied fix only the independently marked unrelated diagnostic remains.",
       "tests": [

@@ -7,6 +7,8 @@
   "actions": [],
   "oracle": {
     "applied": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[fix:start]]first[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n",
+    "dirty": "fn main(scores: Array<i64>) {\n /* 中😀 dirty */ scores.[[fix:start]]frist[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n",
+    "appliedDirty": "fn main(scores: Array<i64>) {\n /* 中😀 dirty */ scores.[[fix:start]]first[[fix:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n}\n",
     "diagnostics": [
       {
         "marker": "fix",
