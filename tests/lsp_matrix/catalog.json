@@ -335,6 +335,38 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-type-positions.md. Valid primitive, builtin/view container, Option/Result, tuple/unit, source struct/trait, Any and unresolved hints stay diagnostic-free across declaration and local type positions under LF/CRLF; valid schema host facts retain only independently expected source diagnostics.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::type_position_tests::type_hint_diagnostics_enforce_only_supported_contracts_and_clear_after_repair" },
+        { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-type-positions.md. Complete byte-range diagnostic sets reject incorrect arity, source-type arguments, non-keyable Map/Set hints and one-element tuples; applying every independent repair clears them without inventing an unknown-type error. Missing/invalid host schema degrades without field guesses.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::type_position_tests::type_hint_diagnostics_enforce_only_supported_contracts_and_clear_after_repair" },
+        { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-type-positions.md. Valid source and builtin type positions publish an empty diagnostic array; all repaired invalid positions clear after a dirty edit, agree with a fresh server and stay clear after reopening. Valid host schema restores positioned source diagnostics under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_type_positions::type_hint_diagnostics_project_utf16_and_clear_after_all_repairs" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-type-positions.md. Complete encoded-URI UTF-16 publications pin arity, unsupported source generics, Map/Set keyability and tuple-type errors with labels and metadata; close restores disk errors. Missing/invalid schema emits a controlled warning and no guessed host-field errors.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_type_positions::type_hint_diagnostics_project_utf16_and_clear_after_all_repairs" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
       "requirement": "diagnostics/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Public source and source-backed schema function aliases produce no false errors while an unused public import produces one exact warning. Complete diagnostic sets, byte ranges and related owners agree across LF/CRLF and dependency change/delete/restore.",
       "tests": [

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "id": "diagnostic-type-positions",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_types\"\nname = \"diagnostic_types\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/defs.vela": "pub struct Cell {}\npub trait Reader { fn read(self) -> i64; }\n",
+    "scripts/valid.vela": "use defs::Cell\nuse defs::Reader\n/* 中😀 */ fn valid(value: i64, flag: bool, letter: char, signed8: i8, signed16: i16, signed32: i32, unsigned8: u8, unsigned16: u16, unsigned32: u32, unsigned64: u64, float32: f32, float64: f64, text: String, bytes: Bytes, range: Range, callable: Function, closure: Closure, array: Array<Cell>, array_view: ArrayView<Cell>, array_mut: ArrayMut<Cell>, map: Map<String, Array<i64>>, map_view: MapView<String, i64>, map_mut: MapMut<String, i64>, set: Set<String>, set_view: SetView<String>, set_mut: SetMut<String>, iter: Iterator<Cell>, option: Option<Cell>, result: Result<Cell, String>, pair: (i64, String), unit: (), owner: Reader, dynamic: Any, unknown: Missing) -> Option<Cell> {}\nstruct Holder { field: Option<Cell> }\nenum Choice { Record { field: Map<String, Cell> }, Tuple(value: Result<Cell, String>) }\ntrait Consumer { fn consume(self, value: Cell) -> Result<Cell, String>; }\nconst COUNT: i64 = 1\nfn local() { let value: Option<Cell>; }\n",
+    "scripts/invalid.vela": "use defs::Cell\n/* 中😀 */ fn arity_array(value: Array[[array:start]]<>[[array:end]]) {}\nfn arity_map(value: Map[[map:start]]<i64>[[map:end]]) {}\nfn arity_result(value: Result[[result:start]]<String>[[result:end]]) {}\nfn arity_option(value: Option[[option:start]]<>[[option:end]]) {}\nfn arity_iterator(value: Iterator[[iterator:start]]<>[[iterator:end]]) {}\nfn arity_set(value: Set[[set:start]]<String, i64>[[set:end]]) {}\nfn generic_source(value: Cell[[generic-args:start]][[generic:start]]<[[generic:end]]i64>[[generic-args:end]]) {}\nfn bad_map_key(value: Map<[[map-key:start]]PathProxy[[map-key:end]], String>) {}\nfn bad_set_key(value: Set<[[set-key:start]]Function[[set-key:end]]>) {}\nfn bad_map_tuple(value: Map<[[map-tuple:start]](String, i64)[[map-tuple:end]], String>) {}\nfn bad_set_tuple(value: Set<[[set-tuple:start]](String, i64)[[set-tuple:end]]>) {}\nfn one_tuple(value: [[tuple:start]](String,)[[tuple:end]]) {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "diagnostics": [
+      {"marker":"array","code":"syntax::type_argument_arity","message":"`Array` expects 1 type argument","label":"wrong number of type arguments"},
+      {"marker":"map","code":"syntax::type_argument_arity","message":"`Map` expects 2 type arguments","label":"wrong number of type arguments"},
+      {"marker":"result","code":"syntax::type_argument_arity","message":"`Result` expects 2 type arguments","label":"wrong number of type arguments"},
+      {"marker":"option","code":"syntax::type_argument_arity","message":"`Option` expects 1 type argument","label":"wrong number of type arguments"},
+      {"marker":"iterator","code":"syntax::type_argument_arity","message":"`Iterator` expects 1 type argument","label":"wrong number of type arguments"},
+      {"marker":"set","code":"syntax::type_argument_arity","message":"`Set` expects 1 type argument","label":"wrong number of type arguments"},
+      {"marker":"generic","code":"syntax::generic_type_hint","message":"only builtin container, Option, and Result type hints support type arguments","label":"use a builtin parameterized type hint or remove these type arguments"},
+      {"marker":"map-key","code":"syntax::map_key_type_argument","message":"`Map` key type hints require a keyable type","label":"use a ValueKey-supported key type or an unparameterized Map"},
+      {"marker":"set-key","code":"syntax::set_element_type_argument","message":"`Set` type hints require a keyable element type","label":"use a ValueKey-supported element type or an unparameterized Set"},
+      {"marker":"map-tuple","code":"syntax::map_key_type_argument","message":"`Map` key type hints require a keyable type","label":"use a ValueKey-supported key type or an unparameterized Map"},
+      {"marker":"set-tuple","code":"syntax::set_element_type_argument","message":"`Set` type hints require a keyable element type","label":"use a ValueKey-supported element type or an unparameterized Set"},
+      {"marker":"tuple","code":"syntax::one_element_tuple_type","message":"one-element tuple type hints are not supported","label":"use the element type directly or add another tuple element"}
+    ],
+    "repairs": {
+      "array":"<i64>",
+      "map":"<String, i64>",
+      "result":"<String, i64>",
+      "option":"<String>",
+      "iterator":"<String>",
+      "set":"<String>",
+      "generic-args":"",
+      "map-key":"String",
+      "set-key":"String",
+      "map-tuple":"String",
+      "set-tuple":"String",
+      "tuple":"String"
+    }
+  }
+}

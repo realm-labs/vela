@@ -193,6 +193,7 @@ mod diagnostic_imports;
 mod diagnostic_incremental;
 mod diagnostic_recovery;
 mod diagnostic_source_state;
+mod diagnostic_type_positions;
 mod document_sync;
 mod document_sync_dependents;
 mod file_watching;

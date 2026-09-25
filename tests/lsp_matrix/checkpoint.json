@@ -5352,10 +5352,21 @@
         "diagnostics/syntax/S11/negative/protocol"
       ],
       "summary": "Close four S11 incremental diagnostic cells. A shared four-module LF/CRLF fixture tests body-only helper edits, declaration rename and importer rebinding beside a stable Unicode Array error. Service pins full diagnostic sets, byte ranges, labels, candidates, fingerprints, project rebuild counts, exact reverse invalidation, stale-generation rejection and fresh parity. Protocol pins complete encoded-URI UTF-16 publications and affected-document sets, rejects same/older client versions, and preserves current results after cancellation and repeat updates. Focused tests, Node 83, fmt, workspace Clippy and full tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 482 catalog verified, 843 unreviewed, two N/A, zero failed; B05 execution has 66 verified and 28 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-TOwBK4/results.json; input editors/vscode/test-results/input-9LpLwu/results.json; audit target/lsp-matrix/run-cA9YKa/report.json. Resume B05.16. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.16",
+      "revision": null,
+      "requirements": [
+        "diagnostics/syntax/S3/positive/service",
+        "diagnostics/syntax/S3/negative/service",
+        "diagnostics/syntax/S3/positive/protocol",
+        "diagnostics/syntax/S3/negative/protocol"
+      ],
+      "summary": "Close four S3 type-position diagnostics cells. A shared LF/CRLF fixture keeps primitive, builtin/view container, Option/Result, tuple/unit, source struct/trait, Any and unknown hints diagnostic-free across declaration and local positions; twelve invalid hints pin arity, unsupported source generics, Map/Set keyability and one-element tuples. Service asserts whole byte-range diagnostic sets and labels; protocol asserts whole encoded-URI UTF-16 publications, dirty repair clearing, close-to-disk restoration and fresh parity. Existing schema lifecycle tests cover host type facts under absent, changed, invalid and restored artifacts. Focused tests, Node 83, fmt, workspace Clippy and full tests passed; Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 486 catalog verified, 839 unreviewed, two N/A, zero failed; B05 execution has 70 verified and 24 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-btc4Vk/results.json; input editors/vscode/test-results/input-gMtq3I/results.json; audit target/lsp-matrix/run-zYwMx0/report.json. Resume B05.17. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.16",
+  "nextTask": "B05.17",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7770,7 +7781,8 @@
     "target/lsp-matrix/run-ovrMo7/report.json",
     "target/lsp-matrix/run-TwQmEg/report.json",
     "target/lsp-matrix/run-MjvqPI/report.json",
-    "target/lsp-matrix/run-cA9YKa/report.json"
+    "target/lsp-matrix/run-cA9YKa/report.json",
+    "target/lsp-matrix/run-zYwMx0/report.json"
   ],
   "openIssues": [
     {
@@ -9697,8 +9709,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "fab5de92e004837ae1e2aaa4ac2a071314024be5",
-          "treeSha256": "b6a8a7f75606aa6110d01a0b792c04faa5169fedab58375390b8b236fa0deb4c"
+          "revision": "486e672f6d1eeabbbcd35ea8b1c3ec88e8214657",
+          "treeSha256": "68e056fbcdfcacb748639f4b533b6bb388012ff0b180a1676bf8630beb33a58e"
         },
         "profile": {
           "platform": "win32",
@@ -9706,11 +9718,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-cA9YKa/report.json"
+          "target/lsp-matrix/run-zYwMx0/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-TOwBK4/results.json --local-results editors/vscode/test-results/input-9LpLwu/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-btc4Vk/results.json --local-results editors/vscode/test-results/input-gMtq3I/results.json",
             "exitCode": 0
           }
         ]

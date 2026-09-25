@@ -916,3 +916,6 @@ mod source_state_tests;
 
 #[cfg(test)]
 mod incremental_tests;
+
+#[cfg(test)]
+mod type_position_tests;
