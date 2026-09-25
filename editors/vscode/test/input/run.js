@@ -414,6 +414,10 @@ async function run() {
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
       until, onProof: (proof) => proofs.push(proof),
     });
+    await require("./highlights").runHighlights({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: (proof) => proofs.push(proof),
+    });
     restoreKeyboard();
     await bridge("finish");
     const completed = await until("workbench exit", () => exit, 15000);

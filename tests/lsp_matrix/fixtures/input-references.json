@@ -16,6 +16,13 @@
       { "file": "scripts/refs_closed.vela", "marker": "closed" }
     ],
     "localSites": ["local-decl", "local-write", "local-read"],
-    "shadowSites": ["shadow-decl", "shadow-read"]
+    "shadowSites": ["shadow-decl", "shadow-read"],
+    "highlightStyles": {
+      "local-decl": "wordHighlightText",
+      "local-write": "wordHighlightStrong",
+      "local-read": "wordHighlight",
+      "shadow-decl": "wordHighlightText",
+      "shadow-read": "wordHighlight"
+    }
   }
 }
