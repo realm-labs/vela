@@ -128,9 +128,14 @@ async function run() {
             safeFile(message.file),
           );
           value = vscode.languages.getDiagnostics(uri).map((item) => ({
-            code: String(item.code ?? ""),
+            code: String((item.code !== null && typeof item.code === "object" ? item.code.value : item.code) ?? ""),
             message: item.message,
             severity: item.severity,
+            range: {
+              start: { line: item.range.start.line, character: item.range.start.character },
+              end: { line: item.range.end.line, character: item.range.end.character },
+            },
+            related: item.relatedInformation?.length ?? 0,
           }));
           break;
         }
@@ -139,6 +144,13 @@ async function run() {
             vscode.workspace.workspaceFolders[0].uri,
             safeFile(message.file),
           );
+          if (message.reset === true) {
+            const previous = vscode.workspace.textDocuments.find((item) => item.uri.toString() === uri.toString());
+            if (previous?.isDirty) {
+              await vscode.window.showTextDocument(previous);
+              await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+            }
+          }
           const doc = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(doc, {
             selection: new vscode.Range(

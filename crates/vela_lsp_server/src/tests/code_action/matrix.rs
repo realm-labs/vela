@@ -320,3 +320,64 @@ fn encoded_uri_dirty_repeat_and_close_restore_diagnostics_and_actions() {
         fs::remove_dir_all(parent).expect("remove isolated fixture");
     }
 }
+
+#[test]
+fn typed_invalid_character_preserves_unrelated_method_diagnostic() {
+    for crlf in [false, true] {
+        let mut spec = load("input-diagnostics");
+        if crlf {
+            for source in spec.files.values_mut() {
+                *source = source.replace('\n', "\r\n");
+            }
+        }
+        let fixture = FixtureWorkspace::new(&spec).expect("diagnostic fixture");
+        let disk = &fixture.disk["scripts/diagnostics.vela"];
+        let typed_source = spec.oracle["typed"].as_str().expect("typed source");
+        let typed = parse_markers(&if crlf {
+            typed_source.replace('\n', "\r\n")
+        } else {
+            typed_source.to_owned()
+        })
+        .expect("typed markers");
+        let unrelated = json!({
+            "marker":"unrelated",
+            "code":spec.oracle["unrelated"]["code"],
+            "message":spec.oracle["unrelated"]["message"]
+        });
+        let target = json!({
+            "marker":"target",
+            "code":spec.oracle["target"]["code"],
+            "message":spec.oracle["target"]["message"]
+        });
+        let uri = "file:///workspace/scripts/diagnostics.vela";
+        let mut server = TestServer::new();
+        let _ = response_value(request::<r::Initialize>(
+            &mut server,
+            1,
+            json!({"processId":null,"rootUri":"file:///workspace/scripts","capabilities":{}}),
+        ));
+        let opened = sync_diagnostics::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":disk.text}}),
+        );
+        check_diagnostics(&opened, disk, std::slice::from_ref(&unrelated));
+        let changed = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri,"version":2},"contentChanges":[{"text":typed.text}]}),
+        );
+        check_diagnostics(&changed, &typed, &[target, unrelated.clone()]);
+        let repaired = sync_diagnostics::<n::DidChangeTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri,"version":3},"contentChanges":[{"text":disk.text}]}),
+        );
+        check_diagnostics(&repaired, disk, &[unrelated]);
+        let valid = disk.markers["valid"];
+        assert!(
+            repaired["params"]["diagnostics"]
+                .as_array()
+                .expect("diagnostics")
+                .iter()
+                .all(|diagnostic| diagnostic["range"] != range(valid))
+        );
+    }
+}

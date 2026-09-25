@@ -94,6 +94,13 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, document.text);
   }
+  const diagnostics = require("../../../../tests/lsp_matrix/fixtures/input-diagnostics.json");
+  for (const [file, document] of new FixtureWorkspace(diagnostics).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "diagnostic fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(
     path.join(workspace, ".vscode/settings.json"),
@@ -392,9 +399,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-to-ux06-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-to-ux07-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux0[3456]-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux0[34567]-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
@@ -415,6 +422,10 @@ async function run() {
       until, onProof: (proof) => proofs.push(proof),
     });
     await require("./highlights").runHighlights({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: (proof) => proofs.push(proof),
+    });
+    await require("./diagnostics").runDiagnostics({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
       until, onProof: (proof) => proofs.push(proof),
     });

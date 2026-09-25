@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "input-diagnostics",
+  "files": {
+    "scripts/diagnostics.vela": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[valid:start]]first[[valid:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n [[cursor]]\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "typed": "fn main(scores: Array<i64>) {\n /* 中😀 */ scores.[[valid:start]]first[[valid:end]]();\n scores.[[unrelated:start]]foobar[[unrelated:end]]();\n [[target:start]]@[[target:end]]\n}\n",
+    "typedText": "@",
+    "target": {
+      "code": "E_LEX_CHAR",
+      "message": "unexpected character `@`"
+    },
+    "unrelated": {
+      "code": "analysis::unknown_method",
+      "message": "unknown method `foobar` for `Array(i64)`"
+    }
+  }
+}
