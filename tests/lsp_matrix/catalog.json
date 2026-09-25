@@ -307,6 +307,38 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-top-level-declarations.md. LF/CRLF multi-file declarations covering public and private forms, use, const, contextual state, extern state, functions and defaults, struct/enum fields and variants, trait interface/default methods, and both impl forms have an empty complete diagnostic set; repaired invalid files and a fresh service remain clear.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::top_level_tests::top_level_declaration_diagnostics_pin_duplicates_and_state_forms" },
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-top-level-declarations.md. Complete LF/CRLF byte-range sets pin duplicate function parameters, struct fields, enum variants and variant fields, trait and inherent-impl methods, cross-impl method collision, and three invalid state forms with exact codes, messages, labels and empty metadata; import visibility/missing paths have separate exact coverage.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::top_level_tests::top_level_declaration_diagnostics_pin_duplicates_and_state_forms" },
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-top-level-declarations.md. Valid top-level declarations publish an empty array under LF/CRLF; repairing duplicate and state errors clears both dirty documents and agrees with fresh servers in a Unicode percent-encoded workspace.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_top_level::top_level_declaration_diagnostics_publish_utf16_and_restore_disk" },
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-top-level-declarations.md. Whole UTF-16 publications pin seven duplicate-declaration diagnostics and three parse errors with labels/metadata, including a non-BMP prefix; closing dirty repaired documents restores disk errors. Import errors have separate exact publications.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_top_level::top_level_declaration_diagnostics_publish_utf16_and_restore_disk" },
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
+      ]
+    },
+    {
       "requirement": "diagnostics/syntax/S11/positive/service",
       "assertion": "Reviewed in reviews/diagnostic-incremental.md. LF/CRLF multi-file phases pin exact byte diagnostics and candidates after body-only, declaration, and import edits; fingerprints, project rebuilds, reverse invalidations, repeated queries and fresh analysis agree.",
       "tests": [

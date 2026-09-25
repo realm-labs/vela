@@ -919,3 +919,6 @@ mod incremental_tests;
 
 #[cfg(test)]
 mod type_position_tests;
+
+#[cfg(test)]
+mod top_level_tests;

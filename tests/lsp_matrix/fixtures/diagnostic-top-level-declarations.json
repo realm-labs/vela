@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "diagnostic-top-level-declarations",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.diagnostic_declarations\"\nname = \"diagnostic_declarations\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/defs.vela": "pub fn helper() -> i64 { return 1; }\n",
+    "scripts/valid.vela": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub extern state host_count: i64\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
+    "scripts/invalid.vela": "/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}\nstruct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }\nenum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }\ntrait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }\nimpl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }\n",
+    "scripts/invalid_state.vela": "/* 中😀 */ state missing_initializer: i64;\nextern state host: i64 = 1;\nstate missing_type = 1;\n"
+  },
+  "actions": [],
+  "oracle": {
+    "duplicates": [
+      {"first":"field-first","second":"field-second","kind":"field","code":"hir::duplicate_field","message":"duplicate field `count`"},
+      {"first":"variant-first","second":"variant-second","kind":"variant","code":"hir::duplicate_variant","message":"duplicate variant `Active`"},
+      {"first":"variant-field-first","second":"variant-field-second","kind":"variant field","code":"hir::duplicate_variant_field","message":"duplicate variant field `count`"},
+      {"first":"trait-first","second":"trait-second","kind":"trait method","code":"hir::duplicate_trait_method","message":"duplicate trait method `score`"},
+      {"first":"impl-first","second":"impl-second","kind":"impl method","code":"hir::duplicate_impl_method","message":"duplicate impl method `size`"},
+      {"first":"param-first","second":"param-second","kind":"parameter","code":"hir::duplicate_parameter","message":"duplicate parameter `amount`"},
+      {"first":"impl-first","second":"impl-second","kind":"method","code":"hir::duplicate_script_method","message":"duplicate script method `invalid::BadFields.size`"}
+    ],
+    "repairs": {
+      "field-second":"total",
+      "variant-second":"Done",
+      "variant-field-second":"total",
+      "trait-second":"rank",
+      "impl-second":"depth",
+      "param-second":"other"
+    },
+    "stateErrors": [
+      {"line":0,"startByte":41,"endByte":44,"message":"expected state initializer"},
+      {"line":1,"startByte":23,"endByte":24,"message":"extern state cannot have an initializer"},
+      {"line":2,"startByte":6,"endByte":18,"message":"expected explicit state type"}
+    ],
+    "repairedState": "/* 中😀 */ state missing_initializer: i64 = 1;\nextern state host: i64;\nstate missing_type: i64 = 1;\n"
+  }
+}
