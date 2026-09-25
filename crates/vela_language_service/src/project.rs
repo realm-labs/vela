@@ -328,8 +328,21 @@ fn assemble_workspace_sources(
     let mut diagnostics = Vec::new();
     let mut module_inputs = BTreeMap::<ModuleKey, (DocumentId, Arc<str>)>::new();
     let mut document_modules = BTreeMap::new();
+    let open_documents = snapshot
+        .open_document_ids()
+        .collect::<std::collections::BTreeSet<_>>();
+    let mut scratch_index = 0;
     for (document_id, text) in inputs {
-        let Some(module_key) = module_key_for_roots(config.roots(), &document_id) else {
+        let module_key = if let Some(key) = module_key_for_roots(config.roots(), &document_id) {
+            key
+        } else if open_documents.contains(&document_id) {
+            let key = ModuleKey::new(
+                PackageId::scratch(),
+                ModulePath::from_qualified(&format!("scratch_{scratch_index}")),
+            );
+            scratch_index += 1;
+            key
+        } else {
             continue;
         };
         if let Some((previous, _)) =

@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "diagnostic-source-state",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.source_state\"\nname = \"source_state\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/game/main.vela": "/* 中😀 */ pub fn main(scores: Array<i64>) { return scores.first() }\n",
+    "scripts/game/helper.vela": "pub fn helper() { return 1 }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "overlay": "/* 中😀 */ pub fn main(scores: Array<i64>) { return scores.[[typo:start]]frist[[typo:end]]() }\n",
+    "scratch": "/* 中😀 */ pub fn outside(scores: Array<i64>) { return scores.[[typo:start]]frist[[typo:end]]() }\n"
+  }
+}

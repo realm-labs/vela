@@ -910,3 +910,6 @@ mod recovery_tests;
 
 #[cfg(test)]
 mod import_tests;
+
+#[cfg(test)]
+mod source_state_tests;

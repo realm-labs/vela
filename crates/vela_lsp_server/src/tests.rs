@@ -191,6 +191,7 @@ mod completion_type;
 mod completion_type_ownership;
 mod diagnostic_imports;
 mod diagnostic_recovery;
+mod diagnostic_source_state;
 mod document_sync;
 mod document_sync_dependents;
 mod file_watching;

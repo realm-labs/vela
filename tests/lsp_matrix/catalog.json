@@ -271,6 +271,42 @@
       ]
     },
     {
+      "requirement": "diagnostics/syntax/S0/positive/service",
+      "assertion": "Reviewed in reviews/diagnostic-source-state.md. Configured multi-file disk and dirty overlays, an outside-root scratch source, and schema level/rank/restore states retain exact complete diagnostic sets, byte ranges and candidate data under LF/CRLF.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::source_state_tests::workspace_overlay_and_scratch_diagnostics_follow_exact_source_state" },
+        { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" },
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S0/negative/service",
+      "assertion": "Reviewed in reviews/diagnostic-source-state.md. Closing overlays and scratch files clears only their diagnostics; missing or renamed defining modules yield exact unresolved-module errors without stale private/unused errors; missing and invalid schemas suppress guessed host fields but retain source errors.",
+      "tests": [
+        { "layer": "service", "name": "diagnostics::source_state_tests::workspace_overlay_and_scratch_diagnostics_follow_exact_source_state" },
+        { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" },
+        { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-source-state.md. Encoded-URI configured disk, overlay and outside-root scratch publications, dependency restoration, and schema replacement/restoration pin complete UTF-16 diagnostics and agree with fresh servers under LF/CRLF.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_source_state::configured_disk_overlay_and_outside_scratch_publish_exact_diagnostics" },
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
+      "requirement": "diagnostics/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/diagnostic-source-state.md. Closing dirty or outside-root files clears stale errors, dependency deletion and rename report exact missing-module diagnostics, and missing/invalid schema publishes one controlled warning without guessed host-field errors; unrelated source errors persist.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::diagnostic_source_state::configured_disk_overlay_and_outside_scratch_publish_exact_diagnostics" },
+        { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
+      ]
+    },
+    {
       "requirement": "diagnostics/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/diagnostic-import-partitions.md. Public source and source-backed schema function aliases produce no false errors while an unused public import produces one exact warning. Complete diagnostic sets, byte ranges and related owners agree across LF/CRLF and dependency change/delete/restore.",
       "tests": [

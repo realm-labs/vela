@@ -248,6 +248,37 @@ fn cross_module_import_diagnostics_project_exact_owners() {
             fresh_diagnostics(&root, &spec, &fixture),
             expected(&root, Phase::Deleted)
         );
+        let prize = root.join("scripts/game/prize.vela");
+        fs::write(
+            &prize,
+            if crlf {
+                original_reward.replace('\n', "\r\n")
+            } else {
+                original_reward.clone()
+            },
+        )
+        .expect("move dependency to a different module path");
+        let renamed = notification_values(notify::<n::DidChangeWatchedFiles>(
+            &mut server,
+            json!({"changes":[{"uri":uri(&root, "scripts/game/prize.vela"),"type":1}]}),
+        ));
+        for publication in renamed.iter().filter(|publication| {
+            publication["params"]["uri"] == uri(&root, "scripts/game/main.vela")
+        }) {
+            assert_eq!(
+                publication["params"]["diagnostics"],
+                expected(&root, Phase::Deleted)
+            );
+        }
+        assert_eq!(
+            fresh_diagnostics(&root, &spec, &fixture),
+            expected(&root, Phase::Deleted)
+        );
+        fs::remove_file(&prize).expect("remove renamed module");
+        let _ = notify::<n::DidChangeWatchedFiles>(
+            &mut server,
+            json!({"changes":[{"uri":uri(&root, "scripts/game/prize.vela"),"type":3}]}),
+        );
         fs::write(
             &reward,
             if crlf {

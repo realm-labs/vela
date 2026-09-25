@@ -70,7 +70,7 @@ fn expected(phase: usize) -> Vec<Value> {
             )],
         )
     };
-    if phase == 2 {
+    if phase == 2 || phase == 3 {
         return (0..4)
             .map(|line| module_error(line, "game::reward"))
             .chain(std::iter::once(module_error(4, "game::absent")))
@@ -135,7 +135,7 @@ fn expected(phase: usize) -> Vec<Value> {
 #[test]
 fn source_and_schema_import_diagnostics_have_exact_byte_owners() {
     for crlf in [false, true] {
-        for phase in [0, 1, 2, 0] {
+        for phase in [0, 1, 2, 3, 0] {
             let mut spec = load("diagnostic-import-partitions");
             if phase == 1 {
                 spec.files.insert(
@@ -145,8 +145,17 @@ fn source_and_schema_import_diagnostics_have_exact_byte_owners() {
                         .expect("changed source")
                         .into(),
                 );
-            } else if phase == 2 {
+            } else if phase == 2 || phase == 3 {
                 spec.files.remove("scripts/game/reward.vela");
+                if phase == 3 {
+                    spec.files.insert(
+                        "scripts/game/prize.vela".into(),
+                        spec.oracle["changedDependency"]
+                            .as_str()
+                            .expect("renamed module source")
+                            .into(),
+                    );
+                }
             }
             if crlf {
                 for text in spec.files.values_mut() {
@@ -183,6 +192,14 @@ fn source_and_schema_import_diagnostics_have_exact_byte_owners() {
                 expected(phase),
                 "phase {phase}, crlf {crlf}"
             );
+            if phase == 3 {
+                assert!(
+                    db.diagnostics_for_document(&uri("scripts/game/prize.vela"))
+                        .diagnostics()
+                        .is_empty(),
+                    "renamed module itself stays valid"
+                );
+            }
         }
     }
 }
