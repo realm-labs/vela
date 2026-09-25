@@ -34,6 +34,11 @@ fn record_field_matrix_preserves_sets_owners_and_applied_edits() {
 }
 
 #[test]
+fn control_flow_matrix_preserves_nested_binding_sets_and_applied_edits() {
+    run_matrix(oracle::control_flow_spec);
+}
+
+#[test]
 fn variant_field_matrix_preserves_sets_owners_and_applied_edits() {
     run_matrix(oracle::variant_field_spec);
 }

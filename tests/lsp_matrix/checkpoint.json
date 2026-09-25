@@ -3960,10 +3960,33 @@
         "rename/syntax/S5/negative/protocol"
       ],
       "summary": "Close sixteen S5 positive/negative service/protocol call and argument cells for references, highlight, prepare-rename and rename. Shared exact coordinate matrices cover source functions and methods, schema functions and methods, named and defaulted arguments, tuple-variant labels, standard library and unresolved boundaries, applied edits and requery under LF/CRLF. The method-parameter fixture adds dynamic Any.add and amount label queries; both stay empty/null while the real method and parameter owner remain exact. Active-parameter output belongs to signature help and is not claimed by these four methods. Focused tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 689 plus two historical ignored/protocol 683 passed: 382 obligations verified, 943 unreviewed, two N/A, zero failed. B04 has 162 verified and 48 unreviewed cells; S1/S2/S6 and fresh interaction proof remain open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-Kno2Dz/results.json; audit target/lsp-matrix/run-RgrnE2/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.53",
+      "revision": null,
+      "requirements": [
+        "references/syntax/S6/positive/service",
+        "references/syntax/S6/negative/service",
+        "references/syntax/S6/positive/protocol",
+        "references/syntax/S6/negative/protocol",
+        "highlight/syntax/S6/positive/service",
+        "highlight/syntax/S6/negative/service",
+        "highlight/syntax/S6/positive/protocol",
+        "highlight/syntax/S6/negative/protocol",
+        "prepare-rename/syntax/S6/positive/service",
+        "prepare-rename/syntax/S6/negative/service",
+        "prepare-rename/syntax/S6/positive/protocol",
+        "prepare-rename/syntax/S6/negative/protocol",
+        "rename/syntax/S6/positive/service",
+        "rename/syntax/S6/negative/service",
+        "rename/syntax/S6/positive/protocol",
+        "rename/syntax/S6/negative/protocol"
+      ],
+      "summary": "Close sixteen S6 positive/negative service/protocol pattern and control-flow cells for references, highlight, prepare-rename and rename. A new Unicode LF/CRLF coordinate matrix separates an outer parameter, for binding and guarded match binding with the same spelling across eleven owned sites and eight keyword/wildcard negatives. Both layers assert exact complete reference sets, highlight kinds, prepare targets, applied whole-file edits, parse, requery and restore; protocol checks UTF-16, didChange, encoded URIs and versioned edits. Existing source/schema enum, record and tuple pattern, shorthand, import and collision matrices cover variant/field ownership and captures. Focused tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 690 plus two historical ignored/protocol 684 passed: 398 obligations verified, 927 unreviewed, two N/A, zero failed. B04 has 178 verified and 32 unreviewed cells; S1/S2 and fresh interaction proof remain open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-ScXHtZ/results.json; audit target/lsp-matrix/run-dk5uFx/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.53",
-  "nextTask": "B04.53",
+  "activeChild": "B04.54",
+  "nextTask": "B04.54",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

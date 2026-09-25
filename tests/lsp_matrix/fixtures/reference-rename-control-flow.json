@@ -1,0 +1,188 @@
+{
+  "version": 1,
+  "id": "reference-rename-control-flow",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.control_flow\"\nname = \"control_flow\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/main.vela": "/* 中😀 */ fn main([[outer-decl:start]]value[[outer-decl:end]]: i64) {\n [[for-keyword:start]]for[[for-keyword:end]] [[loop-decl:start]]value[[loop-decl:end]] [[in-keyword:start]]in[[in-keyword:end]] [ [[outer-iterable:start]]value[[outer-iterable:end]] ] {\n  [[loop-before:start]]value[[loop-before:end]];\n  [[match-keyword:start]]match[[match-keyword:end]] [[loop-subject:start]]value[[loop-subject:end]] {\n   [[arm-decl:start]]value[[arm-decl:end]] [[guard-keyword:start]]if[[guard-keyword:end]] [[arm-guard:start]]value[[arm-guard:end]] > 0 => [[arm-body:start]]value[[arm-body:end]],\n   [[wildcard:start]]_[[wildcard:end]] => [[loop-fallback:start]]value[[loop-fallback:end]]\n  };\n  [[if-keyword:start]]if[[if-keyword:end]] [[loop-condition:start]]value[[loop-condition:end]] > 0 { [[break-keyword:start]]break[[break-keyword:end]]; }\n  [[continue-keyword:start]]continue[[continue-keyword:end]];\n }\n [[outer-after:start]]value[[outer-after:end]];\n}\n",
+    "scripts/helpers.vela": "fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "groups": {
+      "outer": {
+        "name": "value",
+        "rename": "outer_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "outer-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "outer-iterable",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "outer-after",
+            "kind": "Read"
+          }
+        ]
+      },
+      "loop": {
+        "name": "value",
+        "rename": "loop_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "loop-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "loop-before",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "loop-subject",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "loop-fallback",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "loop-condition",
+            "kind": "Read"
+          }
+        ]
+      },
+      "arm": {
+        "name": "value",
+        "rename": "arm_value",
+        "origin": "local",
+        "sites": [
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-guard",
+            "kind": "Read"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "arm-body",
+            "kind": "Read"
+          }
+        ]
+      }
+    },
+    "queries": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "outer-decl",
+        "group": "outer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "outer-iterable",
+        "group": "outer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "outer-after",
+        "group": "outer"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "loop-decl",
+        "group": "loop"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "loop-before",
+        "group": "loop"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "loop-subject",
+        "group": "loop"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "loop-fallback",
+        "group": "loop"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "loop-condition",
+        "group": "loop"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-decl",
+        "group": "arm"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-guard",
+        "group": "arm"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "arm-body",
+        "group": "arm"
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "for-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "in-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "match-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "guard-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "wildcard",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "break-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "continue-keyword",
+        "group": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "if-keyword",
+        "group": null
+      }
+    ],
+    "checkDefinition": true
+  }
+}

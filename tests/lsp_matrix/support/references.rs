@@ -21,6 +21,10 @@ pub(crate) fn field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-record-fields", crlf)
 }
 
+pub(crate) fn control_flow_spec(crlf: bool) -> Spec {
+    spec_for("reference-rename-control-flow", crlf)
+}
+
 pub(crate) fn variant_field_spec(crlf: bool) -> Spec {
     spec_for("reference-rename-variant-fields", crlf)
 }

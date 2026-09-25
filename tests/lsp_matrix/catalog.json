@@ -63,6 +63,678 @@
   ],
   "evidence": [
     {
+      "requirement": "references/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Outer parameter, for binding and guarded match binding with identical spelling retain three complete separate reference sets, with and without declarations. Source/schema enum, record and tuple pattern sites retain their own owners. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Outer parameter, for binding and guarded match binding with identical spelling retain three complete separate reference sets, with and without declarations. Source/schema enum, record and tuple pattern sites retain their own owners. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Keyword and wildcard positions return no references. Loop iterable, nested guard, sibling arm, private/missing variants and field labels cannot borrow a same-spelled owner. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Keyword and wildcard positions return no references. Loop iterable, nested guard, sibling arm, private/missing variants and field labels cannot borrow a same-spelled owner. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Outer, loop and guarded-arm bindings have exact same-document highlight ranges and kinds; source/schema pattern labels and variant sites retain their own highlight sets. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Outer, loop and guarded-arm bindings have exact same-document highlight ranges and kinds; source/schema pattern labels and variant sites retain their own highlight sets. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Keywords and wildcard have no highlights; nested or sibling scopes, private/missing variants and wrong-owner labels cannot leak a different symbol highlight. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Keywords and wildcard have no highlights; nested or sibling scopes, private/missing variants and wrong-owner labels cannot leak a different symbol highlight. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Each editable binding and source-backed pattern site has its exact prepare range, placeholder and owner across LF/CRLF; shorthand bindings preserve separate field identity. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Each editable binding and source-backed pattern site has its exact prepare range, placeholder and owner across LF/CRLF; shorthand bindings preserve separate field identity. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Control-flow keywords, wildcard, read-only schema facts and invalid owners have no prepare target; collision checks retain the original owner. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Control-flow keywords, wildcard, read-only schema facts and invalid owners have no prepare target; collision checks retain the original owner. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Three same-spelled bindings and editable source/source-backed schema pattern owners yield exact complete edits; applied whole files parse and re-query under LF/CRLF, including guarded and shorthand patterns. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Three same-spelled bindings and editable source/source-backed schema pattern owners yield exact complete edits; applied whole files parse and re-query under LF/CRLF, including guarded and shorthand patterns. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Control-flow keywords and wildcard have no edit plan; private/missing variants, wrong owners, field-label capture and loop/guard collisions cannot contaminate an editable plan. Service checks byte ranges and canonical local/source/schema identities.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::control_flow_matrix_preserves_nested_binding_sets_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::record_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::variant_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::tuple_field_matrix_preserves_sets_owners_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::schema_variant_matrix_preserves_expression_and_pattern_ownership"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::source_variant_import_matrix_preserves_source_and_schema_owners"
+        },
+        {
+          "layer": "service",
+          "name": "references::coordinate_tests::private_variant_import_matrix_preserves_aliases_and_applied_edits"
+        },
+        {
+          "layer": "service",
+          "name": "rename::shorthand_tests::local_shorthand_rename_preserves_field_labels_and_binding_owners"
+        },
+        {
+          "layer": "service",
+          "name": "rename::local_collision_tests::local_rename_collision_matrix_preserves_all_binding_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-s6.md. Control-flow keywords and wildcard have no edit plan; private/missing variants, wrong owners, field-label capture and loop/guard collisions cannot contaminate an editable plan. Protocol checks actual UTF-16 LSP responses, client versions and applied workspace edits.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::control_flow_matrix_projects_nested_binding_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::record_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::variant_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::tuple_field_matrix_projects_exact_sets_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::schema_variant_matrix_preserves_expression_and_pattern_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::source_variant_import_matrix_preserves_source_and_schema_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::references::coordinates::private_variant_import_matrix_preserves_aliases_and_applied_utf16_edits"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::shorthand::local_shorthand_rename_projects_expansions_and_preserves_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::rename::local_collisions::local_rename_collision_matrix_projects_exact_edits_and_preserves_owners"
+        }
+      ]
+    },
+    {
       "requirement": "references/syntax/S5/positive/service",
       "assertion": "Reviewed in reviews/reference-rename-s5.md. LF/CRLF source/schema functions and methods, named/default/required parameters and tuple-variant call labels retain complete exact owner-specific references across direct, aliased, qualified, closure and closed-file call sites. Service byte ranges and canonical symbol identities are checked.",
       "tests": [
