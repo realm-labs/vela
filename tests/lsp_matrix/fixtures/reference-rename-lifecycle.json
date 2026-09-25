@@ -63,9 +63,21 @@
       "file": "scripts/helper.vela"
     },
     {
+      "op": "open",
+      "file": "scripts/main.vela"
+    },
+    {
+      "op": "close",
+      "file": "scripts/main.vela"
+    },
+    {
       "op": "write",
       "file": "scripts/helper.vela",
       "source": "pub fn [[definition:start]]increment[[definition:end]](value) { return value + 1; }\n"
+    },
+    {
+      "op": "open",
+      "file": "scripts/main.vela"
     }
   ],
   "oracle": {
@@ -87,6 +99,9 @@
       "helper",
       "helper",
       "unresolved",
+      "unresolved",
+      "unresolved",
+      "helper",
       "helper"
     ],
     "sites": [

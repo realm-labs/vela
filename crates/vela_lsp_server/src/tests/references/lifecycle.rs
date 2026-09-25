@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use super::{TestServer, request, response_value};
 use crate::matrix_fixture::{FixtureWorkspace, Spec, load};
-use crate::tests::notify;
+use crate::tests::{notification_values, notify};
 
 #[test]
 fn closing_a_saved_renamed_source_restores_current_disk_declaration() {
@@ -96,16 +96,7 @@ fn reference_rename_lifecycle_projects_overlay_close_and_dependency_states() {
         let parent = crate::tests::support::unique_temp_root("reference-lifecycle");
         let root = parent.join("中文 % lifecycle");
         fixture.materialize(&root).expect("isolated root");
-        let mut driver = Driver {
-            root,
-            endpoint: TestServer::new(),
-            id: 0,
-            versions: BTreeMap::new(),
-        };
-        let root_uri = driver.uri("");
-        let _ = driver.query::<r::Initialize>(
-            json!({"processId":null,"rootUri":root_uri,"capabilities":{"workspace":{"workspaceEdit":{"documentChanges":true}}}}),
-        );
+        let mut driver = Driver::new(root, &fixture);
         for (index, action) in spec.actions.iter().enumerate() {
             fixture.apply(action).expect("lifecycle action");
             driver.apply(action, &fixture);
@@ -113,6 +104,8 @@ fn reference_rename_lifecycle_projects_overlay_close_and_dependency_states() {
                 .as_str()
                 .expect("explicit owner state");
             driver.check(&fixture, &spec, owner, index, crlf);
+            let mut fresh = Driver::new(driver.root.clone(), &fixture);
+            fresh.check(&fixture, &spec, owner, index, crlf);
         }
         fs::remove_dir_all(parent).expect("remove isolated fixture");
     }
@@ -126,6 +119,28 @@ struct Driver {
 }
 
 impl Driver {
+    fn new(root: std::path::PathBuf, fixture: &FixtureWorkspace) -> Self {
+        let mut driver = Self {
+            root,
+            endpoint: TestServer::new(),
+            id: 0,
+            versions: BTreeMap::new(),
+        };
+        let root_uri = driver.uri("");
+        let _ = driver.query::<r::Initialize>(
+            json!({"processId":null,"rootUri":root_uri,"capabilities":{"workspace":{"workspaceEdit":{"documentChanges":true}}}}),
+        );
+        for (file, document) in &fixture.open {
+            driver.versions.insert(file.clone(), 1);
+            let file_uri = driver.uri(file);
+            let _ = notify::<n::DidOpenTextDocument>(
+                &mut driver.endpoint,
+                json!({"textDocument":{"uri":file_uri,"languageId":"vela","version":1,"text":document.text}}),
+            );
+        }
+        driver
+    }
+
     fn uri(&self, file: &str) -> String {
         lsp_types::Url::from_file_path(self.root.join(file))
             .expect("file URI")
@@ -145,10 +160,35 @@ impl Driver {
         match action.op.as_str() {
             "open" => {
                 self.versions.insert(action.file.clone(), 1);
-                let _ = notify::<n::DidOpenTextDocument>(
+                let messages = notification_values(notify::<n::DidOpenTextDocument>(
                     &mut self.endpoint,
                     json!({"textDocument":{"uri":file_uri,"languageId":"vela","version":1,"text":fixture.open[&action.file].text}}),
-                );
+                ));
+                if action.file == "scripts/main.vela" {
+                    let publication = messages
+                        .iter()
+                        .find(|message| {
+                            message["method"] == "textDocument/publishDiagnostics"
+                                && message["params"]["uri"] == file_uri
+                        })
+                        .expect("opened importer diagnostic publication");
+                    let diagnostics = publication["params"]["diagnostics"]
+                        .as_array()
+                        .expect("importer diagnostics");
+                    let mut codes = diagnostics
+                        .iter()
+                        .map(|diagnostic| diagnostic["code"].as_str().expect("code"))
+                        .collect::<Vec<_>>();
+                    codes.sort_unstable();
+                    if self.root.join("scripts/helper.vela").exists() {
+                        assert!(
+                            codes.is_empty(),
+                            "restored importer diagnostics: {diagnostics:?}"
+                        );
+                    } else {
+                        assert_eq!(codes, ["hir::unresolved_module", "project::diagnostic"]);
+                    }
+                }
             }
             "change" => {
                 let version = self.versions.get_mut(&action.file).expect("open version");
@@ -186,10 +226,20 @@ impl Driver {
                     fs::write(&path, &fixture.disk[&action.file].text).expect("write fixture");
                     if existed { 2 } else { 1 }
                 };
-                let _ = notify::<n::DidChangeWatchedFiles>(
+                let messages = notification_values(notify::<n::DidChangeWatchedFiles>(
                     &mut self.endpoint,
                     json!({"changes":[{"uri":file_uri,"type":kind}]}),
-                );
+                ));
+                if action.file == "scripts/helper.vela" && action.op == "delete" {
+                    let deleted = messages
+                        .iter()
+                        .find(|message| {
+                            message["method"] == "textDocument/publishDiagnostics"
+                                && message["params"]["uri"] == file_uri
+                        })
+                        .expect("deleted file diagnostic publication");
+                    assert_eq!(deleted["params"]["diagnostics"], json!([]));
+                }
             }
             _ => panic!("unsupported action"),
         }

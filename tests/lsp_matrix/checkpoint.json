@@ -3772,10 +3772,33 @@
         "rename/states/unresolved/protocol"
       ],
       "summary": "Close four unresolved protocol state cells after reviewing 26 shared LF/CRLF coordinate fixtures and source, schema and recovery lifecycle matrices. Every no-owner query has exact empty reference sets with and without declarations, empty highlights, null prepare and null rename alongside source/schema/decoy controls. Partitions include locals, parameters, labels, fields, methods, constructors, variants, imports, private and ambiguous paths, non-target tokens, deleted dependencies, unavailable schema and damaged neighboring syntax. Added missing unknown-module highlight assertions at service and protocol layers. Focused schema lifecycle tests, Node 79, fmt, workspace Clippy, Windows VSIX 14 and audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 264 obligations verified, 1061 unreviewed, two N/A, zero failed. B04 has 44 verified and 166 unreviewed protocol/editor cells; other states, syntax and fresh interaction proof remain before acceptance. B00-B03 snapshots unchanged; macOS needs independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-3rekdx/results.json; audit target/lsp-matrix/run-hb5fXd/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.43",
+      "revision": null,
+      "requirements": [
+        "references/states/dirty/protocol",
+        "references/states/close_restore/protocol",
+        "references/states/dependency_change/protocol",
+        "references/states/dependency_delete/protocol",
+        "highlight/states/dirty/protocol",
+        "highlight/states/close_restore/protocol",
+        "highlight/states/dependency_change/protocol",
+        "highlight/states/dependency_delete/protocol",
+        "prepare-rename/states/dirty/protocol",
+        "prepare-rename/states/close_restore/protocol",
+        "prepare-rename/states/dependency_change/protocol",
+        "prepare-rename/states/dependency_delete/protocol",
+        "rename/states/dirty/protocol",
+        "rename/states/close_restore/protocol",
+        "rename/states/dependency_change/protocol",
+        "rename/states/dependency_delete/protocol"
+      ],
+      "summary": "Close sixteen source lifecycle protocol state cells for references, highlight, prepare-rename and rename: dirty overlay, close restore, dependency change and dependency delete. The LF/CRLF Unicode fixture now has sixteen owner states, including deleted-dependency importer diagnostics and their clearing after recreation. At every state the long-lived protocol server and a fresh server satisfy exact independent reference, highlight, prepare and complete workspace-edit oracles. Focused service/protocol tests, Node 79, fmt, workspace Clippy, installed Windows VSIX 14 and local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 280 obligations verified, 1045 unreviewed, two N/A, zero failed. B04 has 60 verified and 150 unreviewed protocol/editor cells; remaining state and syntax cells plus fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-GgFMEH/results.json; audit target/lsp-matrix/run-brhroT/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.43",
-  "nextTask": "B04.43",
+  "activeChild": "B04.44",
+  "nextTask": "B04.44",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

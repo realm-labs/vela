@@ -63,6 +63,166 @@
   ],
   "evidence": [
     {
+      "requirement": "references/states/dirty/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. After unsaved didChange shifts the helper declaration, exact cross-file references with and without the declaration use the new UTF-16 range and current overlay; independent owner sites remain separate. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "references/states/close_restore/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Closing dirty helper and importer overlays restores the disk owner and exact declaration, import, call and closed-consumer reference sets; fresh-server results match. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "references/states/dependency_change/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Helper disk changes while overlay is open preserve overlay references; after close, disk facts replace them. Dirty importer rebinding changes the exact owner set, matching fresh server at each state. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "references/states/dependency_delete/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Deleting helper removes stale reference locations; the importer becomes unresolved with empty references, and recreation restores exact sites. Missing-module diagnostics publish on reopened importer and clear after restoration. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/dirty/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. After unsaved didChange and importer rebinding, exact same-document highlight ranges and kinds follow the current owner and overlay. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/close_restore/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Closing dirty overlays restores exact disk-backed import and call highlights; fresh-server results match. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/dependency_change/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Helper disk changes and dirty importer rebinding update exact same-document highlights without stale owner ranges, matching a fresh server. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/dependency_delete/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Deleting helper leaves the unresolved importer with no highlights; recreation restores exact ranges, with missing-module diagnostics published and cleared on importer reopen. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/dirty/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. After unsaved didChange shifts the declaration, prepare-rename returns the exact current call range and placeholder; unresolved calls return null. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/close_restore/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Closing dirty overlays restores the disk-backed call prepare range and placeholder; fresh-server results match. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/dependency_change/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Helper disk changes and dirty importer rebinding preserve exact current call preparation and ownership, matching a fresh server. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/dependency_delete/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Deleting helper yields null prepare-rename for the unresolved call; recreation restores exact range and placeholder, with importer diagnostics published and cleared. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/dirty/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. After unsaved didChange shifts the declaration, legacy and versioned workspace edits contain every current owner site with exact UTF-16 ranges and no independent owner edits. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/close_restore/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Closing dirty overlays restores the complete disk-backed workspace edit set and closed-file null versions; fresh-server results match. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/dependency_change/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Helper disk changes and dirty importer rebinding produce complete edits only for the current owner, with exact versions and no stale locations, matching a fresh server. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/dependency_delete/protocol",
+      "assertion": "Reviewed source lifecycle in reviews/reference-rename-lifecycle.md. Deleting helper yields null rename for the unresolved call; recreation restores complete exact workspace edits, with importer diagnostics published and cleared. LF/CRLF and encoded Unicode paths are exercised.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::lifecycle::reference_rename_lifecycle_projects_overlay_close_and_dependency_states"
+        }
+      ]
+    },
+    {
       "requirement": "references/states/unresolved/protocol",
       "assertion": "Reviewed all unresolved partitions in reviews/reference-rename-unresolved.md. No-group queries in all 26 LF/CRLF coordinate fixtures return the exact empty reference set both with and without declarations across missing locals, calls, labels, members, variants, imports, private/ambiguous paths and non-target tokens. Lifecycle, schema removal and recovery retain empty results beside exact owned and decoy controls.",
       "tests": [
