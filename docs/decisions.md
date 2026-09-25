@@ -48,6 +48,10 @@ does not block B19 local acceptance. Deferred families remain visible and are
 neither verified nor N/A. B01 owns local evidence identity and validation;
 multi-profile aggregation belongs to B16. Existing CI remains in place.
 
+The Rust test profile uses optimization level 1 for the full workspace. It
+preserves every test and assertion while reducing the cost of edit-heavy LSP
+matrices; the first build after a profile change recompiles test dependencies.
+
 ## Standing Constraints
 
 - Script-language generics are not supported.
