@@ -3806,10 +3806,25 @@
         "rename/states/recovery/protocol"
       ],
       "summary": "Close four recovery protocol state cells after reviewing the seven-action LF/CRLF source damage, repair and redamage fixture. Valid imported call references, highlights, prepare range and complete workspace rename edits remain exact while malformed same-named type syntax has no target and a decoy keeps separate ownership. Added service assertions that valid neighboring syntax retains the exact helper definition and malformed syntax has none. Both long-lived and fresh protocol servers satisfy the independent oracle and E_PARSE publishes/clears. Focused service/protocol tests, Node 79, fmt, workspace Clippy, Windows installed VSIX 14 and local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 284 obligations verified, 1041 unreviewed, two N/A, zero failed. B04 has 64 verified and 146 unreviewed protocol/editor cells; remaining schema state and syntax cells plus fresh interaction proof stay open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-Y5InsC/results.json; audit target/lsp-matrix/run-EGeeEU/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.45",
+      "revision": null,
+      "requirements": [
+        "references/states/missing_schema/protocol",
+        "references/states/stale_schema/protocol",
+        "highlight/states/missing_schema/protocol",
+        "highlight/states/stale_schema/protocol",
+        "prepare-rename/states/missing_schema/protocol",
+        "prepare-rename/states/stale_schema/protocol",
+        "rename/states/missing_schema/protocol",
+        "rename/states/stale_schema/protocol"
+      ],
+      "summary": "Close eight missing/stale-schema protocol state cells for references, highlight, prepare-rename and rename. Expanded the eight-state LF/CRLF schema fixture with an independent source-only function in open and closed documents; its exact cross-file references, highlight, definition, prepare and complete rename edits remain available through invalid/deleted artifacts without a schema ABI warning. Host schema replacement retargets grant/award, removal clears stale owners, and metadata-only highlights now check exact range/kind. Long-lived and fresh service/protocol instances agree, and invalid/deleted schema diagnostics publish then clear. Focused service/protocol tests, Node 79, fmt, workspace Clippy, full workspace tests, Windows installed VSIX 14 and current-source local audit passed. Audit service 687 plus two historical ignored/protocol 677 passed: 292 obligations verified, 1033 unreviewed, two N/A, zero failed. B04 has 72 verified and 138 unreviewed protocol/editor cells; stale-version/cancellation and syntax cells plus fresh interaction proof remain open. B00-B03 accepted snapshots unchanged; macOS requires independent fresh evidence when used; B16 deferred. VSIX editors/vscode/test-results/run-Knc229/results.json; audit target/lsp-matrix/run-3SoWtm/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.45",
-  "nextTask": "B04.45",
+  "activeChild": "B04.46",
+  "nextTask": "B04.46",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

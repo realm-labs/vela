@@ -3,9 +3,9 @@
   "id": "reference-rename-schema-lifecycle",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.schema_reference_lifecycle\"\nname = \"schema_reference_lifecycle\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"target/schema.json\"\n",
-    "scripts/helpers.vela": "/* 中😀 */ pub fn [[grant-decl:start]]grant[[grant-decl:end]]() {}\npub fn [[award-decl:start]]award[[award-decl:end]]() {}\n",
-    "scripts/main.vela": "/* 中😀 */ fn main(dynamic) { host::[[grant-call:start]]grant[[grant-call:end]](); host::[[award-call:start]]award[[award-call:end]](); meta::[[ping-call:start]]ping[[ping-call:end]](); missing::[[unknown:start]]grant[[unknown:end]](); dynamic.[[dynamic:start]]grant[[dynamic:end]](); }\n",
-    "scripts/consumer.vela": "fn closed() { host::[[grant-closed:start]]grant[[grant-closed:end]](); host::[[award-closed:start]]award[[award-closed:end]](); }\n"
+    "scripts/helpers.vela": "/* 中😀 */ pub fn [[grant-decl:start]]grant[[grant-decl:end]]() {}\npub fn [[award-decl:start]]award[[award-decl:end]]() {}\npub fn [[stable-decl:start]]stable[[stable-decl:end]]() {}\n",
+    "scripts/main.vela": "/* 中😀 */ fn main(dynamic) { host::[[grant-call:start]]grant[[grant-call:end]](); host::[[award-call:start]]award[[award-call:end]](); meta::[[ping-call:start]]ping[[ping-call:end]](); helpers::[[stable-call:start]]stable[[stable-call:end]](); missing::[[unknown:start]]grant[[unknown:end]](); dynamic.[[dynamic:start]]grant[[dynamic:end]](); }\n",
+    "scripts/consumer.vela": "fn closed() { host::[[grant-closed:start]]grant[[grant-closed:end]](); host::[[award-closed:start]]award[[award-closed:end]](); helpers::[[stable-closed:start]]stable[[stable-closed:end]](); }\n"
   },
   "actions": [],
   "oracle": {
@@ -90,6 +90,27 @@
           {
             "file": "scripts/main.vela",
             "marker": "ping-call",
+            "kind": "Call"
+          }
+        ]
+      },
+      "source": {
+        "qualified": "helpers::stable",
+        "name": "stable",
+        "sites": [
+          {
+            "file": "scripts/helpers.vela",
+            "marker": "stable-decl",
+            "kind": "Declaration"
+          },
+          {
+            "file": "scripts/main.vela",
+            "marker": "stable-call",
+            "kind": "Call"
+          },
+          {
+            "file": "scripts/consumer.vela",
+            "marker": "stable-closed",
             "kind": "Call"
           }
         ]

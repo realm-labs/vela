@@ -63,6 +63,86 @@
   ],
   "evidence": [
     {
+      "requirement": "references/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Invalidating or deleting the schema removes source-backed host and metadata-only reference sets while the independent source-only function retains its exact declaration and two calls. The importer publishes schema::unavailable, and restoration clears it; incremental and fresh servers agree. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "references/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Replacing host::grant with host::award and then removing host facts retargets or empties exact declaration/call reference sets without stale sites; metadata-only and independent source-only owners retain their separate sets. Restoration agrees with a fresh server. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Invalidating or deleting the schema empties host and metadata-only highlights while the source-only call retains its exact range and kind. Schema-unavailable diagnostics publish and clear, with fresh-server parity. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "highlight/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Schema replacement switches the exact host call highlight between grant and award, removes old highlights when host facts disappear, and preserves source-only and retained metadata highlights. Fresh-server parity holds. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Invalidating or deleting the schema makes host calls unpreparable while the source-only call retains its exact range and placeholder; metadata-only, unknown and dynamic calls remain null. Schema diagnostics publish and clear. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Replacing and removing schema host facts shifts the exact prepare range and placeholder to the current source-backed owner and leaves removed owners null; source-only preparation remains stable and fresh-server results agree. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Invalidating or deleting the schema returns null for host rename while source-only rename still yields the complete three-document legacy and versioned edit set without a schema ABI warning. Restoration recovers exact host edits and clears diagnostics. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "rename/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/reference-rename-schema-lifecycle.md. Replacing and removing schema host facts produce complete edits only for the active grant or award owner, with exact URI/ranges, open/closed versions and schema ABI warning; removed owners return null and source-only edits stay separate. The eight-state LF/CRLF fixture uses encoded Unicode paths.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::references::schema_lifecycle::schema_reference_rename_lifecycle_retargets_clears_and_restores_owners"
+        }
+      ]
+    },
+    {
       "requirement": "references/states/recovery/protocol",
       "assertion": "Reviewed in reviews/reference-rename-recovery.md. The seven-action LF/CRLF recovery fixture checks exact source-owned reference sets with and without declarations through trailing and preceding damage, repair and redamage; malformed same-name syntax stays empty and decoy references stay separate. Long-lived and fresh servers agree with the independent site oracle.",
       "tests": [

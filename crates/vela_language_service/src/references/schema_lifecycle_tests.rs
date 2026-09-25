@@ -171,6 +171,7 @@ fn check(
             assert!(rename.is_none(), "inactive rename {context}");
         }
     }
+    check_source_only(db, fixture, spec, &context);
     let point = marker_point(fixture, main, "ping-call");
     let metadata = step["metadata"].as_bool().expect("metadata state");
     let references = db.references(&uri(main),point,true).iter().map(|reference| {
@@ -187,10 +188,19 @@ fn check(
         sorted(expected),
         "metadata references {context}"
     );
-    assert_eq!(
-        db.document_highlights(&uri(main), point).len(),
-        usize::from(metadata)
-    );
+    let highlights = db
+        .document_highlights(&uri(main), point)
+        .iter()
+        .map(|highlight| {
+            json!({"range":range(highlight.range()),"kind":format!("{:?}",highlight.kind())})
+        })
+        .collect::<Vec<_>>();
+    let expected = if metadata {
+        vec![json!({"range":marker_range(fixture,main,"ping-call"),"kind":"Call"})]
+    } else {
+        Vec::new()
+    };
+    assert_eq!(highlights, expected, "metadata highlights {context}");
     assert!(db.definition(&uri(main), point).is_none());
     assert!(db.prepare_rename(&uri(main), point).is_none());
     assert!(db.rename(&uri(main), point, "new_ping").is_none());
@@ -204,6 +214,101 @@ fn check(
     assert!(db.document_highlights(&uri(main), dynamic).is_empty());
     assert!(db.prepare_rename(&uri(main), dynamic).is_none());
     assert!(db.rename(&uri(main), dynamic, "new_grant").is_none());
+}
+
+fn check_source_only(
+    db: &LanguageServiceDatabases,
+    fixture: &FixtureWorkspace,
+    spec: &Spec,
+    context: &str,
+) {
+    let main = "scripts/main.vela";
+    let definition = &spec.oracle["groups"]["source"];
+    let point = marker_point(fixture, main, "stable-call");
+    let sites = sites(fixture, &definition["sites"]);
+    for include in [false, true] {
+        let actual = db
+            .references(&uri(main), point, include)
+            .iter()
+            .map(|reference| {
+                assert_eq!(
+                    reference.symbol(),
+                    &SymbolRef::Source("helpers::stable".into()),
+                    "source owner {context}"
+                );
+                json!({"uri":reference.document_id().as_str(),"range":range(reference.range()),"kind":format!("{:?}",reference.kind())})
+            })
+            .collect::<Vec<_>>();
+        let expected = sites
+            .iter()
+            .filter(|site| include || site["kind"] != "Declaration")
+            .cloned()
+            .collect::<Vec<_>>();
+        assert_eq!(
+            sorted(actual),
+            sorted(expected),
+            "source references {context}"
+        );
+    }
+    let highlights = db
+        .document_highlights(&uri(main), point)
+        .iter()
+        .map(|highlight| {
+            json!({"range":range(highlight.range()),"kind":format!("{:?}",highlight.kind())})
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        highlights,
+        vec![json!({"range":marker_range(fixture,main,"stable-call"),"kind":"Call"})],
+        "source highlights {context}"
+    );
+    let target = db.definition(&uri(main), point).expect("source definition");
+    assert_eq!(target.document_id(), &uri("scripts/helpers.vela"));
+    assert_eq!(
+        range(target.range()),
+        marker_range(fixture, "scripts/helpers.vela", "stable-decl")
+    );
+    let prepare = db
+        .prepare_rename(&uri(main), point)
+        .expect("source prepare");
+    assert_eq!(
+        prepare.symbol(),
+        &SymbolRef::Source("helpers::stable".into())
+    );
+    assert_eq!(prepare.placeholder(), "stable");
+    assert_eq!(
+        range(prepare.range()),
+        marker_range(fixture, main, "stable-call")
+    );
+    let rename = db
+        .rename(&uri(main), point, "bestow")
+        .expect("source rename");
+    assert!(
+        !rename
+            .risks()
+            .iter()
+            .any(|risk| risk.kind() == RenameRiskKind::SchemaAbi),
+        "source rename must not require schema ABI confirmation {context}"
+    );
+    let actual = rename
+        .document_edits()
+        .iter()
+        .flat_map(|document| {
+            document.edits().iter().map(|edit| {
+                json!({"uri":document.document_id().as_str(),"range":range(edit.range()),"newText":edit.new_text()})
+            })
+        })
+        .collect::<Vec<_>>();
+    let expected = definition["sites"]
+        .as_array()
+        .expect("source sites")
+        .iter()
+        .map(|site| {
+            let file = site["file"].as_str().expect("file");
+            json!({"uri":uri(file).as_str(),"range":marker_range(fixture,file,site["marker"].as_str().expect("marker")),"newText":"bestow"})
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(sorted(actual), sorted(expected), "source rename {context}");
 }
 
 fn sites(fixture: &FixtureWorkspace, sites: &Value) -> Vec<Value> {

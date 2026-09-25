@@ -174,13 +174,14 @@ impl Driver {
                     json!({"range":marker_range(fixture,main,&marker),"placeholder":definition["name"]}),
                     "{group} prepare {context}"
                 );
-                self.check_edits(fixture, &sites, &edit, &context);
+                self.check_edits(fixture, &sites, &edit, &context, true);
             } else {
                 assert!(target.is_null(), "inactive definition {context}");
                 assert!(prepare.is_null(), "inactive prepare {context}");
                 assert!(edit.is_null(), "inactive rename {context}");
             }
         }
+        self.check_source_only(fixture, spec, &context);
         let params = self.params(fixture, main, "ping-call");
         let available = step["metadata"].as_bool().expect("metadata state");
         let refs=self.query::<r::References>(json!({"textDocument":params["textDocument"],"position":params["position"],"context":{"includeDeclaration":true}}));
@@ -195,10 +196,12 @@ impl Driver {
             "metadata refs {context}"
         );
         let highlights = self.query::<r::DocumentHighlightRequest>(params.clone());
-        assert_eq!(
-            highlights.as_array().expect("metadata highlights").len(),
-            usize::from(available)
-        );
+        let expected = if available {
+            json!([{"range":marker_range(fixture,main,"ping-call"),"kind":1}])
+        } else {
+            json!([])
+        };
+        assert_eq!(highlights, expected, "metadata highlights {context}");
         assert!(self.query::<r::GotoDefinition>(params.clone()).is_null());
         assert!(
             self.query::<r::PrepareRenameRequest>(params.clone())
@@ -232,20 +235,71 @@ impl Driver {
         assert!(self.query::<r::Rename>(json!({"textDocument":dynamic["textDocument"],"position":dynamic["position"],"newName":"new_grant"})).is_null());
     }
 
+    fn check_source_only(&mut self, fixture: &FixtureWorkspace, spec: &Spec, context: &str) {
+        let main = "scripts/main.vela";
+        let definition = &spec.oracle["groups"]["source"];
+        let sites = definition["sites"].as_array().expect("source sites");
+        let params = self.params(fixture, main, "stable-call");
+        for include in [false, true] {
+            let actual = self.query::<r::References>(json!({
+                "textDocument":params["textDocument"],"position":params["position"],
+                "context":{"includeDeclaration":include}
+            }));
+            let expected = sites
+                .iter()
+                .filter(|site| include || site["kind"] != "Declaration")
+                .map(|site| self.site(fixture, site))
+                .collect::<Vec<_>>();
+            assert_eq!(
+                sorted(actual.as_array().expect("source references").clone()),
+                sorted(expected),
+                "source references {context}"
+            );
+        }
+        let highlights = self.query::<r::DocumentHighlightRequest>(params.clone());
+        assert_eq!(
+            highlights,
+            json!([{"range":marker_range(fixture,main,"stable-call"),"kind":1}]),
+            "source highlights {context}"
+        );
+        let target = self.query::<r::GotoDefinition>(params.clone());
+        assert_eq!(
+            target,
+            json!({"uri":self.uri("scripts/helpers.vela"),
+                "range":marker_range(fixture,"scripts/helpers.vela","stable-decl")}),
+            "source definition {context}"
+        );
+        let prepare = self.query::<r::PrepareRenameRequest>(params.clone());
+        assert_eq!(
+            prepare,
+            json!({"range":marker_range(fixture,main,"stable-call"),"placeholder":"stable"}),
+            "source prepare {context}"
+        );
+        let edit = self.query::<r::Rename>(json!({
+            "textDocument":params["textDocument"],"position":params["position"],
+            "newName":spec.oracle["replacement"]
+        }));
+        self.check_edits(fixture, sites, &edit, context, false);
+    }
+
     fn check_edits(
         &self,
         fixture: &FixtureWorkspace,
         sites: &[Value],
         edit: &Value,
         context: &str,
+        schema_abi: bool,
     ) {
-        assert!(
-            edit["changeAnnotations"]
-                .as_object()
-                .expect("schema ABI warnings")
-                .values()
-                .any(|value| value["description"] == "schemaAbi"
-                    && value["needsConfirmation"] == true)
+        let actual_schema_abi = edit["changeAnnotations"]
+            .as_object()
+            .is_some_and(|annotations| {
+                annotations.values().any(|value| {
+                    value["description"] == "schemaAbi" && value["needsConfirmation"] == true
+                })
+            });
+        assert_eq!(
+            actual_schema_abi, schema_abi,
+            "schema ABI warning {context}"
         );
         let mut expected = BTreeMap::<String, Vec<Value>>::new();
         for site in sites {
