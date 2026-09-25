@@ -27,6 +27,14 @@ async function main() {
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.writeFileSync(destination, parseMarkers(source).text);
   }
+  for (const fixture of ["input-references.json", "input-rename.json"]) {
+    const spec = require(`../../../tests/lsp_matrix/fixtures/${fixture}`);
+    for (const [file, source] of Object.entries(spec.files)) {
+      const destination = path.join(workspace, file);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      fs.writeFileSync(destination, parseMarkers(source).text);
+    }
+  }
   require("./completion-fixture").materializeCompletion(workspace);
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({

@@ -3739,10 +3739,21 @@
         "vscode/UX06/shadow-exclusion/render/local"
       ],
       "summary": "Verify UX06 highlights-caret and shadow-exclusion Input and Render on registered Windows x64 / VS Code 1.137.0. Physical pointer clicks move the caret from a compound local write to a read, then between that local and a same-named shadow in another function. Independent marked UTF-16 sites map visible decoration geometry and default Dark Modern classes: wordHighlightText declaration, wordHighlightStrong write, wordHighlight read. The complete observed set changes from three local decorations to only two shadow decorations, proving unrelated scope removal. Inlay hint spans are excluded from source geometry and the remaining rendered line must exactly equal the fixture. Node 79, fmt, Windows VSIX 10 and one fresh input session covering all seven UX05/UX06 routes passed. Local audit service 687 plus two historical ignored/protocol 676 passed: 252 protocol obligations verified, 1073 unreviewed, two N/A, zero failed; 280 local execution requirements verified, 1195 unreviewed, two N/A. All 14 UX05/UX06 interaction obligations verified in the same current-source evidence. B00-B03 accepted snapshots unchanged. Resume B04.40 remaining B04 syntax/state cells; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-dydfgW/results.json; input editors/vscode/test-results/input-L1HnLt/results.json; audit target/lsp-matrix/run-DgrzdL/report.json. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B04.40",
+      "revision": null,
+      "requirements": [
+        "references/editor/smoke",
+        "highlight/editor/smoke",
+        "prepare-rename/editor/smoke",
+        "rename/editor/smoke"
+      ],
+      "summary": "Verify four B04 installed-VSIX editor smoke cells on registered Windows x64 / VS Code 1.137.0. Independent UX05/UX06 fixtures check exact four-site Unicode references across three files, local Text/Write/Read highlights and shadow exclusion, prepare range/placeholder and keyword rejection, collision rejection and applied four-site workspace rename with unrelated source preserved. Ignore downloaded root VS Code cache to keep source identity stable across local machines. Node 79, fmt and Windows VSIX 14 passed. Ordinary local audit service 687 plus two historical ignored/protocol 676 passed: 256 protocol obligations verified, 1069 unreviewed, two N/A, zero failed. Four editor smoke cells are verified; remaining B04 syntax/state cells and fresh local interaction evidence stay open before batch acceptance. B00-B03 snapshots unchanged; collect fresh macOS evidence when used; B16 deferred. Windows VSIX editors/vscode/test-results/run-w8CcYt/results.json; audit target/lsp-matrix/run-U9tfPM/report.json. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
-  "activeChild": "B04.40",
-  "nextTask": "B04.40",
+  "activeChild": "B04.41",
+  "nextTask": "B04.41",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",

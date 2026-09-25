@@ -151,6 +151,15 @@ async function run() {
       require("./navigation-providers").runNavigationProvider(vscode, workspace, "type"));
     await check("completion resolve preserves lazy owned documentation and Unicode LF CRLF replacement edits", () =>
       require("./completion-provider").runCompletionProvider(vscode, workspace));
+    const referenceRename = require("./reference-rename-providers");
+    await check("references provider returns exact cross-file Unicode sites", () =>
+      referenceRename.checkReferences(vscode, workspace));
+    await check("document highlights separate local reads writes and shadow scope", () =>
+      referenceRename.checkHighlights(vscode, workspace));
+    await check("prepare rename accepts owned source and rejects keywords", () =>
+      referenceRename.checkPrepareRename(vscode, workspace));
+    await check("rename provider applies exact Unicode workspace edits and rejects collisions", () =>
+      referenceRename.checkRename(vscode, workspace));
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

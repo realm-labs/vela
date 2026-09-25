@@ -63,6 +63,34 @@
   ],
   "evidence": [
     {
+      "requirement": "references/editor/smoke",
+      "assertion": "Installed VSIX reference provider returns the independently marked complete four-site Unicode set across origin, importer and closed consumer; every returned range selects grant and leaves source unchanged.",
+      "tests": [
+        { "layer": "editor", "name": "references provider returns exact cross-file Unicode sites" }
+      ]
+    },
+    {
+      "requirement": "highlight/editor/smoke",
+      "assertion": "Installed VSIX document-highlight provider returns exact declaration Text, compound-write Write and read Read ranges for one local; moving to its shadow returns only the two shadow ranges.",
+      "tests": [
+        { "layer": "editor", "name": "document highlights separate local reads writes and shadow scope" }
+      ]
+    },
+    {
+      "requirement": "prepare-rename/editor/smoke",
+      "assertion": "Installed VSIX prepare-rename command returns the exact owned UTF-16 call range and source placeholder while rejecting a keyword without editing the document.",
+      "tests": [
+        { "layer": "editor", "name": "prepare rename accepts owned source and rejects keywords" }
+      ]
+    },
+    {
+      "requirement": "rename/editor/smoke",
+      "assertion": "Installed VSIX rename provider rejects a colliding function name; a valid replacement produces only the four independently marked cross-file edits, applies them and preserves the same-named shadow and all unrelated source.",
+      "tests": [
+        { "layer": "editor", "name": "rename provider applies exact Unicode workspace edits and rejects collisions" }
+      ]
+    },
+    {
       "requirement": "definition/environments/utf16/protocol",
       "assertion": "Cross-file declaration start/end are measured in UTF-16 after Chinese and emoji in target overlay.",
       "tests": [

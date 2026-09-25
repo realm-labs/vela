@@ -1,4 +1,5 @@
 /target
+/.vscode-test/
 /perf-results
 __pycache__/
 *.trace
