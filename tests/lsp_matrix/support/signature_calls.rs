@@ -3,8 +3,8 @@
 use super::{Spec, load};
 use serde_json::{Value, json};
 
-pub(crate) fn specs(crlf: bool) -> Vec<Spec> {
-    let authored = load("signature-s5");
+pub(crate) fn specs(name: &str, crlf: bool) -> Vec<Spec> {
+    let authored = load(name);
     let mut specs = Vec::new();
     for group in authored.oracle["groups"].as_array().expect("groups") {
         let mut spec = load(group["fixture"].as_str().expect("source fixture"));
@@ -63,6 +63,8 @@ fn expand(oracle: &Value, queries: &Value) -> Value {
             };
             query["owner"] = signature["owner"].clone();
             query["named"] = signature["named"].clone();
+            query["parameterFacts"] = signature["parameterFacts"].clone();
+            query["returnsFact"] = signature["returnsFact"].clone();
             query
         })
         .collect::<Vec<_>>();

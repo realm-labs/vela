@@ -12,6 +12,8 @@ fn nested_registered_hints_preserve_structural_facts_through_calls_fields_and_gl
         name: "host::Row".into(),
     };
     for (hint, expected) in [
+        ("Range", TypeFact::Range),
+        ("Array<Range>", TypeFact::array(TypeFact::Range)),
         ("Alias", row.clone()),
         ("Array<Alias>", TypeFact::array(row.clone())),
         ("ArrayView<Alias>", TypeFact::array_view(row.clone())),

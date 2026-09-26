@@ -6880,10 +6880,21 @@
         "signature-help/syntax/S5/negative/protocol"
       ],
       "summary": "Close all four signature-help S5 positive/negative service/protocol obligations under reviews/signature-s5.md. Independent fixture authors 27 complete signature templates over 161 positions (85 positive, 76 explicit null); both layers run every position with LF/CRLF and repeats. Compare all labels, complete parameter names/types/labels/defaults, active signature and semantic slot; service also checks canonical owner lists and named-argument authority. Reuse reviewed source fixtures for 44 argument mappings, 32 source/schema/stdlib import/alias/visibility/shadowing cases and 20 Service contexts in each of full/ordinary-only/missing schema modes. New source and schema inherent/trait/default/override/async and returned receiver cases, type-only arg0/arg1 presentation boundaries, and String/Array/Map/Option/Result methods preserve complete static facts. Dynamic/unresolved/non-callable/wrong-owner/Any-return queries have no signatures or owners. Real protocol dispatch uses independently marked UTF-16 coordinates, encoded isolated paths and exact disk preservation. New fixture uses valid package/source configuration; service asserts no config/schema diagnostics. No production behavior or language semantics changed. Focused matrices, Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities. Current-source strict B06 regression runs service 723 with two unchanged historical ignores and protocol 725; original B00-B06 acceptance snapshots remain unchanged. Catalog 691 verified, 634 unreviewed, two N/A, zero failed; B07 10/96 verified. Continue B07.3 for remaining signature/hover semantic partitions and lifecycle/provider/UX10. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-0FAIeX/results.json; input editors/vscode/test-results/input-FDWd4S/results.json; audit target/lsp-matrix/run-xAQD5l/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.3",
+      "revision": null,
+      "requirements": [
+        "signature-help/syntax/S3/positive/service",
+        "signature-help/syntax/S3/positive/protocol",
+        "signature-help/syntax/S3/negative/service",
+        "signature-help/syntax/S3/negative/protocol"
+      ],
+      "summary": "Close all four signature-help S3 positive/negative service/protocol obligations under reviews/signature-s3.md. Independent fixture authors 94 full signature templates over 102 positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Check all labels/parameters/defaults/active slots and canonical owner policies; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder, including hidden Iterator items, view mutation modes, nested Function/Option/Result shapes, and source Record versus schema Host ownership. Reuse 29 reviewed hint sources with full and missing schema; known source callables retain authored unknown leaves and four missing native calls are null. New cases cover every primitive, containers/tuples/erased Function/Closure/Array, source/schema record/enum/trait aliases, Any/unknown leaves and boundaries, and async named/defaulted schema function/method/trait contracts. This exposed legal Range hints projecting unknown facts. The shared builtin hint converter now preserves TypeFact::Range; Range and Array-of-Range analysis proofs cover calls, traits/default providers, fields and globals. Range with missing schema and colliding host type/method metadata retains builtin identity and exact zero-parameter Range.len signature. The existing standard completion Range case remains and is strengthened to the known signature, exact empty eligible argument set and absent expected name/type; no language syntax or runtime contract is changed. Real protocol uses authored UTF-16 positions, encoded isolated roots, repeats and disk preservation. Analysis 164, focused signatures and standard completion matrices, Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities. Current-source strict B06 regression runs service 724 with two unchanged historical ignores and protocol 726; original B00-B06 acceptance snapshots remain unchanged. Catalog 695 verified, 630 unreviewed, two N/A, zero failed; B07 14/96 verified. Continue B07.4 for remaining signature modules/ownership/recovery and hover semantic partitions, lifecycle, provider smoke and UX10. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-WhE9QX/results.json; input editors/vscode/test-results/input-rBMt6e/results.json; audit target/lsp-matrix/run-MGDY3l/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.3",
+  "nextTask": "B07.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9078,7 +9089,10 @@
     "editors/vscode/test-results/input-3xjqMp/results.json",
     "target/lsp-matrix/run-xAQD5l/report.json",
     "editors/vscode/test-results/run-0FAIeX/results.json",
-    "editors/vscode/test-results/input-FDWd4S/results.json"
+    "editors/vscode/test-results/input-FDWd4S/results.json",
+    "target/lsp-matrix/run-MGDY3l/report.json",
+    "editors/vscode/test-results/run-WhE9QX/results.json",
+    "editors/vscode/test-results/input-rBMt6e/results.json"
   ],
   "openIssues": [
     {
@@ -12095,8 +12109,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "3081a3e5c89722693b2296e9982dea3438d7ebc9",
-          "treeSha256": "cbddaef603a438039da241c0a5a1e306952ab44760ddca479b1432a67aa7b1e3"
+          "revision": "bf598e5e2f0198234b28edda498c6314851d0a67",
+          "treeSha256": "cf31807a25aba4172f6f345278c1b3d17ad163abfd0ffa11d137dfa8a1223432"
         },
         "profile": {
           "platform": "win32",
@@ -12104,11 +12118,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-xAQD5l/report.json"
+          "target/lsp-matrix/run-MGDY3l/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-0FAIeX/results.json --local-results editors/vscode/test-results/input-FDWd4S/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-WhE9QX/results.json --local-results editors/vscode/test-results/input-rBMt6e/results.json",
             "exitCode": 0
           }
         ]

@@ -174,6 +174,7 @@ fn builtin_type_fact(name: &str) -> Option<TypeFact> {
         "Any" => Some(TypeFact::Any),
         "String" => Some(TypeFact::primitive(PrimitiveTag::String)),
         "Bytes" => Some(TypeFact::primitive(PrimitiveTag::Bytes)),
+        "Range" => Some(TypeFact::Range),
         "Array" => Some(TypeFact::array(TypeFact::Unknown)),
         "ArrayView" => Some(TypeFact::array_view(TypeFact::Unknown)),
         "ArrayMut" => Some(TypeFact::array_mut(
@@ -270,6 +271,10 @@ mod tests {
     #[test]
     fn builtin_hints_map_to_internal_facts_without_generics() {
         let graph = graph("");
+        assert_eq!(
+            type_fact_from_path(&graph, &["Range".to_owned()]),
+            TypeFact::Range
+        );
         assert_eq!(
             type_fact_from_path(&graph, &["Array".to_owned()]),
             TypeFact::array(TypeFact::Unknown)

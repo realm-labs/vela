@@ -14063,6 +14063,46 @@
           "name": "tests::signature::call_matrix::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "signature-help/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/signature-s3.md. Independently authored 94 complete signature templates cover 102 query positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Compare all labels/parameters/defaults/active slots and canonical owners; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder. All 15 primitives, Range, containers/views/mutation modes, Option/Result, tuples, erased Function/Closure and source/schema record/enum/trait aliases retain exact facts, including otherwise hidden Iterator items. Reviewed hint inputs repeat with missing schema and reject borrowing private/non-type/missing/ambiguous/same-short-name facts; known callables preserve unknown leaves, absent native calls return null. Nested async named/defaulted schema function/method/trait contracts have complete callback/container/return shapes. Any/unknown receiver and unresolved calls have no signatures/owners. Range retains builtin identity with missing schema and colliding host type/method metadata; known Range.len has zero arguments. Real protocol dispatch uses authored UTF-16 positions, encoded isolated roots, repeats and exact physical disk preservation.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/signature-s3.md. Independently authored 94 complete signature templates cover 102 query positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Compare all labels/parameters/defaults/active slots and canonical owners; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder. All 15 primitives, Range, containers/views/mutation modes, Option/Result, tuples, erased Function/Closure and source/schema record/enum/trait aliases retain exact facts, including otherwise hidden Iterator items. Reviewed hint inputs repeat with missing schema and reject borrowing private/non-type/missing/ambiguous/same-short-name facts; known callables preserve unknown leaves, absent native calls return null. Nested async named/defaulted schema function/method/trait contracts have complete callback/container/return shapes. Any/unknown receiver and unresolved calls have no signatures/owners. Range retains builtin identity with missing schema and colliding host type/method metadata; known Range.len has zero arguments. Real protocol dispatch uses authored UTF-16 positions, encoded isolated roots, repeats and exact physical disk preservation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/signature-s3.md. Independently authored 94 complete signature templates cover 102 query positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Compare all labels/parameters/defaults/active slots and canonical owners; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder. All 15 primitives, Range, containers/views/mutation modes, Option/Result, tuples, erased Function/Closure and source/schema record/enum/trait aliases retain exact facts, including otherwise hidden Iterator items. Reviewed hint inputs repeat with missing schema and reject borrowing private/non-type/missing/ambiguous/same-short-name facts; known callables preserve unknown leaves, absent native calls return null. Nested async named/defaulted schema function/method/trait contracts have complete callback/container/return shapes. Any/unknown receiver and unresolved calls have no signatures/owners. Range retains builtin identity with missing schema and colliding host type/method metadata; known Range.len has zero arguments. Real protocol dispatch uses authored UTF-16 positions, encoded isolated roots, repeats and exact physical disk preservation.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/signature-s3.md. Independently authored 94 complete signature templates cover 102 query positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Compare all labels/parameters/defaults/active slots and canonical owners; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder. All 15 primitives, Range, containers/views/mutation modes, Option/Result, tuples, erased Function/Closure and source/schema record/enum/trait aliases retain exact facts, including otherwise hidden Iterator items. Reviewed hint inputs repeat with missing schema and reject borrowing private/non-type/missing/ambiguous/same-short-name facts; known callables preserve unknown leaves, absent native calls return null. Nested async named/defaulted schema function/method/trait contracts have complete callback/container/return shapes. Any/unknown receiver and unresolved calls have no signatures/owners. Range retains builtin identity with missing schema and colliding host type/method metadata; known Range.len has zero arguments. Real protocol dispatch uses authored UTF-16 positions, encoded isolated roots, repeats and exact physical disk preservation.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

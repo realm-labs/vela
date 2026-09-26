@@ -164,7 +164,11 @@
         "id": "range",
         "file": "scripts/query_range.vela",
         "parameters": [],
-        "expressions": "set4"
+        "expressions": null,
+        "signature": "Range.len() -> i64",
+        "activeParameter": 0,
+        "expectedName": null,
+        "expectedType": null
       },
       {
         "id": "array",

@@ -23,9 +23,18 @@ fn signature(server: &mut TestServer, uri: &str, position: &Value) -> Value {
 
 #[test]
 fn signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries() {
+    verify_fixture("signature-s5", 161);
+}
+
+#[test]
+fn signature_type_matrix_preserves_complete_hints_and_unknown_boundaries() {
+    verify_fixture("signature-s3", 102);
+}
+
+fn verify_fixture(name: &str, expected_count: usize) {
     for crlf in [false, true] {
         let mut total = 0;
-        for spec in signature_calls::specs(crlf) {
+        for spec in signature_calls::specs(name, crlf) {
             let fixture = FixtureWorkspace::new(&spec).expect("fixture");
             let parent = crate::tests::support::unique_temp_root("signature-s5");
             let root = parent.join("中文 % signatures");
@@ -72,6 +81,6 @@ fn signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries(
             }
             fs::remove_dir_all(parent).expect("remove isolated owned workspace");
         }
-        assert_eq!(total, 161, "every reviewed position must run");
+        assert_eq!(total, expected_count, "every reviewed position must run");
     }
 }
