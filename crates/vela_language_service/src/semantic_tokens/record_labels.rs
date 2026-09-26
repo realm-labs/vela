@@ -22,7 +22,7 @@ pub(super) fn collect(
     else {
         return result;
     };
-    for site in source_record_fields::sites(db, source)
+    for site in source_record_fields::record_sites(db, source)
         .into_iter()
         .filter(|site| !site.shorthand)
     {

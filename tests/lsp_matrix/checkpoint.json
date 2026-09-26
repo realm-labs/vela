@@ -5925,10 +5925,29 @@
         "tokens-range/syntax/S4/negative/protocol"
       ],
       "summary": "Close twelve S4 positive/negative full/delta/range service/protocol obligations with independent complete 423 positive and 248 negative token streams. Pin source/schema field declarations, reads/writes/compound writes, inherent/trait/default methods, struct and qualified constructors, all unit/tuple/record variants and patterns, explicit field labels versus expression/pattern shorthand bindings, source enum payload writes and enum methods. Same-named dependency structs/traits, exact source/schema member collisions, wrong-path/Missing/Any receivers, unknown members/variants/labels and unresolved shorthand cannot borrow ownership. Fix explicit labels inheriting whole constructor classification; collect precise scoped constructor/variant path segments; source owners block schema fallback; preserve qualified receiver identities; use canonical scoped type hints; resolve trait defaults in impl scope; retain enum impl/method ownership and variant payload fields. Applied deltas match fresh complete streams, every line/token/empty range is exact under LF/CRLF, and encoded Unicode URI close restoration recovers original stream/ID. Service semantic token tests 46, protocol full suite 710 including new S4 scenario, full workspace tests, fmt, workspace Clippy and Node 83 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed. Strict current-source B05 gate revalidates accepted B00-B05. Catalog 570 verified, 755 unreviewed, two N/A and zero failed. B06 is 60 verified and 118 unreviewed of 178; resume B06.6 for S5 calls/argument positions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-DtauAU/results.json; input editors/vscode/test-results/input-mdwYxP/results.json; audit target/lsp-matrix/run-N1CVb4/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.6",
+      "revision": null,
+      "requirements": [
+        "tokens-full/syntax/S5/positive/service",
+        "tokens-full/syntax/S5/positive/protocol",
+        "tokens-full/syntax/S5/negative/service",
+        "tokens-full/syntax/S5/negative/protocol",
+        "tokens-delta/syntax/S5/positive/service",
+        "tokens-delta/syntax/S5/positive/protocol",
+        "tokens-delta/syntax/S5/negative/service",
+        "tokens-delta/syntax/S5/negative/protocol",
+        "tokens-range/syntax/S5/positive/service",
+        "tokens-range/syntax/S5/positive/protocol",
+        "tokens-range/syntax/S5/negative/service",
+        "tokens-range/syntax/S5/negative/protocol"
+      ],
+      "summary": "Close twelve S5 positive/negative full/delta/range service/protocol obligations with independently authored complete 577 positive and 455 negative token streams. Pin source/schema/stdlib calls, qualified paths, defaults/reordered/nested argument positions, values versus named labels, enum tuple payload labels, callbacks/aliases/lambdas and returned receiver chains. Actual struct/enum impl self, trait self and Host script extensions have scoped ownership. Unknown/private/wrong-path/non-callable/local-shadow/legacy/Any calls cannot borrow ownership; exact builtin/source collisions preserve owners. Replace raw-path registry fallback with scoped callable facts, match exact Host extensions and enum owners, preserve actual self binding kinds and separate record-label collection from tuple call metadata. Applied deltas match fresh complete streams, every line/token/empty-end range is exact under LF/CRLF, and encoded Unicode URI close restoration recovers the original stream and ID. Full workspace tests, fmt, workspace Clippy and Node 83 passed; language service 715 passed with two unchanged baseline ignores, protocol 711 passed. Fresh Windows installed VSIX 16 cases and native input 29 routes plus driver proof passed. Strict current-source B05 gate revalidates accepted B00-B05. Catalog 582 verified, 743 unreviewed, two N/A and zero failed. B06 is 72 verified and 106 unreviewed of 178; resume B06.7 for S6 expressions/control/patterns. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-J7VXBk/results.json; input editors/vscode/test-results/input-29uoDO/results.json; audit target/lsp-matrix/run-yKmiJd/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.6",
+  "nextTask": "B06.7",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8262,7 +8281,8 @@
     "target/lsp-matrix/run-KxNoyb/report.json",
     "target/lsp-matrix/run-cy5keC/report.json",
     "target/lsp-matrix/run-gINoxy/report.json",
-    "target/lsp-matrix/run-N1CVb4/report.json"
+    "target/lsp-matrix/run-N1CVb4/report.json",
+    "target/lsp-matrix/run-yKmiJd/report.json"
   ],
   "openIssues": [
     {
@@ -10566,8 +10586,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "a78cc5979fe496ca5e65cab24d6e5385ced1021c",
-          "treeSha256": "7a6f899a7edb78724a780e129a2265cdc1b695c008faf1fcd64d4f193ce13ab5"
+          "revision": "f321db5721e7c32bd403dfdcb2d2bd7cd0ba5c20",
+          "treeSha256": "9c15b745aad866c1ffe4f53f946be0d9df31454ee0417841dd7846ccb13b28f1"
         },
         "profile": {
           "platform": "win32",
@@ -10575,11 +10595,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-N1CVb4/report.json"
+          "target/lsp-matrix/run-yKmiJd/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-DtauAU/results.json --local-results editors/vscode/test-results/input-mdwYxP/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-J7VXBk/results.json --local-results editors/vscode/test-results/input-29uoDO/results.json",
             "exitCode": 0
           }
         ]

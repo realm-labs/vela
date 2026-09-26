@@ -3,6 +3,7 @@ use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 use serde::Deserialize;
+use vela_analysis::registry::RegistryFacts;
 
 const HIGHLIGHTING_CONSISTENCY: &str =
     include_str!("../../../../tests/fixtures/lsp_highlighting/consistency.json");

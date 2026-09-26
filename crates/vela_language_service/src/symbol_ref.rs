@@ -186,22 +186,42 @@ pub(crate) fn source_impl_owner_matches(graph: &ModuleGraph, id: HirDeclId, owne
     let Some(metadata) = graph.impl_metadata(id) else {
         return false;
     };
-    let Some(target) = graph.resolve_visible_declaration_path(
-        declaration.module,
-        &metadata.target_path,
-        DeclarationKind::Struct,
-    ) else {
+    let Some(path) = graph.expand_import_path(declaration.module, &metadata.target_path) else {
         return false;
     };
+    let Some(current) = graph.module_key(declaration.module) else {
+        return false;
+    };
+    let target = [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ]
+    .into_iter()
+    .find_map(|kind| graph.declaration_by_type_path(&path, current, kind));
+    let Some(target) = target else {
+        // A known registry receiver may have script extension methods. Its
+        // complete expanded name owns that impl; terminal-name guesses do not.
+        return path.join("::") == owner;
+    };
+    if !matches!(
+        target.kind,
+        DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+    ) || target.module != declaration.module
+        && target.visibility != vela_hir::module_graph::Visibility::Public
+    {
+        return false;
+    }
     if qualified_source_declaration_name(graph, target) == owner {
         return true;
     }
     target.name == owner
         && graph
             .declarations()
-            .filter(|candidate| {
-                candidate.kind == DeclarationKind::Struct && candidate.name == owner
-            })
+            .filter(|candidate| candidate.kind == target.kind && candidate.name == owner)
             .count()
             == 1
 }

@@ -1,9 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_analysis::{
-    facts::AnalysisFacts, registry::RegistryFacts, stdlib::stdlib_function_completion_facts,
-    type_fact::TypeFact,
-};
+use vela_analysis::{facts::AnalysisFacts, type_fact::TypeFact};
 use vela_common::{SourceId, Span};
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
 use vela_hir::ids::HirLocalId;
@@ -22,6 +19,7 @@ use self::result_id::{
 };
 
 mod binding_scope;
+mod calls;
 mod constructor_paths;
 mod impl_headers;
 mod import_paths;
@@ -443,7 +441,6 @@ struct SemanticTokenClassification {
 struct SemanticClassificationContext<'a> {
     facts: &'a AnalysisFacts,
     receiver_facts: &'a ExpressionFacts,
-    call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
@@ -455,7 +452,6 @@ struct SemanticClassificationInput<'a> {
     text: &'a str,
     tokens: &'a [Token],
     receiver_facts: &'a ExpressionFacts,
-    call_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     path_expressions: &'a BTreeMap<(usize, usize), Vec<String>>,
     pattern_paths: &'a BTreeMap<(usize, usize), Vec<String>>,
     inferred_local_facts: &'a BTreeMap<HirLocalId, TypeFact>,
@@ -496,7 +492,6 @@ impl LanguageServiceDatabases {
             text: source.text(),
             tokens: &lexed.tokens,
             receiver_facts: &receiver_facts,
-            call_paths: &path_sites.calls,
             path_expressions: &path_sites.expressions,
             pattern_paths: &path_sites.patterns,
             inferred_local_facts: &inferred_local_facts,
@@ -581,13 +576,13 @@ impl LanguageServiceDatabases {
         classifications.extend(impl_headers::collect(self, input.source_id));
         classifications.extend(record_labels::collect(self, input.source_id));
         classifications.extend(constructor_paths::collect(self, input.source_id));
+        classifications.extend(calls::collect(self, input.source_id));
         let graph = self.hir_db().graph();
         let facts = self.graph_analysis_facts();
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
         let context = SemanticClassificationContext {
             facts,
             receiver_facts: input.receiver_facts,
-            call_paths: input.call_paths,
             path_expressions: input.path_expressions,
             pattern_paths: input.pattern_paths,
             inferred_local_facts: input.inferred_local_facts,
@@ -694,11 +689,6 @@ impl LanguageServiceDatabases {
                 {
                     return Some(classification);
                 }
-                if let Some(classification) =
-                    function_call_classification(schema, context.call_paths, range)
-                {
-                    return Some(classification);
-                }
                 if let Some(classification) = unresolved::classification(
                     graph,
                     bindings,
@@ -753,30 +743,6 @@ fn resolved_identifier_classification(
             .map(declaration_use_classification),
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
     }
-}
-
-fn function_call_classification(
-    schema: &RegistryFacts,
-    call_paths: &BTreeMap<(usize, usize), Vec<String>>,
-    range: TextRange,
-) -> Option<SemanticTokenClassification> {
-    let path = call_paths.get(&(range.start, range.end))?;
-    let qualified = path.join("::");
-    if schema.function_fact(&qualified).is_some() {
-        return Some(SemanticTokenClassification::new(
-            SemanticTokenType::Function,
-            SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA),
-        ));
-    }
-    stdlib_function_completion_facts()
-        .iter()
-        .any(|function| function.name == qualified)
-        .then(|| {
-            SemanticTokenClassification::new(
-                SemanticTokenType::Function,
-                SemanticTokenModifiers::BUILTIN,
-            )
-        })
 }
 
 fn local_declaration_token_classification(binding: &LocalBinding) -> SemanticTokenClassification {
@@ -1166,6 +1132,8 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
 
 #[cfg(test)]
 mod body_tests;
+#[cfg(test)]
+mod call_tests;
 #[cfg(test)]
 mod coordinate_tests;
 #[cfg(test)]

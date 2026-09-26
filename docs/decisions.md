@@ -4962,3 +4962,15 @@ resolve in the impl's own module. Enum methods use the enum owner independently
 of a known payload variant; payload fields retain the variant owner. Unknown
 members gain no provenance. Tooling consumes the existing scoped type-hint
 resolver and immutable metadata without executing source or accessing host state.
+
+Semantic-token call and named-label spans consume scoped callable facts rather
+than a second raw-path registry lookup. Named labels carry parameter provenance
+while their value expressions retain caller bindings; tuple labels retain payload
+property metadata independently of argument diagnostics. Qualified callee prefixes
+are namespaces. An implicit self call requires the actual first self binding and
+its impl/trait signature; known Any facts block fallback. Abstract trait self may
+resolve trait methods without inventing record fields. Script extension methods
+match exact expanded Host identities, enum methods use their enum owner, and
+source kind/visibility prevents non-type or private fallback. Record and tuple
+label projections have separate ownership so token collection does not navigate
+every named call twice. All projections remain analysis-only.

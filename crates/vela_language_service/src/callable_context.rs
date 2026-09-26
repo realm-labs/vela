@@ -302,7 +302,7 @@ fn source_impl_method_callable_facts(
 ) -> Vec<CallableFacts> {
     let graph = databases.hir_db().graph();
     let schema = databases.schema_db().facts();
-    let owner_names = record_owner_names(receiver);
+    let owner_names = owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
@@ -394,7 +394,7 @@ fn source_trait_impl_default_callable_facts(
     owner: Option<vela_hir::ids::HirDeclId>,
     method: &str,
 ) -> Vec<CallableFacts> {
-    let owner_names = record_owner_names(receiver);
+    let owner_names = owner_names(receiver);
     graph
         .declarations()
         .filter_map(|declaration| {
@@ -948,7 +948,7 @@ fn record_owner_names(receiver: &TypeFact) -> Vec<String> {
 
 fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
     match receiver {
-        TypeFact::Record { name } => {
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } => {
             push_owner_name(owners, name);
         }
         TypeFact::Union(facts) => {
@@ -980,7 +980,6 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
         | TypeFact::Closure
-        | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }

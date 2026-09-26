@@ -60,15 +60,19 @@ pub(super) fn self_receiver(
         return None;
     }
     let expanded = graph.expand_import_path(declaration.module, &metadata.target_path)?;
-    if let Some(target) = graph.resolve_visible_declaration_path(
-        declaration.module,
-        &expanded,
-        DeclarationKind::Struct,
-    ) && (target.module == declaration.module || target.visibility == Visibility::Public)
+    if let Some(target) = [DeclarationKind::Struct, DeclarationKind::Enum]
+        .into_iter()
+        .find_map(|kind| {
+            graph.resolve_visible_declaration_path(declaration.module, &expanded, kind)
+        })
+        && (target.module == declaration.module || target.visibility == Visibility::Public)
     {
-        return Some(TypeFact::record(
-            graph.qualified_declaration_name(target.id)?,
-        ));
+        let owner = graph.qualified_declaration_name(target.id)?;
+        return Some(if target.kind == DeclarationKind::Enum {
+            TypeFact::enum_type(owner, None::<String>)
+        } else {
+            TypeFact::record(owner)
+        });
     }
     schema.type_fact(&expanded.join("::")).cloned()
 }

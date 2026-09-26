@@ -175,12 +175,29 @@ fn collect_sites(
     source: &SourceRecord,
     at: Option<TextRange>,
 ) -> Vec<FieldSite> {
+    let mut sites = tuple::sites(databases, source, at);
+    sites.extend(collect_record_sites(databases, source, at));
+    sites
+}
+
+pub(crate) fn record_sites(
+    databases: &LanguageServiceDatabases,
+    source: &SourceRecord,
+) -> Vec<FieldSite> {
+    collect_record_sites(databases, source, None)
+}
+
+fn collect_record_sites(
+    databases: &LanguageServiceDatabases,
+    source: &SourceRecord,
+    at: Option<TextRange>,
+) -> Vec<FieldSite> {
     let Some(parsed) = databases.parse_db().syntax_parse(source.document_id()) else {
         return Vec::new();
     };
     let graph = databases.hir_db().graph();
     let lines = LineIndex::new(source.text());
-    let mut sites = tuple::sites(databases, source, at);
+    let mut sites = Vec::new();
     for node in parsed.tree().syntax().descendants() {
         let (path, mut fields, pattern) = if let Some(record) = SyntaxRecordExpr::cast(node.clone())
         {

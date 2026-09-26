@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
+use vela_analysis::registry::RegistryFacts;
 
 #[test]
 fn semantic_tokens_classify_schema_method_on_schema_function_return() {

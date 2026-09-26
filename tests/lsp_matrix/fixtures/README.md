@@ -30,6 +30,10 @@ byte/UTF-16 length; the oracle still checks exact source text and scalar bounds.
 and variant streams, including explicit label versus shorthand binding roles
 and negative same-named source/schema ownership collisions.
 
+`semantic-token-calls.json` pins complete call and argument streams across
+source/schema/stdlib functions and methods, named/default/reordered positions,
+callback values and conservative unknown/dynamic/collision boundaries.
+
 A workspace has `version`, `id`, `files`, ordered `actions`, and an independent
 `oracle`. Each relative file path rejects traversal, absolute/drive paths and
 backslashes. `open`, `change`, `save`, `close`, disk `write`, and disk `delete`

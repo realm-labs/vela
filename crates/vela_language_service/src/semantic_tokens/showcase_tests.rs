@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
+use vela_analysis::registry::RegistryFacts;
 
 const HIGHLIGHTING_SHOWCASE: &str =
     include_str!("../../../../tests/fixtures/lsp_highlighting/showcase.vela");
