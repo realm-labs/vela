@@ -4,8 +4,8 @@ use super::{Action, FixtureWorkspace, Spec, hover_signature, load};
 use serde_json::{Value, json};
 use std::{fs, path::PathBuf};
 
-pub(crate) fn spec(crlf: bool) -> Spec {
-    let mut spec = load("signature-s8");
+pub(crate) fn spec(name: &str, crlf: bool) -> Spec {
+    let mut spec = load(name);
     if crlf {
         for text in spec.files.values_mut() {
             *text = text.replace('\n', "\r\n");

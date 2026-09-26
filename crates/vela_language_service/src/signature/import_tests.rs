@@ -5,6 +5,8 @@ use crate::{
 };
 use serde_json::{Value, json};
 
+mod recovery;
+
 fn uri(layout: &oracle::Layout, file: &str) -> DocumentId {
     DocumentId::from(layout.root.join(file).to_string_lossy().replace('\\', "/"))
 }
@@ -45,9 +47,25 @@ fn load_schema(
     fixture: &FixtureWorkspace,
     layout: &oracle::Layout,
 ) {
+    let Some(schema) = fixture.disk.get("schema.json") else {
+        db.mark_schema_missing(
+            layout
+                .root
+                .join("schema.json")
+                .to_string_lossy()
+                .into_owned(),
+        );
+        return;
+    };
+    let Some(markers) = fixture.disk.get("schema-markers.json") else {
+        db.load_schema_artifact_json(
+            &layout.root.join("schema.json").to_string_lossy(),
+            &schema.text,
+        );
+        return;
+    };
     let artifact = crate::matrix_fixture::schema_artifact(
-        &serde_json::from_str::<Value>(&fixture.disk["schema-markers.json"].text)
-            .expect("schema markers"),
+        &serde_json::from_str::<Value>(&markers.text).expect("schema markers"),
         fixture,
         |file| {
             db.source_db().records()[&uri(layout, file)]
@@ -140,12 +158,11 @@ fn verify(
                 vec![case["owner"].clone()]
             };
             assert_eq!(owners, expected, "{} {} ownership", phase["id"], case["id"]);
-            let callee = position(&hover_signature::position(
-                source,
-                case["callee"].as_str().expect("callee marker"),
-                false,
-                1,
-            ));
+            recovery::assert_query(db, &id, case);
+            let Some(callee_marker) = case["callee"].as_str() else {
+                return json!({"signature":actual});
+            };
+            let callee = position(&hover_signature::position(source, callee_marker, false, 1));
             let target = definition(db, &id, callee);
             assert_eq!(
                 target,
@@ -163,8 +180,17 @@ fn verify(
 
 #[test]
 fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
+    verify_fixture("signature-s8", 544);
+}
+
+#[test]
+fn signature_recovery_matrix_preserves_known_facts_and_clears_unavailable_schema() {
+    verify_fixture("signature-s9", 572);
+}
+
+fn verify_fixture(name: &str, expected_count: usize) {
     for crlf in [false, true] {
-        let spec = oracle::spec(crlf);
+        let spec = oracle::spec(name, crlf);
         let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
         let original_disk = fixture.disk.clone();
         let layout = oracle::Layout::new(&fixture);
@@ -184,7 +210,9 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
         let mut last = Vec::new();
         let mut total = 0;
         for phase in spec.oracle["phases"].as_array().expect("phases") {
+            let mut schema_changed = false;
             for action in oracle::actions(phase) {
+                schema_changed |= action.file == "schema.json";
                 fixture.apply(&action).expect("action");
                 layout.apply(&fixture, &action);
                 version += 1;
@@ -206,9 +234,10 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
                 }
             }
             update(&mut db, &fixture, &layout, &workspace);
-            if phase["id"] == "disk" {
+            if phase["id"] == "disk" || schema_changed {
                 load_schema(&mut db, &fixture, &layout);
             }
+            recovery::assert_schema(&db, phase);
             let mut fresh_workspace = Workspace::new();
             for (file, source) in &fixture.open {
                 fresh_workspace.open_document(
@@ -220,6 +249,7 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
             let mut fresh = LanguageServiceDatabases::new();
             update(&mut fresh, &fixture, &layout, &fresh_workspace);
             load_schema(&mut fresh, &fixture, &layout);
+            recovery::assert_schema(&fresh, phase);
             last = verify(&db, &fixture, &layout, &spec, phase);
             assert_eq!(
                 last,
@@ -231,7 +261,7 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
             initial.get_or_insert_with(|| last.clone());
             layout.assert_disk(&fixture, &spec);
         }
-        assert_eq!(total, 544, "all query positions at all phases");
+        assert_eq!(total, expected_count, "all query positions at all phases");
         assert_eq!(
             last,
             initial.expect("disk baseline"),

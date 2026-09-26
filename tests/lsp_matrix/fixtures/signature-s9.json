@@ -1,0 +1,380 @@
+{
+  "version": 1,
+  "id": "signature-s9",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.signature_recovery\"\nname=\"signature_recovery\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Readable\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Readable\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::export\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"message\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"code\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"accept\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Readable\",\n        \"name\": \"read\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/api.vela": "/* 中😀 */\npub fn probe(value: i64, reason: String = \"base\") -> bool { return true; }\npub struct Widget { tag: i64 }\nimpl Widget { pub fn accept(self, value: i64, reason: String = \"base\") -> bool { return true; } }\npub trait Reader { fn read(self, value: i64, reason: String = \"base\") -> bool { return true; } }\nimpl Reader for Widget {}\npub fn factory() -> Widget { return Widget { tag: 1 }; }\npub fn dynamic() -> Any { return Widget { tag: 1 }; }\npub fn partial(value: Missing, reason: String = \"base\") -> Missing { return value; }\npub fn typed(value: host::Row) -> host::Row { return value; }\npub fn untyped(value) { return value; }\n",
+    "scripts/neighbor.vela": "pub fn healthy() -> bool { return true; }\n",
+    "scripts/main.vela": "use api::probe;\n/* 中😀 */ fn main() { probe(1, [[cursor]]\"x\"); }\n",
+    "scripts/case_open_empty.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe([[cursor]]\n",
+    "scripts/case_open_second.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(1, [[cursor]]\n",
+    "scripts/case_open_named.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(reason = [[cursor]]\n",
+    "scripts/case_multiline.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(\n 1,\n [[cursor]]\n",
+    "scripts/case_named_reordered.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(reason = \"x\", value = [[cursor]]); }\n",
+    "scripts/case_missing_argument.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(1, [[cursor]]); }\n",
+    "scripts/case_malformed_after.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(1, [[cursor]]\"x\"); }\nfn broken(\n",
+    "scripts/case_malformed_before.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn broken(\nfn main() { probe(1, [[cursor]]\"x\"); }\n",
+    "scripts/case_partial_type_neighbor.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ struct Broken { field: Array<> }\nfn main() { probe(1, [[cursor]]\"x\"); }\n",
+    "scripts/case_partial_facts.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { api::partial(1, [[cursor]]\"x\"); }\n",
+    "scripts/case_unhinted_facts.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { api::untyped([[cursor]]1); }\n",
+    "scripts/case_source_method.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Widget) { value.accept(1, [[cursor]]\n",
+    "scripts/case_source_default.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Widget) { value.read(1, [[cursor]]\n",
+    "scripts/case_source_trait.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Reader) { value.read(1, [[cursor]]\n",
+    "scripts/case_returned_source.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { api::factory().accept(1, [[cursor]]\n",
+    "scripts/case_schema_call.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { send(\"x\", [[cursor]]\n",
+    "scripts/case_schema_qualified.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { host::export(code=1, message=[[cursor]]\n",
+    "scripts/case_schema_host.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Row) { value.accept(1, [[cursor]]\n",
+    "scripts/case_schema_trait.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Readable) { value.read([[cursor]]\n",
+    "scripts/case_returned_schema.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { send(\"x\").accept(1, [[cursor]]\n",
+    "scripts/case_returned_source_schema.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Row) { api::typed(value).accept(1, [[cursor]]\n",
+    "scripts/case_source_schema_hint.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Row) { api::typed([[cursor]]value); }\n",
+    "scripts/case_stdlib.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { math::max(1, [[cursor]]\n",
+    "scripts/case_fake_string_separators.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(\"中😀, ( [ {\", [[cursor]]\n",
+    "scripts/case_fake_comment_separators.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(1 /* , ( [ { */, [[cursor]]\n",
+    "scripts/case_nested_incomplete.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(math::max(1, [[cursor]]\n",
+    "scripts/case_missing.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { missing([[cursor]]\n",
+    "scripts/case_partial_callee.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { prob([[cursor]]\n",
+    "scripts/case_partial_module.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { api::([[cursor]]\n",
+    "scripts/case_missing_member.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Widget) { value.missing([[cursor]]\n",
+    "scripts/case_partial_member.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Widget) { value.acc([[cursor]]\n",
+    "scripts/case_member_no_call.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Widget) { value.[[cursor]]\n",
+    "scripts/case_type_no_call.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Array<[[cursor]]\n",
+    "scripts/case_noncallable.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { let probe = 1; probe([[cursor]]\n",
+    "scripts/case_closure_call.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { let callback = |x| x; callback([[cursor]]\n",
+    "scripts/case_dynamic.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Any) { value.accept([[cursor]]\n",
+    "scripts/case_returned_dynamic.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { api::dynamic().accept([[cursor]]\n",
+    "scripts/case_unknown.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value) { value.accept([[cursor]]\n",
+    "scripts/case_unknown_return.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { unknown().accept([[cursor]]\n",
+    "scripts/case_candidate.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main(value: Array<i64>) { value.frist([[cursor]]); }\n",
+    "scripts/case_outside.vela": "use api::probe;\nuse api::Widget;\nuse api::Reader;\nuse host::export as send;\nuse host::Row as Row;\nuse host::Readable as Readable;\n/* 中😀 */ fn main() { probe(1,\"x\"); [[cursor]] }\n",
+    "scripts/case_empty.vela": "[[cursor]]",
+    "scripts/case_trivia_only.vela": "// 中😀 comment\n[[cursor]]"
+  },
+  "actions": [],
+  "oracle": {
+    "signatures": {
+      "source": {"label":"probe(value: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"value","type":"i64","label":"value: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::probe"},"named":true},
+      "method": {"label":"Widget.accept(value: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"value","type":"i64","label":"value: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Widget.accept"},"named":true},
+      "trait": {"label":"api::Reader.read(value: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"value","type":"i64","label":"value: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"named":true},
+      "partial": {"label":"partial(value: unknown, reason: String (defaulted)) -> unknown","parameters":[{"name":"value","type":"unknown","label":"value: unknown"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::partial"},"named":true},
+      "untyped": {"label":"untyped(value: unknown) -> unknown","parameters":[{"name":"value","type":"unknown","label":"value: unknown"}],"owner":{"kind":"Source","name":"api::untyped"},"named":true},
+      "typed": {"label":"typed(value: host::Row) -> host::Row","parameters":[{"name":"value","type":"host::Row","label":"value: host::Row"}],"owner":{"kind":"Source","name":"api::typed"},"named":true},
+      "typed-missing": {"label":"typed(value: unknown) -> unknown","parameters":[{"name":"value","type":"unknown","label":"value: unknown"}],"owner":{"kind":"Source","name":"api::typed"},"named":true},
+      "math": {"label":"math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64","parameters":[{"name":"left","type":"i64 | f64","label":"left: i64 | f64"},{"name":"right","type":"i64 | f64","label":"right: i64 | f64"}],"owner":{"kind":"Builtin","name":"math::max"},"named":true},
+      "schema": {"label":"host::export(message: String, code: i64 (defaulted)) -> host::Row","parameters":[{"name":"message","type":"String","label":"message: String"},{"name":"code","type":"i64","label":"code: i64 (defaulted)"}],"owner":{"kind":"Schema","name":"host::export"},"named":true},
+      "host": {"label":"host::Row.accept(value: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"value","type":"i64","label":"value: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Schema","name":"host::Row.accept"},"named":true},
+      "host-trait": {"label":"host::Readable.read(value: i64) -> bool","parameters":[{"name":"value","type":"i64","label":"value: i64"}],"owner":{"kind":"Schema","name":"host::Readable.read"},"named":true},
+      "fresh-schema": {"label":"async host::export(fresh_message: bool, code: i64 (defaulted)) -> host::Row","parameters":[{"name":"fresh_message","type":"bool","label":"fresh_message: bool"},{"name":"code","type":"i64","label":"code: i64 (defaulted)"}],"owner":{"kind":"Schema","name":"host::export"},"named":true},
+      "fresh-host": {"label":"async host::Row.accept(fresh_value: u32, reason: String (defaulted)) -> bool","parameters":[{"name":"fresh_value","type":"u32","label":"fresh_value: u32"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Schema","name":"host::Row.accept"},"named":true},
+      "fresh-host-trait": {"label":"async host::Readable.read(fresh_value: u32) -> bool","parameters":[{"name":"fresh_value","type":"u32","label":"fresh_value: u32"}],"owner":{"kind":"Schema","name":"host::Readable.read"},"named":true}
+    },
+    "queries": [
+      {"id":"lifecycle","file":"scripts/main.vela","marker":"cursor","signature":"source","active":1},
+      {"id":"open-empty","file":"scripts/case_open_empty.vela","marker":"cursor","signature":"source","active":0,"parseErrors":true},
+      {"id":"open-second","file":"scripts/case_open_second.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"open-named","file":"scripts/case_open_named.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"multiline","file":"scripts/case_multiline.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"named-reordered","file":"scripts/case_named_reordered.vela","marker":"cursor","signature":"source","active":0,"parseErrors":false},
+      {"id":"missing-argument","file":"scripts/case_missing_argument.vela","marker":"cursor","signature":"source","active":1,"parseErrors":false},
+      {"id":"malformed-after","file":"scripts/case_malformed_after.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"malformed-before","file":"scripts/case_malformed_before.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"partial-type-neighbor","file":"scripts/case_partial_type_neighbor.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"partial-facts","file":"scripts/case_partial_facts.vela","marker":"cursor","signature":"partial","active":1,"parseErrors":false},
+      {"id":"unhinted-facts","file":"scripts/case_unhinted_facts.vela","marker":"cursor","signature":"untyped","active":0,"parseErrors":false},
+      {"id":"source-method","file":"scripts/case_source_method.vela","marker":"cursor","signature":"method","active":1,"parseErrors":true},
+      {"id":"source-default","file":"scripts/case_source_default.vela","marker":"cursor","signature":"trait","active":1,"parseErrors":true},
+      {"id":"source-trait","file":"scripts/case_source_trait.vela","marker":"cursor","signature":"trait","active":1,"parseErrors":true},
+      {"id":"returned-source","file":"scripts/case_returned_source.vela","marker":"cursor","signature":"method","active":1,"parseErrors":true},
+      {"id":"schema-call","file":"scripts/case_schema_call.vela","marker":"cursor","signature":"schema","active":1,"parseErrors":true,"schemaDependent":true},
+      {"id":"schema-qualified","file":"scripts/case_schema_qualified.vela","marker":"cursor","signature":"schema","active":0,"parseErrors":true,"schemaDependent":true},
+      {"id":"schema-host","file":"scripts/case_schema_host.vela","marker":"cursor","signature":"host","active":1,"parseErrors":true,"schemaDependent":true},
+      {"id":"schema-trait","file":"scripts/case_schema_trait.vela","marker":"cursor","signature":"host-trait","active":0,"parseErrors":true,"schemaDependent":true},
+      {"id":"returned-schema","file":"scripts/case_returned_schema.vela","marker":"cursor","signature":"host","active":1,"parseErrors":true,"schemaDependent":true},
+      {"id":"returned-source-schema","file":"scripts/case_returned_source_schema.vela","marker":"cursor","signature":"host","active":1,"parseErrors":true,"schemaDependent":true},
+      {"id":"source-schema-hint","file":"scripts/case_source_schema_hint.vela","marker":"cursor","signature":"typed","active":0,"parseErrors":false},
+      {"id":"stdlib","file":"scripts/case_stdlib.vela","marker":"cursor","signature":"math","active":1,"parseErrors":true},
+      {"id":"fake-string-separators","file":"scripts/case_fake_string_separators.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"fake-comment-separators","file":"scripts/case_fake_comment_separators.vela","marker":"cursor","signature":"source","active":1,"parseErrors":true},
+      {"id":"nested-incomplete","file":"scripts/case_nested_incomplete.vela","marker":"cursor","signature":"math","active":1,"parseErrors":true},
+      {"id":"missing","file":"scripts/case_missing.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"partial-callee","file":"scripts/case_partial_callee.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"partial-module","file":"scripts/case_partial_module.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"missing-member","file":"scripts/case_missing_member.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"partial-member","file":"scripts/case_partial_member.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"member-no-call","file":"scripts/case_member_no_call.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"type-no-call","file":"scripts/case_type_no_call.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"noncallable","file":"scripts/case_noncallable.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"closure-call","file":"scripts/case_closure_call.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"dynamic","file":"scripts/case_dynamic.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"returned-dynamic","file":"scripts/case_returned_dynamic.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"unknown","file":"scripts/case_unknown.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"unknown-return","file":"scripts/case_unknown_return.vela","marker":"cursor","signature":null,"active":0,"parseErrors":true},
+      {"id":"candidate","file":"scripts/case_candidate.vela","marker":"cursor","signature":null,"active":0,"parseErrors":false,"diagnosticCandidate":{"code":"analysis::unknown_method","replacement":"first"}},
+      {"id":"outside","file":"scripts/case_outside.vela","marker":"cursor","signature":null,"active":0,"parseErrors":false},
+      {"id":"empty","file":"scripts/case_empty.vela","marker":"cursor","signature":null,"active":0,"parseErrors":false},
+      {"id":"trivia-only","file":"scripts/case_trivia_only.vela","marker":"cursor","signature":null,"active":0,"parseErrors":false}
+    ],
+    "phases": [
+      {
+        "id": "disk",
+        "actions": [],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "broken-neighbor",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/neighbor.vela",
+            "source": "/* 中😀 */ fn broken(\n"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "repair-neighbor",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/neighbor.vela",
+            "source": "pub fn healthy() -> bool { return true; }\n"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "broken-caller",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::probe;\n/* 中😀 */ fn main() { probe(1, [[cursor]]"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "unknown-caller",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::probe;\n/* 中😀 */ fn main() { prboe(1, [[cursor]]"
+          }
+        ],
+        "overrides": {
+          "lifecycle": {
+            "signature": null
+          }
+        },
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "repair-caller",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::probe;\n/* 中😀 */ fn main() { probe(1, [[cursor]]\"x\"); }\n"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "caller-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "missing-schema",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "schema.json"
+          }
+        ],
+        "overrides": {
+          "schema-call": {
+            "signature": null
+          },
+          "schema-qualified": {
+            "signature": null
+          },
+          "schema-host": {
+            "signature": null
+          },
+          "schema-trait": {
+            "signature": null
+          },
+          "returned-schema": {
+            "signature": null
+          },
+          "returned-source-schema": {
+            "signature": null
+          },
+          "source-schema-hint": {
+            "signature": "typed-missing"
+          }
+        },
+        "schemaStatus": "missing"
+      },
+      {
+        "id": "stale-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}}],\"traits\":[{\"name\":\"host::Readable\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Readable\"}}],\"functions\":[{\"name\":\"host::export\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"},{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"message\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"},{\"name\":\"code\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}}}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"accept\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}],\"traitMethods\":[{\"owner\":\"host::Readable\",\"name\":\"read\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]},\"schemaHash\":\"0x0\"}\n"
+          }
+        ],
+        "overrides": {
+          "schema-call": {
+            "signature": null
+          },
+          "schema-qualified": {
+            "signature": null
+          },
+          "schema-host": {
+            "signature": null
+          },
+          "schema-trait": {
+            "signature": null
+          },
+          "returned-schema": {
+            "signature": null
+          },
+          "returned-source-schema": {
+            "signature": null
+          },
+          "source-schema-hint": {
+            "signature": "typed-missing"
+          }
+        },
+        "schemaStatus": "invalid"
+      },
+      {
+        "id": "invalid-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{ invalid 中😀\n"
+          }
+        ],
+        "overrides": {
+          "schema-call": {
+            "signature": null
+          },
+          "schema-qualified": {
+            "signature": null
+          },
+          "schema-host": {
+            "signature": null
+          },
+          "schema-trait": {
+            "signature": null
+          },
+          "returned-schema": {
+            "signature": null
+          },
+          "returned-source-schema": {
+            "signature": null
+          },
+          "source-schema-hint": {
+            "signature": "typed-missing"
+          }
+        },
+        "schemaStatus": "invalid"
+      },
+      {
+        "id": "unsupported-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":99,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}}],\"traits\":[{\"name\":\"host::Readable\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Readable\"}}],\"functions\":[{\"name\":\"host::export\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"},{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"message\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"},{\"name\":\"code\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}}}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"accept\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}],\"traitMethods\":[{\"owner\":\"host::Readable\",\"name\":\"read\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}\n"
+          }
+        ],
+        "overrides": {
+          "schema-call": {
+            "signature": null
+          },
+          "schema-qualified": {
+            "signature": null
+          },
+          "schema-host": {
+            "signature": null
+          },
+          "schema-trait": {
+            "signature": null
+          },
+          "returned-schema": {
+            "signature": null
+          },
+          "returned-source-schema": {
+            "signature": null
+          },
+          "source-schema-hint": {
+            "signature": "typed-missing"
+          }
+        },
+        "schemaStatus": "invalid"
+      },
+      {
+        "id": "replacement-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Readable\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Readable\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::export\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"fresh_message\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"code\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"accept\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"fresh_value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Readable\",\n        \"name\": \"read\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"fresh_value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n"
+          }
+        ],
+        "overrides": {
+          "schema-call": {
+            "signature": "fresh-schema"
+          },
+          "schema-qualified": {
+            "signature": "fresh-schema"
+          },
+          "schema-host": {
+            "signature": "fresh-host"
+          },
+          "schema-trait": {
+            "signature": "fresh-host-trait"
+          },
+          "returned-schema": {
+            "signature": "fresh-host"
+          },
+          "returned-source-schema": {
+            "signature": "fresh-host"
+          }
+        },
+        "schemaStatus": "valid"
+      },
+      {
+        "id": "restore-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Readable\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Readable\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::export\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"message\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"code\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"accept\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Readable\",\n        \"name\": \"read\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n"
+          }
+        ],
+        "overrides": {},
+        "schemaStatus": "valid"
+      }
+    ]
+  }
+}

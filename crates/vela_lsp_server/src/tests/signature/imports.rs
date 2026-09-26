@@ -5,6 +5,8 @@ use crate::tests::{TestServer, notify, request, response_value, sync_diagnostics
 use lsp_types::{notification as n, request as r};
 use serde_json::{Value, json};
 
+mod recovery;
+
 fn uri(layout: &oracle::Layout, file: &str) -> String {
     lsp_types::Url::from_file_path(layout.root.join(file))
         .expect("encoded URI")
@@ -28,32 +30,33 @@ fn initialize(fixture: &FixtureWorkspace, layout: &oracle::Layout) -> TestServer
         json!({"processId":null,"rootUri":uri(layout,""),"capabilities":{}}),
     ));
     assert!(response.get("error").is_none(), "{response}");
-    let snapshot = server.snapshot();
-    let artifact = crate::matrix_fixture::schema_artifact(
-        &serde_json::from_str::<Value>(&fixture.disk["schema-markers.json"].text)
-            .expect("schema markers"),
-        fixture,
-        |file| {
-            snapshot.databases().source_db().records()
-                [&vela_language_service::DocumentId::from(uri(layout, file))]
-                .source_id()
-                .get()
-        },
-    );
-    std::fs::write(layout.root.join("schema.json"), artifact.to_string())
-        .expect("bind schema spans");
-    let _ = notify::<n::DidChangeWatchedFiles>(
-        &mut server,
-        json!({"changes":[{"uri":uri(layout,"schema.json"),"type":2}]}),
-    );
-    assert!(
-        server
-            .snapshot()
-            .databases()
-            .schema_db()
-            .diagnostics()
-            .is_empty()
-    );
+    if let Some(markers) = fixture.disk.get("schema-markers.json") {
+        let snapshot = server.snapshot();
+        let artifact = crate::matrix_fixture::schema_artifact(
+            &serde_json::from_str::<Value>(&markers.text).expect("schema markers"),
+            fixture,
+            |file| {
+                snapshot.databases().source_db().records()
+                    [&vela_language_service::DocumentId::from(uri(layout, file))]
+                    .source_id()
+                    .get()
+            },
+        );
+        std::fs::write(layout.root.join("schema.json"), artifact.to_string())
+            .expect("bind schema spans");
+        let _ = notify::<n::DidChangeWatchedFiles>(
+            &mut server,
+            json!({"changes":[{"uri":uri(layout,"schema.json"),"type":2}]}),
+        );
+        assert!(
+            server
+                .snapshot()
+                .databases()
+                .schema_db()
+                .diagnostics()
+                .is_empty()
+        );
+    }
     for (file, source) in &fixture.open {
         open(&mut server, layout, file, &source.text, 1);
     }
@@ -147,12 +150,11 @@ fn verify(
                 actual,
                 "repeat signature"
             );
-            let callee = hover_signature::position(
-                source,
-                case["callee"].as_str().expect("callee marker"),
-                true,
-                1,
-            );
+            recovery::assert_query(server, layout, case, source);
+            let Some(callee_marker) = case["callee"].as_str() else {
+                return json!({"signature":actual});
+            };
+            let callee = hover_signature::position(source, callee_marker, true, 1);
             let mut definition = result::<r::GotoDefinition>(server, &target, &callee);
             assert_eq!(
                 definition,
@@ -178,8 +180,17 @@ fn verify(
 
 #[test]
 fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
+    verify_fixture("signature-s8", 544);
+}
+
+#[test]
+fn signature_recovery_matrix_preserves_known_facts_and_clears_unavailable_schema() {
+    verify_fixture("signature-s9", 572);
+}
+
+fn verify_fixture(name: &str, expected_count: usize) {
     for crlf in [false, true] {
-        let spec = oracle::spec(crlf);
+        let spec = oracle::spec(name, crlf);
         let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
         let original_disk = fixture.disk.clone();
         fixture.open.insert(
@@ -198,9 +209,11 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
                 version += 1;
                 apply(&mut server, &fixture, &layout, &action, version);
             }
+            recovery::assert_schema(&server, phase);
             last = verify(&mut server, &fixture, &layout, &spec, phase);
             let fresh_layout = oracle::Layout::new(&fixture);
             let mut fresh = initialize(&fixture, &fresh_layout);
+            recovery::assert_schema(&fresh, phase);
             assert_eq!(
                 last,
                 verify(&mut fresh, &fixture, &fresh_layout, &spec, phase),
@@ -212,7 +225,7 @@ fn signature_package_matrix_preserves_import_ownership_and_lifecycle_facts() {
             layout.assert_disk(&fixture, &spec);
             fresh_layout.assert_disk(&fixture, &spec);
         }
-        assert_eq!(total, 544, "all queries at all phases");
+        assert_eq!(total, expected_count, "all queries at all phases");
         assert_eq!(
             last,
             initial.expect("disk baseline"),

@@ -26,7 +26,7 @@ pub(super) fn refine_cursor_with_hir(
         }
         CursorContextKind::CallArgument => {
             if let Some(open) = cursor.call_open()
-                && let Some(ranges) = hir_call_ranges(graph, body, source_id, offset, open)
+                && let Some(ranges) = hir_call_ranges(graph, body, source_id, open)
             {
                 cursor.refine_call_ranges(ranges.callee, ranges.member_receiver);
             }
@@ -70,10 +70,9 @@ fn hir_call_ranges(
     graph: &ModuleGraph,
     body: &HirBody,
     source_id: SourceId,
-    offset: usize,
     open: usize,
 ) -> Option<HirCallRanges> {
-    let (body, expression) = hir_call_at(graph, body, source_id, open, offset)?;
+    let (body, expression) = hir_call_at(graph, body, source_id, open)?;
     let call = body.call(expression)?;
     let callee = body.expressions.get(&call.callee)?;
     let callee_range = span_text_range(callee.origin.span)?;
@@ -92,8 +91,9 @@ pub(super) fn hir_call_at<'a>(
     body: &HirBody,
     source_id: SourceId,
     open: usize,
-    offset: usize,
 ) -> Option<(&'a HirBody, HirExprId)> {
+    // The cursor scanner identifies the active opening bracket. Recovery HIR
+    // can end before a missing argument or trailing trivia at that cursor.
     graph
         .body_and_ancestors(body.id)
         .flat_map(|body| {
@@ -101,7 +101,6 @@ pub(super) fn hir_call_at<'a>(
                 let call_expression = body.expressions.get(&call.expression)?;
                 if call_expression.origin.source != source_id
                     || !span_contains_usize(call_expression.origin.span, open)
-                    || !span_contains_usize(call_expression.origin.span, offset)
                 {
                     return None;
                 }
@@ -179,14 +178,8 @@ mod tests {
 
         let call_start = source.find("grant(").expect("function call");
         let call_open = call_start + "grant".len();
-        let call_ranges = hir_call_ranges(
-            graph,
-            body_at(call_open + 1),
-            source_id,
-            call_open + 1,
-            call_open,
-        )
-        .expect("function call ranges");
+        let call_ranges = hir_call_ranges(graph, body_at(call_open + 1), source_id, call_open)
+            .expect("function call ranges");
         assert_eq!(
             call_ranges.callee,
             TextRange::new(call_start, call_start + "grant".len())
@@ -195,14 +188,9 @@ mod tests {
 
         let method_receiver_start = source.find("scores.filter").expect("method receiver");
         let method_open = source.find("filter(").expect("method call") + "filter".len();
-        let method_ranges = hir_call_ranges(
-            graph,
-            body_at(method_open + 1),
-            source_id,
-            method_open + 1,
-            method_open,
-        )
-        .expect("method call ranges");
+        let method_ranges =
+            hir_call_ranges(graph, body_at(method_open + 1), source_id, method_open)
+                .expect("method call ranges");
         assert_eq!(
             method_ranges.callee,
             TextRange::new(
@@ -222,14 +210,9 @@ mod tests {
             .find("current_player().grant")
             .expect("complex method receiver");
         let complex_open = source.find(".grant(").expect("complex method call") + ".grant".len();
-        let complex_ranges = hir_call_ranges(
-            graph,
-            body_at(complex_open + 1),
-            source_id,
-            complex_open + 1,
-            complex_open,
-        )
-        .expect("complex method call ranges");
+        let complex_ranges =
+            hir_call_ranges(graph, body_at(complex_open + 1), source_id, complex_open)
+                .expect("complex method call ranges");
         assert_eq!(
             complex_ranges.member_receiver,
             Some(TextRange::new(
