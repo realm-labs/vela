@@ -6039,10 +6039,27 @@
         "tokens-range/syntax/S10/negative/protocol"
       ],
       "summary": "Close twelve S10 positive/negative full/delta/range service/protocol obligations with independent 322-token positive and three negative streams containing 1013 tokens. Distinguish local/parameter/source declaration/member/variant ownership, source-backed and metadata-only schema/host facts, stdlib/builtin/module aliases, dynamic Any and unresolved paths. Source wins contradictory registry facts; unknown source members/variants and private declarations cannot borrow schema facts. Removing a source owner permits real schema fallback; repair restores source. Dynamic receivers and parameter-shadowed module aliases lose guessed provenance. LF/CRLF query fourteen states per layer with fresh/incremental parity, actual applied deltas, unchanged IDs and exact line/token/start/end empty ranges; encoded Unicode URI overlays close back to disk. No production semantic policy changes. Full workspace tests, fmt, Clippy and Node 83 passed; service 720 passed with two unchanged baseline ignores and protocol 717 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed with matching source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 642 verified, 683 unreviewed, two N/A, zero failed. B06 is 132 verified and 46 unreviewed of 178; resume B06.12 for S11 incrementality and cancellation. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-cyY6CD/results.json; input editors/vscode/test-results/input-uNlTkj/results.json; audit target/lsp-matrix/run-pEr02W/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.12",
+      "revision": null,
+      "requirements": [
+        "tokens-delta/syntax/S11/positive/service",
+        "tokens-delta/syntax/S11/positive/protocol",
+        "tokens-delta/syntax/S11/negative/service",
+        "tokens-delta/syntax/S11/negative/protocol",
+        "tokens-delta/states/stale_version/protocol",
+        "tokens-delta/states/cancellation/protocol",
+        "tokens-range/syntax/S11/positive/service",
+        "tokens-range/syntax/S11/positive/protocol",
+        "tokens-range/syntax/S11/negative/service",
+        "tokens-range/syntax/S11/negative/protocol"
+      ],
+      "summary": "Close eight S11 delta/range positive/negative service/protocol obligations and the delta stale-version/cancellation protocol state obligations. Independently authored fifteen states pin 73 tokens across main, relay and unrelated modules under LF/CRLF: thirty workspace states and ninety document streams per layer. Body, declaration/import fingerprints, direct/transitive invalidation and removed import edges have exact counter/module-set expectations. Current and original older deltas apply to complete current streams; repeated token/line/empty ranges and fresh/incremental parity agree and repair restores original IDs. Service background full/delta/range results reject cancellation before/after computation and old generations while immutable snapshots retain old streams. Real queued protocol tasks suppress cancelled/stale results, full retries once and rejects an invalidated retry, and later requests yield exact current streams. Older/duplicate full/ranged versions cannot poison caches. Reproducers fix delta and range synchronous dispatcher wrappers by scheduling actual immutable tasks on latency/worker lanes; coordinator regression verifies lanes and explicit retry policy. Full workspace tests, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 721 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed with matching source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 652 verified, 673 unreviewed, two N/A, zero failed. B06 is 142 verified and 36 unreviewed of 178; resume B06.13 for source/schema document lifecycle state coverage. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-xAVdde/results.json; input editors/vscode/test-results/input-AnMbOx/results.json; audit target/lsp-matrix/run-MRBIZ2/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.12",
+  "nextTask": "B06.13",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8394,7 +8411,10 @@
     "editors/vscode/test-results/input-wjCuzf/results.json",
     "target/lsp-matrix/run-pEr02W/report.json",
     "editors/vscode/test-results/run-cyY6CD/results.json",
-    "editors/vscode/test-results/input-uNlTkj/results.json"
+    "editors/vscode/test-results/input-uNlTkj/results.json",
+    "target/lsp-matrix/run-MRBIZ2/report.json",
+    "editors/vscode/test-results/run-xAVdde/results.json",
+    "editors/vscode/test-results/input-AnMbOx/results.json"
   ],
   "openIssues": [
     {
@@ -10698,8 +10718,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "367e716ae446be5a2c5c1994bb18f02c8f785f83",
-          "treeSha256": "51fe068621ed2e6d2e67b844b54080c4439a334effe0f22fef8cf0785bdd5ae8"
+          "revision": "0a7d5d3521d9d6f248658ab866815b1021ec8755",
+          "treeSha256": "912f494d7c64dbf8a2cf7a833b395c34b25ea2b5bed09c1140595b881883449a"
         },
         "profile": {
           "platform": "win32",
@@ -10707,11 +10727,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-pEr02W/report.json"
+          "target/lsp-matrix/run-MRBIZ2/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-cyY6CD/results.json --local-results editors/vscode/test-results/input-uNlTkj/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-xAVdde/results.json --local-results editors/vscode/test-results/input-AnMbOx/results.json",
             "exitCode": 0
           }
         ]

@@ -5039,3 +5039,13 @@ when their assertions pass. The installed-editor wrapper budgets twenty-five
 minutes for both suites and report overhead. These orchestration limits do not
 relax individual request, scale, readiness or assertion budgets, and a timeout
 still fails acceptance without automatic retries.
+
+Semantic-token delta requests run as cancellable immutable-snapshot tasks on the
+latency lane; range requests run on the worker lane. A lane-named synchronous
+dispatcher wrapper does not provide scheduling or a cancellation/publication
+boundary. The shared task publication path rejects cancelled work with
+RequestCancelled and old generations with ContentModified. Delta and range do
+not retry against a different snapshot; full requests retain their existing
+single retry and reject an invalidated retry. A valid earlier token result ID can
+still seed a current delta, while the generation of the computation controls
+whether that delta may be published.

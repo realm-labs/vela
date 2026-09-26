@@ -1146,6 +1146,8 @@ mod degradation_tests;
 #[cfg(test)]
 mod import_tests;
 #[cfg(test)]
+mod incremental_tests;
+#[cfg(test)]
 mod literal_tests;
 #[cfg(test)]
 mod member_tests;

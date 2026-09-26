@@ -76,7 +76,7 @@ fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Mes
             GlobalStateSnapshot::semantic_tokens_full,
             RetryTask::semantic_tokens_full,
         )
-        .on_latency_sensitive_snapshot_messages_typed::<SemanticTokensFullDeltaRequest>(
+        .on_latency_sensitive_task_snapshot_messages_typed::<SemanticTokensFullDeltaRequest>(
             GlobalStateSnapshot::semantic_tokens_full_delta,
         )
         .on_worker_snapshot_messages_typed::<GotoDefinition>(GlobalStateSnapshot::definition)
@@ -117,7 +117,7 @@ fn dispatch_request(global_state: &mut GlobalState, request: Request) -> Vec<Mes
             GlobalStateSnapshot::outgoing_calls,
         )
         .on_worker_snapshot_messages_typed::<CodeActionRequest>(GlobalStateSnapshot::code_action)
-        .on_worker_snapshot_messages_typed::<SemanticTokensRangeRequest>(
+        .on_worker_task_snapshot_messages_typed::<SemanticTokensRangeRequest>(
             GlobalStateSnapshot::semantic_tokens_range,
         )
         .on_worker_snapshot_messages_typed::<InlayHintRequest>(GlobalStateSnapshot::inlay_hint)
@@ -393,6 +393,18 @@ impl<'a> RequestDispatcher<'a> {
         R::Params: DeserializeOwned + Debug,
     {
         self.dispatch_snapshot_messages_typed::<R>(f);
+        self
+    }
+
+    pub(crate) fn on_latency_sensitive_task_snapshot_messages_typed<R>(
+        &mut self,
+        f: fn(GlobalStateSnapshot, lsp_server::RequestId, R::Params) -> Vec<Message>,
+    ) -> &mut Self
+    where
+        R: lsp_types::request::Request,
+        R::Params: DeserializeOwned + Debug + Send + Serialize + 'static,
+    {
+        self.dispatch_snapshot_messages_task_typed::<R>(TaskLane::Latency, f);
         self
     }
 

@@ -63,6 +63,154 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-delta/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Older and duplicate full/ranged changes cannot alter decoded current tokens, IDs or parse/project/HIR/generation counters. Later valid edits still yield independently authored current streams, exact ranges and applied deltas under LF/CRLF and encoded Unicode URIs.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::stale_document_versions_cannot_change_token_streams_or_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Real queued token delta tasks cancelled before collection or after computation, concurrent with an edit, publish only RequestCancelled and no token result. Late/completed and unknown cancellation IDs do not poison later queued deltas; applying their edits yields the complete independently authored current stream and fresh-workspace parity.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::cancelled_token_requests_discard_results_and_allow_later_queries"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::incremental_tests::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::stale_document_versions_cannot_change_token_streams_or_ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::cancelled_token_requests_discard_results_and_allow_later_queries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::stale_token_requests_discard_deltas_ranges_and_bound_full_retry"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::incremental_tests::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::stale_document_versions_cannot_change_token_streams_or_ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::cancelled_token_requests_discard_results_and_allow_later_queries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::stale_token_requests_discard_deltas_ranges_and_bound_full_retry"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::incremental_tests::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::stale_document_versions_cannot_change_token_streams_or_ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::cancelled_token_requests_discard_results_and_allow_later_queries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::stale_token_requests_discard_deltas_ranges_and_bound_full_retry"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::incremental_tests::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-incremental.md. Fifteen independently authored states pin body-only, declaration/import fingerprints, direct/transitive dependency invalidation and removed import edges across three complete streams. Repeated full/delta/range results preserve cache counters; fresh/incremental parity, previous/original applied deltas, complete repair IDs, exact token/line/empty ranges, LF/CRLF and encoded Unicode URI projection agree. Current uncancelled service background results are accepted; cancelled and old-generation results are rejected. Real queued protocol token tasks publish only cancellation/staleness errors, full retries once and rejects a second invalidation, and later requests retain exact current streams. Older/duplicate full and ranged document versions cannot poison token/cache state. Delta and range now use actual latency/worker snapshot tasks, not synchronous lane-named wrappers.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::incremental_tokens_follow_fingerprints_dependencies_and_reject_old_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::incremental::stale_document_versions_cannot_change_token_streams_or_ranges"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::cancelled_token_requests_discard_results_and_allow_later_queries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::request_lifecycle::stale_token_requests_discard_deltas_ranges_and_bound_full_retry"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S10/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
       "tests": [

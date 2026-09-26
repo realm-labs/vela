@@ -290,6 +290,7 @@ fn typed_scheduled_response(
     receiver: &Receiver<Message>,
     request: Message,
     lane: TaskLane,
+    retry: bool,
     label: &str,
 ) -> serde_json::Value {
     let result = state
@@ -304,7 +305,7 @@ fn typed_scheduled_response(
     }
     .recv_timeout(Duration::from_secs(1))
     .unwrap_or_else(|_| panic!("{label} task should complete"));
-    assert!(task.retry().is_some());
+    assert_eq!(task.retry().is_some(), retry, "{label} retry policy");
     let task_summary = state
         .send_task_result(task)
         .unwrap_or_else(|error| panic!("{label} task response should send: {error}"));
@@ -342,6 +343,7 @@ fn typed_document_symbol_response(
         receiver,
         request,
         TaskLane::Worker,
+        true,
         "typed documentSymbol",
     )
 }
@@ -367,6 +369,7 @@ fn typed_workspace_symbol_response(
         receiver,
         request,
         TaskLane::Worker,
+        true,
         "typed workspaceSymbol",
     )
 }
@@ -394,6 +397,7 @@ fn typed_folding_range_response(
         receiver,
         request,
         TaskLane::Worker,
+        true,
         "typed foldingRange",
     )
 }
@@ -448,12 +452,14 @@ fn typed_semantic_tokens_full_response(
         receiver,
         request,
         TaskLane::Latency,
+        true,
         "typed semanticTokens/full",
     )
 }
 
 fn typed_semantic_tokens_delta_response(
     state: &mut GlobalState,
+    receiver: &Receiver<Message>,
     id: i32,
     document: &DocumentId,
     previous_result_id: &str,
@@ -471,18 +477,19 @@ fn typed_semantic_tokens_delta_response(
         })
         .expect("semanticTokens/full/delta params should serialize"),
     });
-    let result = state
-        .handle_message(&request)
-        .expect("message should dispatch");
-    let response = response_message(
-        result,
-        "typed semanticTokens/full/delta should return a response",
-    );
-    response_json(response)
+    typed_scheduled_response(
+        state,
+        receiver,
+        request,
+        TaskLane::Latency,
+        false,
+        "typed semanticTokens/full/delta",
+    )
 }
 
 fn typed_semantic_tokens_range_response(
     state: &mut GlobalState,
+    receiver: &Receiver<Message>,
     id: i32,
     document: &DocumentId,
 ) -> serde_json::Value {
@@ -502,14 +509,14 @@ fn typed_semantic_tokens_range_response(
         })
         .expect("semanticTokens/range params should serialize"),
     });
-    let result = state
-        .handle_message(&request)
-        .expect("message should dispatch");
-    let response = response_message(
-        result,
-        "typed semanticTokens/range should return a response",
-    );
-    response_json(response)
+    typed_scheduled_response(
+        state,
+        receiver,
+        request,
+        TaskLane::Worker,
+        false,
+        "typed semanticTokens/range",
+    )
 }
 
 fn typed_code_action_response(

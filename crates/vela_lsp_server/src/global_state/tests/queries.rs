@@ -481,10 +481,10 @@ fn typed_semantic_token_dispatch_projects_full_delta_and_range() {
         .to_owned();
 
     let delta_response =
-        typed_semantic_tokens_delta_response(&mut state, 21, &document, &result_id);
+        typed_semantic_tokens_delta_response(&mut state, &receiver, 21, &document, &result_id);
     assert_eq!(delta_response["result"]["edits"], serde_json::json!([]));
 
-    let range_response = typed_semantic_tokens_range_response(&mut state, 22, &document);
+    let range_response = typed_semantic_tokens_range_response(&mut state, &receiver, 22, &document);
     let range_data = range_response["result"]["data"]
         .as_array()
         .expect("semanticTokens/range response should include data");
