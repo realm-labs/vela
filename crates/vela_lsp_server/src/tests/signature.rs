@@ -8,6 +8,7 @@ use super::{TestServer, notification_value, notify, request, response_value};
 mod call_matrix;
 mod dynamic;
 mod fixtures;
+mod imports;
 mod schema_method_return_receivers;
 mod tasks;
 

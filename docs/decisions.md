@@ -5064,3 +5064,12 @@ Installed-editor evidence fingerprints include shared matrix scripts as well as
 fixtures, editor tests, launcher and dependencies. Changes to an independent
 oracle, token decoder or passive client-trace parser invalidate old provider
 evidence even when extension and server bytes stay identical.
+
+Schema source locations bind numeric SourceIds to document identities when the
+artifact's source table is available. Subsequent source-table replacement projects
+those spans into the current table; a deleted owner has no location until that
+document returns. Rereading unchanged location metadata preserves its bound
+owners, while replacement locations bind against their new table. This prevents
+dependency creation/deletion from redirecting a schema symbol to an unrelated
+file that received the old numeric ID. Byte bounds retain the existing validation
+policy; this does not invent offsets for edits to schema declaration text.

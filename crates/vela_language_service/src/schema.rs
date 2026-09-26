@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryIndexCapabilityFact,
@@ -7,13 +5,15 @@ use vela_analysis::registry::{
     ScopedResourceParentDef, ScopedResourceReturnDef,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability, Span};
+use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability};
 
 #[cfg(test)]
-use vela_common::SourceId;
+use vela_common::{SourceId, Span};
 
 mod entry;
 use entry::{SchemaFunctionFact, SchemaMemberFact, SchemaNamedFact, SchemaSourceSpan};
+mod source_locations;
+pub use source_locations::SchemaSourceLocations;
 mod service;
 mod signature;
 use signature::validate_signatures;
@@ -201,70 +201,6 @@ fn parse_schema_hash(value: &str) -> Result<u64, SchemaArtifactError> {
             "schemaHash `{trimmed}` must be a decimal u64 or 0x-prefixed hexadecimal u64"
         ))
     })
-}
-
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
-pub struct SchemaSourceLocations {
-    types: BTreeMap<String, Span>,
-    traits: BTreeMap<String, Span>,
-    modules: BTreeMap<String, Span>,
-    fields: BTreeMap<(String, String), Span>,
-    variants: BTreeMap<(String, String), Span>,
-    methods: BTreeMap<(String, String), Span>,
-    trait_methods: BTreeMap<(String, String), Span>,
-    functions: BTreeMap<String, Span>,
-}
-
-impl SchemaSourceLocations {
-    #[must_use]
-    pub fn type_span(&self, name: &str) -> Option<Span> {
-        self.types.get(name).copied()
-    }
-
-    #[must_use]
-    pub fn trait_span(&self, name: &str) -> Option<Span> {
-        self.traits.get(name).copied()
-    }
-
-    #[must_use]
-    pub fn module_span(&self, name: &str) -> Option<Span> {
-        self.modules.get(name).copied()
-    }
-
-    #[must_use]
-    pub fn field_span(&self, owner: &str, name: &str) -> Option<Span> {
-        self.fields
-            .get(&(owner.to_owned(), name.to_owned()))
-            .copied()
-    }
-
-    #[must_use]
-    pub fn variant_span(&self, owner: &str, name: &str) -> Option<Span> {
-        self.variants
-            .get(&(owner.to_owned(), name.to_owned()))
-            .copied()
-    }
-
-    #[must_use]
-    pub fn method_span(&self, owner: &str, name: &str) -> Option<Span> {
-        self.methods
-            .get(&(owner.to_owned(), name.to_owned()))
-            .copied()
-    }
-
-    #[must_use]
-    pub fn trait_method_span(&self, owner: &str, name: &str) -> Option<Span> {
-        self.trait_methods
-            .get(&(owner.to_owned(), name.to_owned()))
-            .copied()
-    }
-
-    #[must_use]
-    pub fn function_span(&self, name: &str) -> Option<Span> {
-        // Callers resolve the canonical function identity before looking up its
-        // source. A metadata-only function must not borrow another owner's span.
-        self.functions.get(name).copied()
-    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]

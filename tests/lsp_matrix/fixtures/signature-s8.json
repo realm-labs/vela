@@ -1,0 +1,473 @@
+{
+  "version": 1,
+  "id": "signature-s8",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.type_aliases\"\nname = \"type_aliases\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n[dependencies]\nexternal = { path = \"deps/external\" }\n",
+    "deps/external/vela.toml": "[package]\nid = \"dev.vela.external\"\nname = \"external\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[dependencies]\nhidden = { path = \"../hidden\" }\n",
+    "deps/hidden/vela.toml": "[package]\nid = \"dev.vela.hidden\"\nname = \"hidden\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/api.vela": "/* 中😀 */\n/// root function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_root: i64, reason: String = \"root\") -> i64 { return zz_root; }\npub struct Token { tag: i64 }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_root: i64, reason: String = \"root\") -> i64 { return zz_root; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_root: i64, reason: String = \"root\") -> i64 { return zz_root; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: 1 }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: i64), Empty }\npub const [[budget:start]]budget[[budget:end]]: i64 = 1;\nfn private(value: i64) -> i64 { return value; }\n",
+    "deps/external/scripts/api.vela": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; }\npub struct Token { tag: bool }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: true }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: bool), Empty }\npub const [[budget:start]]budget[[budget:end]]: bool = true;\nfn private(value: bool) -> bool { return value; }\n",
+    "deps/hidden/scripts/api.vela": "/* 中😀 */\n/// hidden function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_hidden: u64, reason: String = \"hidden\") -> u64 { return zz_hidden; }\npub struct Token { tag: u64 }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_hidden: u64, reason: String = \"hidden\") -> u64 { return zz_hidden; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_hidden: u64, reason: String = \"hidden\") -> u64 { return zz_hidden; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: 1u64 }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: u64), Empty }\npub const [[budget:start]]budget[[budget:end]]: u64 = 1u64;\nfn private(value: u64) -> u64 { return value; }\n",
+    "scripts/other.vela": "pub fn choose(unimported_decoy: Bytes) -> Bytes { return unimported_decoy; }\n",
+    "scripts/native_decl.vela": "/* 中😀 */ fn [[schema-decl:start]]native_declaration[[schema-decl:end]](decoy: u64) -> u64 { return decoy; }\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"api::choose\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::export\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"message\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"flag\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"docs\": \"Closed source-backed schema 中😀.\"\n      }\n    ]\n  }\n}\n",
+    "schema-markers.json": "{\n  \"functions\": [\n    {\n      \"name\": \"api::choose\",\n      \"fact\": {\n        \"kind\": \"function\",\n        \"params\": [\n          {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        ],\n        \"returns\": {\n          \"kind\": \"primitive\",\n          \"name\": \"string\"\n        }\n      }\n    },\n    {\n      \"name\": \"host::export\",\n      \"fact\": {\n        \"kind\": \"function\",\n        \"params\": [\n          {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          },\n          {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        ],\n        \"returns\": {\n          \"kind\": \"primitive\",\n          \"name\": \"string\"\n        }\n      },\n      \"signature\": {\n        \"asyncness\": \"async\",\n        \"parameters\": [\n          {\n            \"name\": \"message\",\n            \"typeFact\": {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            },\n            \"requirement\": \"required\"\n          },\n          {\n            \"name\": \"flag\",\n            \"typeFact\": {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            },\n            \"requirement\": \"defaulted\"\n          }\n        ],\n        \"returns\": {\n          \"kind\": \"primitive\",\n          \"name\": \"string\"\n        }\n      },\n      \"docs\": \"Closed source-backed schema 中😀.\",\n      \"sourceSpan\": {\n        \"file\": \"scripts/native_decl.vela\",\n        \"marker\": \"schema-decl\"\n      }\n    }\n  ]\n}\n",
+    "scripts/main.vela": "use api::choose as rootCall;\nuse external::api::choose as peerCall;\nuse api as rootApi;\nuse external::api as peerApi;\nuse api::Token as RootToken;\nuse api::Reader as RootReader;\nuse api::State as RootState;\nuse api::make as rootMake;\nuse api::budget as rootBudget;\nuse external::api::Token as PeerToken;\nuse external::api::Reader as PeerReader;\nuse external::api::State as PeerState;\nuse external::api::make as peerMake;\nuse host::export as send;\nuse host as bindings;\nuse math::max as largest;\nuse math as numeric;\n/* 中😀 */ fn main(root: RootToken, peer: PeerToken, rootReader: RootReader, peerReader: PeerReader, any: Any) {\n [[c-root-alias:start]]rootCall[[c-root-alias:end]](1, reason = [[q-root-alias]]\"x\");\n [[c-peer-alias:start]]peerCall[[c-peer-alias:end]](true, reason = [[q-peer-alias]]\"x\");\n api::[[c-root-qualified:start]]choose[[c-root-qualified:end]](reason = \"x\", zz_root = [[q-root-qualified]]1);\n crate::api::[[c-crate-qualified:start]]choose[[c-crate-qualified:end]](1, [[q-crate-qualified]]\"x\");\n external::api::[[c-peer-qualified:start]]choose[[c-peer-qualified:end]](true, [[q-peer-qualified]]\"x\");\n rootApi::[[c-root-namespace:start]]choose[[c-root-namespace:end]](1, [[q-root-namespace]]\"x\");\n peerApi::[[c-peer-namespace:start]]choose[[c-peer-namespace:end]](true, [[q-peer-namespace]]\"x\");\n root.[[c-root-method:start]]choose[[c-root-method:end]](1, [[q-root-method]]\"x\");\n peer.[[c-peer-method:start]]choose[[c-peer-method:end]](true, [[q-peer-method]]\"x\");\n root.[[c-root-default:start]]read[[c-root-default:end]](1, [[q-root-default]]\"x\");\n peer.[[c-peer-default:start]]read[[c-peer-default:end]](true, [[q-peer-default]]\"x\");\n rootReader.[[c-root-trait:start]]read[[c-root-trait:end]](1, [[q-root-trait]]\"x\");\n peerReader.[[c-peer-trait:start]]read[[c-peer-trait:end]](true, [[q-peer-trait]]\"x\");\n rootMake().[[c-root-factory:start]]choose[[c-root-factory:end]](1, [[q-root-factory]]\"x\");\n peerMake().[[c-peer-factory:start]]choose[[c-peer-factory:end]](true, [[q-peer-factory]]\"x\");\n RootState::[[c-root-variant:start]]Ready[[c-root-variant:end]]([[q-root-variant]]1);\n PeerState::[[c-peer-variant:start]]Ready[[c-peer-variant:end]]([[q-peer-variant]]true);\n [[c-schema-alias:start]]send[[c-schema-alias:end]](\"x\", flag = [[q-schema-alias]]true);\n bindings::[[c-schema-namespace:start]]export[[c-schema-namespace:end]](flag = true, message = [[q-schema-namespace]]\"x\");\n [[c-builtin-alias:start]]largest[[c-builtin-alias:end]](1, right = [[q-builtin-alias]]2);\n numeric::[[c-builtin-namespace:start]]max[[c-builtin-namespace:end]](1, [[q-builtin-namespace]]2);\n [[c-non-callable:start]]rootBudget[[c-non-callable:end]]([[q-non-callable]]1);\n [[c-unimported:start]]choose[[c-unimported:end]]([[q-unimported]]1);\n api::[[c-private-root:start]]private[[c-private-root:end]]([[q-private-root]]1);\n external::api::[[c-private-peer:start]]private[[c-private-peer:end]]([[q-private-peer]]true);\n absent::[[c-missing-module:start]]choose[[c-missing-module:end]]([[q-missing-module]]1);\n external::api::[[c-missing-member:start]]absent[[c-missing-member:end]]([[q-missing-member]]1);\n hidden::api::[[c-transitive:start]]choose[[c-transitive:end]]([[q-transitive]]1);\n external::hidden::api::[[c-nested-transitive:start]]choose[[c-nested-transitive:end]]([[q-nested-transitive]]1);\n any.[[c-dynamic:start]]choose[[c-dynamic:end]]([[q-dynamic]]1);\n}\n",
+    "scripts/ambiguous.vela": "use api::choose as selected;\nuse external::api::choose as selected;\n/* 中😀 */ fn main() { [[c-ambiguous:start]]selected[[c-ambiguous:end]]([[q-ambiguous]]1); }\n",
+    "scripts/shadow.vela": "use api::choose as rootCall;\n/* 中😀 */ fn main() { let [[shadow:start]]rootCall[[shadow:end]] = 1; [[c-shadow:start]]rootCall[[c-shadow:end]]([[q-shadow]]1); }\n",
+    "scripts/local.vela": "use external::api::choose;\nfn [[local:start]]choose[[local:end]](local_value: Bytes) -> Bytes { return local_value; }\n/* 中😀 */ fn main(value: Bytes) { [[c-local:start]]choose[[c-local:end]]([[q-local]]value); }\n",
+    "scripts/broken.vela": "use external::api::absent as lost;\n/* 中😀 */ fn main() { [[c-broken:start]]lost[[c-broken:end]]([[q-broken]]1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "signatures": {
+      "root-fn": {"label":"choose(zz_root: i64, reason: String (defaulted)) -> i64","parameters":[{"name":"zz_root","type":"i64","label":"zz_root: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::choose"},"target":{"file":"scripts/api.vela","marker":"fn-choose"},"named":true},
+      "root-method": {"label":"Token.choose(zz_root: i64, reason: String (defaulted)) -> i64","parameters":[{"name":"zz_root","type":"i64","label":"zz_root: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Token.choose"},"target":{"file":"scripts/api.vela","marker":"method-choose"},"named":true},
+      "root-trait": {"label":"api::Reader.read(zz_root: i64, reason: String (defaulted)) -> i64","parameters":[{"name":"zz_root","type":"i64","label":"zz_root: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"target":{"file":"scripts/api.vela","marker":"trait-read"},"named":true},
+      "root-variant": {"label":"api::State::Ready(value: i64) -> api::State::Ready","parameters":[{"name":"value","type":"i64","label":"value: i64"}],"owner":{"kind":"Source","name":"api::State::Ready"},"target":{"file":"scripts/api.vela","marker":"variant-ready"},"named":false},
+      "peer-fn": {"label":"choose(zz_dep: bool, reason: String (defaulted)) -> bool","parameters":[{"name":"zz_dep","type":"bool","label":"zz_dep: bool"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"fn-choose"},"named":true},
+      "peer-method": {"label":"Token.choose(zz_dep: bool, reason: String (defaulted)) -> bool","parameters":[{"name":"zz_dep","type":"bool","label":"zz_dep: bool"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Token.choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"method-choose"},"named":true},
+      "peer-trait": {"label":"api::Reader.read(zz_dep: bool, reason: String (defaulted)) -> bool","parameters":[{"name":"zz_dep","type":"bool","label":"zz_dep: bool"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"target":{"file":"deps/external/scripts/api.vela","marker":"trait-read"},"named":true},
+      "peer-variant": {"label":"api::State::Ready(value: bool) -> api::State::Ready","parameters":[{"name":"value","type":"bool","label":"value: bool"}],"owner":{"kind":"Source","name":"api::State::Ready"},"target":{"file":"deps/external/scripts/api.vela","marker":"variant-ready"},"named":false},
+      "dirty-root-fn": {"label":"async choose(dirty_root: u32, reason: String (defaulted)) -> u32","parameters":[{"name":"dirty_root","type":"u32","label":"dirty_root: u32"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::choose"},"target":{"file":"scripts/api.vela","marker":"fn-choose"},"named":true},
+      "dirty-root-method": {"label":"Token.choose(dirty_root: u32, reason: String (defaulted)) -> u32","parameters":[{"name":"dirty_root","type":"u32","label":"dirty_root: u32"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Token.choose"},"target":{"file":"scripts/api.vela","marker":"method-choose"},"named":true},
+      "dirty-root-trait": {"label":"api::Reader.read(dirty_root: u32, reason: String (defaulted)) -> u32","parameters":[{"name":"dirty_root","type":"u32","label":"dirty_root: u32"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"target":{"file":"scripts/api.vela","marker":"trait-read"},"named":true},
+      "dirty-root-variant": {"label":"api::State::Ready(value: i64) -> api::State::Ready","parameters":[{"name":"value","type":"i64","label":"value: i64"}],"owner":{"kind":"Source","name":"api::State::Ready"},"target":{"file":"scripts/api.vela","marker":"variant-ready"},"named":false},
+      "dirty-peer-fn": {"label":"choose(dirty_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"dirty_peer","type":"String","label":"dirty_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"fn-choose"},"named":true},
+      "dirty-peer-method": {"label":"Token.choose(dirty_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"dirty_peer","type":"String","label":"dirty_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Token.choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"method-choose"},"named":true},
+      "dirty-peer-trait": {"label":"api::Reader.read(dirty_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"dirty_peer","type":"String","label":"dirty_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"target":{"file":"deps/external/scripts/api.vela","marker":"trait-read"},"named":true},
+      "dirty-peer-variant": {"label":"api::State::Ready(value: String) -> api::State::Ready","parameters":[{"name":"value","type":"String","label":"value: String"}],"owner":{"kind":"Source","name":"api::State::Ready"},"target":{"file":"deps/external/scripts/api.vela","marker":"variant-ready"},"named":false},
+      "disk-peer-fn": {"label":"choose(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"fn-choose"},"named":true},
+      "disk-peer-method": {"label":"Token.choose(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Token.choose"},"target":{"file":"deps/external/scripts/api.vela","marker":"method-choose"},"named":true},
+      "disk-peer-trait": {"label":"api::Reader.read(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Reader.read"},"target":{"file":"deps/external/scripts/api.vela","marker":"trait-read"},"named":true},
+      "disk-peer-variant": {"label":"api::State::Ready(value: String) -> api::State::Ready","parameters":[{"name":"value","type":"String","label":"value: String"}],"owner":{"kind":"Source","name":"api::State::Ready"},"target":{"file":"deps/external/scripts/api.vela","marker":"variant-ready"},"named":false},
+      "moved-peer-fn": {"label":"choose(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"moved::choose"},"target":{"file":"deps/external/scripts/moved.vela","marker":"fn-choose"},"named":true},
+      "moved-peer-method": {"label":"Token.choose(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"moved::Token.choose"},"target":{"file":"deps/external/scripts/moved.vela","marker":"method-choose"},"named":true},
+      "moved-peer-trait": {"label":"moved::Reader.read(disk_peer: String, reason: String (defaulted)) -> String","parameters":[{"name":"disk_peer","type":"String","label":"disk_peer: String"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"moved::Reader.read"},"target":{"file":"deps/external/scripts/moved.vela","marker":"trait-read"},"named":true},
+      "moved-peer-variant": {"label":"moved::State::Ready(value: String) -> moved::State::Ready","parameters":[{"name":"value","type":"String","label":"value: String"}],"owner":{"kind":"Source","name":"moved::State::Ready"},"target":{"file":"deps/external/scripts/moved.vela","marker":"variant-ready"},"named":false},
+      "schema": {"label":"async host::export(message: String, flag: bool (defaulted)) -> String","parameters":[{"name":"message","type":"String","label":"message: String"},{"name":"flag","type":"bool","label":"flag: bool (defaulted)"}],"owner":{"kind":"Schema","name":"host::export"},"target":{"file":"scripts/native_decl.vela","marker":"schema-decl"},"named":true},
+      "math": {"label":"math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64","parameters":[{"name":"left","type":"i64 | f64","label":"left: i64 | f64"},{"name":"right","type":"i64 | f64","label":"right: i64 | f64"}],"owner":{"kind":"Builtin","name":"math::max"},"target":null,"named":true},
+      "local": {"label":"choose(local_value: Bytes) -> Bytes","parameters":[{"name":"local_value","type":"Bytes","label":"local_value: Bytes"}],"owner":{"kind":"Source","name":"local::choose"},"target":{"file":"scripts/local.vela","marker":"local"},"named":true}
+    },
+    "queries": [
+      {"id":"root-alias","file":"scripts/main.vela","marker":"q-root-alias","callee":"c-root-alias","signature":"root-fn","active":1,"family":"root-fn"},
+      {"id":"peer-alias","file":"scripts/main.vela","marker":"q-peer-alias","callee":"c-peer-alias","signature":"peer-fn","active":1,"family":"peer-fn"},
+      {"id":"root-qualified","file":"scripts/main.vela","marker":"q-root-qualified","callee":"c-root-qualified","signature":"root-fn","active":0,"family":"root-fn"},
+      {"id":"crate-qualified","file":"scripts/main.vela","marker":"q-crate-qualified","callee":"c-crate-qualified","signature":"root-fn","active":1,"family":"root-fn"},
+      {"id":"peer-qualified","file":"scripts/main.vela","marker":"q-peer-qualified","callee":"c-peer-qualified","signature":"peer-fn","active":1,"family":"peer-fn"},
+      {"id":"root-namespace","file":"scripts/main.vela","marker":"q-root-namespace","callee":"c-root-namespace","signature":"root-fn","active":1,"family":"root-fn"},
+      {"id":"peer-namespace","file":"scripts/main.vela","marker":"q-peer-namespace","callee":"c-peer-namespace","signature":"peer-fn","active":1,"family":"peer-fn"},
+      {"id":"root-method","file":"scripts/main.vela","marker":"q-root-method","callee":"c-root-method","signature":"root-method","active":1,"family":"root-method"},
+      {"id":"peer-method","file":"scripts/main.vela","marker":"q-peer-method","callee":"c-peer-method","signature":"peer-method","active":1,"family":"peer-method"},
+      {"id":"root-default","file":"scripts/main.vela","marker":"q-root-default","callee":"c-root-default","signature":"root-trait","active":1,"family":"root-trait"},
+      {"id":"peer-default","file":"scripts/main.vela","marker":"q-peer-default","callee":"c-peer-default","signature":"peer-trait","active":1,"family":"peer-trait"},
+      {"id":"root-trait","file":"scripts/main.vela","marker":"q-root-trait","callee":"c-root-trait","signature":"root-trait","active":1,"family":"root-trait"},
+      {"id":"peer-trait","file":"scripts/main.vela","marker":"q-peer-trait","callee":"c-peer-trait","signature":"peer-trait","active":1,"family":"peer-trait"},
+      {"id":"root-factory","file":"scripts/main.vela","marker":"q-root-factory","callee":"c-root-factory","signature":"root-method","active":1,"family":"root-method"},
+      {"id":"peer-factory","file":"scripts/main.vela","marker":"q-peer-factory","callee":"c-peer-factory","signature":"peer-method","active":1,"family":"peer-method"},
+      {"id":"root-variant","file":"scripts/main.vela","marker":"q-root-variant","callee":"c-root-variant","signature":"root-variant","active":0,"family":"root-variant"},
+      {"id":"peer-variant","file":"scripts/main.vela","marker":"q-peer-variant","callee":"c-peer-variant","signature":"peer-variant","active":0,"family":"peer-variant"},
+      {"id":"schema-alias","file":"scripts/main.vela","marker":"q-schema-alias","callee":"c-schema-alias","signature":"schema","active":1,"family":"schema"},
+      {"id":"schema-namespace","file":"scripts/main.vela","marker":"q-schema-namespace","callee":"c-schema-namespace","signature":"schema","active":0,"family":"schema"},
+      {"id":"builtin-alias","file":"scripts/main.vela","marker":"q-builtin-alias","callee":"c-builtin-alias","signature":"math","active":1,"family":"math"},
+      {"id":"builtin-namespace","file":"scripts/main.vela","marker":"q-builtin-namespace","callee":"c-builtin-namespace","signature":"math","active":1,"family":"math"},
+      {"id":"non-callable","file":"scripts/main.vela","marker":"q-non-callable","callee":"c-non-callable","signature":null,"active":0,"family":"none","definition":{"file":"scripts/api.vela","marker":"budget"}},
+      {"id":"unimported","file":"scripts/main.vela","marker":"q-unimported","callee":"c-unimported","signature":null,"active":0,"family":"none"},
+      {"id":"private-root","file":"scripts/main.vela","marker":"q-private-root","callee":"c-private-root","signature":null,"active":0,"family":"none"},
+      {"id":"private-peer","file":"scripts/main.vela","marker":"q-private-peer","callee":"c-private-peer","signature":null,"active":0,"family":"none"},
+      {"id":"missing-module","file":"scripts/main.vela","marker":"q-missing-module","callee":"c-missing-module","signature":null,"active":0,"family":"none"},
+      {"id":"missing-member","file":"scripts/main.vela","marker":"q-missing-member","callee":"c-missing-member","signature":null,"active":0,"family":"none"},
+      {"id":"transitive","file":"scripts/main.vela","marker":"q-transitive","callee":"c-transitive","signature":null,"active":0,"family":"none"},
+      {"id":"nested-transitive","file":"scripts/main.vela","marker":"q-nested-transitive","callee":"c-nested-transitive","signature":null,"active":0,"family":"none"},
+      {"id":"dynamic","file":"scripts/main.vela","marker":"q-dynamic","callee":"c-dynamic","signature":null,"active":0,"family":"none"},
+      {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"q-ambiguous","callee":"c-ambiguous","signature":null,"active":0,"family":"none"},
+      {"id":"shadow","file":"scripts/shadow.vela","marker":"q-shadow","callee":"c-shadow","signature":null,"active":0,"family":"none","definition":{"file":"scripts/shadow.vela","marker":"shadow"}},
+      {"id":"local","file":"scripts/local.vela","marker":"q-local","callee":"c-local","signature":"local","active":0,"family":"none"},
+      {"id":"broken","file":"scripts/broken.vela","marker":"q-broken","callee":"c-broken","signature":null,"active":0,"family":"none"}
+    ],
+    "phases": [
+      {
+        "id": "disk",
+        "actions": [],
+        "overrides": {}
+      },
+      {
+        "id": "root-open",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {}
+      },
+      {
+        "id": "root-dirty",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "/* 中😀 */\n/// root function documentation.\npub async fn [[fn-choose:start]]choose[[fn-choose:end]](dirty_root: u32, reason: String = \"root\") -> u32 { return dirty_root; }\npub struct Token { tag: i64 }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, dirty_root: u32, reason: String = \"root\") -> u32 { return dirty_root; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, dirty_root: u32, reason: String = \"root\") -> u32 { return dirty_root; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: 1 }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: i64), Empty }\npub const [[budget:start]]budget[[budget:end]]: i64 = 1;\nfn private(value: i64) -> u32 { return value; }\n"
+          }
+        ],
+        "overrides": {
+          "root-alias": {
+            "signature": "dirty-root-fn"
+          },
+          "root-qualified": {
+            "signature": "dirty-root-fn"
+          },
+          "crate-qualified": {
+            "signature": "dirty-root-fn"
+          },
+          "root-namespace": {
+            "signature": "dirty-root-fn"
+          },
+          "root-method": {
+            "signature": "dirty-root-method"
+          },
+          "root-default": {
+            "signature": "dirty-root-trait"
+          },
+          "root-trait": {
+            "signature": "dirty-root-trait"
+          },
+          "root-factory": {
+            "signature": "dirty-root-method"
+          },
+          "root-variant": {
+            "signature": "dirty-root-variant"
+          }
+        }
+      },
+      {
+        "id": "root-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {}
+      },
+      {
+        "id": "peer-open",
+        "actions": [
+          {
+            "op": "open",
+            "file": "deps/external/scripts/api.vela"
+          }
+        ],
+        "overrides": {}
+      },
+      {
+        "id": "peer-dirty",
+        "actions": [
+          {
+            "op": "change",
+            "file": "deps/external/scripts/api.vela",
+            "source": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](dirty_peer: String, reason: String = \"dependency\") -> String { return dirty_peer; }\npub struct Token { tag: String }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, dirty_peer: String, reason: String = \"dependency\") -> String { return dirty_peer; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, dirty_peer: String, reason: String = \"dependency\") -> String { return dirty_peer; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: \"x\" }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: String), Empty }\npub const [[budget:start]]budget[[budget:end]]: String = \"x\";\nfn private(value: String) -> String { return value; }\n"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": "dirty-peer-fn"
+          },
+          "peer-qualified": {
+            "signature": "dirty-peer-fn"
+          },
+          "peer-namespace": {
+            "signature": "dirty-peer-fn"
+          },
+          "peer-method": {
+            "signature": "dirty-peer-method"
+          },
+          "peer-default": {
+            "signature": "dirty-peer-trait"
+          },
+          "peer-trait": {
+            "signature": "dirty-peer-trait"
+          },
+          "peer-factory": {
+            "signature": "dirty-peer-method"
+          },
+          "peer-variant": {
+            "signature": "dirty-peer-variant"
+          }
+        }
+      },
+      {
+        "id": "peer-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "deps/external/scripts/api.vela"
+          }
+        ],
+        "overrides": {}
+      },
+      {
+        "id": "importer-dirty",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "// 中😀 importer overlay\n// independent line shift\nuse external::api::choose as rootCall;\nuse external::api::choose as peerCall;\nuse api as rootApi;\nuse external::api as peerApi;\nuse api::Token as RootToken;\nuse api::Reader as RootReader;\nuse api::State as RootState;\nuse api::make as rootMake;\nuse api::budget as rootBudget;\nuse external::api::Token as PeerToken;\nuse external::api::Reader as PeerReader;\nuse external::api::State as PeerState;\nuse external::api::make as peerMake;\nuse host::export as send;\nuse host as bindings;\nuse math::max as largest;\nuse math as numeric;\n/* 中😀 */ fn main(root: RootToken, peer: PeerToken, rootReader: RootReader, peerReader: PeerReader, any: Any) {\n [[c-root-alias:start]]rootCall[[c-root-alias:end]](1, reason = [[q-root-alias]]\"x\");\n [[c-peer-alias:start]]peerCall[[c-peer-alias:end]](true, reason = [[q-peer-alias]]\"x\");\n api::[[c-root-qualified:start]]choose[[c-root-qualified:end]](reason = \"x\", zz_root = [[q-root-qualified]]1);\n crate::api::[[c-crate-qualified:start]]choose[[c-crate-qualified:end]](1, [[q-crate-qualified]]\"x\");\n external::api::[[c-peer-qualified:start]]choose[[c-peer-qualified:end]](true, [[q-peer-qualified]]\"x\");\n rootApi::[[c-root-namespace:start]]choose[[c-root-namespace:end]](1, [[q-root-namespace]]\"x\");\n peerApi::[[c-peer-namespace:start]]choose[[c-peer-namespace:end]](true, [[q-peer-namespace]]\"x\");\n root.[[c-root-method:start]]choose[[c-root-method:end]](1, [[q-root-method]]\"x\");\n peer.[[c-peer-method:start]]choose[[c-peer-method:end]](true, [[q-peer-method]]\"x\");\n root.[[c-root-default:start]]read[[c-root-default:end]](1, [[q-root-default]]\"x\");\n peer.[[c-peer-default:start]]read[[c-peer-default:end]](true, [[q-peer-default]]\"x\");\n rootReader.[[c-root-trait:start]]read[[c-root-trait:end]](1, [[q-root-trait]]\"x\");\n peerReader.[[c-peer-trait:start]]read[[c-peer-trait:end]](true, [[q-peer-trait]]\"x\");\n rootMake().[[c-root-factory:start]]choose[[c-root-factory:end]](1, [[q-root-factory]]\"x\");\n peerMake().[[c-peer-factory:start]]choose[[c-peer-factory:end]](true, [[q-peer-factory]]\"x\");\n RootState::[[c-root-variant:start]]Ready[[c-root-variant:end]]([[q-root-variant]]1);\n PeerState::[[c-peer-variant:start]]Ready[[c-peer-variant:end]]([[q-peer-variant]]true);\n [[c-schema-alias:start]]send[[c-schema-alias:end]](\"x\", flag = [[q-schema-alias]]true);\n bindings::[[c-schema-namespace:start]]export[[c-schema-namespace:end]](flag = true, message = [[q-schema-namespace]]\"x\");\n [[c-builtin-alias:start]]largest[[c-builtin-alias:end]](1, right = [[q-builtin-alias]]2);\n numeric::[[c-builtin-namespace:start]]max[[c-builtin-namespace:end]](1, [[q-builtin-namespace]]2);\n [[c-non-callable:start]]rootBudget[[c-non-callable:end]]([[q-non-callable]]1);\n [[c-unimported:start]]choose[[c-unimported:end]]([[q-unimported]]1);\n api::[[c-private-root:start]]private[[c-private-root:end]]([[q-private-root]]1);\n external::api::[[c-private-peer:start]]private[[c-private-peer:end]]([[q-private-peer]]true);\n absent::[[c-missing-module:start]]choose[[c-missing-module:end]]([[q-missing-module]]1);\n external::api::[[c-missing-member:start]]absent[[c-missing-member:end]]([[q-missing-member]]1);\n hidden::api::[[c-transitive:start]]choose[[c-transitive:end]]([[q-transitive]]1);\n external::hidden::api::[[c-nested-transitive:start]]choose[[c-nested-transitive:end]]([[q-nested-transitive]]1);\n any.[[c-dynamic:start]]choose[[c-dynamic:end]]([[q-dynamic]]1);\n}\n"
+          }
+        ],
+        "overrides": {
+          "root-alias": {
+            "signature": "peer-fn"
+          }
+        }
+      },
+      {
+        "id": "importer-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {}
+      },
+      {
+        "id": "dependency-change",
+        "actions": [
+          {
+            "op": "write",
+            "file": "deps/external/scripts/api.vela",
+            "source": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; }\npub struct Token { tag: String }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: \"x\" }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: String), Empty }\npub const [[budget:start]]budget[[budget:end]]: String = \"x\";\nfn private(value: String) -> String { return value; }\n"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-qualified": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-namespace": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-method": {
+            "signature": "disk-peer-method"
+          },
+          "peer-default": {
+            "signature": "disk-peer-trait"
+          },
+          "peer-trait": {
+            "signature": "disk-peer-trait"
+          },
+          "peer-factory": {
+            "signature": "disk-peer-method"
+          },
+          "peer-variant": {
+            "signature": "disk-peer-variant"
+          }
+        }
+      },
+      {
+        "id": "dependency-delete",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "deps/external/scripts/api.vela"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": null
+          },
+          "peer-qualified": {
+            "signature": null
+          },
+          "peer-namespace": {
+            "signature": null
+          },
+          "peer-method": {
+            "signature": null
+          },
+          "peer-default": {
+            "signature": null
+          },
+          "peer-trait": {
+            "signature": null
+          },
+          "peer-factory": {
+            "signature": null
+          },
+          "peer-variant": {
+            "signature": null
+          }
+        }
+      },
+      {
+        "id": "dependency-create",
+        "actions": [
+          {
+            "op": "write",
+            "file": "deps/external/scripts/api.vela",
+            "source": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; }\npub struct Token { tag: String }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: \"x\" }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: String), Empty }\npub const [[budget:start]]budget[[budget:end]]: String = \"x\";\nfn private(value: String) -> String { return value; }\n"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-qualified": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-namespace": {
+            "signature": "disk-peer-fn"
+          },
+          "peer-method": {
+            "signature": "disk-peer-method"
+          },
+          "peer-default": {
+            "signature": "disk-peer-trait"
+          },
+          "peer-trait": {
+            "signature": "disk-peer-trait"
+          },
+          "peer-factory": {
+            "signature": "disk-peer-method"
+          },
+          "peer-variant": {
+            "signature": "disk-peer-variant"
+          }
+        }
+      },
+      {
+        "id": "dependency-rename",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "deps/external/scripts/api.vela"
+          },
+          {
+            "op": "write",
+            "file": "deps/external/scripts/moved.vela",
+            "source": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; }\npub struct Token { tag: String }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, disk_peer: String, reason: String = \"dependency\") -> String { return disk_peer; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: \"x\" }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: String), Empty }\npub const [[budget:start]]budget[[budget:end]]: String = \"x\";\nfn private(value: String) -> String { return value; }\n"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": null
+          },
+          "peer-qualified": {
+            "signature": null
+          },
+          "peer-namespace": {
+            "signature": null
+          },
+          "peer-method": {
+            "signature": null
+          },
+          "peer-default": {
+            "signature": null
+          },
+          "peer-trait": {
+            "signature": null
+          },
+          "peer-factory": {
+            "signature": null
+          },
+          "peer-variant": {
+            "signature": null
+          }
+        }
+      },
+      {
+        "id": "renamed-alias",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          },
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::choose as rootCall;\nuse external::moved::choose as peerCall;\nuse api as rootApi;\nuse external::api as peerApi;\nuse api::Token as RootToken;\nuse api::Reader as RootReader;\nuse api::State as RootState;\nuse api::make as rootMake;\nuse api::budget as rootBudget;\nuse external::api::Token as PeerToken;\nuse external::api::Reader as PeerReader;\nuse external::api::State as PeerState;\nuse external::api::make as peerMake;\nuse host::export as send;\nuse host as bindings;\nuse math::max as largest;\nuse math as numeric;\n/* 中😀 */ fn main(root: RootToken, peer: PeerToken, rootReader: RootReader, peerReader: PeerReader, any: Any) {\n [[c-root-alias:start]]rootCall[[c-root-alias:end]](1, reason = [[q-root-alias]]\"x\");\n [[c-peer-alias:start]]peerCall[[c-peer-alias:end]](true, reason = [[q-peer-alias]]\"x\");\n api::[[c-root-qualified:start]]choose[[c-root-qualified:end]](reason = \"x\", zz_root = [[q-root-qualified]]1);\n crate::api::[[c-crate-qualified:start]]choose[[c-crate-qualified:end]](1, [[q-crate-qualified]]\"x\");\n external::api::[[c-peer-qualified:start]]choose[[c-peer-qualified:end]](true, [[q-peer-qualified]]\"x\");\n rootApi::[[c-root-namespace:start]]choose[[c-root-namespace:end]](1, [[q-root-namespace]]\"x\");\n peerApi::[[c-peer-namespace:start]]choose[[c-peer-namespace:end]](true, [[q-peer-namespace]]\"x\");\n root.[[c-root-method:start]]choose[[c-root-method:end]](1, [[q-root-method]]\"x\");\n peer.[[c-peer-method:start]]choose[[c-peer-method:end]](true, [[q-peer-method]]\"x\");\n root.[[c-root-default:start]]read[[c-root-default:end]](1, [[q-root-default]]\"x\");\n peer.[[c-peer-default:start]]read[[c-peer-default:end]](true, [[q-peer-default]]\"x\");\n rootReader.[[c-root-trait:start]]read[[c-root-trait:end]](1, [[q-root-trait]]\"x\");\n peerReader.[[c-peer-trait:start]]read[[c-peer-trait:end]](true, [[q-peer-trait]]\"x\");\n rootMake().[[c-root-factory:start]]choose[[c-root-factory:end]](1, [[q-root-factory]]\"x\");\n peerMake().[[c-peer-factory:start]]choose[[c-peer-factory:end]](true, [[q-peer-factory]]\"x\");\n RootState::[[c-root-variant:start]]Ready[[c-root-variant:end]]([[q-root-variant]]1);\n PeerState::[[c-peer-variant:start]]Ready[[c-peer-variant:end]]([[q-peer-variant]]true);\n [[c-schema-alias:start]]send[[c-schema-alias:end]](\"x\", flag = [[q-schema-alias]]true);\n bindings::[[c-schema-namespace:start]]export[[c-schema-namespace:end]](flag = true, message = [[q-schema-namespace]]\"x\");\n [[c-builtin-alias:start]]largest[[c-builtin-alias:end]](1, right = [[q-builtin-alias]]2);\n numeric::[[c-builtin-namespace:start]]max[[c-builtin-namespace:end]](1, [[q-builtin-namespace]]2);\n [[c-non-callable:start]]rootBudget[[c-non-callable:end]]([[q-non-callable]]1);\n [[c-unimported:start]]choose[[c-unimported:end]]([[q-unimported]]1);\n api::[[c-private-root:start]]private[[c-private-root:end]]([[q-private-root]]1);\n external::api::[[c-private-peer:start]]private[[c-private-peer:end]]([[q-private-peer]]true);\n absent::[[c-missing-module:start]]choose[[c-missing-module:end]]([[q-missing-module]]1);\n external::api::[[c-missing-member:start]]absent[[c-missing-member:end]]([[q-missing-member]]1);\n hidden::api::[[c-transitive:start]]choose[[c-transitive:end]]([[q-transitive]]1);\n external::hidden::api::[[c-nested-transitive:start]]choose[[c-nested-transitive:end]]([[q-nested-transitive]]1);\n any.[[c-dynamic:start]]choose[[c-dynamic:end]]([[q-dynamic]]1);\n}\n"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": "moved-peer-fn"
+          },
+          "peer-qualified": {
+            "signature": null
+          },
+          "peer-namespace": {
+            "signature": null
+          },
+          "peer-method": {
+            "signature": null
+          },
+          "peer-default": {
+            "signature": null
+          },
+          "peer-trait": {
+            "signature": null
+          },
+          "peer-factory": {
+            "signature": null
+          },
+          "peer-variant": {
+            "signature": null
+          }
+        }
+      },
+      {
+        "id": "renamed-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {
+          "peer-alias": {
+            "signature": null
+          },
+          "peer-qualified": {
+            "signature": null
+          },
+          "peer-namespace": {
+            "signature": null
+          },
+          "peer-method": {
+            "signature": null
+          },
+          "peer-default": {
+            "signature": null
+          },
+          "peer-trait": {
+            "signature": null
+          },
+          "peer-factory": {
+            "signature": null
+          },
+          "peer-variant": {
+            "signature": null
+          }
+        }
+      },
+      {
+        "id": "dependency-restore",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "deps/external/scripts/moved.vela"
+          },
+          {
+            "op": "write",
+            "file": "deps/external/scripts/api.vela",
+            "source": "/* 中😀 */\n/// dependency function documentation.\npub fn [[fn-choose:start]]choose[[fn-choose:end]](zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; }\npub struct Token { tag: bool }\nimpl Token { pub fn [[method-choose:start]]choose[[method-choose:end]](self, zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; } }\npub trait Reader { fn [[trait-read:start]]read[[trait-read:end]](self, zz_dep: bool, reason: String = \"dependency\") -> bool { return zz_dep; } }\nimpl Reader for Token {}\npub fn [[make:start]]make[[make:end]]() -> Token { return Token { tag: true }; }\npub enum State { [[variant-ready:start]]Ready[[variant-ready:end]](value: bool), Empty }\npub const [[budget:start]]budget[[budget:end]]: bool = true;\nfn private(value: bool) -> bool { return value; }\n"
+          }
+        ],
+        "overrides": {}
+      }
+    ]
+  }
+}

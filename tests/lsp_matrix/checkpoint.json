@@ -6891,10 +6891,25 @@
         "signature-help/syntax/S3/negative/protocol"
       ],
       "summary": "Close all four signature-help S3 positive/negative service/protocol obligations under reviews/signature-s3.md. Independent fixture authors 94 full signature templates over 102 positions (95 signatures, seven explicit null), repeated at both layers with LF/CRLF. Check all labels/parameters/defaults/active slots and canonical owner policies; service additionally compares exact structural parameter and return TypeFacts through an independent test decoder, including hidden Iterator items, view mutation modes, nested Function/Option/Result shapes, and source Record versus schema Host ownership. Reuse 29 reviewed hint sources with full and missing schema; known source callables retain authored unknown leaves and four missing native calls are null. New cases cover every primitive, containers/tuples/erased Function/Closure/Array, source/schema record/enum/trait aliases, Any/unknown leaves and boundaries, and async named/defaulted schema function/method/trait contracts. This exposed legal Range hints projecting unknown facts. The shared builtin hint converter now preserves TypeFact::Range; Range and Array-of-Range analysis proofs cover calls, traits/default providers, fields and globals. Range with missing schema and colliding host type/method metadata retains builtin identity and exact zero-parameter Range.len signature. The existing standard completion Range case remains and is strengthened to the known signature, exact empty eligible argument set and absent expected name/type; no language syntax or runtime contract is changed. Real protocol uses authored UTF-16 positions, encoded isolated roots, repeats and disk preservation. Analysis 164, focused signatures and standard completion matrices, Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities. Current-source strict B06 regression runs service 724 with two unchanged historical ignores and protocol 726; original B00-B06 acceptance snapshots remain unchanged. Catalog 695 verified, 630 unreviewed, two N/A, zero failed; B07 14/96 verified. Continue B07.4 for remaining signature modules/ownership/recovery and hover semantic partitions, lifecycle, provider smoke and UX10. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-WhE9QX/results.json; input editors/vscode/test-results/input-rBMt6e/results.json; audit target/lsp-matrix/run-MGDY3l/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.4",
+      "revision": null,
+      "requirements": [
+        "signature-help/syntax/S8/positive/service",
+        "signature-help/syntax/S8/positive/protocol",
+        "signature-help/syntax/S8/negative/service",
+        "signature-help/syntax/S8/negative/protocol",
+        "signature-help/states/dirty/protocol",
+        "signature-help/states/close_restore/protocol",
+        "signature-help/states/dependency_change/protocol",
+        "signature-help/states/dependency_delete/protocol"
+      ],
+      "summary": "Close four signature-help S8 positive/negative service/protocol obligations plus protocol dirty, close_restore, dependency_change and dependency_delete under reviews/signature-s8.md. Independently authored 27 complete templates and 34 positions through 16 sequential phases yield 544 positions per layer/line ending, LF/CRLF, repeated complete signatures and exact cross-file targets. Root/direct dependency deliberately share module/type/member spellings with distinct parameter names/types/returns. Qualified/crate/dependency paths, direct/namespace aliases, imported inherent/trait/default/factory receivers and tuple variants preserve canonical owners and named/positional policies. Full exact definition document and both byte/UTF-16 endpoints disambiguate same-symbol package owners. Source-backed async schema aliases retain metadata signatures despite a source declaration decoy; source declarations outrank colliding schema functions; aliased math builtins preserve exact union signatures with no invented targets. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls are explicit null with empty callable owners/definitions; const/local noncallables retain real targets without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original facts. Closed dependency change/delete/create/rename/alias-retarget/close/restore removes stale dependent signatures and preserves unrelated source/schema/builtin results. Every phase also compares to a fresh database or separately materialized/initialized server with current overlays; authored expectations remain the independent oracle and final results/disk equal initial baseline with all overlays closed. This exposed source-backed schema spans following reused numeric SourceIds into an unrelated file after dependency deletion. Shared schema locations bind document owners and project spans into current source tables. The incremental matrix keeps one loaded schema; all eight span categories additionally prove renumbering, unchanged artifact reread, deleted-owner suppression, recreation and explicit replacement. Schema locations are extracted into a focused module to preserve the ordinary source-size boundary. No syntax/runtime changes. Focused matrix/binding tests, service schema 150, protocol schema 137, Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities. Current-source strict B06 regression executes service 726 with two unchanged historical ignores and protocol 727; original B00-B06 snapshots remain unchanged. Catalog 703 verified, 622 unreviewed, two N/A, zero failed; B07 22/96 verified. Continue B07.5 for remaining signature recovery/schema/capability/provider/UX10 and hover semantic partitions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-zHveps/results.json; input editors/vscode/test-results/input-MOl3K7/results.json; audit target/lsp-matrix/run-Ug18Hh/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.4",
+  "nextTask": "B07.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9092,7 +9107,10 @@
     "editors/vscode/test-results/input-FDWd4S/results.json",
     "target/lsp-matrix/run-MGDY3l/report.json",
     "editors/vscode/test-results/run-WhE9QX/results.json",
-    "editors/vscode/test-results/input-rBMt6e/results.json"
+    "editors/vscode/test-results/input-rBMt6e/results.json",
+    "target/lsp-matrix/run-Ug18Hh/report.json",
+    "editors/vscode/test-results/run-zHveps/results.json",
+    "editors/vscode/test-results/input-MOl3K7/results.json"
   ],
   "openIssues": [
     {
@@ -12109,8 +12127,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "bf598e5e2f0198234b28edda498c6314851d0a67",
-          "treeSha256": "cf31807a25aba4172f6f345278c1b3d17ad163abfd0ffa11d137dfa8a1223432"
+          "revision": "1b3f72bfe1f062c1f098a6658c7f7f998ed39442",
+          "treeSha256": "0b03fe790106487ffe5405f143e07fa9957554f781948745fbfee49b5c701be8"
         },
         "profile": {
           "platform": "win32",
@@ -12118,11 +12136,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-MGDY3l/report.json"
+          "target/lsp-matrix/run-Ug18Hh/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-WhE9QX/results.json --local-results editors/vscode/test-results/input-rBMt6e/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-zHveps/results.json --local-results editors/vscode/test-results/input-MOl3K7/results.json",
             "exitCode": 0
           }
         ]

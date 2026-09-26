@@ -21,6 +21,7 @@ use crate::{
 };
 
 mod parse_summary;
+mod schema_sources;
 
 use parse_summary::{ParseSummary, summarize_source};
 
@@ -419,7 +420,7 @@ impl SchemaDiagnostic {
 pub struct SchemaDb {
     facts: RegistryFacts,
     service_set: Option<crate::SchemaServiceSetFact>,
-    source_locations: SchemaSourceLocations,
+    source_locations: schema_sources::BoundSchemaLocations,
     diagnostics: Vec<SchemaDiagnostic>,
 }
 
@@ -431,7 +432,7 @@ impl SchemaDb {
 
     #[must_use]
     pub const fn source_locations(&self) -> &SchemaSourceLocations {
-        &self.source_locations
+        self.source_locations.current()
     }
 
     #[must_use]
@@ -447,19 +448,19 @@ impl SchemaDb {
     pub fn clear(&mut self) {
         self.facts = RegistryFacts::default();
         self.service_set = None;
-        self.source_locations = SchemaSourceLocations::default();
+        self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics.clear();
     }
 
     pub fn set_facts(&mut self, facts: RegistryFacts) {
         self.facts = facts;
         self.service_set = None;
-        self.source_locations = SchemaSourceLocations::default();
+        self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics.clear();
     }
 
     pub fn set_artifact(&mut self, artifact: SchemaArtifact) {
-        self.source_locations = artifact.source_locations();
+        self.source_locations.replace(artifact.source_locations());
         self.service_set = artifact.service_set().cloned();
         self.facts = artifact.to_registry_facts();
         self.diagnostics.clear();
@@ -468,7 +469,7 @@ impl SchemaDb {
     pub fn set_missing(&mut self, schema_path: impl Into<String>) {
         self.facts = RegistryFacts::default();
         self.service_set = None;
-        self.source_locations = SchemaSourceLocations::default();
+        self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is unavailable; host facts degrade to Any",
             schema_path.into()
@@ -478,7 +479,7 @@ impl SchemaDb {
     pub fn set_invalid(&mut self, schema_path: impl Into<String>, message: impl Into<String>) {
         self.facts = RegistryFacts::default();
         self.service_set = None;
-        self.source_locations = SchemaSourceLocations::default();
+        self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is invalid: {}; host facts degrade to Any",
             schema_path.into(),
@@ -791,6 +792,9 @@ impl LanguageServiceDatabases {
             Ok(artifact) => self.schema_db.set_artifact(artifact),
             Err(error) => self.schema_db.set_invalid(schema_path, error.message()),
         }
+        self.schema_db
+            .source_locations
+            .refresh(self.source_db.records());
         self.analysis_cache.invalidate_schema();
     }
 
@@ -880,6 +884,9 @@ impl LanguageServiceDatabases {
         self.generation = WorkspaceGeneration::new(self.generation.get().saturating_add(1));
         let sources = source_records(project);
         self.source_db.replace(sources);
+        self.schema_db
+            .source_locations
+            .refresh(self.source_db.records());
         let previous_parse_count = self.parse_db.parse_count();
         let previous_project_rebuild_count = self.project_db.rebuild_count();
         let previous_hir_rebuild_count = self.hir_db.rebuild_count();

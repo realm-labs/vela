@@ -13,6 +13,7 @@ pub(crate) mod rename_collisions;
 pub(crate) mod rename_shorthand;
 pub(crate) mod semantic_tokens;
 pub(crate) mod signature_calls;
+pub(crate) mod signature_imports;
 mod source;
 pub(crate) use source::{
     assert_source_overlay_state, source_lifecycle_action, source_lifecycle_spec,

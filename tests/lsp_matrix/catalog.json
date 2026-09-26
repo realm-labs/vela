@@ -14103,6 +14103,94 @@
           "name": "tests::signature::call_matrix::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "signature-help/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::import_tests::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        },
+        {
+          "layer": "service",
+          "name": "incremental::schema_sources::tests::schema_spans_keep_document_owners_across_source_table_replacement"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::import_tests::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        },
+        {
+          "layer": "service",
+          "name": "incremental::schema_sources::tests::schema_spans_keep_document_owners_across_source_table_replacement"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/signature-s8.md. Independent 27 complete templates cover 34 positions through 16 phases (544 positions per layer/line ending), LF/CRLF, repeat full signatures and exact cross-file definitions, plus authored expectations and incremental/fresh-workspace equivalence. Root and direct dependency deliberately share module/type/member names but keep distinct parameter names/types/returns and exact source target documents/endpoints. Qualified/crate/dependency paths, direct/namespace aliases, inherent/trait/default/factory receivers and tuple variants retain canonical owners and named/positional policies. Source-backed async schema aliases retain metadata signatures and exact closed-file spans; source declarations outrank colliding ordinary schema functions; aliased builtins retain union signatures and no invented definitions. Private/missing/unimported/transitive/broken/ambiguous/dynamic calls have explicit null signatures and empty owner lists; const/local noncallables keep real definitions without signatures; current-module functions outrank imports. Root/dependency dirty definitions and Unicode-shifted importer retargets preserve disk bytes and close to original disk facts. Closed dependency change/delete/create/rename/restore, alias retarget and close use actual typed notifications, remove stale dependent signatures and preserve unrelated source/schema/builtin facts. Every phase agrees with a independently rebuilt database or separately materialized/initialized server and current overlays, with complete authored results; final results/disk equal baseline and overlays are closed. Schema span owners are bound to document identity so reused SourceIds after deletion cannot redirect into decoy files; all eight span categories additionally cover renumbering, identical artifact reread, deleted-owner suppression, recreation and replacement. Protocol uses exact UTF-16 points/target endpoints and encoded isolated roots.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
     }
   ],
   "featureFiles": [
