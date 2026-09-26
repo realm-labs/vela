@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, request, response_value};
 
+mod coordinates;
 mod cross_file;
 mod dynamic;
 mod schema_method_return_receivers;

@@ -225,7 +225,11 @@ fn hover_projects_markdown_and_range() {
         .hover(&document, position)
         .expect("parameter use should have hover");
 
-    let hover = super::hover(&hover);
+    assert!(
+        super::hover(&hover, "").is_err(),
+        "reject a range outside snapshot text"
+    );
+    let hover = super::hover(&hover, source).expect("hover range projection");
 
     let lsp_types::HoverContents::Markup(contents) = hover.contents else {
         panic!("hover should project markdown contents");

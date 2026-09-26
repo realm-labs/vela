@@ -1176,3 +1176,6 @@ fn starts_like_type_name(name: &str) -> bool {
 mod cross_file_tests;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod coordinate_tests;

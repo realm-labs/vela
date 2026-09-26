@@ -56,14 +56,18 @@ pub(crate) fn completion_item_resolved(
     item
 }
 
-pub(crate) fn hover(hover: &Hover) -> lsp_types::Hover {
-    lsp_types::Hover {
+pub(crate) fn hover(hover: &Hover, text: &str) -> Result<lsp_types::Hover, String> {
+    let index = crate::line_index::LineIndex::new(text);
+    Ok(lsp_types::Hover {
         contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
             value: hover_markdown(hover),
         }),
-        range: Some(diagnostic_range(hover.range())),
-    }
+        range: Some(lsp_types::Range::new(
+            index.lsp_position(hover.range().start())?,
+            index.lsp_position(hover.range().end())?,
+        )),
+    })
 }
 
 pub(crate) fn signature_help(help: &SignatureHelp) -> lsp_types::SignatureHelp {

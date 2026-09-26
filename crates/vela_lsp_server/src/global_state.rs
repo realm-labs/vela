@@ -232,9 +232,12 @@ impl GlobalStateSnapshot {
         };
         let hover = self.databases.hover(&input.document_id, input.position);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            hover.as_ref().map(to_proto::hover),
+            hover
+                .as_ref()
+                .map(|hover| to_proto::hover(hover, &text))
+                .transpose(),
             "typed hover response",
         )
     }

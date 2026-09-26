@@ -6857,10 +6857,22 @@
         "vscode/UX09/unresolved-token/render/local"
       ],
       "summary": "Close six UX09 native Input/Render obligations and accept all 178 B06 obligations. Installed production VSIX uses a reviewed independent Unicode token fixture, bundled Dark Modern theme and lexical grammar colors. DOM-only whole-span UTF-16 observations check exact text, columns, color, font style/weight/decoration, viewport visibility and line alignment. Native two-line Unicode insertion shifts every marked style; 36 fixed wheel ticks out/back require all head spans absent and the unique tail visible, then restore shifted styles. Seven independently specified native Undo groups check complete intermediate documents and clean source/style restoration. Actual Settings UI search, pointer dropdown and Home/Down/Enter disable then enable semantics; observation-only configuration reads confirm values while exact source stays clean and lexical/semantic styles change and recover. Native double-click and typing replace a resolved call with an unknown name: function yellow becomes variable blue, unrelated styles stay exact, closed unimported same-named decoy stays unopened, and Undo restores clean source/styles. All action receipts, DOM observations, screenshots, accessibility snapshots and client/server logs retained. Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities; strict B06 gate runs service 721 with two unchanged historical ignores and protocol 723, revalidating B00-B06 and preserving original B00-B05 snapshots. Catalog 682 verified, 643 unreviewed, two N/A, zero failed. B06 178/178 verified; resume B07.1 hover/signature. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-W0t0d9/results.json; input editors/vscode/test-results/input-XH0Y2K/results.json; audit target/lsp-matrix/run-y1nGIb/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.1",
+      "revision": null,
+      "requirements": [
+        "hover/environments/utf16/protocol",
+        "hover/environments/crlf/protocol",
+        "hover/environments/encoded_uri/protocol",
+        "hover/states/repeat/protocol",
+        "signature-help/states/repeat/protocol"
+      ],
+      "summary": "Close hover UTF-16/CRLF/encoded-URI/repeat and signature-help repeat protocol obligations. Shared independent fixture authors 13 hover and 10 signature positions across caller/helper plus a closed unimported same-name decoy. Service checks complete metadata, local/source symbol identity and exact byte ranges; protocol checks complete Markdown and both UTF-16 endpoints, including token start/interior. Complete signature lists, parameter names/types/labels, defaults and active positional/reversed-named/nested slots remain exact; unresolved/dynamic results are explicit JSON null. LF/CRLF two-line Unicode prefix edits, repeats, complete restoration, physical disk preservation and close disk-hover proof run at both layers. Surrogate-interior and beyond-line input positions reject for both requests, then every valid result is rechecked. This exposed real hover byte-column leakage after Chinese/non-BMP text. Hover projection now converts both endpoints against the same immutable snapshot text and propagates conversion failures through the existing typed error path; service coordinates and runtime semantics stay unchanged. Focused service/protocol matrices and old projection test pass; Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities. Current-source strict B06 regression runs service 722 with two unchanged historical ignores and protocol 724, revalidating B00-B06 while preserving all original acceptance snapshots. Catalog 687 verified, 638 unreviewed, two N/A, zero failed. B07 6/96 verified, 90 remain: continue B07.2 for semantic partitions, source/schema callable ownership, lifecycle, provider smoke and UX10. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-6ECSxL/results.json; input editors/vscode/test-results/input-3xjqMp/results.json; audit target/lsp-matrix/run-HUjUQy/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.1",
+  "nextTask": "B07.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9049,7 +9061,10 @@
     "editors/vscode/test-results/input-NqhwJH/results.json",
     "target/lsp-matrix/run-y1nGIb/report.json",
     "editors/vscode/test-results/run-W0t0d9/results.json",
-    "editors/vscode/test-results/input-XH0Y2K/results.json"
+    "editors/vscode/test-results/input-XH0Y2K/results.json",
+    "target/lsp-matrix/run-HUjUQy/report.json",
+    "editors/vscode/test-results/run-6ECSxL/results.json",
+    "editors/vscode/test-results/input-3xjqMp/results.json"
   ],
   "openIssues": [
     {
@@ -12066,8 +12081,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "16d63f6df2b2ed4f8951c3df0b41094dc9bc73b1",
-          "treeSha256": "bf078bff48439b8f82270481ca756581a204613e6c5c6fc239ae025e72bb02ff"
+          "revision": "a731d7237bb050a4a5a658adfd5a6781c2d64fba",
+          "treeSha256": "594b0c02201bcbea488856b4d0e36ee6adfe17e376d8ce74b750ea2a2aaa25d9"
         },
         "profile": {
           "platform": "win32",
@@ -12075,11 +12090,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-y1nGIb/report.json"
+          "target/lsp-matrix/run-HUjUQy/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-W0t0d9/results.json --local-results editors/vscode/test-results/input-XH0Y2K/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-6ECSxL/results.json --local-results editors/vscode/test-results/input-3xjqMp/results.json",
             "exitCode": 0
           }
         ]

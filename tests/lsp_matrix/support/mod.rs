@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 mod schema;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
+pub(crate) mod hover_signature;
 pub(crate) mod references;
 pub(crate) mod rename_collisions;
 pub(crate) mod rename_shorthand;

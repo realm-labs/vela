@@ -1,0 +1,403 @@
+{
+  "version": 1,
+  "id": "hover-signature-coordinates",
+  "files": {
+    "vela.toml": "[package]\nid = 'dev.vela.hover-coordinate'\nname = 'hover-coordinate'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n",
+    "scripts/main.vela": "use helper::combine;\nuse helper::BASE;\nstruct Cell { value: i64 }\nfn main([[seed-decl:start]]seed[[seed-decl:end]]: i64, [[dynamic-decl:start]]dynamic[[dynamic-decl:end]]: Any) {\n    /* [[unicode:start]]中😀[[unicode:end]] */ let [[score-decl:start]]score[[score-decl:end]] = [[primary-call:start]]combine[[primary-call:end]]([[first]][[seed-use:start]]seed[[seed-use:end]], [[second]]2);\n    /* 中😀 */ let other = [[named-call:start]]combine[[named-call:end]]([[named-right]]right = 4, [[named-left]]left = [[score-use:start]]score[[score-use:end]]);\n    /* 中😀 */ let nested = combine([[outer-first]]combine([[inner-first]]seed, [[inner-second]]2), [[outer-second]]right = score);\n    /* 中😀 */ let cell = Cell { value: score };\n    /* 中😀 */ cell.[[field:start]]value[[field:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]missing[[dynamic-member:end]]([[dynamic-argument]]1); [[unknown-call:start]]unknown[[unknown-call:end]]([[unknown-argument]]2);\n    /* 中😀 */ return score + [[base:start]]BASE[[base:end]];\n}\n",
+    "scripts/helper.vela": "#[doc(\"Compute the primary total. 中😀\")]\npub fn [[function-decl:start]]combine[[function-decl:end]]([[left-decl:start]]left[[left-decl:end]]: i64, right: i64 = 2) -> i64 { return [[left-use:start]]left[[left-use:end]] + right; }\n#[doc(\"Primary constant. 中😀\")]\npub const BASE: i64 = 3;\n",
+    "scripts/decoy.vela": "#[doc(\"Independent decoy. Never borrow these docs.\")]\npub fn combine(left: String, right: String) -> String { return left; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "hover": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "primary-call",
+        "result": {
+          "label": "helper::combine",
+          "kind": "Function",
+          "detail": "(left: i64, right: i64) -> i64",
+          "docs": "Compute the primary total. 中😀",
+          "symbol": {
+            "kind": "source",
+            "name": "helper::combine"
+          },
+          "markdown": "```vela\nhelper::combine\n```\n\n_function_: (left: i64, right: i64) -> i64\n\nCompute the primary total. 中😀"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "named-call",
+        "result": {
+          "label": "helper::combine",
+          "kind": "Function",
+          "detail": "(left: i64, right: i64) -> i64",
+          "docs": "Compute the primary total. 中😀",
+          "symbol": {
+            "kind": "source",
+            "name": "helper::combine"
+          },
+          "markdown": "```vela\nhelper::combine\n```\n\n_function_: (left: i64, right: i64) -> i64\n\nCompute the primary total. 中😀"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "seed-use",
+        "result": {
+          "label": "seed",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "seed",
+            "file": "scripts/main.vela",
+            "marker": "seed-decl"
+          },
+          "markdown": "```vela\nseed\n```\n\n_parameter_: i64"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "score-decl",
+        "result": {
+          "label": "score",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "score",
+            "file": "scripts/main.vela",
+            "marker": "score-decl"
+          },
+          "markdown": "```vela\nscore\n```\n\n_local_: i64"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "score-use",
+        "result": {
+          "label": "score",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "score",
+            "file": "scripts/main.vela",
+            "marker": "score-decl"
+          },
+          "markdown": "```vela\nscore\n```\n\n_local_: i64"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-use",
+        "result": {
+          "label": "dynamic",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "dynamic",
+            "file": "scripts/main.vela",
+            "marker": "dynamic-decl"
+          },
+          "markdown": "```vela\ndynamic\n```\n\n_parameter_: Any"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "field",
+        "result": {
+          "label": "main::Cell.value",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "source",
+            "name": "main::Cell.value"
+          },
+          "markdown": "```vela\nmain::Cell.value\n```\n\n_field_: i64"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "base",
+        "result": {
+          "label": "helper::BASE",
+          "kind": "Const",
+          "detail": "i64",
+          "docs": "Primary constant. 中😀",
+          "symbol": {
+            "kind": "source",
+            "name": "helper::BASE"
+          },
+          "markdown": "```vela\nhelper::BASE\n```\n\n_const_: i64\n\nPrimary constant. 中😀"
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-member",
+        "result": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-call",
+        "result": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unicode",
+        "result": null
+      },
+      {
+        "file": "scripts/helper.vela",
+        "marker": "function-decl",
+        "result": {
+          "label": "helper::combine",
+          "kind": "Function",
+          "detail": "(left: i64, right: i64) -> i64",
+          "docs": "Compute the primary total. 中😀",
+          "symbol": {
+            "kind": "source",
+            "name": "helper::combine"
+          },
+          "markdown": "```vela\nhelper::combine\n```\n\n_function_: (left: i64, right: i64) -> i64\n\nCompute the primary total. 中😀"
+        }
+      },
+      {
+        "file": "scripts/helper.vela",
+        "marker": "left-use",
+        "result": {
+          "label": "left",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "left",
+            "file": "scripts/helper.vela",
+            "marker": "left-decl"
+          },
+          "markdown": "```vela\nleft\n```\n\n_parameter_: i64"
+        }
+      }
+    ],
+    "signatures": [
+      {
+        "file": "scripts/main.vela",
+        "marker": "first",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 0,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "second",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 1,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "named-right",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 1,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "named-left",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 0,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "outer-first",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 0,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "inner-first",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 0,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "inner-second",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 1,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "outer-second",
+        "result": {
+          "activeSignature": 0,
+          "activeParameter": 1,
+          "signatures": [
+            {
+              "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+              "parameters": [
+                {
+                  "name": "left",
+                  "label": "left: i64",
+                  "type": "i64"
+                },
+                {
+                  "name": "right",
+                  "label": "right: i64 (defaulted)",
+                  "type": "i64"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "dynamic-argument",
+        "result": null
+      },
+      {
+        "file": "scripts/main.vela",
+        "marker": "unknown-argument",
+        "result": null
+      }
+    ],
+    "prefix": "// shifted 中😀\n/* prefix 新😀 */\n"
+  }
+}

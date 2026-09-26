@@ -13973,6 +13973,56 @@
           "name": "tests::references::coordinates::schema_variant_ambiguity_matrix_preserves_unresolved_utf16_paths"
         }
       ]
+    },
+    {
+      "requirement": "hover/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/hover-signature-coordinates.md. Independent complete hover metadata/Markdown/ranges and signature lists/active slots cover 13 hover and 10 call positions, LF/CRLF, Chinese/non-BMP prefixes and encoded Chinese/space/percent URIs. Repeat every unchanged request at original, two-line-shifted and restored source; source/local owners and unopened same-name decoy documentation stay independent. Hover start/interior positions retain exact whole-token UTF-16 endpoints. Positional/reversed named/defaulted/nested signatures retain exact parameter identity. Unresolved/dynamic results are explicit JSON null. Invalid surrogate-interior and beyond-line positions reject, then complete valid results are rechecked; disk bytes stay fixed and close restores disk hover.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/hover-signature-coordinates.md. Independent complete hover metadata/Markdown/ranges and signature lists/active slots cover 13 hover and 10 call positions, LF/CRLF, Chinese/non-BMP prefixes and encoded Chinese/space/percent URIs. Repeat every unchanged request at original, two-line-shifted and restored source; source/local owners and unopened same-name decoy documentation stay independent. Hover start/interior positions retain exact whole-token UTF-16 endpoints. Positional/reversed named/defaulted/nested signatures retain exact parameter identity. Unresolved/dynamic results are explicit JSON null. Invalid surrogate-interior and beyond-line positions reject, then complete valid results are rechecked; disk bytes stay fixed and close restores disk hover.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/hover-signature-coordinates.md. Independent complete hover metadata/Markdown/ranges and signature lists/active slots cover 13 hover and 10 call positions, LF/CRLF, Chinese/non-BMP prefixes and encoded Chinese/space/percent URIs. Repeat every unchanged request at original, two-line-shifted and restored source; source/local owners and unopened same-name decoy documentation stay independent. Hover start/interior positions retain exact whole-token UTF-16 endpoints. Positional/reversed named/defaulted/nested signatures retain exact parameter identity. Unresolved/dynamic results are explicit JSON null. Invalid surrogate-interior and beyond-line positions reject, then complete valid results are rechecked; disk bytes stay fixed and close restores disk hover.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/hover-signature-coordinates.md. Independent complete hover metadata/Markdown/ranges and signature lists/active slots cover 13 hover and 10 call positions, LF/CRLF, Chinese/non-BMP prefixes and encoded Chinese/space/percent URIs. Repeat every unchanged request at original, two-line-shifted and restored source; source/local owners and unopened same-name decoy documentation stay independent. Hover start/interior positions retain exact whole-token UTF-16 endpoints. Positional/reversed named/defaulted/nested signatures retain exact parameter identity. Unresolved/dynamic results are explicit JSON null. Invalid surrogate-interior and beyond-line positions reject, then complete valid results are rechecked; disk bytes stay fixed and close restores disk hover.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/hover-signature-coordinates.md. Independent complete hover metadata/Markdown/ranges and signature lists/active slots cover 13 hover and 10 call positions, LF/CRLF, Chinese/non-BMP prefixes and encoded Chinese/space/percent URIs. Repeat every unchanged request at original, two-line-shifted and restored source; source/local owners and unopened same-name decoy documentation stay independent. Hover start/interior positions retain exact whole-token UTF-16 endpoints. Positional/reversed named/defaulted/nested signatures retain exact parameter identity. Unresolved/dynamic results are explicit JSON null. Invalid surrogate-interior and beyond-line positions reject, then complete valid results are rechecked; disk bytes stay fixed and close restores disk hover.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
+        }
+      ]
     }
   ],
   "featureFiles": [
