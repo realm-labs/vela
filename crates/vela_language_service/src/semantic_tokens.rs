@@ -23,6 +23,7 @@ mod calls;
 mod constructor_paths;
 mod impl_headers;
 mod import_paths;
+mod interpolation;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
@@ -474,6 +475,7 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
+        let lexical_tokens = interpolation::expand(lexed.tokens);
         let receiver_facts =
             self.parse_db()
                 .syntax_parse(document_id)
@@ -490,7 +492,7 @@ impl LanguageServiceDatabases {
         let classifications = self.semantic_token_classifications(&SemanticClassificationInput {
             source_id: source.source_id(),
             text: source.text(),
-            tokens: &lexed.tokens,
+            tokens: &lexical_tokens,
             receiver_facts: &receiver_facts,
             path_expressions: &path_sites.expressions,
             pattern_paths: &path_sites.patterns,
@@ -498,7 +500,7 @@ impl LanguageServiceDatabases {
         });
         let mut semantic_tokens = Vec::new();
 
-        for range in comment_ranges(source.text(), &lexed.tokens) {
+        for range in comment_ranges(source.text(), &lexical_tokens) {
             push_semantic_token_slices(
                 source.text(),
                 &line_index,
@@ -509,7 +511,7 @@ impl LanguageServiceDatabases {
             );
         }
 
-        for token in lexed.tokens {
+        for token in lexical_tokens {
             let Some(range) = token_range(token.span) else {
                 continue;
             };
@@ -1140,6 +1142,8 @@ mod control_tests;
 mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;
+#[cfg(test)]
+mod literal_tests;
 #[cfg(test)]
 mod member_tests;
 #[cfg(test)]

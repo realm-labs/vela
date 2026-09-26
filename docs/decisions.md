@@ -4990,3 +4990,12 @@ library manifest after visible source ownership and before schema fallback.
 Option/Result owners and known variants retain defaultLibrary flags even when
 schema facts collide at that exact path. Unknown variants remain unresolved and
 wrong namespaces cannot gain provenance through a matching terminal name.
+
+Semantic-token interpolation expands lexer-owned embedded expression spans into
+original source coordinates before applying existing semantic classification.
+String chunks preserve literal text and escapes; interpolation braces and inner
+expressions have separate tokens. An iterative work list handles nested literals
+without introducing recursive traversal. Comments inside expressions use the
+normal comment scanner, while literal chunks shield comment-like text. Multiline
+chunks retain the established nonempty line-slice policy. This is a read-only
+tooling projection and does not alter language syntax or runtime behavior.

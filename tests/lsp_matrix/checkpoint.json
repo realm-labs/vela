@@ -5963,10 +5963,29 @@
         "tokens-range/syntax/S6/negative/protocol"
       ],
       "summary": "Close twelve S6 positive/negative full/delta/range service/protocol obligations with independently authored complete 603 positive and 305 negative token streams. Pin statement/value branches, loop pair/tuple/record bindings, match guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit field labels versus shorthand, nested let patterns, lambda captures, literals and all assignment/compound/unary/binary/logical/comparison/range/index roles. Unknown/wrong-path/private owners and out-of-scope names cannot borrow provenance; exact source/schema and builtin/schema collisions preserve ownership. Option/Result owners and variants use immutable standard library metadata; schema collisions cannot manufacture record variants or fields. Fix CST compound identifier-starting let patterns, annotation bounds before initializers, typed lambda colon ownership and semicolon/newline termination of uninitialized bindings. Preserve exact record/tuple owner tokens and mark unowned pattern paths unresolved to block schema variant fallback. Applied deltas match fresh complete streams, every line/token/empty-end range is exact under LF/CRLF, and encoded Unicode URI overlay close restoration recovers original stream and ID. Full workspace tests, fmt, workspace Clippy and Node 83 passed; language service 716 passed with two unchanged baseline ignores, protocol 712 passed, syntax 112 plus diagnostic fixture passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed; exact source and server identities match. Strict current-source B05 gate revalidates accepted B00-B05 without changing their snapshots. Catalog 594 verified, 731 unreviewed, two N/A and zero failed. B06 is 84 verified and 94 unreviewed of 178; resume B06.8 for S7 literals/operators. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-KWWYQZ/results.json; input editors/vscode/test-results/input-qqxqxl/results.json; audit target/lsp-matrix/run-bRuPSS/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.8",
+      "revision": null,
+      "requirements": [
+        "tokens-full/syntax/S7/positive/service",
+        "tokens-full/syntax/S7/positive/protocol",
+        "tokens-full/syntax/S7/negative/service",
+        "tokens-full/syntax/S7/negative/protocol",
+        "tokens-delta/syntax/S7/positive/service",
+        "tokens-delta/syntax/S7/positive/protocol",
+        "tokens-delta/syntax/S7/negative/service",
+        "tokens-delta/syntax/S7/negative/protocol",
+        "tokens-range/syntax/S7/positive/service",
+        "tokens-range/syntax/S7/positive/protocol",
+        "tokens-range/syntax/S7/negative/service",
+        "tokens-range/syntax/S7/negative/protocol"
+      ],
+      "summary": "Close twelve S7 positive/negative full/delta/range service/protocol obligations with independently authored complete 475 positive and 112 negative token streams. Pin decimal/hex/binary/underscore numbers, all integer suffixes, exponent floats and both float suffixes, Unicode/escaped/multiline strings and chars, escaped bytes, booleans, unit/tuple/array/map/set/record values, and all unary/binary/comparison/logical/assignment/compound/range/index roles. Fix opaque interpolation highlighting by iteratively expanding lexer-owned embedded spans into original source coordinates. Literal chunks preserve text, escaped braces and comment-like content; embedded delimiters, parameters, functions, properties, operators and actual comments retain exact roles, including nested literals and multiline expressions. Unknown value/callee names remain unresolved; Any members and unowned field bases gain no invented ownership. Invalid numeric suffixes and literal escapes preserve lexical classes independently of diagnostics. Applied deltas match fresh complete streams, every line/token/empty-end range is exact under LF/CRLF, and encoded Unicode URI overlay close restoration recovers original stream and ID. Full workspace tests, fmt, workspace Clippy and Node 83 passed; language service 717 passed with two unchanged baseline ignores and protocol 713 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed; exact source and server identities match. Strict current-source B05 gate revalidates accepted B00-B05 without changing their snapshots. Catalog 606 verified, 719 unreviewed, two N/A and zero failed. B06 is 96 verified and 82 unreviewed of 178; resume B06.9 for S8 modules/imports. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-eEgG3g/results.json; input editors/vscode/test-results/input-zLViZ3/results.json; audit target/lsp-matrix/run-1g5CLG/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.8",
+  "nextTask": "B06.9",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8302,7 +8321,8 @@
     "target/lsp-matrix/run-gINoxy/report.json",
     "target/lsp-matrix/run-N1CVb4/report.json",
     "target/lsp-matrix/run-yKmiJd/report.json",
-    "target/lsp-matrix/run-bRuPSS/report.json"
+    "target/lsp-matrix/run-bRuPSS/report.json",
+    "target/lsp-matrix/run-1g5CLG/report.json"
   ],
   "openIssues": [
     {
@@ -10606,8 +10626,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "f10162dae519ecafd47abd52f452b491d71d26b5",
-          "treeSha256": "2cfd10663b73268704090967faa8c0c496f2e36b27954c35f539daa4c57b31eb"
+          "revision": "3235fc2a949a5fa45883f3f8499b5af7d2333e33",
+          "treeSha256": "e326f7499256060e83ea354fc2724076ac609956d6c1f5bf14f278846ba00d60"
         },
         "profile": {
           "platform": "win32",
@@ -10615,11 +10635,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-bRuPSS/report.json"
+          "target/lsp-matrix/run-1g5CLG/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-KWWYQZ/results.json --local-results editors/vscode/test-results/input-qqxqxl/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-eEgG3g/results.json --local-results editors/vscode/test-results/input-zLViZ3/results.json",
             "exitCode": 0
           }
         ]
