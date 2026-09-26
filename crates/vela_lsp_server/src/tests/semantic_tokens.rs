@@ -1,5 +1,6 @@
 use super::{TestServer, notification_value, notify, request, response_value};
 
+mod coordinates;
 mod tasks;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

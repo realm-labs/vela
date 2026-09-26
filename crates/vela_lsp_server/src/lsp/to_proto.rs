@@ -10,13 +10,15 @@ use vela_language_service::{
     FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall,
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
     PrepareRename, ProjectDiagnostic, Reference, RenameRiskKind, SchemaDiagnostic,
-    SelectionRange as ServiceSelectionRange, SemanticToken as ServiceSemanticToken,
-    SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
-    ServiceDiagnostic, ServiceDiagnosticSeverity, SignatureHelp, TextEdit as ServiceTextEdit,
-    TextRange, WorkspaceEdit, WorkspaceSymbol, WorkspaceSymbolLocation,
+    SelectionRange as ServiceSelectionRange, ServiceDiagnostic, ServiceDiagnosticSeverity,
+    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
+    WorkspaceSymbolLocation,
 };
 
-use crate::semantic_tokens::SemanticTokenProjection;
+mod tokens;
+pub(crate) use tokens::{
+    delta as semantic_tokens_delta, full as semantic_tokens, range as semantic_tokens_range,
+};
 
 pub(crate) fn completion_response(
     completions: &CompletionList,
@@ -200,46 +202,6 @@ pub(crate) fn inlay_hints(
 ) -> Result<Vec<lsp_types::InlayHint>, String> {
     let index = crate::line_index::LineIndex::new(text);
     hints.iter().map(|hint| inlay_hint(hint, &index)).collect()
-}
-
-pub(crate) fn semantic_tokens(
-    tokens: &ServiceSemanticTokens,
-    projection: &SemanticTokenProjection,
-) -> lsp_types::SemanticTokensResult {
-    lsp_types::SemanticTokensResult::Tokens(lsp_types::SemanticTokens {
-        result_id: Some(tokens.result_id().to_owned()),
-        data: semantic_token_data(tokens.tokens(), projection),
-    })
-}
-
-pub(crate) fn semantic_tokens_range(
-    tokens: &ServiceSemanticTokens,
-    projection: &SemanticTokenProjection,
-) -> lsp_types::SemanticTokensRangeResult {
-    lsp_types::SemanticTokensRangeResult::Tokens(lsp_types::SemanticTokens {
-        result_id: Some(tokens.result_id().to_owned()),
-        data: semantic_token_data(tokens.tokens(), projection),
-    })
-}
-
-pub(crate) fn semantic_tokens_delta(
-    delta: &ServiceSemanticTokenDelta,
-    projection: &SemanticTokenProjection,
-) -> lsp_types::SemanticTokensFullDeltaResult {
-    lsp_types::SemanticTokensFullDeltaResult::TokensDelta(lsp_types::SemanticTokensDelta {
-        result_id: Some(delta.result_id().to_owned()),
-        edits: delta
-            .edits()
-            .iter()
-            .map(|edit| lsp_types::SemanticTokensEdit {
-                start: u32::try_from(edit.start() * 5)
-                    .expect("semantic token edit start should fit u32"),
-                delete_count: u32::try_from(edit.delete_count() * 5)
-                    .expect("semantic token edit delete count should fit u32"),
-                data: Some(semantic_token_data(edit.tokens(), projection)),
-            })
-            .collect(),
-    })
 }
 
 pub(crate) fn prepare_rename(
@@ -560,38 +522,6 @@ const fn inlay_hint_kind(kind: ServiceInlayHintKind) -> lsp_types::InlayHintKind
         ServiceInlayHintKind::Type => lsp_types::InlayHintKind::TYPE,
         ServiceInlayHintKind::Parameter => lsp_types::InlayHintKind::PARAMETER,
     }
-}
-
-fn semantic_token_data(
-    tokens: &[ServiceSemanticToken],
-    projection: &SemanticTokenProjection,
-) -> Vec<lsp_types::SemanticToken> {
-    let mut data = Vec::with_capacity(tokens.len());
-    let mut previous_line = 0usize;
-    let mut previous_start = 0usize;
-
-    for token in tokens {
-        let start = token.start();
-        let delta_line = start.line.saturating_sub(previous_line);
-        let delta_start = if delta_line == 0 {
-            start.character.saturating_sub(previous_start)
-        } else {
-            start.character
-        };
-        data.push(lsp_types::SemanticToken {
-            delta_line: u32::try_from(delta_line)
-                .expect("semantic token line delta should fit u32"),
-            delta_start: u32::try_from(delta_start)
-                .expect("semantic token start delta should fit u32"),
-            length: u32::try_from(token.length()).expect("semantic token length should fit u32"),
-            token_type: projection.token_type_index(token.token_type()),
-            token_modifiers_bitset: projection.modifier_bits(token.modifiers()),
-        });
-        previous_line = start.line;
-        previous_start = start.character;
-    }
-
-    data
 }
 
 const fn symbol_kind(kind: DocumentSymbolKind) -> lsp_types::SymbolKind {

@@ -1,7 +1,8 @@
 use super::SemanticToken;
 
-pub(super) fn semantic_tokens_result_id(tokens: &[SemanticToken]) -> String {
+pub(super) fn semantic_tokens_result_id(tokens: &[SemanticToken], source_hash: u64) -> String {
     let mut hash = 0xcbf2_9ce4_8422_2325_u64;
+    hash_result_id_part(&mut hash, source_hash);
     hash_result_id_part(&mut hash, tokens.len() as u64);
     for token in tokens {
         hash_result_id_part(&mut hash, token.start().line as u64);
@@ -11,6 +12,14 @@ pub(super) fn semantic_tokens_result_id(tokens: &[SemanticToken]) -> String {
         hash_result_id_part(&mut hash, u64::from(token.modifiers().bits()));
     }
     format!("v1:{}:{hash:016x}", tokens.len())
+}
+
+pub(super) fn source_hash(text: &str) -> u64 {
+    // Equal byte token streams can encode different client coordinates after a
+    // Unicode edit. Keep result IDs sensitive to the source used for projection.
+    text.bytes().fold(0xcbf2_9ce4_8422_2325_u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3)
+    })
 }
 
 pub(super) fn semantic_token_count_from_result_id(result_id: &str) -> usize {

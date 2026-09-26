@@ -1,22 +1,9 @@
 use super::{GlobalStateSnapshot, documents::snapshot_document_text};
-use crate::{ErrorCode, line_index::LineIndex, lsp::to_proto};
+use crate::{line_index::LineIndex, lsp::to_proto};
 use vela_language_service::{
     CodeAction, DiagnosticRange, DocumentHighlight, DocumentId, PrepareRename, Reference,
     WorkspaceEdit,
 };
-
-pub(super) fn respond<T: serde::Serialize>(
-    id: lsp_server::RequestId,
-    result: Result<T, String>,
-    context: &'static str,
-) -> Vec<lsp_server::Message> {
-    match result {
-        Ok(value) => super::responses::ok_typed(id, value, context),
-        Err(error) => {
-            super::responses::error(id, ErrorCode::InternalError, format!("{context}: {error}"))
-        }
-    }
-}
 
 fn range(index: &LineIndex<'_>, range: DiagnosticRange) -> Result<lsp_types::Range, String> {
     Ok(lsp_types::Range::new(

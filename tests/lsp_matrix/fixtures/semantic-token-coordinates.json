@@ -1,0 +1,350 @@
+{
+  "version": 1,
+  "id": "semantic-token-coordinates",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.semantic_tokens\"\nname = \"semantic_tokens\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/main.vela": "[[comment-a:start]]/* 中😀[[comment-a:end]]\n[[comment-b:start]]尾 */[[comment-b:end]] [[fn:start]]fn[[fn:end]] [[main:start]]main[[main:end]][[open-paren:start]]([[open-paren:end]][[close-paren:start]])[[close-paren:end]] [[open-brace:start]]{[[open-brace:end]]\n [[let:start]]let[[let:end]] [[value:start]]value[[value:end]] [[equals:start]]=[[equals:end]] [[string:start]]\"文😀\"[[string:end]][[semicolon:start]];[[semicolon:end]]\n [[return:start]]return[[return:end]] [[use:start]]value[[use:end]][[return-semicolon:start]];[[return-semicolon:end]]\n[[close-brace:start]]}[[close-brace:end]]\n"
+  },
+  "actions": [],
+  "oracle": {
+    "sameByteLength": {
+      "source": "[[comment-a:start]]/* 中😀[[comment-a:end]]\n[[comment-b:start]]尾 */[[comment-b:end]] [[fn:start]]fn[[fn:end]] [[main:start]]main[[main:end]][[open-paren:start]]([[open-paren:end]][[close-paren:start]])[[close-paren:end]] [[open-brace:start]]{[[open-brace:end]]\n [[let:start]]let[[let:end]] [[value:start]]value[[value:end]] [[equals:start]]=[[equals:end]] [[string:start]]\"éééa\"[[string:end]][[semicolon:start]];[[semicolon:end]]\n [[return:start]]return[[return:end]] [[use:start]]value[[use:end]][[return-semicolon:start]];[[return-semicolon:end]]\n[[close-brace:start]]}[[close-brace:end]]\n",
+      "tokens": [
+        {
+          "marker": "comment-a",
+          "text": "/* 中😀",
+          "type": "comment",
+          "modifiers": []
+        },
+        {
+          "marker": "comment-b",
+          "text": "尾 */",
+          "type": "comment",
+          "modifiers": []
+        },
+        {
+          "marker": "fn",
+          "text": "fn",
+          "type": "keyword",
+          "modifiers": []
+        },
+        {
+          "marker": "main",
+          "text": "main",
+          "type": "function",
+          "modifiers": [
+            "declaration",
+            "definition",
+            "source"
+          ]
+        },
+        {
+          "marker": "open-paren",
+          "text": "(",
+          "type": "parenthesis",
+          "modifiers": []
+        },
+        {
+          "marker": "close-paren",
+          "text": ")",
+          "type": "parenthesis",
+          "modifiers": []
+        },
+        {
+          "marker": "open-brace",
+          "text": "{",
+          "type": "brace",
+          "modifiers": []
+        },
+        {
+          "marker": "let",
+          "text": "let",
+          "type": "keyword",
+          "modifiers": []
+        },
+        {
+          "marker": "value",
+          "text": "value",
+          "type": "variable",
+          "modifiers": [
+            "declaration",
+            "source"
+          ]
+        },
+        {
+          "marker": "equals",
+          "text": "=",
+          "type": "assignmentOperator",
+          "modifiers": []
+        },
+        {
+          "marker": "string",
+          "text": "\"éééa\"",
+          "type": "string",
+          "modifiers": []
+        },
+        {
+          "marker": "semicolon",
+          "text": ";",
+          "type": "semicolon",
+          "modifiers": []
+        },
+        {
+          "marker": "return",
+          "text": "return",
+          "type": "keyword",
+          "modifiers": [
+            "controlFlow"
+          ]
+        },
+        {
+          "marker": "use",
+          "text": "value",
+          "type": "variable",
+          "modifiers": [
+            "source"
+          ]
+        },
+        {
+          "marker": "return-semicolon",
+          "text": ";",
+          "type": "semicolon",
+          "modifiers": []
+        },
+        {
+          "marker": "close-brace",
+          "text": "}",
+          "type": "brace",
+          "modifiers": []
+        }
+      ]
+    },
+    "disk": [
+      {
+        "marker": "comment-a",
+        "text": "/* 中😀",
+        "type": "comment",
+        "modifiers": []
+      },
+      {
+        "marker": "comment-b",
+        "text": "尾 */",
+        "type": "comment",
+        "modifiers": []
+      },
+      {
+        "marker": "fn",
+        "text": "fn",
+        "type": "keyword",
+        "modifiers": []
+      },
+      {
+        "marker": "main",
+        "text": "main",
+        "type": "function",
+        "modifiers": [
+          "declaration",
+          "definition",
+          "source"
+        ]
+      },
+      {
+        "marker": "open-paren",
+        "text": "(",
+        "type": "parenthesis",
+        "modifiers": []
+      },
+      {
+        "marker": "close-paren",
+        "text": ")",
+        "type": "parenthesis",
+        "modifiers": []
+      },
+      {
+        "marker": "open-brace",
+        "text": "{",
+        "type": "brace",
+        "modifiers": []
+      },
+      {
+        "marker": "let",
+        "text": "let",
+        "type": "keyword",
+        "modifiers": []
+      },
+      {
+        "marker": "value",
+        "text": "value",
+        "type": "variable",
+        "modifiers": [
+          "declaration",
+          "source"
+        ]
+      },
+      {
+        "marker": "equals",
+        "text": "=",
+        "type": "assignmentOperator",
+        "modifiers": []
+      },
+      {
+        "marker": "string",
+        "text": "\"文😀\"",
+        "type": "string",
+        "modifiers": []
+      },
+      {
+        "marker": "semicolon",
+        "text": ";",
+        "type": "semicolon",
+        "modifiers": []
+      },
+      {
+        "marker": "return",
+        "text": "return",
+        "type": "keyword",
+        "modifiers": [
+          "controlFlow"
+        ]
+      },
+      {
+        "marker": "use",
+        "text": "value",
+        "type": "variable",
+        "modifiers": [
+          "source"
+        ]
+      },
+      {
+        "marker": "return-semicolon",
+        "text": ";",
+        "type": "semicolon",
+        "modifiers": []
+      },
+      {
+        "marker": "close-brace",
+        "text": "}",
+        "type": "brace",
+        "modifiers": []
+      }
+    ],
+    "dirty": {
+      "source": "[[header:start]]// 中文😀[[header:end]]\n[[comment-a:start]]/* 中😀[[comment-a:end]]\n[[comment-b:start]]尾 */[[comment-b:end]] [[fn:start]]fn[[fn:end]] [[main:start]]main[[main:end]][[open-paren:start]]([[open-paren:end]][[close-paren:start]])[[close-paren:end]] [[open-brace:start]]{[[open-brace:end]]\n [[let:start]]let[[let:end]] [[value:start]]changed[[value:end]] [[equals:start]]=[[equals:end]] [[string:start]]\"字😀long\"[[string:end]][[semicolon:start]];[[semicolon:end]]\n\n [[return:start]]return[[return:end]] [[use:start]]changed[[use:end]][[return-semicolon:start]];[[return-semicolon:end]]\n[[close-brace:start]]}[[close-brace:end]]\n",
+      "tokens": [
+        {
+          "marker": "header",
+          "text": "// 中文😀",
+          "type": "comment",
+          "modifiers": []
+        },
+        {
+          "marker": "comment-a",
+          "text": "/* 中😀",
+          "type": "comment",
+          "modifiers": []
+        },
+        {
+          "marker": "comment-b",
+          "text": "尾 */",
+          "type": "comment",
+          "modifiers": []
+        },
+        {
+          "marker": "fn",
+          "text": "fn",
+          "type": "keyword",
+          "modifiers": []
+        },
+        {
+          "marker": "main",
+          "text": "main",
+          "type": "function",
+          "modifiers": [
+            "declaration",
+            "definition",
+            "source"
+          ]
+        },
+        {
+          "marker": "open-paren",
+          "text": "(",
+          "type": "parenthesis",
+          "modifiers": []
+        },
+        {
+          "marker": "close-paren",
+          "text": ")",
+          "type": "parenthesis",
+          "modifiers": []
+        },
+        {
+          "marker": "open-brace",
+          "text": "{",
+          "type": "brace",
+          "modifiers": []
+        },
+        {
+          "marker": "let",
+          "text": "let",
+          "type": "keyword",
+          "modifiers": []
+        },
+        {
+          "marker": "value",
+          "text": "changed",
+          "type": "variable",
+          "modifiers": [
+            "declaration",
+            "source"
+          ]
+        },
+        {
+          "marker": "equals",
+          "text": "=",
+          "type": "assignmentOperator",
+          "modifiers": []
+        },
+        {
+          "marker": "string",
+          "text": "\"字😀long\"",
+          "type": "string",
+          "modifiers": []
+        },
+        {
+          "marker": "semicolon",
+          "text": ";",
+          "type": "semicolon",
+          "modifiers": []
+        },
+        {
+          "marker": "return",
+          "text": "return",
+          "type": "keyword",
+          "modifiers": [
+            "controlFlow"
+          ]
+        },
+        {
+          "marker": "use",
+          "text": "changed",
+          "type": "variable",
+          "modifiers": [
+            "source"
+          ]
+        },
+        {
+          "marker": "return-semicolon",
+          "text": ";",
+          "type": "semicolon",
+          "modifiers": []
+        },
+        {
+          "marker": "close-brace",
+          "text": "}",
+          "type": "brace",
+          "modifiers": []
+        }
+      ]
+    }
+  }
+}

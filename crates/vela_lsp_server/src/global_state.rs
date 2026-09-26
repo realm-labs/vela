@@ -274,11 +274,12 @@ impl GlobalStateSnapshot {
         params: SemanticTokensParams,
     ) -> Vec<Message> {
         let document_id = from_proto::semantic_tokens_params(&params);
+        let text = snapshot_document_text(&self, &document_id);
         let tokens = self.databases.semantic_tokens(&document_id);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::semantic_tokens(&tokens, &self.semantic_token_projection),
+            to_proto::semantic_tokens(&tokens, &self.semantic_token_projection, &text),
             "typed semanticTokens/full response",
         )
     }
@@ -289,13 +290,14 @@ impl GlobalStateSnapshot {
         params: SemanticTokensDeltaParams,
     ) -> Vec<Message> {
         let input = from_proto::semantic_tokens_delta_params(&params);
+        let text = snapshot_document_text(&self, &input.document_id);
         let delta = self
             .databases
             .semantic_token_delta(&input.document_id, &input.previous_result_id);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::semantic_tokens_delta(&delta, &self.semantic_token_projection),
+            to_proto::semantic_tokens_delta(&delta, &self.semantic_token_projection, &text),
             "typed semanticTokens/full/delta response",
         )
     }
@@ -321,9 +323,9 @@ impl GlobalStateSnapshot {
             .databases
             .semantic_tokens_in_range(&input.document_id, input.range);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::semantic_tokens_range(&tokens, &self.semantic_token_projection),
+            to_proto::semantic_tokens_range(&tokens, &self.semantic_token_projection, &text),
             "typed semanticTokens/range response",
         )
     }
@@ -461,7 +463,7 @@ impl GlobalStateSnapshot {
             params.context.include_declaration,
         );
 
-        reference_projection::respond(
+        responses::projected(
             id,
             reference_projection::locations(&self, &references),
             "typed references response",
@@ -490,7 +492,7 @@ impl GlobalStateSnapshot {
             .databases
             .document_highlights(&input.document_id, input.position);
 
-        reference_projection::respond(
+        responses::projected(
             id,
             reference_projection::highlights(&self, &input.document_id, &highlights),
             "typed documentHighlight response",
@@ -592,7 +594,7 @@ impl GlobalStateSnapshot {
             .databases
             .prepare_rename(&input.document_id, input.position);
 
-        reference_projection::respond(
+        responses::projected(
             id,
             prepare
                 .as_ref()
@@ -702,7 +704,7 @@ impl GlobalStateSnapshot {
         };
         let actions = self.databases.code_actions(&input.document_id, input.range);
 
-        reference_projection::respond(
+        responses::projected(
             id,
             reference_projection::code_actions(&self, &actions),
             "typed codeAction response",

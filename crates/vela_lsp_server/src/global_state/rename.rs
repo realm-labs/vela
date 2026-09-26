@@ -44,7 +44,7 @@ impl GlobalStateSnapshot {
             );
         }
 
-        reference_projection::respond(
+        super::responses::projected(
             id,
             edit.as_ref()
                 .map(|edit| reference_projection::edit(&self, edit))

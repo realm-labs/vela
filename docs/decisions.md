@@ -4923,3 +4923,11 @@ For unsupported type arguments on a source type, a complete `<...>` list may
 offer one Quick Fix that removes that list. This resolves the syntax error
 without choosing a replacement type. Incomplete lists and arity, keyability or
 tuple errors remain diagnostic-only because a fix would have to guess intent.
+
+Semantic-token result IDs include a fingerprint of the source used for
+projection as well as the service token stream. Equal UTF-8 byte spans can
+encode different UTF-16 lengths after a Unicode edit, so byte-token equality
+alone cannot certify an unchanged client stream. Range results retain the same
+source fingerprint; unchanged snapshots still have deterministic IDs. Protocol
+full, range and delta output converts both token endpoints against that snapshot
+before relative encoding.

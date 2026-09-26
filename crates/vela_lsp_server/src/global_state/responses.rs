@@ -23,6 +23,17 @@ where
     ok(id, result)
 }
 
+pub(super) fn projected<T: serde::Serialize>(
+    id: lsp_server::RequestId,
+    result: Result<T, String>,
+    context: &'static str,
+) -> Vec<Message> {
+    match result {
+        Ok(value) => ok_typed(id, value, context),
+        Err(reason) => error(id, ErrorCode::InternalError, format!("{context}: {reason}")),
+    }
+}
+
 pub(super) fn error(
     id: lsp_server::RequestId,
     code: ErrorCode,

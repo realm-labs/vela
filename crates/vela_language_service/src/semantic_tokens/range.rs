@@ -5,13 +5,16 @@ use super::{SemanticToken, SemanticTokens};
 impl SemanticTokens {
     #[must_use]
     pub fn in_range(&self, range: DiagnosticRange) -> Self {
+        if !position_before(range.start(), range.end()) {
+            return Self::from_source_hash(Vec::new(), self.source_hash);
+        }
         let tokens = self
             .tokens()
             .iter()
             .copied()
             .filter(|token| token_overlaps_range(*token, range))
             .collect();
-        Self::new(tokens)
+        Self::from_source_hash(tokens, self.source_hash)
     }
 }
 

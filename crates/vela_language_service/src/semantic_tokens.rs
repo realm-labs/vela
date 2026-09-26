@@ -17,7 +17,9 @@ use crate::{
     expression_facts::{self, ExpressionFacts},
 };
 
-use self::result_id::{semantic_token_count_from_result_id, semantic_tokens_result_id};
+use self::result_id::{
+    semantic_token_count_from_result_id, semantic_tokens_result_id, source_hash,
+};
 
 mod import_paths;
 mod local_record_facts;
@@ -32,14 +34,23 @@ mod variant_uses;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SemanticTokens {
     result_id: String,
+    source_hash: u64,
     tokens: Vec<SemanticToken>,
 }
 
 impl SemanticTokens {
     #[must_use]
-    pub fn new(tokens: Vec<SemanticToken>) -> Self {
-        let result_id = semantic_tokens_result_id(&tokens);
-        Self { result_id, tokens }
+    pub fn new(tokens: Vec<SemanticToken>, text: &str) -> Self {
+        Self::from_source_hash(tokens, source_hash(text))
+    }
+
+    fn from_source_hash(tokens: Vec<SemanticToken>, source_hash: u64) -> Self {
+        let result_id = semantic_tokens_result_id(&tokens, source_hash);
+        Self {
+            result_id,
+            source_hash,
+            tokens,
+        }
     }
 
     #[must_use]
@@ -459,7 +470,7 @@ impl LanguageServiceDatabases {
     #[must_use]
     pub fn semantic_tokens(&self, document_id: &DocumentId) -> SemanticTokens {
         let Some(source) = self.source_db().records().get(document_id) else {
-            return SemanticTokens::new(Vec::new());
+            return SemanticTokens::new(Vec::new(), "");
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
@@ -524,7 +535,7 @@ impl LanguageServiceDatabases {
             let start = token.start();
             (start.line, start.character)
         });
-        SemanticTokens::new(semantic_tokens)
+        SemanticTokens::new(semantic_tokens, source.text())
     }
 
     #[must_use]
@@ -1142,6 +1153,8 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
     (start < end).then(|| TextRange::new(start, end))
 }
 
+#[cfg(test)]
+mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;
 #[cfg(test)]

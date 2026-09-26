@@ -5830,10 +5830,29 @@
         "code-action/syntax/S10/negative/protocol"
       ],
       "summary": "Close the four S10 symbol-ownership code-action cells and accept all 94 B05 obligations. Shared LF/CRLF import fixtures now prove exact empty actions at parameter/local declarations and uses that shadow public source names or import aliases; unshadowed imports retain their exact applied fixes. The service host-field test now pins the sole one-edit action, applies it to a whole-source oracle and verifies diagnostics and actions clear. Reviewed source declaration/member/variant, schema/host, stdlib/builtin, module, dynamic and unresolved ownership against independent existing fixtures. Focused tests, workspace tests, Clippy, fmt and Node 83 passed. Final Windows installed VSIX 16 and native input 29 passed. Strict current-source B05 gate passes with accepted B00-B04 regression proof: catalog 510 verified, 815 unreviewed, two N/A, zero failed; B05 94/94 verified. Original accepted snapshots remain historical; latest Windows audit is current and macOS requires independent evidence. B16 deferred. VSIX editors/vscode/test-results/run-fKiYrE/results.json; input editors/vscode/test-results/input-sv2UZM/results.json; final audit target/lsp-matrix/run-YLh9ud/report.json. Resume B06. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B06.1",
+      "revision": null,
+      "requirements": [
+        "tokens-full/environments/utf16/protocol",
+        "tokens-full/environments/crlf/protocol",
+        "tokens-full/environments/encoded_uri/protocol",
+        "tokens-full/states/repeat/protocol",
+        "tokens-delta/environments/utf16/protocol",
+        "tokens-delta/environments/crlf/protocol",
+        "tokens-delta/environments/encoded_uri/protocol",
+        "tokens-delta/states/repeat/protocol",
+        "tokens-range/environments/utf16/protocol",
+        "tokens-range/environments/crlf/protocol",
+        "tokens-range/environments/encoded_uri/protocol",
+        "tokens-range/states/repeat/protocol"
+      ],
+      "summary": "Close twelve semantic-token protocol environment and repeat obligations for full/delta/range. Shared complete LF/CRLF marker oracles pin every byte/UTF-16 token text, type/modifiers, bounds, line confinement, order and nonoverlap; encoded Unicode workspace URIs retain disk/overlay identity. Multiline and equal-byte Unicode edits apply actual service/client deltas and agree with independently checked fresh streams; close restores disk tokens and IDs. Exact overlap/range queries, empty interiors, whitespace, reverse and split-surrogate rejection prove current range semantics. Reproducers exposed byte-based LSP token columns/lengths, nonempty interior empty ranges, and stale deltas after equal-byte Unicode replacements. Production now projects both endpoints using current snapshot text, keeps source fingerprints in full/range IDs and routes projection errors through shared typed responses. Focused service 41 and protocol 38, workspace tests, fmt, Clippy and Node 83 passed. Windows installed VSIX 16 and native input 29 passed; strict current-source B05 gate revalidates accepted B00-B05 and all executed tests. Catalog: 522 verified, 803 unreviewed, two N/A, zero failed. B06 execution: 12 verified, 166 unreviewed; syntax and other state/editor obligations stay open. B16 deferred; macOS requires independent evidence. VSIX editors/vscode/test-results/run-J3eKPh/results.json; input editors/vscode/test-results/input-7hZn4V/results.json; audit target/lsp-matrix/run-rvt0cH/report.json. Resume B06.2. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06",
+  "nextTask": "B06.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8162,7 +8181,8 @@
     "target/lsp-matrix/run-VliD0U/report.json",
     "target/lsp-matrix/run-XsyeEW/report.json",
     "target/lsp-matrix/run-zI9gH1/report.json",
-    "target/lsp-matrix/run-YLh9ud/report.json"
+    "target/lsp-matrix/run-YLh9ud/report.json",
+    "target/lsp-matrix/run-rvt0cH/report.json"
   ],
   "openIssues": [
     {
@@ -10466,8 +10486,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e179a509e303fdb9f9ad454a38ead3962f1655dd",
-          "treeSha256": "8f6507051d474f03fd93a17ba3f135e19f97128fe95f24bf335640266b010fd1"
+          "revision": "579ac5b05f7b624c002ab146f1dcf6f7cdf934b8",
+          "treeSha256": "9c158dc729456837fec312708cac4eddb0913502708260e69ac68cf5e2544dbf"
         },
         "profile": {
           "platform": "win32",
@@ -10475,11 +10495,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-YLh9ud/report.json"
+          "target/lsp-matrix/run-rvt0cH/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-fKiYrE/results.json --local-results editors/vscode/test-results/input-sv2UZM/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-J3eKPh/results.json --local-results editors/vscode/test-results/input-7hZn4V/results.json",
             "exitCode": 0
           }
         ]

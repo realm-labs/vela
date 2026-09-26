@@ -1,9 +1,11 @@
 use vela_language_service::{
-    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace, WorkspaceConfig,
-    WorkspaceRoot, assemble_project_sources,
+    DocumentId, LanguageServiceDatabases, Position, SemanticToken as ServiceSemanticToken,
+    SemanticTokenDelta as ServiceSemanticTokenDelta, SemanticTokens as ServiceSemanticTokens,
+    SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 
 use super::*;
+use crate::semantic_tokens::SemanticTokenProjection;
 
 #[test]
 fn completion_edit_projection_converts_unicode_and_rejects_invalid_byte_ranges() {
@@ -644,22 +646,26 @@ fn inlay_hints_project_typed_labels_and_kinds() {
 #[test]
 fn semantic_tokens_project_relative_data_and_result_id() {
     let projection = SemanticTokenProjection::default();
-    let tokens = ServiceSemanticTokens::new(vec![
-        ServiceSemanticToken::new(
-            Position::new(0, 4),
-            3,
-            vela_language_service::SemanticTokenType::Function,
-            vela_language_service::SemanticTokenModifiers::DECLARATION,
-        ),
-        ServiceSemanticToken::new(
-            Position::new(1, 2),
-            5,
-            vela_language_service::SemanticTokenType::Variable,
-            vela_language_service::SemanticTokenModifiers::NONE,
-        ),
-    ]);
+    let tokens = ServiceSemanticTokens::new(
+        vec![
+            ServiceSemanticToken::new(
+                Position::new(0, 4),
+                3,
+                vela_language_service::SemanticTokenType::Function,
+                vela_language_service::SemanticTokenModifiers::DECLARATION,
+            ),
+            ServiceSemanticToken::new(
+                Position::new(1, 2),
+                5,
+                vela_language_service::SemanticTokenType::Variable,
+                vela_language_service::SemanticTokenModifiers::NONE,
+            ),
+        ],
+        "    abc\n  value",
+    );
 
-    let lsp_types::SemanticTokensResult::Tokens(result) = semantic_tokens(&tokens, &projection)
+    let lsp_types::SemanticTokensResult::Tokens(result) =
+        semantic_tokens(&tokens, &projection, "    abc\n  value").expect("projection")
     else {
         panic!("semantic tokens should project a full token result");
     };
@@ -689,7 +695,7 @@ fn semantic_tokens_delta_projects_edit_units_as_encoded_u32s() {
     );
 
     let lsp_types::SemanticTokensFullDeltaResult::TokensDelta(result) =
-        semantic_tokens_delta(&delta, &projection)
+        semantic_tokens_delta(&delta, &projection, "    abc").expect("projection")
     else {
         panic!("semantic token delta should project a delta result");
     };

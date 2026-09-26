@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-full token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-full token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-full token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. Unchanged full and range requests repeat identical complete data and result IDs before edits, after multiline dirty edits and after disk restoration; a delta against the current ID has exactly zero edits and retains that ID. Fresh servers agree with the independent LF/CRLF Unicode token oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-delta token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-delta token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-delta token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. Unchanged full and range requests repeat identical complete data and result IDs before edits, after multiline dirty edits and after disk restoration; a delta against the current ID has exactly zero edits and retains that ID. Fresh servers agree with the independent LF/CRLF Unicode token oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-range token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-range token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-range token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-coordinates.md. Unchanged full and range requests repeat identical complete data and result IDs before edits, after multiline dirty edits and after disk restoration; a delta against the current ID has exactly zero edits and retains that ID. Fresh servers agree with the independent LF/CRLF Unicode token oracles.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::coordinates::coordinate_streams_and_applied_deltas_keep_exact_utf16_tokens"
+        }
+      ]
+    },
+    {
       "requirement": "diagnostics/editor/smoke",
       "assertion": "Reviewed in reviews/diagnostic-action-editor.md. The installed VSIX publishes the exact two unknown-method diagnostics from the shared Unicode fixture, including code, severity, message, full UTF-16 range and empty related locations. An unsaved editor repair matches the whole expected source and clears only the target diagnostic.",
       "tests": [

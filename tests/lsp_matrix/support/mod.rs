@@ -10,6 +10,7 @@ pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_sourc
 pub(crate) mod references;
 pub(crate) mod rename_collisions;
 pub(crate) mod rename_shorthand;
+pub(crate) mod semantic_tokens;
 mod source;
 pub(crate) use source::{
     assert_source_overlay_state, source_lifecycle_action, source_lifecycle_spec,
