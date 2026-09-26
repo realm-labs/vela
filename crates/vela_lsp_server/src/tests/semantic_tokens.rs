@@ -7,6 +7,7 @@ mod coordinates;
 mod imports;
 mod literals;
 mod members;
+mod recovery;
 mod support;
 mod tasks;
 mod top_level;

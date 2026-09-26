@@ -45,6 +45,21 @@ impl<'a> LineIndex<'a> {
         ))
     }
 
+    pub(crate) fn diagnostic_position(
+        &self,
+        mut position: Position,
+    ) -> Result<lsp_types::Position, String> {
+        let (start, end) = self.line_bounds(position.line)?;
+        // Lexer diagnostics may end after CR but before LF. Normalize this
+        // display boundary only; edit positions must remain exact.
+        if position.character == end - start + 1
+            && self.text.as_bytes().get(end..end + 2) == Some(b"\r\n")
+        {
+            position.character = end - start;
+        }
+        self.lsp_position(position)
+    }
+
     pub(crate) fn service_range(&self, range: LspRange) -> Result<DiagnosticRange, String> {
         let start_offset = self.offset_clamped(range.start)?;
         let end_offset = self.offset_clamped(range.end)?;
@@ -155,6 +170,43 @@ fn utf16_character_offset_clamped(line_text: &str, character: usize) -> Result<u
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diagnostic_crlf_boundaries_preserve_visible_unicode_line_ends() {
+        let text = "中😀 broken\r\nnext";
+        let index = LineIndex::new(text);
+        let visible_end = "中😀 broken".len();
+        for column in [visible_end, visible_end + 1] {
+            assert_eq!(
+                index
+                    .diagnostic_position(Position::new(0, column))
+                    .expect("CRLF boundary"),
+                lsp_types::Position::new(0, 10)
+            );
+        }
+        for column in [1, 4, visible_end + 2] {
+            assert!(index.diagnostic_position(Position::new(0, column)).is_err());
+        }
+        assert!(
+            index
+                .lsp_position(Position::new(0, visible_end + 1))
+                .is_err()
+        );
+        assert_eq!(
+            index.lsp_position(Position::new(1, 0)).expect("next line"),
+            lsp_types::Position::new(1, 0)
+        );
+        for text in ["中😀 broken\nnext", "中😀 broken\r"] {
+            assert!(
+                LineIndex::new(text)
+                    .diagnostic_position(Position::new(
+                        0,
+                        text.find('\n').unwrap_or(text.len()) + 1
+                    ))
+                    .is_err()
+            );
+        }
+    }
 
     #[test]
     fn utf16_offsets_count_wide_characters_as_two_units() {

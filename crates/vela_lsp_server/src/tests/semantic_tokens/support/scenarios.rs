@@ -5,7 +5,7 @@ use serde_json::json;
 
 use super::{apply_delta, delta, full, rows, start};
 use crate::matrix_fixture::{
-    FixtureWorkspace, Spec, load, parse_markers, semantic_tokens as oracle,
+    Document, FixtureWorkspace, Spec, load, parse_markers, semantic_tokens as oracle,
 };
 use crate::tests::{notify, request, response_value, sync_diagnostics};
 
@@ -51,12 +51,8 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
         for (file, document) in &mut fixture.disk {
             *document = source(&spec.files[file]);
         }
-        let positive = &fixture.disk["scripts/main.vela"];
-        let negative = source(
-            spec.oracle["negative"]["source"]
-                .as_str()
-                .expect("negative source"),
-        );
+        let phases = oracle::phases(&spec, crlf);
+        let positive = &phases[0].document;
         let parent = crate::tests::support::unique_temp_root("semantic-declarations");
         let root = parent.join("中文 % declarations");
         fixture.materialize(&root).expect("workspace");
@@ -66,31 +62,29 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
         assert!(uri.contains('%'));
         let (mut server, legend) = start(&root);
         load_marked_schema(&mut server, &spec, &fixture, &root);
-        let _ = sync_diagnostics::<n::DidOpenTextDocument>(
+        let original_publication = sync_diagnostics::<n::DidOpenTextDocument>(
             &mut server,
             json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":positive.text}}),
         );
         let original = full(&mut server, &uri);
         let mut previous = original.clone();
-        for (index, (document, expected)) in [
-            (positive, &spec.oracle["positive"]),
-            (&negative, &spec.oracle["negative"]["tokens"]),
-            (positive, &spec.oracle["positive"]),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            if index == 1 {
-                let _ = sync_diagnostics::<n::DidChangeTextDocument>(
-                    &mut server,
-                    json!({"textDocument":{"uri":uri,"version":2},"contentChanges":[{"text":document.text}]}),
-                );
-            } else if index == 2 {
-                let _ = notify::<n::DidCloseTextDocument>(
+        for (index, phase) in phases.iter().enumerate() {
+            let document = &phase.document;
+            let expected = phase.tokens;
+            let publication = if index + 1 == phases.len() {
+                sync_diagnostics::<n::DidCloseTextDocument>(
                     &mut server,
                     json!({"textDocument":{"uri":uri}}),
-                );
-            }
+                )
+            } else if index > 0 {
+                sync_diagnostics::<n::DidChangeTextDocument>(
+                    &mut server,
+                    json!({"textDocument":{"uri":uri,"version":index+1},"contentChanges":[{"text":document.text}]}),
+                )
+            } else {
+                original_publication.clone()
+            };
+            assert_diagnostics(document, phase.diagnostics, &publication);
             let expected = oracle::expected(document, expected, true);
             let current = full(&mut server, &uri);
             oracle::assert_stream(&rows(document, &current["data"], &legend), &expected);
@@ -104,10 +98,11 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             assert_eq!(full(&mut server, &uri), current);
             let (mut fresh, fresh_legend) = start(&root);
             load_marked_schema(&mut fresh, &spec, &fixture, &root);
-            let _ = sync_diagnostics::<n::DidOpenTextDocument>(
+            let fresh_publication = sync_diagnostics::<n::DidOpenTextDocument>(
                 &mut fresh,
                 json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":document.text}}),
             );
+            assert_diagnostics(document, phase.diagnostics, &fresh_publication);
             assert_eq!(fresh_legend, legend);
             assert_eq!(full(&mut fresh, &uri), current);
             let ranges = (0..document.text.lines().count())
@@ -122,6 +117,11 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
                             .collect::<Vec<_>>(),
                     )
                 })
+                .chain(std::iter::once((
+                    json!({"line":0,"character":0}),
+                    json!({"line":0,"character":0}),
+                    vec![],
+                )))
                 .chain(expected.iter().flat_map(|token| {
                     let start = json!({"line":token.line,"character":token.column});
                     let end = json!({"line":token.line,"character":token.column+token.length});
@@ -147,4 +147,23 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
         assert_eq!(previous, original, "close restores disk stream and ID");
         fs::remove_dir_all(parent).expect("cleanup own fixture");
     }
+}
+
+fn assert_diagnostics(
+    document: &Document,
+    expected: &serde_json::Value,
+    publication: &serde_json::Value,
+) {
+    if expected.is_null() {
+        return;
+    }
+    assert!(
+        publication["params"]["error"].is_null(),
+        "diagnostic projection for {}: {publication}",
+        expected["phase"]
+    );
+    let diagnostics: Vec<_> = publication["params"]["diagnostics"].as_array().expect("diagnostics").iter().map(|item| {
+        json!({"code":item["code"],"range":item["range"],"candidates":item["data"]["candidates"].as_array().expect("candidates").iter().map(|candidate|candidate["replacement"].clone()).collect::<Vec<_>>()})
+    }).collect();
+    oracle::assert_recovery_diagnostics(document, &diagnostics, expected, true);
 }

@@ -1163,6 +1163,8 @@ impl MemberDelimiterDepth {
 }
 
 #[cfg(test)]
+mod declaration_recovery_tests;
+#[cfg(test)]
 mod map_recovery_tests;
 #[cfg(test)]
 mod method_recovery_tests;

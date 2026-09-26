@@ -55,12 +55,8 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             })
             .expect("document")
         };
-        let positive = source(&spec.files["scripts/main.vela"]);
-        let negative = source(
-            spec.oracle["negative"]["source"]
-                .as_str()
-                .expect("negative source"),
-        );
+        let phases = oracle::phases(&spec, crlf);
+        let positive = &phases[0].document;
         let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
         for (file, document) in &mut fixture.disk {
             *document = source(&spec.files[file]);
@@ -69,16 +65,15 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
         if let Some(schema) = spec.files.get("schema.json") {
             db.load_schema_artifact_json("/workspace/schema.json", schema);
         }
-        update(&mut db, &positive, &fixture);
+        update(&mut db, positive, &fixture);
         load_marked_schema(&mut db, &spec, &fixture);
         let original = db.semantic_tokens(&id);
         let mut previous = original.clone();
-        for (document, expected) in [
-            (&positive, &spec.oracle["positive"]),
-            (&negative, &spec.oracle["negative"]["tokens"]),
-            (&positive, &spec.oracle["positive"]),
-        ] {
+        for phase in &phases {
+            let document = &phase.document;
+            let expected = phase.tokens;
             update(&mut db, document, &fixture);
+            assert_diagnostics(&db, &id, document, phase.diagnostics);
             let expected = oracle::expected(document, expected, false);
             let full = db.semantic_tokens(&id);
             oracle::assert_stream(&rows(document, full.tokens()), &expected);
@@ -103,6 +98,7 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             }
             update(&mut fresh, document, &fixture);
             load_marked_schema(&mut fresh, &spec, &fixture);
+            assert_diagnostics(&fresh, &id, document, phase.diagnostics);
             assert_eq!(fresh.semantic_tokens(&id), full, "incremental equals fresh");
             for line in 0..document.text.lines().count() {
                 let selected: Vec<_> = expected
@@ -124,8 +120,31 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
                 let empty = db.semantic_tokens_in_range(&id, DiagnosticRange::new(end, end));
                 assert!(empty.tokens().is_empty(), "empty boundary at {end:?}");
             }
+            let start = Position::new(0, 0);
+            assert!(
+                db.semantic_tokens_in_range(&id, DiagnosticRange::new(start, start))
+                    .tokens()
+                    .is_empty()
+            );
             previous = full;
         }
         assert_eq!(previous, original, "repair restores complete stream and ID");
     }
+}
+
+fn assert_diagnostics(
+    db: &LanguageServiceDatabases,
+    id: &DocumentId,
+    document: &Document,
+    expected: &serde_json::Value,
+) {
+    if expected.is_null() {
+        return;
+    }
+    let diagnostics: Vec<_> = db.diagnostics_for_document(id).diagnostics().iter().map(|item| {
+        serde_json::json!({"code":item.code(),"range":item.range().map(|range| {
+            serde_json::json!({"start":{"line":range.start().line,"character":range.start().character},"end":{"line":range.end().line,"character":range.end().character}})
+        }),"candidates":item.candidates().iter().map(|candidate|candidate.replacement()).collect::<Vec<_>>()})
+    }).collect();
+    oracle::assert_recovery_diagnostics(document, &diagnostics, expected, false);
 }

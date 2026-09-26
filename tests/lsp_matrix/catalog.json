@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::recovery_tests::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored negative streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::recovery::malformed_neighbors_and_incomplete_contexts_have_exact_recoverable_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S8/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
       "tests": [

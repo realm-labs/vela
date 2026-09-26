@@ -189,7 +189,7 @@ impl CstParser<'_, '_> {
                 self.error_at(param_list_start, "expected function name");
             }
             self.emit_until(param_list_start);
-            self.param_list(param_list_start);
+            self.param_list(param_list_start, body.unwrap_or(end));
         }
 
         if let Some(body_start) = body {
@@ -222,10 +222,11 @@ impl CstParser<'_, '_> {
         self.builder.start_node(SyntaxKind::StructItem);
         self.emit_leading_attributes(end);
         let field_list = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
+        self.require_item_name(SyntaxKind::StructKw, field_list.unwrap_or(end), "struct");
 
         if let Some(field_list_start) = field_list {
             self.emit_until(field_list_start);
-            self.struct_field_list(field_list_start);
+            self.struct_field_list(field_list_start, end);
         }
 
         while self.pos < end {
@@ -238,10 +239,11 @@ impl CstParser<'_, '_> {
         self.builder.start_node(SyntaxKind::EnumItem);
         self.emit_leading_attributes(end);
         let variant_list = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
+        self.require_item_name(SyntaxKind::EnumKw, variant_list.unwrap_or(end), "enum");
 
         if let Some(variant_list_start) = variant_list {
             self.emit_until(variant_list_start);
-            self.enum_variant_list(variant_list_start);
+            self.enum_variant_list(variant_list_start, end);
         }
 
         while self.pos < end {
@@ -262,6 +264,9 @@ impl CstParser<'_, '_> {
         self.builder.start_node(item_kind);
         self.emit_leading_attributes(end);
         let body = self.find_first_kind_before(SyntaxKind::LBrace, self.pos, end);
+        if item_kind == SyntaxKind::TraitItem {
+            self.require_item_name(SyntaxKind::TraitKw, body.unwrap_or(end), "trait");
+        }
 
         if let Some(body_start) = body {
             self.emit_until(body_start);
@@ -272,6 +277,36 @@ impl CstParser<'_, '_> {
             self.emit_current_token();
         }
         self.builder.finish_node();
+    }
+
+    fn require_item_name(&mut self, keyword: SyntaxKind, end: usize, item: &str) {
+        let Some(keyword) = self.find_first_kind_before(keyword, self.pos, end) else {
+            return;
+        };
+        let name = self.skip_trivia(keyword + 1);
+        if name >= end || !self.at_kind(name, SyntaxKind::Ident) {
+            self.error_at(name, format!("expected {item} name"));
+        }
+    }
+
+    fn list_bounds(
+        &mut self,
+        start: usize,
+        limit: usize,
+        delimiters: (SyntaxKind, SyntaxKind),
+        message: &str,
+    ) -> (usize, usize) {
+        let matching_end = self
+            .find_matching_delimiter_end(start, delimiters.0, delimiters.1)
+            .filter(|end| *end <= limit);
+        if matching_end.is_none() {
+            self.error_at(start, message);
+        }
+        let end = matching_end
+            .unwrap_or(limit)
+            .max(start.saturating_add(1))
+            .min(self.tokens.len());
+        (end, matching_end.map_or(end, |end| end.saturating_sub(1)))
     }
 
     fn return_type(&mut self, start: usize, end: usize) {
@@ -288,22 +323,20 @@ impl CstParser<'_, '_> {
         self.type_hint_range(type_start, type_end);
     }
 
-    fn param_list(&mut self, start: usize) {
-        self.param_list_with_kind(start, SyntaxKind::ParamList);
+    fn param_list(&mut self, start: usize, limit: usize) {
+        self.param_list_with_kind(start, limit, SyntaxKind::ParamList);
     }
 
-    fn param_list_with_kind(&mut self, start: usize, list_kind: SyntaxKind) {
-        let Some(end) =
-            self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
-        else {
-            self.error_at(start, "expected `)`");
-            self.node_range(list_kind, start, self.pos.saturating_add(1));
-            return;
-        };
+    fn param_list_with_kind(&mut self, start: usize, limit: usize, list_kind: SyntaxKind) {
+        let (end, close) = self.list_bounds(
+            start,
+            limit,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            "expected `)`",
+        );
 
         self.builder.start_node(list_kind);
         self.emit_current_token();
-        let close = end.saturating_sub(1);
         let mut param_start = self.pos;
         while self.pos < close {
             if self.current_kind() == Some(SyntaxKind::Comma)
@@ -350,23 +383,21 @@ impl CstParser<'_, '_> {
         self.builder.finish_node();
     }
 
-    fn struct_field_list(&mut self, start: usize) {
-        self.field_list_with_kind(start, SyntaxKind::StructFieldList);
+    fn struct_field_list(&mut self, start: usize, limit: usize) {
+        self.field_list_with_kind(start, limit, SyntaxKind::StructFieldList);
     }
 
-    fn field_list_with_kind(&mut self, start: usize, list_kind: SyntaxKind) {
-        let Some(end) =
-            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-        else {
-            self.error_at(start, "expected `}`");
-            self.node_range(list_kind, start, self.pos.saturating_add(1));
-            return;
-        };
+    fn field_list_with_kind(&mut self, start: usize, limit: usize, list_kind: SyntaxKind) {
+        let (end, close) = self.list_bounds(
+            start,
+            limit,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            "expected `}`",
+        );
 
         self.builder.start_node(list_kind);
         self.emit_current_token();
-        let close = end.saturating_sub(1);
-        let mut field_start = self.skip_trivia(self.pos);
+        let mut field_start = self.skip_trivia(self.pos).min(close);
         self.emit_until(field_start);
 
         while self.pos < close {
@@ -378,12 +409,12 @@ impl CstParser<'_, '_> {
                 let field_end = self.trim_trailing_trivia(field_start, self.pos);
                 self.struct_field_range(field_start, field_end);
                 self.emit_current_token();
-                field_start = self.skip_trivia(self.pos);
+                field_start = self.skip_trivia(self.pos).min(close);
                 self.emit_until(field_start);
             } else if self.current_splits_recovered_field(field_start, close) {
                 let field_end = self.trim_trailing_trivia(field_start, self.pos);
                 self.struct_field_range(field_start, field_end);
-                field_start = self.skip_trivia(self.pos);
+                field_start = self.skip_trivia(self.pos).min(close);
                 self.emit_until(field_start);
             } else {
                 self.pos += 1;
@@ -421,22 +452,17 @@ impl CstParser<'_, '_> {
             && self.next_significant_before(self.pos + 1, close).is_some()
     }
 
-    fn enum_variant_list(&mut self, start: usize) {
-        let Some(end) =
-            self.find_matching_delimiter_end(start, SyntaxKind::LBrace, SyntaxKind::RBrace)
-        else {
-            self.node_range(
-                SyntaxKind::EnumVariantList,
-                start,
-                self.pos.saturating_add(1),
-            );
-            return;
-        };
+    fn enum_variant_list(&mut self, start: usize, limit: usize) {
+        let (end, close) = self.list_bounds(
+            start,
+            limit,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            "expected `}`",
+        );
 
         self.builder.start_node(SyntaxKind::EnumVariantList);
         self.emit_current_token();
-        let close = end.saturating_sub(1);
-        let mut variant_start = self.skip_trivia(self.pos);
+        let mut variant_start = self.skip_trivia(self.pos).min(close);
         self.emit_until(variant_start);
 
         while self.pos < close {
@@ -448,7 +474,7 @@ impl CstParser<'_, '_> {
                 let variant_end = self.trim_trailing_trivia(variant_start, self.pos);
                 self.enum_variant_range(variant_start, variant_end);
                 self.emit_current_token();
-                variant_start = self.skip_trivia(self.pos);
+                variant_start = self.skip_trivia(self.pos).min(close);
                 self.emit_until(variant_start);
             } else if self
                 .current_kind()
@@ -459,7 +485,7 @@ impl CstParser<'_, '_> {
             {
                 let variant_end = self.trim_trailing_trivia(variant_start, self.pos);
                 self.enum_variant_range(variant_start, variant_end);
-                variant_start = self.skip_trivia(self.pos);
+                variant_start = self.skip_trivia(self.pos).min(close);
                 self.emit_until(variant_start);
             } else {
                 self.pos += 1;
@@ -487,15 +513,15 @@ impl CstParser<'_, '_> {
         match (tuple_start, record_start) {
             (Some(tuple), Some(record)) if tuple < record => {
                 self.emit_until(tuple);
-                self.param_list_with_kind(tuple, SyntaxKind::TupleFieldList);
+                self.param_list_with_kind(tuple, end, SyntaxKind::TupleFieldList);
             }
             (Some(tuple), None) => {
                 self.emit_until(tuple);
-                self.param_list_with_kind(tuple, SyntaxKind::TupleFieldList);
+                self.param_list_with_kind(tuple, end, SyntaxKind::TupleFieldList);
             }
             (_, Some(record)) => {
                 self.emit_until(record);
-                self.field_list_with_kind(record, SyntaxKind::RecordFieldList);
+                self.field_list_with_kind(record, end, SyntaxKind::RecordFieldList);
             }
             (None, None) => {}
         }
@@ -555,7 +581,7 @@ impl CstParser<'_, '_> {
 
         if let Some(param_list_start) = param_list {
             self.emit_until(param_list_start);
-            self.param_list(param_list_start);
+            self.param_list(param_list_start, body.unwrap_or(end));
         }
 
         self.return_type(param_list_end, signature_end);

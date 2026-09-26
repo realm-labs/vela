@@ -320,8 +320,8 @@ fn diagnostic_source_range(
         .get(document)
         .ok_or_else(|| format!("diagnostic source is unavailable: {}", document.as_str()))?;
     let index = crate::line_index::LineIndex::new(source.text());
-    let start = index.lsp_position(range.start())?;
-    let end = index.lsp_position(range.end())?;
+    let start = index.diagnostic_position(range.start())?;
+    let end = index.diagnostic_position(range.end())?;
     if start > end {
         return Err("diagnostic range start is after its end".to_owned());
     }

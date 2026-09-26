@@ -5013,3 +5013,29 @@ namespace-looking paths: only the first token inherits their role; unknown suffi
 gain no callable or member ownership. Explicit record labels start without
 provenance and acquire property attributes only from known field facts, while
 shorthand retains its value binding. These rules are read-only tooling projections.
+
+Incomplete CST parameter, field and enum-variant lists retain their existing
+nodes up to the owning item's boundary while diagnosing missing delimiters.
+Struct, enum and trait headers with no name are diagnosed; orphaned contents
+cannot acquire source ownership from a previous valid declaration. Semantic
+tokens may recover an opaque literal only from an Unknown lossless span with a
+matching lexer literal diagnostic and opener. The recovery keeps lexical kind
+and exact line slices, shields comment-looking text, and preserves all errors.
+An unfinished interpolation stays opaque until the lexer supplies its expression
+structure. Token queries do not make malformed programs executable or borrow
+symbol facts from diagnostic candidates.
+
+Outgoing diagnostic positions immediately after the carriage return of an actual
+CRLF pair map to the visible line end. Lexer diagnostics may legitimately end
+there; rejecting that byte boundary would discard the document's entire
+diagnostic publication. Other out-of-line positions and split UTF-8 characters
+remain errors. Edit projections and incoming LSP positions still exclude the
+carriage return; normalizing an edit could otherwise change the bytes it mutates.
+
+Full language-service/protocol audit suites each have a bounded ten-minute
+command budget; discovery/build commands retain five minutes. Expanded suites
+can exceed the previous five-minute limit under local machine contention, even
+when their assertions pass. The installed-editor wrapper budgets twenty-five
+minutes for both suites and report overhead. These orchestration limits do not
+relax individual request, scale, readiness or assertion budgets, and a timeout
+still fails acceptance without automatic retries.

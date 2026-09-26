@@ -1,7 +1,90 @@
 //! Independent token coordinates, source slicing and whole-stream oracles.
 use serde_json::Value;
 
-use super::{Document, offset_at};
+use super::{Document, Spec, offset_at, parse_markers};
+
+#[derive(Clone)]
+pub(crate) struct Phase<'a> {
+    pub document: Document,
+    pub tokens: &'a Value,
+    pub diagnostics: &'a Value,
+}
+
+pub(crate) fn phases(spec: &Spec, crlf: bool) -> Vec<Phase<'_>> {
+    let document = |text: &str| {
+        parse_markers(&if crlf {
+            text.replace('\n', "\r\n")
+        } else {
+            text.to_owned()
+        })
+        .expect("phase markers")
+    };
+    let positive = Phase {
+        document: document(&spec.files["scripts/main.vela"]),
+        tokens: &spec.oracle["positive"],
+        diagnostics: &spec.oracle["diagnostics"],
+    };
+    let mut phases = vec![positive.clone()];
+    let cases: Vec<_> = spec.oracle["negative"]["cases"].as_array().map_or_else(
+        || vec![&spec.oracle["negative"]],
+        |cases| cases.iter().collect(),
+    );
+    for case in cases {
+        phases.push(Phase {
+            document: document(case["source"].as_str().expect("negative source")),
+            tokens: &case["tokens"],
+            diagnostics: &case["diagnostics"],
+        });
+        phases.push(positive.clone());
+    }
+    phases
+}
+
+pub(crate) fn assert_recovery_diagnostics(
+    document: &Document,
+    actual: &[Value],
+    expected: &Value,
+    utf16: bool,
+) {
+    if expected.is_null() {
+        return;
+    }
+    if expected["clean"] == true {
+        assert!(actual.is_empty(), "repaired diagnostics: {actual:?}");
+    }
+    if let Some(parse_errors) = expected["parseErrors"].as_bool() {
+        assert_eq!(
+            actual.iter().any(|item| item["code"] == "E_PARSE"),
+            parse_errors,
+            "parser recovery diagnostics for {}: {actual:?}",
+            expected["phase"]
+        );
+    }
+    for code in expected["codes"].as_array().into_iter().flatten() {
+        assert!(
+            actual.iter().any(|item| item["code"] == *code),
+            "{code} for {}: {actual:?}",
+            expected["phase"]
+        );
+    }
+    for candidate in expected["candidates"].as_array().into_iter().flatten() {
+        let marker = document.markers[candidate["marker"].as_str().expect("diagnostic marker")];
+        let point = |point: super::Point| {
+            serde_json::json!({"line":point.line,"character":if utf16 {
+                point.character
+            } else {
+                point.byte - document.text[..point.byte].rfind('\n').map_or(0, |offset| offset + 1)
+            }})
+        };
+        let range = serde_json::json!({"start":point(marker.start),"end":point(marker.end)});
+        let matching: Vec<_> = actual
+            .iter()
+            .filter(|item| item["code"] == candidate["code"] && item["range"] == range)
+            .collect();
+        assert_eq!(matching.len(), 1, "diagnostic at {range}: {actual:?}");
+        assert_eq!(matching[0]["candidates"], candidate["replacements"]);
+    }
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct Row {

@@ -24,6 +24,7 @@ mod constructor_paths;
 mod impl_headers;
 mod import_paths;
 mod interpolation;
+mod lexical_recovery;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
@@ -477,7 +478,7 @@ impl LanguageServiceDatabases {
         };
         let line_index = LineIndex::new(source.text());
         let lexed = lex(source.source_id(), source.text());
-        let lexical_tokens = interpolation::expand(lexed.tokens);
+        let lexical_tokens = interpolation::expand(lexical_recovery::tokens(lexed));
         let receiver_facts =
             self.parse_db()
                 .syntax_parse(document_id)
@@ -1150,6 +1151,8 @@ mod literal_tests;
 mod member_tests;
 #[cfg(test)]
 mod range_tests;
+#[cfg(test)]
+mod recovery_tests;
 #[cfg(test)]
 mod schema_call_tests;
 #[cfg(test)]
