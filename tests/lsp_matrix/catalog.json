@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::ownership_tests::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-ownership.md. Independently authored complete positive and three negative streams distinguish locals, parameters, source declarations/members/variants, schema/host facts with and without real source spans, stdlib/builtin facts, imported module aliases, dynamic Any and unresolved paths. Source ownership beats contradictory same-name metadata and blocks phantom fields/methods/variants and private functions. Deleting a source owner permits real schema fallback; restoring it restores source ownership. Any receivers and parameter-shadowed modules lose member/path provenance without affecting unrelated declarations. Applied deltas, fresh/incremental parity, LF/CRLF streams, unchanged IDs and exact line/token/start/end empty ranges agree; encoded Unicode URI overlays close back to disk.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::ownership::symbol_origins_collisions_and_dynamic_shadows_have_exact_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S9/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-recovery.md. Complete independently authored positive streams pin valid neighbors through 25 error/repair states: empty members, missing named argument values, open and nested calls, bad/unknown/open types, orphaned type owners and removed source ownership, open methods/records, partial enum patterns, unterminated plain/interpolated/byte/char/multiline literals, real unfinished comments and empty source. Known parameters/callees/labels/members/variants retain exact roles; unknown names/members and unbound pattern names cannot borrow stale or suggested facts. Literal envelopes retain lexical kinds and shield comment-looking contents while preserving lexer errors. Independently marked diagnostics retain parser errors and the exact frist candidate set without lending builtin token ownership. Applied deltas, incremental/fresh parity, LF/CRLF complete streams and line/token/start/end empty ranges are exact; encoded-URI overlays repair between every damaged state and final close restores disk stream and ID.",
       "tests": [

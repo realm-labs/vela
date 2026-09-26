@@ -1150,6 +1150,8 @@ mod literal_tests;
 #[cfg(test)]
 mod member_tests;
 #[cfg(test)]
+mod ownership_tests;
+#[cfg(test)]
 mod range_tests;
 #[cfg(test)]
 mod recovery_tests;
