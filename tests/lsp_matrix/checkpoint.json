@@ -6056,10 +6056,38 @@
         "tokens-range/syntax/S11/negative/protocol"
       ],
       "summary": "Close eight S11 delta/range positive/negative service/protocol obligations and the delta stale-version/cancellation protocol state obligations. Independently authored fifteen states pin 73 tokens across main, relay and unrelated modules under LF/CRLF: thirty workspace states and ninety document streams per layer. Body, declaration/import fingerprints, direct/transitive invalidation and removed import edges have exact counter/module-set expectations. Current and original older deltas apply to complete current streams; repeated token/line/empty ranges and fresh/incremental parity agree and repair restores original IDs. Service background full/delta/range results reject cancellation before/after computation and old generations while immutable snapshots retain old streams. Real queued protocol tasks suppress cancelled/stale results, full retries once and rejects an invalidated retry, and later requests yield exact current streams. Older/duplicate full/ranged versions cannot poison caches. Reproducers fix delta and range synchronous dispatcher wrappers by scheduling actual immutable tasks on latency/worker lanes; coordinator regression verifies lanes and explicit retry policy. Full workspace tests, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 721 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed with matching source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 652 verified, 673 unreviewed, two N/A, zero failed. B06 is 142 verified and 36 unreviewed of 178; resume B06.13 for source/schema document lifecycle state coverage. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-xAVdde/results.json; input editors/vscode/test-results/input-AnMbOx/results.json; audit target/lsp-matrix/run-MRBIZ2/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.13",
+      "revision": null,
+      "requirements": [
+        "tokens-full/states/dirty/protocol",
+        "tokens-full/states/close_restore/protocol",
+        "tokens-full/states/recovery/protocol",
+        "tokens-full/states/unresolved/protocol",
+        "tokens-full/states/dynamic/protocol",
+        "tokens-full/states/dependency_change/protocol",
+        "tokens-full/states/dependency_delete/protocol",
+        "tokens-delta/states/dirty/protocol",
+        "tokens-delta/states/close_restore/protocol",
+        "tokens-delta/states/recovery/protocol",
+        "tokens-delta/states/unresolved/protocol",
+        "tokens-delta/states/dynamic/protocol",
+        "tokens-delta/states/dependency_change/protocol",
+        "tokens-delta/states/dependency_delete/protocol",
+        "tokens-range/states/dirty/protocol",
+        "tokens-range/states/close_restore/protocol",
+        "tokens-range/states/recovery/protocol",
+        "tokens-range/states/unresolved/protocol",
+        "tokens-range/states/dynamic/protocol",
+        "tokens-range/states/dependency_change/protocol",
+        "tokens-range/states/dependency_delete/protocol"
+      ],
+      "summary": "Close 21 full/delta/range protocol source lifecycle obligations: dirty, close_restore, recovery, unresolved, dynamic, dependency_change and dependency_delete. Independent five-file fixture pins all token kinds/modifiers/UTF-16 coordinates over 27 states under LF/CRLF: 54 workspace states and 110 full document streams. Exact disk/open dictionaries, physical bytes and effective SourceDb text prove overlay precedence across writes/deletion, close restoration, save/watcher persistence and file recreation. Incomplete members preserve neighbors without invented facts; a missing body brace has E_PARSE and repair clears it. Known imported callable returning Any loses downstream guessed members while typed receivers retain source facts. Removed fields/methods/trait methods/variants update unchanged caller tokens; a deleted open owner retains facts until close, then clears the record/import ownership despite same-name decoys. Repeated/fresh fulls and token ranges, line/empty ranges, applied previous/original deltas and no-rebuild counters agree; complete repair restores original data/IDs. Full workspace, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 722 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed with matching source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 673 verified, 652 unreviewed, two N/A, zero failed. B06 has 163 verified and 15 unreviewed of 178; resume B06.14 for six missing/stale schema state cells, then nine editor/interaction cells. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-r3zNnE/results.json; input editors/vscode/test-results/input-L2Xt3W/results.json; audit target/lsp-matrix/run-6TwczN/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.13",
+  "nextTask": "B06.14",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8414,7 +8442,10 @@
     "editors/vscode/test-results/input-uNlTkj/results.json",
     "target/lsp-matrix/run-MRBIZ2/report.json",
     "editors/vscode/test-results/run-xAVdde/results.json",
-    "editors/vscode/test-results/input-AnMbOx/results.json"
+    "editors/vscode/test-results/input-AnMbOx/results.json",
+    "target/lsp-matrix/run-6TwczN/report.json",
+    "editors/vscode/test-results/run-r3zNnE/results.json",
+    "editors/vscode/test-results/input-L2Xt3W/results.json"
   ],
   "openIssues": [
     {
@@ -10718,8 +10749,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "0a7d5d3521d9d6f248658ab866815b1021ec8755",
-          "treeSha256": "912f494d7c64dbf8a2cf7a833b395c34b25ea2b5bed09c1140595b881883449a"
+          "revision": "86e4b85bf06584f181f2f5e10c7d4b9bfe3586aa",
+          "treeSha256": "2c150d4873844e1e4bf96833786e709c587bbcf2de135d22537b5f2a7fc1ebf3"
         },
         "profile": {
           "platform": "win32",
@@ -10727,11 +10758,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-MRBIZ2/report.json"
+          "target/lsp-matrix/run-6TwczN/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-xAVdde/results.json --local-results editors/vscode/test-results/input-AnMbOx/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-r3zNnE/results.json --local-results editors/vscode/test-results/input-L2Xt3W/results.json",
             "exitCode": 0
           }
         ]

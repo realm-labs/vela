@@ -63,6 +63,216 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Unsaved Unicode prefix shifts every subsequent range; disk edits never replace an open importer or owner overlay. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Unsaved Unicode prefix shifts every subsequent range; disk edits never replace an open importer or owner overlay. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Unsaved Unicode prefix shifts every subsequent range; disk edits never replace an open importer or owner overlay. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Closing restores current disk bytes or removes the deleted owner; save plus watcher commits prefixed bytes and later close discards unsaved edits. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Closing restores current disk bytes or removes the deleted owner; save plus watcher commits prefixed bytes and later close discards unsaved edits. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Closing restores current disk bytes or removes the deleted owner; save plus watcher commits prefixed bytes and later close discards unsaved edits. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Incomplete member and missing closing brace preserve complete neighboring facts; no invented member, explicit E_PARSE policy, repair and fresh parity. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Incomplete member and missing closing brace preserve complete neighboring facts; no invented member, explicit E_PARSE policy, repair and fresh parity. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Incomplete member and missing closing brace preserve complete neighboring facts; no invented member, explicit E_PARSE policy, repair and fresh parity. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Missing bare callee and deleted imported owner/variant are explicitly unresolved while valid neighbors retain facts; an unimported duplicate cannot supply ownership. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Missing bare callee and deleted imported owner/variant are explicitly unresolved while valid neighbors retain facts; an unimported duplicate cannot supply ownership. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Missing bare callee and deleted imported owner/variant are explicitly unresolved while valid neighbors retain facts; an unimported duplicate cannot supply ownership. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Known source callable changes Cell return to Any: callable facts remain, downstream returned members lose owned roles, explicitly typed receivers retain source facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Known source callable changes Cell return to Any: callable facts remain, downstream returned members lose owned roles, explicitly typed receivers retain source facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Known source callable changes Cell return to Any: callable facts remain, downstream returned members lose owned roles, explicitly typed receivers retain source facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Field, method, trait method, variant and return replacements update complete importer streams without changing caller bytes; restoration recovers original IDs. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Field, method, trait method, variant and return replacements update complete importer streams without changing caller bytes; restoration recovers original IDs. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Field, method, trait method, variant and return replacements update complete importer streams without changing caller bytes; restoration recovers original IDs. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Deleted open owner remains effective until close; closing erases its SourceDb record and imported facts, absent-document tokens/ranges are empty and recreation restores facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Deleted open owner remains effective until close; closing erases its SourceDb record and imported facts, absent-document tokens/ranges are empty and recreation restores facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Deleted open owner remains effective until close; closing erases its SourceDb record and imported facts, absent-document tokens/ranges are empty and recreation restores facts. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::source_lifecycle::source_tokens_follow_overlay_close_save_and_dependency_lifecycle"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-delta/states/stale_version/protocol",
       "assertion": "Reviewed in reviews/semantic-token-incremental.md. Older and duplicate full/ranged changes cannot alter decoded current tokens, IDs or parse/project/HIR/generation counters. Later valid edits still yield independently authored current streams, exact ranges and applied deltas under LF/CRLF and encoded Unicode URIs.",
       "tests": [
