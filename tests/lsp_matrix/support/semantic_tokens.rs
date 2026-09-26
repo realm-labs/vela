@@ -95,5 +95,8 @@ pub(crate) fn assert_stream(actual: &[Row], expected: &[Row]) {
             "tokens must be ordered and nonoverlapping: {pair:?}"
         );
     }
-    assert_eq!(actual, expected, "complete token stream");
+    assert_eq!(actual.len(), expected.len(), "complete token count");
+    for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
+        assert_eq!(actual, expected, "complete token stream at token {index}");
+    }
 }

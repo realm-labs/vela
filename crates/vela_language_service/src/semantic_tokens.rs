@@ -21,6 +21,8 @@ use self::result_id::{
     semantic_token_count_from_result_id, semantic_tokens_result_id, source_hash,
 };
 
+mod binding_scope;
+mod impl_headers;
 mod import_paths;
 mod local_record_facts;
 mod member_uses;
@@ -573,7 +575,7 @@ impl LanguageServiceDatabases {
         &self,
         input: &SemanticClassificationInput<'_>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
-        let mut classifications = BTreeMap::new();
+        let mut classifications = impl_headers::collect(self, input.source_id);
         let graph = self.hir_db().graph();
         let facts = self.graph_analysis_facts();
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
@@ -593,6 +595,9 @@ impl LanguageServiceDatabases {
             let Some(range) = token_range(token.span) else {
                 continue;
             };
+            if classifications.contains_key(&(range.start, range.end)) {
+                continue;
+            }
             if let Some(classification) = self.semantic_classification_for_identifier(
                 input.source_id,
                 input.text,
@@ -650,7 +655,13 @@ impl LanguageServiceDatabases {
             {
                 return Some(classification);
             }
-            if let Some(bindings) = graph.bindings(declaration.id) {
+            if binding_scope::is_parameter_declaration(graph, declaration, name, span) {
+                return Some(SemanticTokenClassification::new(
+                    SemanticTokenType::Parameter,
+                    SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE),
+                ));
+            }
+            if let Some(bindings) = binding_scope::bindings(graph, declaration, span) {
                 let member_context = member_uses::MemberUseContext {
                     graph,
                     bindings,
@@ -1166,6 +1177,10 @@ mod showcase_tests;
 #[cfg(test)]
 mod source_call_tests;
 #[cfg(test)]
+mod test_support;
+#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod top_level_tests;
 #[cfg(test)]
 mod variant_use_tests;

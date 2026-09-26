@@ -4931,3 +4931,14 @@ alone cannot certify an unchanged client stream. Range results retain the same
 source fingerprint; unchanged snapshots still have deterministic IDs. Protocol
 full, range and delta output converts both token endpoints against that snapshot
 before relative encoding.
+
+Semantic-token parameter declarations use exact signature name spans, including
+required trait methods without bodies. Expression tokens use the canonical HIR
+body binding owner, so method and parameter-default bodies share the same
+classification rules as functions. Impl header paths use AST spans and visible
+source/schema resolution. A member receiver may use the resolved impl target
+only when its binding is the method's actual first `self` parameter; unknown
+targets and abstract trait receivers gain no guessed field ownership, and an
+explicit `Any` fact remains authoritative. Reserved `self` keeps its lexical
+keyword classification; contextual `state` is a keyword only at a state
+declaration introducer.

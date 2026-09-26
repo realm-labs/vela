@@ -1,8 +1,8 @@
+use super::test_support::rows;
 use crate::matrix_fixture::{Document, load, parse_markers, semantic_tokens as oracle};
 use crate::{
-    DiagnosticRange, DocumentId, LanguageServiceDatabases, Position, SemanticToken,
-    SemanticTokenModifiers, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
-    assemble_project_sources,
+    DiagnosticRange, DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
+    WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 
 fn update(db: &mut LanguageServiceDatabases, id: &DocumentId, document: &Document) {
@@ -11,26 +11,6 @@ fn update(db: &mut LanguageServiceDatabases, id: &DocumentId, document: &Documen
         &[SourceFileSnapshot::new(id.clone(), document.text.as_str())],
         &Workspace::new().snapshot(),
     ));
-}
-
-fn rows(document: &Document, tokens: &[SemanticToken]) -> Vec<oracle::Row> {
-    tokens
-        .iter()
-        .map(|token| {
-            oracle::row(
-                document,
-                (token.start().line, token.start().character, token.length()),
-                token.token_type().as_str(),
-                SemanticTokenModifiers::LEGEND
-                    .iter()
-                    .enumerate()
-                    .filter(|(bit, _)| token.modifiers().bits() & (1 << bit) != 0)
-                    .map(|(_, name)| (*name).to_owned())
-                    .collect(),
-                false,
-            )
-        })
-        .collect()
 }
 
 #[test]

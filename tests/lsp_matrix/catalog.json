@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 negative streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/environments/utf16/protocol",
       "assertion": "Reviewed in reviews/semantic-token-coordinates.md. A shared complete marker oracle checks every tokens-full token's text, type, modifiers, order and bounds in encoded Chinese/space/percent workspace URIs. LF/CRLF multiline comment and non-BMP string edits preserve exact UTF-16 starts and lengths. Applied deltas equal independently checked fresh full streams; partial overlap ranges retain whole tokens, empty ranges stay empty and malformed UTF-16 ranges reject without poisoning subsequent queries.",
       "tests": [

@@ -1,7 +1,9 @@
 use super::{TestServer, notification_value, notify, request, response_value};
 
 mod coordinates;
+mod support;
 mod tasks;
+mod top_level;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {

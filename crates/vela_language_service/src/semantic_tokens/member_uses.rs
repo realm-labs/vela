@@ -46,6 +46,7 @@ pub(super) fn classify(
         .receiver_facts
         .get(field.receiver)
         .cloned()
+        .filter(|fact| !matches!(fact, TypeFact::Unknown))
         .or_else(|| {
             context
                 .bindings
@@ -58,6 +59,14 @@ pub(super) fn classify(
                         context.schema,
                         context.inferred_local_facts,
                     )
+                    .or_else(|| {
+                        super::binding_scope::self_receiver(
+                            context.graph,
+                            context.bindings,
+                            context.schema,
+                            resolution,
+                        )
+                    })
                 })
         })?;
 
