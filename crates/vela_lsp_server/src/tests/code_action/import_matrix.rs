@@ -249,6 +249,12 @@ fn run(crlf: bool) {
         "stdlib-use",
         "ambiguous-name",
         "private-name",
+        "parameter-declaration",
+        "parameter-use",
+        "local-declaration",
+        "local-use",
+        "shadow-declaration",
+        "shadow-use",
     ] {
         assert_eq!(
             actions(&mut server, &root, range(document.markers[marker]), &opened),

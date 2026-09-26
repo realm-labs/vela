@@ -715,6 +715,7 @@ mod tests {
             &document,
             DiagnosticRange::new(Position::new(0, 44), Position::new(0, 49)),
         );
+        assert_eq!(actions.len(), 1, "only the typed host field is a candidate");
 
         let action = actions
             .iter()
@@ -727,6 +728,8 @@ mod tests {
         );
         let document_edit = &action.edit().document_edits()[0];
         assert_eq!(document_edit.document_id(), &document);
+        assert_eq!(action.edit().document_edits().len(), 1);
+        assert_eq!(document_edit.edits().len(), 1);
         let edit = &document_edit.edits()[0];
         let typo_start = text.find("levle").expect("field typo");
         assert_eq!(edit.range().start(), Position::new(0, typo_start));
@@ -735,6 +738,29 @@ mod tests {
             Position::new(0, typo_start + "levle".len())
         );
         assert_eq!(edit.new_text(), "level");
+        let mut applied = text.to_owned();
+        applied.replace_range(typo_start..typo_start + "levle".len(), edit.new_text());
+        assert_eq!(
+            applied,
+            "pub fn main(player: Player) { return player.level }"
+        );
+        let files = [SourceFileSnapshot::new(document.clone(), applied.as_str())];
+        databases.update(&assemble_project_sources(
+            &config,
+            &files,
+            &Workspace::new().snapshot(),
+        ));
+        assert_eq!(
+            databases.diagnostics_for_document(&document).diagnostics(),
+            []
+        );
+        assert_eq!(
+            databases.code_actions(
+                &document,
+                DiagnosticRange::new(Position::new(0, 44), Position::new(0, 49)),
+            ),
+            []
+        );
     }
 
     #[test]

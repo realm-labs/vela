@@ -208,6 +208,12 @@ fn import_actions_apply_exact_edits_and_reject_invalid_owners() {
             "stdlib-use",
             "ambiguous-name",
             "private-name",
+            "parameter-declaration",
+            "parameter-use",
+            "local-declaration",
+            "local-use",
+            "shadow-declaration",
+            "shadow-use",
         ] {
             assert_eq!(actions(&db, document, marker), json!([]), "{marker} {crlf}");
         }

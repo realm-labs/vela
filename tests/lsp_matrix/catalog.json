@@ -605,6 +605,44 @@
       ]
     },
     {
+      "requirement": "code-action/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/code-action-symbol-ownership.md. Public source declarations offer one exact import fix while an unused source alias offers removal; schema host fields and builtin Array methods offer typed candidate replacements, and missing source constructor fields offer a structural fix. LF/CRLF applied edits clear only their target diagnostic.",
+      "tests": [
+        { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" },
+        { "layer": "service", "name": "code_action::matrix_tests::method_typo_fix_clears_only_its_diagnostic_after_applied_edit" },
+        { "layer": "service", "name": "code_action::tests::code_action_fixes_unknown_field_typo" },
+        { "layer": "service", "name": "code_action::member_constructor_tests::member_and_constructor_actions_apply_only_the_supported_record_fix" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/code-action-symbol-ownership.md. Exact empty actions at local, parameter and shadowed source names, valid source/schema/stdlib aliases, ambiguous/private/unresolved names, source member and variant typos, and dynamic Any receivers prevent invented owner transitions under LF/CRLF.",
+      "tests": [
+        { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" },
+        { "layer": "service", "name": "code_action::member_constructor_tests::member_and_constructor_actions_apply_only_the_supported_record_fix" },
+        { "layer": "service", "name": "code_action::tests::code_action_rejects_ambiguous_dynamic_fix" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/code-action-symbol-ownership.md. Source import/removal, schema host-field, builtin method and source constructor actions project exact versioned UTF-16 edits and target URIs; LF/CRLF application clears only the selected diagnostic and fresh servers agree in encoded workspaces.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" },
+        { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" },
+        { "layer": "protocol", "name": "tests::code_action::matrix::method_typo_fix_clears_only_its_published_diagnostic" },
+        { "layer": "protocol", "name": "tests::code_action::member_constructor::member_and_constructor_actions_keep_utf16_edits_and_overlay_state" }
+      ]
+    },
+    {
+      "requirement": "code-action/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/code-action-symbol-ownership.md. Complete empty LSP action arrays cover local/parameter declarations and uses, shadowed names, source/schema/stdlib aliases, private/ambiguous/unresolved names, source member/variant typos and dynamic Any; LF/CRLF ranges stay current through overlay changes.",
+      "tests": [
+        { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" },
+        { "layer": "protocol", "name": "tests::code_action::member_constructor::member_and_constructor_actions_keep_utf16_edits_and_overlay_state" },
+        { "layer": "protocol", "name": "tests::code_action::matrix::unresolved_method_actions_do_not_leak_to_dynamic_any_receiver" }
+      ]
+    },
+    {
       "requirement": "code-action/syntax/S9/positive/service",
       "assertion": "Reviewed in reviews/code-action-recovery-partitions.md. The valid Array method typo retains three exact single-edit Quick Fixes through incomplete member, call, type and declaration neighbors and a Unicode prefix shift under LF/CRLF. Applying first matches an independent whole-source oracle, clears only the selected diagnostic and preserves unrelated errors; fresh service actions agree.",
       "tests": [
