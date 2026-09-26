@@ -1,5 +1,6 @@
 mod constructor_targets;
 mod enum_aliases;
+mod external_calls;
 mod host_variant_fields;
 mod local_exits;
 mod loop_flow;

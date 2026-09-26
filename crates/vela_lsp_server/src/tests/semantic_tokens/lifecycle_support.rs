@@ -45,9 +45,9 @@ impl Driver {
     pub fn uri(&self, file: &str) -> String {
         uri(&self.root, file)
     }
-    pub fn apply(&mut self, state: &Value) {
+    pub fn apply(&mut self, state: &Value) -> Vec<Value> {
         if state["action"].is_null() {
-            return;
+            return Vec::new();
         }
         let mut action: Action = serde_json::from_value(state["action"].clone()).expect("action");
         if self.crlf
@@ -138,6 +138,7 @@ impl Driver {
                 state["id"]
             );
         }
+        messages
     }
     pub fn assert_sources(&self, state: &Value) {
         for (key, actual) in [

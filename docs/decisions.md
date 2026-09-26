@@ -5049,3 +5049,13 @@ not retry against a different snapshot; full requests retain their existing
 single retry and reject an invalidated retry. A valid earlier token result ID can
 still seed a current delta, while the generation of the computation controls
 whether that delta may be published.
+
+External schema/stdlib callable analysis expands one unambiguous import before
+looking up return, target/effect and callback metadata. Local bindings and source
+declarations retain ownership; missing/private/noncallable owners and duplicate
+aliases cannot be repaired by same-name registry facts. Source function facts
+require the complete callee path to resolve to that function, so a declaration
+bound at a path prefix cannot authorize an invalid descendant. Literal qualified
+task paths retain compiler ownership before imports; aliases cannot manufacture
+scoped-task capabilities. This is metadata resolution, without VM execution or
+runtime registry mutation.

@@ -1,4 +1,4 @@
-use vela_hir::body::{HirBody, HirCall, HirPathKind};
+use vela_hir::body::{HirBody, HirCall};
 use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use vela_hir::module_graph::ModuleGraph;
 
@@ -10,7 +10,7 @@ use crate::type_fact::TypeFact;
 use super::local_flow::refine_local_fact;
 use super::lookups::type_owner;
 use super::targets::{ScriptTypeTargetFact, direct_lambda_body};
-use super::{HirSemanticFacts, expression_path, source_declaration_for_path};
+use super::{HirSemanticFacts, source_declaration_for_path};
 
 #[derive(Clone, Debug)]
 struct CallbackSeed {
@@ -81,7 +81,8 @@ impl HirSemanticFacts {
         {
             return seeds;
         }
-        let TypeFact::Function { params, .. } = self.resolved_callable_fact(body, call, schema)
+        let TypeFact::Function { params, .. } =
+            self.resolved_callable_fact(graph, body, call, schema)
         else {
             return seeds;
         };
@@ -155,6 +156,7 @@ impl HirSemanticFacts {
 
     fn resolved_callable_fact(
         &self,
+        graph: &ModuleGraph,
         body: &HirBody,
         call: &HirCall,
         schema: Option<&RegistryFacts>,
@@ -170,8 +172,7 @@ impl HirSemanticFacts {
                 .cloned()
                 .unwrap_or(TypeFact::Unknown);
         }
-        expression_path(body, call.callee, HirPathKind::Callee)
-            .map(|path| path.join("::"))
+        super::external_calls::path(graph, body, call.callee)
             .and_then(|path| schema?.function_fact(&path))
             .cloned()
             .unwrap_or(TypeFact::Unknown)

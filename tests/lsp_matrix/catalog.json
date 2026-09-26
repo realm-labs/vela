@@ -63,6 +63,66 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Disk-only/open/closed callers, schema deletion, truncated JSON and unsupported version yield complete source/builtin-only streams and controlled diagnostics; valid empty metadata has the same tokens/IDs with no schema error; repair restores all original facts. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Disk-only/open/closed callers, schema deletion, truncated JSON and unsupported version yield complete source/builtin-only streams and controlled diagnostics; valid empty metadata has the same tokens/IDs with no schema error; repair restores all original facts. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Disk-only/open/closed callers, schema deletion, truncated JSON and unsupported version yield complete source/builtin-only streams and controlled diagnostics; valid empty metadata has the same tokens/IDs with no schema error; repair restores all original facts. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Separate field/method/trait-method/variant replacements, imported factory Host-to-Any returns and host-to-record provenance replacements clear only removed/changed metadata without editing caller bytes; repairs restore exact original data and IDs even for a closed caller. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Separate field/method/trait-method/variant replacements, imported factory Host-to-Any returns and host-to-record provenance replacements clear only removed/changed metadata without editing caller bytes; repairs restore exact original data and IDs even for a closed caller. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Separate field/method/trait-method/variant replacements, imported factory Host-to-Any returns and host-to-record provenance replacements clear only removed/changed metadata without editing caller bytes; repairs restore exact original data and IDs even for a closed caller. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::schema_lifecycle::schema_tokens_drop_replaced_or_unavailable_facts_and_restore_exact_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/states/dirty/protocol",
       "assertion": "Reviewed in reviews/semantic-token-source-lifecycle.md. Unsaved Unicode prefix shifts every subsequent range; disk edits never replace an open importer or owner overlay. Independently authored 27 states run LF/CRLF through production notifications. Exact full streams, repeated/fresh token ranges, line/empty ranges, applied previous/original deltas and repeat IDs agree; physical disk, overlay and effective database text are checked and queries cannot rebuild.",
       "tests": [

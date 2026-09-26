@@ -81,9 +81,15 @@ pub(super) fn source_function<'a>(
     use vela_hir::binding::BindingResolution;
     let bindings = graph.bindings_for_body(body.id)?;
     match bindings.resolution(callee) {
-        Some(BindingResolution::Declaration(id)) => graph
-            .declaration(*id)
-            .filter(|declaration| declaration.kind == DeclarationKind::Function),
+        Some(BindingResolution::Declaration(id)) => {
+            let declaration = graph.declaration(*id)?;
+            let module = graph.declaration(bindings.declaration)?.module;
+            let path = super::expression_path(body, callee, vela_hir::body::HirPathKind::Callee)?;
+            let expanded = graph.expand_import_path(module, path)?;
+            graph
+                .resolve_visible_declaration_path(module, &expanded, DeclarationKind::Function)
+                .filter(|resolved| resolved.id == declaration.id)
+        }
         Some(BindingResolution::Import(_) | BindingResolution::QualifiedPath(_)) => {
             let module = graph.declaration(bindings.declaration)?.module;
             let path = super::expression_path(body, callee, vela_hir::body::HirPathKind::Callee)?;
@@ -97,6 +103,23 @@ pub(super) fn source_function<'a>(
         }
         _ => None,
     }
+}
+
+pub(super) fn invalid_source_function(
+    graph: &ModuleGraph,
+    body: &vela_hir::body::HirBody,
+    callee: vela_hir::ids::HirExprId,
+) -> bool {
+    let Some(vela_hir::binding::BindingResolution::Declaration(id)) = graph
+        .bindings_for_body(body.id)
+        .and_then(|bindings| bindings.resolution(callee))
+    else {
+        return false;
+    };
+    graph
+        .declaration(*id)
+        .is_some_and(|decl| decl.kind == DeclarationKind::Function)
+        && source_function(graph, body, callee).is_none()
 }
 
 pub(super) fn source_method(

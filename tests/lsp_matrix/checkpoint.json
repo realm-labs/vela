@@ -6084,10 +6084,23 @@
         "tokens-range/states/dependency_delete/protocol"
       ],
       "summary": "Close 21 full/delta/range protocol source lifecycle obligations: dirty, close_restore, recovery, unresolved, dynamic, dependency_change and dependency_delete. Independent five-file fixture pins all token kinds/modifiers/UTF-16 coordinates over 27 states under LF/CRLF: 54 workspace states and 110 full document streams. Exact disk/open dictionaries, physical bytes and effective SourceDb text prove overlay precedence across writes/deletion, close restoration, save/watcher persistence and file recreation. Incomplete members preserve neighbors without invented facts; a missing body brace has E_PARSE and repair clears it. Known imported callable returning Any loses downstream guessed members while typed receivers retain source facts. Removed fields/methods/trait methods/variants update unchanged caller tokens; a deleted open owner retains facts until close, then clears the record/import ownership despite same-name decoys. Repeated/fresh fulls and token ranges, line/empty ranges, applied previous/original deltas and no-rebuild counters agree; complete repair restores original data/IDs. Full workspace, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 722 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof passed with matching source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 673 verified, 652 unreviewed, two N/A, zero failed. B06 has 163 verified and 15 unreviewed of 178; resume B06.14 for six missing/stale schema state cells, then nine editor/interaction cells. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-r3zNnE/results.json; input editors/vscode/test-results/input-L2Xt3W/results.json; audit target/lsp-matrix/run-6TwczN/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.14",
+      "revision": null,
+      "requirements": [
+        "tokens-full/states/missing_schema/protocol",
+        "tokens-full/states/stale_schema/protocol",
+        "tokens-delta/states/missing_schema/protocol",
+        "tokens-delta/states/stale_schema/protocol",
+        "tokens-range/states/missing_schema/protocol",
+        "tokens-range/states/stale_schema/protocol"
+      ],
+      "summary": "Close six full/delta/range missing_schema and stale_schema protocol obligations. Independent five-file fixture specifies 25 metadata states under LF/CRLF: 50 workspace states and 100 complete document streams with fixed caller bytes. Separate fields, methods, trait methods and variants are renamed and restored; known imported factory returns Any without guessed downstream members; host-to-record named/return facts change field provenance. Missing, deleted, truncated and unsupported-version schema clear all metadata and publish one controlled unavailable diagnostic for open callers. Valid empty metadata has the same source-only streams/IDs as missing schema without a schema error. Closed callers still track schema replacements/deletion/recreation while diagnostics remain cleared. Source and builtin controls survive; real closed nonzero source spans never confer source provenance on schema facts. Repeated/fresh fulls and token ranges, token/line/empty ranges, applied prior/original missing/valid deltas and no-rebuild counters agree; repairs restore both baseline IDs. Reproducer fixes alias metadata lookups for return, target/effect and callback facts through one import/ownership resolver. A 21-case analysis regression guards local shadowing, duplicate aliases, missing/private/noncallable source owners, stdlib aliases, host origins/effects and literal task capabilities. Whole source callable paths must resolve exactly, rejecting invalid function descendants; a callback regression covers host/Any/missing/repair facts. Workspace tests, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 723 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof match source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 679 verified, 646 unreviewed, two N/A, zero failed. B06 has 169 verified and nine unreviewed of 178; resume B06.15 for the installed semantic-token smoke and UX09 input/render gates. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-vxaL8r/results.json; input editors/vscode/test-results/input-2YQd0K/results.json; audit target/lsp-matrix/run-UAY9uz/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.14",
+  "nextTask": "B06.15",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8445,7 +8458,10 @@
     "editors/vscode/test-results/input-AnMbOx/results.json",
     "target/lsp-matrix/run-6TwczN/report.json",
     "editors/vscode/test-results/run-r3zNnE/results.json",
-    "editors/vscode/test-results/input-L2Xt3W/results.json"
+    "editors/vscode/test-results/input-L2Xt3W/results.json",
+    "target/lsp-matrix/run-UAY9uz/report.json",
+    "editors/vscode/test-results/run-vxaL8r/results.json",
+    "editors/vscode/test-results/input-2YQd0K/results.json"
   ],
   "openIssues": [
     {
@@ -10749,8 +10765,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "86e4b85bf06584f181f2f5e10c7d4b9bfe3586aa",
-          "treeSha256": "2c150d4873844e1e4bf96833786e709c587bbcf2de135d22537b5f2a7fc1ebf3"
+          "revision": "7c6d2c3284942d792923d29ffb8a5a911e1388af",
+          "treeSha256": "d72d5be48062d27b8b94cceaba273e58e6592dd150e16c332286cffe262659b1"
         },
         "profile": {
           "platform": "win32",
@@ -10758,11 +10774,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-6TwczN/report.json"
+          "target/lsp-matrix/run-UAY9uz/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-r3zNnE/results.json --local-results editors/vscode/test-results/input-L2Xt3W/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-vxaL8r/results.json --local-results editors/vscode/test-results/input-2YQd0K/results.json",
             "exitCode": 0
           }
         ]

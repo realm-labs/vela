@@ -7,6 +7,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod callbacks;
 mod control_flow;
+mod external_calls;
 mod local_flow;
 mod logical_records;
 mod lookups;
@@ -467,7 +468,9 @@ impl HirSemanticFacts {
                     match base.resolution(call.callee) {
                         Some(BindingResolution::Declaration(declaration)) => {
                             let path = expression_path(body, call.callee, HirPathKind::Callee);
-                            if graph
+                            if lookups::invalid_source_function(graph, body, call.callee) {
+                                CallTargetFact::Unresolved
+                            } else if graph
                                 .declaration(*declaration)
                                 .is_some_and(|decl| decl.kind == DeclarationKind::Enum)
                                 && let Some(variant) = path.and_then(|path| path.last())
@@ -892,7 +895,9 @@ impl HirSemanticFacts {
         if !matches!(variant, CallTargetFact::Unresolved) {
             return variant;
         }
-        let qualified = path.join("::");
+        let Some(qualified) = external_calls::path(graph, body, call.callee) else {
+            return CallTargetFact::Unresolved;
+        };
         let args = call
             .arguments
             .iter()
@@ -990,6 +995,9 @@ impl HirSemanticFacts {
                 schema,
             );
         }
+        if lookups::invalid_source_function(graph, body, call.callee) {
+            return TypeFact::Unknown;
+        }
         let direct = call_return_fact(self.fact(call.callee));
         if !matches!(direct, TypeFact::Unknown) {
             return direct;
@@ -997,7 +1005,6 @@ impl HirSemanticFacts {
         let Some(path) = expression_path(body, call.callee, HirPathKind::Callee) else {
             return TypeFact::Unknown;
         };
-        let qualified = path.join("::");
         if let Some(target) = unit_variant_constructor_target(
             graph,
             schema,
@@ -1009,6 +1016,9 @@ impl HirSemanticFacts {
         ) {
             return constructor_result_fact(graph, schema, &target).unwrap_or(TypeFact::Unknown);
         }
+        let Some(qualified) = external_calls::path(graph, body, call.callee) else {
+            return TypeFact::Unknown;
+        };
         let args = call
             .arguments
             .iter()

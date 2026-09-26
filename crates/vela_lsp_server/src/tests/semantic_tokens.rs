@@ -13,6 +13,7 @@ mod members;
 mod ownership;
 mod recovery;
 mod request_lifecycle;
+mod schema_lifecycle;
 mod source_lifecycle;
 mod support;
 mod tasks;
