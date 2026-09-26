@@ -4,6 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+mod control_flow;
 mod dependency_lifecycle;
 mod import_matrix;
 mod matrix;

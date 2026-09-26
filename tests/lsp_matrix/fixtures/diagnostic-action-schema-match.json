@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-schema-match",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.schema_match\"\nname = \"schema_match\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"State\",\"fact\":{\"kind\":\"enum\",\"name\":\"State\"}}],\"variants\":[{\"owner\":\"State\",\"name\":\"Idle\",\"fact\":{\"kind\":\"enum\",\"name\":\"State\",\"variant\":\"Idle\"}},{\"owner\":\"State\",\"name\":\"Pair\",\"fact\":{\"kind\":\"enum\",\"name\":\"State\",\"variant\":\"Pair\"}},{\"owner\":\"State\",\"name\":\"Named\",\"fact\":{\"kind\":\"enum\",\"name\":\"State\",\"variant\":\"Named\"}}],\"fields\":[{\"owner\":\"State::Pair\",\"name\":\"0\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"State::Pair\",\"name\":\"1\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"State::Named\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}}]}}",
+    "scripts/valid.vela": "fn valid(state: State) {\n match state {\n     State::Idle => 0,\n     State::Pair(a, b) => a,\n     State::Named { value: v } => v,\n };\n}\n",
+    "scripts/invalid.vela": "fn incomplete_state(state: State) {\n /* 中😀 */ [[match:start]]match state {\n     State::Idle => 0,\n [[insert]]}[[match:end]];\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "title": "Add missing match arms for `State`",
+    "replacement": "    State::Named { value: _ } => (),\n     State::Pair(_, _) => (),\n ",
+    "applied": "fn incomplete_state(state: State) {\n /* 中😀 */ match state {\n     State::Idle => 0,\n     State::Named { value: _ } => (),\n     State::Pair(_, _) => (),\n };\n}\n"
+  }
+}

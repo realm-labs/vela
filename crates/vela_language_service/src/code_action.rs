@@ -1,3 +1,4 @@
+use vela_analysis::registry::RegistryFacts;
 use vela_hir::module_graph::{Declaration, DeclarationKind, Visibility};
 
 use crate::{
@@ -71,6 +72,7 @@ impl LanguageServiceDatabases {
                     document_id,
                     source.text(),
                     diagnostic,
+                    self.schema_db().facts(),
                 ));
                 actions.extend(fill_missing_record_field_actions(
                     document_id,
@@ -234,6 +236,9 @@ mod type_position_tests;
 
 #[cfg(test)]
 mod member_constructor_tests;
+
+#[cfg(test)]
+mod control_flow_tests;
 
 fn line_indent_at(text: &str, offset: usize) -> &str {
     let start = text[..offset.min(text.len())]
@@ -402,6 +407,7 @@ fn fill_match_arm_actions(
     document_id: &DocumentId,
     text: &str,
     diagnostic: &ServiceDiagnostic,
+    schema: &RegistryFacts,
 ) -> Vec<CodeAction> {
     if diagnostic.code() != Some("analysis::non_exhaustive_match") {
         return Vec::new();
@@ -416,17 +422,22 @@ fn fill_match_arm_actions(
     let Some(range) = diagnostic.range() else {
         return Vec::new();
     };
-    let Some((insert_range, closing_indent)) = match_arm_insertion(text, range) else {
+    let Some((insert_range, closing_indent, newline)) = match_arm_insertion(text, range) else {
         return Vec::new();
     };
 
     let mut edit_text = String::new();
-    for variant in &missing {
+    for (index, variant) in missing.iter().enumerate() {
+        let Some(pattern) = missing_variant_pattern(enum_name, variant, schema) else {
+            return Vec::new();
+        };
+        if index != 0 {
+            edit_text.push_str(&closing_indent);
+        }
         edit_text.push_str("    ");
-        edit_text.push_str(enum_name);
-        edit_text.push_str("::");
-        edit_text.push_str(variant);
-        edit_text.push_str(" => (),\n");
+        edit_text.push_str(&pattern);
+        edit_text.push_str(" => (),");
+        edit_text.push_str(newline);
     }
     edit_text.push_str(&closing_indent);
 
@@ -438,6 +449,44 @@ fn fill_match_arm_actions(
     )
     .into_iter()
     .collect()
+}
+
+fn missing_variant_pattern(owner: &str, variant: &str, schema: &RegistryFacts) -> Option<String> {
+    let path = format!("{owner}::{variant}");
+    match (owner, variant) {
+        ("Option", "Some") | ("Result", "Ok" | "Err") => return Some(format!("{path}(_)")),
+        ("Option", "None") => return Some(path),
+        _ => {}
+    }
+    schema.variant_fact(owner, variant)?;
+    let fields = schema.fields_for_owner(&path);
+    if fields.is_empty() {
+        return Some(path);
+    }
+    let names = fields
+        .iter()
+        .map(|field| field.name.as_str())
+        .collect::<Vec<_>>();
+    let indexes = names
+        .iter()
+        .map(|name| name.parse::<usize>().ok())
+        .collect::<Option<Vec<_>>>();
+    if let Some(mut indexes) = indexes {
+        indexes.sort_unstable();
+        if indexes.iter().copied().eq(0..indexes.len()) {
+            return Some(format!("{path}({})", vec!["_"; indexes.len()].join(", ")));
+        }
+        return None;
+    }
+    if names.iter().any(|name| name.parse::<usize>().is_ok()) {
+        return None;
+    }
+    let fields = names
+        .iter()
+        .map(|name| format!("{name}: _"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    Some(format!("{path} {{ {fields} }}"))
 }
 
 fn fill_missing_record_field_actions(
@@ -548,7 +597,7 @@ fn missing_variants(diagnostic: &ServiceDiagnostic) -> Vec<String> {
 fn match_arm_insertion(
     text: &str,
     diagnostic_range: DiagnosticRange,
-) -> Option<(DiagnosticRange, String)> {
+) -> Option<(DiagnosticRange, String, &'static str)> {
     let line_index = LineIndex::new(text);
     let end = line_index.offset(diagnostic_range.end());
     let brace_offset = text.get(..end)?.rfind('}')?;
@@ -561,7 +610,16 @@ fn match_arm_insertion(
         return None;
     }
     let position = line_index.position(brace_offset);
-    Some((DiagnosticRange::new(position, position), closing_indent))
+    let newline = if line_start >= 2 && text.as_bytes()[line_start - 2] == b'\r' {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    Some((
+        DiagnosticRange::new(position, position),
+        closing_indent,
+        newline,
+    ))
 }
 
 fn diagnostic_overlaps_request(

@@ -5407,10 +5407,21 @@
         "code-action/syntax/S4/negative/protocol"
       ],
       "summary": "Close four S4 member/constructor code-action cells. A shared LF/CRLF fixture covers source fields and writes, inherent/trait methods, unit/tuple/record variants, named and shorthand constructors, unknown labels and dynamic receivers. One missing required struct field has a complete one-edit Quick Fix at a same-line Unicode UTF-16 position; service and protocol apply it to an independent whole-source oracle, clear its diagnostic, agree with fresh instances, and restore the disk action after close. Unsupported source typos, unknown variants and fields, dynamic access and an unclosed constructor return exact empty action sets. Focused tests, Node 83, fmt, workspace Clippy and full tests passed. Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 502 catalog verified, 823 unreviewed, two N/A, zero failed; B05 execution has 86 verified and 8 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-qepNPl/results.json; input editors/vscode/test-results/input-Uoevhh/results.json; audit target/lsp-matrix/run-VliD0U/report.json. Resume B05.21. Find checkpoint commit via LSP-Batch trailer."
+    },
+    {
+      "id": "B05.21",
+      "revision": null,
+      "requirements": [
+        "code-action/syntax/S6/positive/service",
+        "code-action/syntax/S6/negative/service",
+        "code-action/syntax/S6/positive/protocol",
+        "code-action/syntax/S6/negative/protocol"
+      ],
+      "summary": "Close four S6 pattern/control-flow code-action cells. LF/CRLF service and encoded-URI UTF-16 protocol fixtures pin exact Option/Result and guarded-match warnings, unit/payload replacement arms, and empty action sets for exhaustive/wildcard/dynamic matches, for/if/break/continue, inline and incomplete matches. Independent whole-source oracles prove each applied fix clears only its target and all three clear together; fresh instances agree and close restores disk warnings/actions. A real schema fixture proves unit, tuple and record variant shapes and a two-arm fix. Production now retains the match block's CRLF and indentation on every generated arm; unknown/irregular variant shapes are not guessed. Focused tests, Node 83, fmt, workspace Clippy and full tests passed. Windows installed VSIX 16 and native input 29 passed. Current-source strict B04 gate passed: 506 catalog verified, 819 unreviewed, two N/A, zero failed; B05 execution has 90 verified and 4 unreviewed. B00-B04 snapshots fixed, Windows profile audit refreshed; macOS needs independent current evidence. Other B05 cells remain open; B16 deferred. VSIX editors/vscode/test-results/run-kkrbbx/results.json; input editors/vscode/test-results/input-1htQd9/results.json; audit target/lsp-matrix/run-XsyeEW/report.json. Resume B05.22. Find checkpoint commit via LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B05.21",
+  "nextTask": "B05.22",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7830,7 +7841,8 @@
     "target/lsp-matrix/run-G2oq7c/report.json",
     "target/lsp-matrix/run-wleWbF/report.json",
     "target/lsp-matrix/run-buQbdH/report.json",
-    "target/lsp-matrix/run-VliD0U/report.json"
+    "target/lsp-matrix/run-VliD0U/report.json",
+    "target/lsp-matrix/run-XsyeEW/report.json"
   ],
   "openIssues": [
     {
@@ -9757,8 +9769,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4a6e844056e94dae27c06f37a71b04e45abc46ee",
-          "treeSha256": "b1bef792b5f14b0d428c95c1aec3c0d0829467c79b85f7000cfa6b1a2d908659"
+          "revision": "a829a7ded3b2accc53d65907338efa7ffe3b8dd6",
+          "treeSha256": "04b7aeb92b2f00eda96feaddfa51366c084912661953e249dc7e676d0042fd61"
         },
         "profile": {
           "platform": "win32",
@@ -9766,11 +9778,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-VliD0U/report.json"
+          "target/lsp-matrix/run-XsyeEW/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-qepNPl/results.json --local-results editors/vscode/test-results/input-Uoevhh/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B04 --editor-results editors/vscode/test-results/run-kkrbbx/results.json --local-results editors/vscode/test-results/input-1htQd9/results.json",
             "exitCode": 0
           }
         ]

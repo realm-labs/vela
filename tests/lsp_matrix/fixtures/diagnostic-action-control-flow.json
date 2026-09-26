@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "id": "diagnostic-action-control-flow",
+  "files": {
+    "scripts/valid.vela": "fn valid(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, flag: bool) {\n match maybe {\n  Option::Some(value) => value,\n  Option::None => 0,\n };\n match outcome {\n  Result::Ok(value) => value,\n  Result::Err(reason) => 0,\n };\n for value in values {\n  if flag { continue; }\n  break;\n }\n match maybe { _ => 0 };\n}\n",
+    "scripts/invalid.vela": "fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {\n /* 中😀 */ [[option:start]]match maybe {\n     Option::Some(value) => value,\n [[option-insert]]}[[option:end]];\n /* 中😀 */ [[result:start]]match outcome {\n     Result::Err(reason) => 0,\n [[result-insert]]}[[result:end]];\n /* 中😀 */ [[guarded:start]]match maybe {\n     Option::Some(value) if flag => value,\n     Option::None => 0,\n [[guarded-insert]]}[[guarded:end]];\n [[wildcard:start]]match maybe { _ => 0 }[[wildcard:end]];\n [[dynamic:start]]match unknown { Option::Some(value) => value }[[dynamic:end]];\n [[for:start]]for[[for:end]] value in values {\n  [[if:start]]if[[if:end]] value > 0 { [[continue:start]]continue[[continue:end]]; } else { [[break:start]]break[[break:end]]; }\n }\n}\n",
+    "scripts/inline.vela": "fn inline(maybe: Option<i64>) { [[inline:start]]match maybe { Option::Some(value) => value }[[inline:end]]; }\n",
+    "scripts/incomplete.vela": "fn incomplete(maybe: Option<i64>) { [[incomplete:start]]match maybe { Option::Some(value) => value,[[incomplete:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "positive": [
+      {
+        "marker": "option",
+        "insert": "option-insert",
+        "title": "Add missing match arms for `Option`",
+        "replacement": "    Option::None => (),\n "
+      },
+      {
+        "marker": "result",
+        "insert": "result-insert",
+        "title": "Add missing match arms for `Result`",
+        "replacement": "    Result::Ok(_) => (),\n "
+      },
+      {
+        "marker": "guarded",
+        "insert": "guarded-insert",
+        "title": "Add missing match arms for `Option`",
+        "replacement": "    Option::Some(_) => (),\n "
+      }
+    ],
+    "negative": [
+      "wildcard",
+      "dynamic",
+      "for",
+      "if",
+      "continue",
+      "break"
+    ],
+    "applied": {
+      "option": "fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {\n /* 中😀 */ match maybe {\n     Option::Some(value) => value,\n     Option::None => (),\n };\n /* 中😀 */ match outcome {\n     Result::Err(reason) => 0,\n };\n /* 中😀 */ match maybe {\n     Option::Some(value) if flag => value,\n     Option::None => 0,\n };\n match maybe { _ => 0 };\n match unknown { Option::Some(value) => value };\n for value in values {\n  if value > 0 { continue; } else { break; }\n }\n}\n",
+      "result": "fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {\n /* 中😀 */ match maybe {\n     Option::Some(value) => value,\n };\n /* 中😀 */ match outcome {\n     Result::Err(reason) => 0,\n     Result::Ok(_) => (),\n };\n /* 中😀 */ match maybe {\n     Option::Some(value) if flag => value,\n     Option::None => 0,\n };\n match maybe { _ => 0 };\n match unknown { Option::Some(value) => value };\n for value in values {\n  if value > 0 { continue; } else { break; }\n }\n}\n",
+      "guarded": "fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {\n /* 中😀 */ match maybe {\n     Option::Some(value) => value,\n };\n /* 中😀 */ match outcome {\n     Result::Err(reason) => 0,\n };\n /* 中😀 */ match maybe {\n     Option::Some(value) if flag => value,\n     Option::None => 0,\n     Option::Some(_) => (),\n };\n match maybe { _ => 0 };\n match unknown { Option::Some(value) => value };\n for value in values {\n  if value > 0 { continue; } else { break; }\n }\n}\n",
+      "all": "fn broken(maybe: Option<i64>, outcome: Result<i64, String>, values: Array<i64>, unknown: Any, flag: bool) {\n /* 中😀 */ match maybe {\n     Option::Some(value) => value,\n     Option::None => (),\n };\n /* 中😀 */ match outcome {\n     Result::Err(reason) => 0,\n     Result::Ok(_) => (),\n };\n /* 中😀 */ match maybe {\n     Option::Some(value) if flag => value,\n     Option::None => 0,\n     Option::Some(_) => (),\n };\n match maybe { _ => 0 };\n match unknown { Option::Some(value) => value };\n for value in values {\n  if value > 0 { continue; } else { break; }\n }\n}\n"
+    }
+  }
+}
