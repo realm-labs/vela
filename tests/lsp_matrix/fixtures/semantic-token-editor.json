@@ -1,0 +1,888 @@
+{
+  "version": 1,
+  "id": "semantic-token-editor",
+  "files": {
+    "scripts/tokens_view.vela": "[[token-0-0:start]]struct[[token-0-0:end]] [[token-0-1:start]]Cell[[token-0-1:end]] [[token-0-2:start]]{[[token-0-2:end]] [[token-0-3:start]]value[[token-0-3:end]] [[token-0-4:start]]:[[token-0-4:end]] [[token-0-5:start]]i64[[token-0-5:end]] [[token-0-6:start]]}[[token-0-6:end]]\n[[token-1-0:start]]fn[[token-1-0:end]] [[token-1-1:start]]main[[token-1-1:end]] [[token-1-2:start]]([[token-1-2:end]] [[token-1-3:start]]cell[[token-1-3:end]] [[token-1-4:start]]:[[token-1-4:end]] [[token-1-5:start]]Cell[[token-1-5:end]] [[token-1-6:start]],[[token-1-6:end]] [[token-1-7:start]]dynamic[[token-1-7:end]] [[token-1-8:start]]:[[token-1-8:end]] [[token-1-9:start]]Any[[token-1-9:end]] [[token-1-10:start]])[[token-1-10:end]] [[token-1-11:start]]{[[token-1-11:end]]\n[[token-2-0:start]]/* 中😀 */[[token-2-0:end]] [[token-2-1:start]]let[[token-2-1:end]] [[token-2-2:start]]score[[token-2-2:end]] [[token-2-3:start]]=[[token-2-3:end]] [[token-2-4:start]]cell[[token-2-4:end]] [[token-2-5:start]].[[token-2-5:end]] [[token-2-6:start]]value[[token-2-6:end]] [[token-2-7:start]];[[token-2-7:end]]\n[[token-3-0:start]]/* 中😀 */[[token-3-0:end]] [[token-3-1:start]]dynamic[[token-3-1:end]] [[token-3-2:start]].[[token-3-2:end]] [[token-3-3:start]]value[[token-3-3:end]] [[token-3-4:start]];[[token-3-4:end]]\n[[token-4-0:start]]/* 中😀 */[[token-4-0:end]] [[token-4-1:start]]ghost[[token-4-1:end]] [[token-4-2:start]]::[[token-4-2:end]] [[token-4-3:start]]missing[[token-4-3:end]] [[token-4-4:start]]([[token-4-4:end]] [[token-4-5:start]])[[token-4-5:end]] [[token-4-6:start]];[[token-4-6:end]]\n[[token-5-0:start]]return[[token-5-0:end]] [[token-5-1:start]]score[[token-5-1:end]] [[token-5-2:start]];[[token-5-2:end]]\n[[token-6-0:start]]}[[token-6-0:end]]\n"
+  },
+  "oracle": {
+    "file": "scripts/tokens_view.vela",
+    "states": [
+      {
+        "id": "original",
+        "source": "[[token-0-0:start]]struct[[token-0-0:end]] [[token-0-1:start]]Cell[[token-0-1:end]] [[token-0-2:start]]{[[token-0-2:end]] [[token-0-3:start]]value[[token-0-3:end]] [[token-0-4:start]]:[[token-0-4:end]] [[token-0-5:start]]i64[[token-0-5:end]] [[token-0-6:start]]}[[token-0-6:end]]\n[[token-1-0:start]]fn[[token-1-0:end]] [[token-1-1:start]]main[[token-1-1:end]] [[token-1-2:start]]([[token-1-2:end]] [[token-1-3:start]]cell[[token-1-3:end]] [[token-1-4:start]]:[[token-1-4:end]] [[token-1-5:start]]Cell[[token-1-5:end]] [[token-1-6:start]],[[token-1-6:end]] [[token-1-7:start]]dynamic[[token-1-7:end]] [[token-1-8:start]]:[[token-1-8:end]] [[token-1-9:start]]Any[[token-1-9:end]] [[token-1-10:start]])[[token-1-10:end]] [[token-1-11:start]]{[[token-1-11:end]]\n[[token-2-0:start]]/* 中😀 */[[token-2-0:end]] [[token-2-1:start]]let[[token-2-1:end]] [[token-2-2:start]]score[[token-2-2:end]] [[token-2-3:start]]=[[token-2-3:end]] [[token-2-4:start]]cell[[token-2-4:end]] [[token-2-5:start]].[[token-2-5:end]] [[token-2-6:start]]value[[token-2-6:end]] [[token-2-7:start]];[[token-2-7:end]]\n[[token-3-0:start]]/* 中😀 */[[token-3-0:end]] [[token-3-1:start]]dynamic[[token-3-1:end]] [[token-3-2:start]].[[token-3-2:end]] [[token-3-3:start]]value[[token-3-3:end]] [[token-3-4:start]];[[token-3-4:end]]\n[[token-4-0:start]]/* 中😀 */[[token-4-0:end]] [[token-4-1:start]]ghost[[token-4-1:end]] [[token-4-2:start]]::[[token-4-2:end]] [[token-4-3:start]]missing[[token-4-3:end]] [[token-4-4:start]]([[token-4-4:end]] [[token-4-5:start]])[[token-4-5:end]] [[token-4-6:start]];[[token-4-6:end]]\n[[token-5-0:start]]return[[token-5-0:end]] [[token-5-1:start]]score[[token-5-1:end]] [[token-5-2:start]];[[token-5-2:end]]\n[[token-6-0:start]]}[[token-6-0:end]]\n",
+        "tokens": [
+          {
+            "marker": "token-0-0",
+            "text": "struct",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "token-0-1",
+            "text": "Cell",
+            "type": "struct",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "token-0-2",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-0-3",
+            "text": "value",
+            "type": "field",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "token-0-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-0-5",
+            "text": "i64",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "token-0-6",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-0",
+            "text": "fn",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-1",
+            "text": "main",
+            "type": "function",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "token-1-2",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-3",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "token-1-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-5",
+            "text": "Cell",
+            "type": "type",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-6",
+            "text": ",",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-7",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "token-1-8",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-9",
+            "text": "Any",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "token-1-10",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-1-11",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-1",
+            "text": "let",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-2",
+            "text": "score",
+            "type": "variable",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "token-2-3",
+            "text": "=",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-4",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-5",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-6",
+            "text": "value",
+            "type": "property",
+            "modifiers": []
+          },
+          {
+            "marker": "token-2-7",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-3-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "token-3-1",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "token-3-2",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-3-3",
+            "text": "value",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "token-3-4",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-1",
+            "text": "ghost",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-2",
+            "text": "::",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-3",
+            "text": "missing",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-4",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-5",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-4-6",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-5-0",
+            "text": "return",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "token-5-1",
+            "text": "score",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "token-5-2",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "token-6-0",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          }
+        ]
+      },
+      {
+        "id": "unicode-shift",
+        "source": "[[shifted-0-0:start]]// edited 中😀[[shifted-0-0:end]]\n[[shifted-1-0:start]]/* 新😀 */[[shifted-1-0:end]]\n[[shifted-2-0:start]]struct[[shifted-2-0:end]] [[shifted-2-1:start]]Cell[[shifted-2-1:end]] [[shifted-2-2:start]]{[[shifted-2-2:end]] [[shifted-2-3:start]]value[[shifted-2-3:end]] [[shifted-2-4:start]]:[[shifted-2-4:end]] [[shifted-2-5:start]]i64[[shifted-2-5:end]] [[shifted-2-6:start]]}[[shifted-2-6:end]]\n[[shifted-3-0:start]]fn[[shifted-3-0:end]] [[shifted-3-1:start]]main[[shifted-3-1:end]] [[shifted-3-2:start]]([[shifted-3-2:end]] [[shifted-3-3:start]]cell[[shifted-3-3:end]] [[shifted-3-4:start]]:[[shifted-3-4:end]] [[shifted-3-5:start]]Cell[[shifted-3-5:end]] [[shifted-3-6:start]],[[shifted-3-6:end]] [[shifted-3-7:start]]dynamic[[shifted-3-7:end]] [[shifted-3-8:start]]:[[shifted-3-8:end]] [[shifted-3-9:start]]Any[[shifted-3-9:end]] [[shifted-3-10:start]])[[shifted-3-10:end]] [[shifted-3-11:start]]{[[shifted-3-11:end]]\n[[shifted-4-0:start]]/* 中😀 */[[shifted-4-0:end]] [[shifted-4-1:start]]let[[shifted-4-1:end]] [[shifted-4-2:start]]score[[shifted-4-2:end]] [[shifted-4-3:start]]=[[shifted-4-3:end]] [[shifted-4-4:start]]cell[[shifted-4-4:end]] [[shifted-4-5:start]].[[shifted-4-5:end]] [[shifted-4-6:start]]value[[shifted-4-6:end]] [[shifted-4-7:start]];[[shifted-4-7:end]]\n[[shifted-5-0:start]]/* 中😀 */[[shifted-5-0:end]] [[shifted-5-1:start]]dynamic[[shifted-5-1:end]] [[shifted-5-2:start]].[[shifted-5-2:end]] [[shifted-5-3:start]]value[[shifted-5-3:end]] [[shifted-5-4:start]];[[shifted-5-4:end]]\n[[shifted-6-0:start]]/* 中😀 */[[shifted-6-0:end]] [[shifted-6-1:start]]ghost[[shifted-6-1:end]] [[shifted-6-2:start]]::[[shifted-6-2:end]] [[shifted-6-3:start]]missing[[shifted-6-3:end]] [[shifted-6-4:start]]([[shifted-6-4:end]] [[shifted-6-5:start]])[[shifted-6-5:end]] [[shifted-6-6:start]];[[shifted-6-6:end]]\n[[shifted-7-0:start]]return[[shifted-7-0:end]] [[shifted-7-1:start]]score[[shifted-7-1:end]] [[shifted-7-2:start]];[[shifted-7-2:end]]\n[[shifted-8-0:start]]}[[shifted-8-0:end]]\n",
+        "tokens": [
+          {
+            "marker": "shifted-0-0",
+            "text": "// edited 中😀",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-1-0",
+            "text": "/* 新😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-2-0",
+            "text": "struct",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-2-1",
+            "text": "Cell",
+            "type": "struct",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "shifted-2-2",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-2-3",
+            "text": "value",
+            "type": "field",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "shifted-2-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-2-5",
+            "text": "i64",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "shifted-2-6",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-0",
+            "text": "fn",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-1",
+            "text": "main",
+            "type": "function",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "shifted-3-2",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-3",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "shifted-3-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-5",
+            "text": "Cell",
+            "type": "type",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-6",
+            "text": ",",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-7",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "shifted-3-8",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-9",
+            "text": "Any",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "shifted-3-10",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-3-11",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-1",
+            "text": "let",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-2",
+            "text": "score",
+            "type": "variable",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "shifted-4-3",
+            "text": "=",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-4",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-5",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-6",
+            "text": "value",
+            "type": "property",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-4-7",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-5-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-5-1",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-5-2",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-5-3",
+            "text": "value",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-5-4",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-1",
+            "text": "ghost",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-2",
+            "text": "::",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-3",
+            "text": "missing",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-4",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-5",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-6-6",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-7-0",
+            "text": "return",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-7-1",
+            "text": "score",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-7-2",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "shifted-8-0",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          }
+        ]
+      },
+      {
+        "id": "dynamic-demotion",
+        "source": "[[demoted-0-0:start]]// edited 中😀[[demoted-0-0:end]]\n[[demoted-1-0:start]]/* 新😀 */[[demoted-1-0:end]]\n[[demoted-2-0:start]]struct[[demoted-2-0:end]] [[demoted-2-1:start]]Cell[[demoted-2-1:end]] [[demoted-2-2:start]]{[[demoted-2-2:end]] [[demoted-2-3:start]]value[[demoted-2-3:end]] [[demoted-2-4:start]]:[[demoted-2-4:end]] [[demoted-2-5:start]]i64[[demoted-2-5:end]] [[demoted-2-6:start]]}[[demoted-2-6:end]]\n[[demoted-3-0:start]]fn[[demoted-3-0:end]] [[demoted-3-1:start]]main[[demoted-3-1:end]] [[demoted-3-2:start]]([[demoted-3-2:end]] [[demoted-3-3:start]]cell[[demoted-3-3:end]] [[demoted-3-4:start]]:[[demoted-3-4:end]] [[demoted-3-5:start]]Any[[demoted-3-5:end]] [[demoted-3-6:start]],[[demoted-3-6:end]] [[demoted-3-7:start]]dynamic[[demoted-3-7:end]] [[demoted-3-8:start]]:[[demoted-3-8:end]] [[demoted-3-9:start]]Any[[demoted-3-9:end]] [[demoted-3-10:start]])[[demoted-3-10:end]] [[demoted-3-11:start]]{[[demoted-3-11:end]]\n[[demoted-4-0:start]]/* 中😀 */[[demoted-4-0:end]] [[demoted-4-1:start]]let[[demoted-4-1:end]] [[demoted-4-2:start]]points[[demoted-4-2:end]] [[demoted-4-3:start]]=[[demoted-4-3:end]] [[demoted-4-4:start]]cell[[demoted-4-4:end]] [[demoted-4-5:start]].[[demoted-4-5:end]] [[demoted-4-6:start]]value[[demoted-4-6:end]] [[demoted-4-7:start]];[[demoted-4-7:end]]\n[[demoted-5-0:start]]/* 中😀 */[[demoted-5-0:end]] [[demoted-5-1:start]]dynamic[[demoted-5-1:end]] [[demoted-5-2:start]].[[demoted-5-2:end]] [[demoted-5-3:start]]value[[demoted-5-3:end]] [[demoted-5-4:start]];[[demoted-5-4:end]]\n[[demoted-6-0:start]]/* 中😀 */[[demoted-6-0:end]] [[demoted-6-1:start]]ghost[[demoted-6-1:end]] [[demoted-6-2:start]]::[[demoted-6-2:end]] [[demoted-6-3:start]]missing[[demoted-6-3:end]] [[demoted-6-4:start]]([[demoted-6-4:end]] [[demoted-6-5:start]])[[demoted-6-5:end]] [[demoted-6-6:start]];[[demoted-6-6:end]]\n[[demoted-7-0:start]]return[[demoted-7-0:end]] [[demoted-7-1:start]]points[[demoted-7-1:end]] [[demoted-7-2:start]];[[demoted-7-2:end]]\n[[demoted-8-0:start]]}[[demoted-8-0:end]]\n",
+        "tokens": [
+          {
+            "marker": "demoted-0-0",
+            "text": "// edited 中😀",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-1-0",
+            "text": "/* 新😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-2-0",
+            "text": "struct",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-2-1",
+            "text": "Cell",
+            "type": "struct",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "demoted-2-2",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-2-3",
+            "text": "value",
+            "type": "field",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "demoted-2-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-2-5",
+            "text": "i64",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "demoted-2-6",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-0",
+            "text": "fn",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-1",
+            "text": "main",
+            "type": "function",
+            "modifiers": [
+              "declaration",
+              "definition"
+            ]
+          },
+          {
+            "marker": "demoted-3-2",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-3",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "demoted-3-4",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-5",
+            "text": "Any",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "demoted-3-6",
+            "text": ",",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-7",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "demoted-3-8",
+            "text": ":",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-9",
+            "text": "Any",
+            "type": "type",
+            "modifiers": [
+              "defaultLibrary"
+            ]
+          },
+          {
+            "marker": "demoted-3-10",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-3-11",
+            "text": "{",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-1",
+            "text": "let",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-2",
+            "text": "points",
+            "type": "variable",
+            "modifiers": [
+              "declaration"
+            ]
+          },
+          {
+            "marker": "demoted-4-3",
+            "text": "=",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-4",
+            "text": "cell",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-5",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-6",
+            "text": "value",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-4-7",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-5-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-5-1",
+            "text": "dynamic",
+            "type": "parameter",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-5-2",
+            "text": ".",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-5-3",
+            "text": "value",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-5-4",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-0",
+            "text": "/* 中😀 */",
+            "type": "comment",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-1",
+            "text": "ghost",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-2",
+            "text": "::",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-3",
+            "text": "missing",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-4",
+            "text": "(",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-5",
+            "text": ")",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-6-6",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-7-0",
+            "text": "return",
+            "type": "keyword",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-7-1",
+            "text": "points",
+            "type": "variable",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-7-2",
+            "text": ";",
+            "type": "operator",
+            "modifiers": []
+          },
+          {
+            "marker": "demoted-8-0",
+            "text": "}",
+            "type": "operator",
+            "modifiers": []
+          }
+        ]
+      }
+    ]
+  },
+  "actions": []
+}

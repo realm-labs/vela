@@ -58,10 +58,10 @@ async function definition(document, marker, expectedDocument, expectedMarker, of
 
 async function run() {
   const results = [];
-  const check = async (name, action) => {
+  const check = async (name, action, milliseconds = 15000) => {
     const started = Date.now();
     try {
-      await bounded(name, action);
+      await bounded(name, action, milliseconds);
       results.push({ name, passed: true, durationMs: Date.now() - started });
       console.log(`PASS ${name}`);
     } catch (error) {
@@ -165,6 +165,13 @@ async function run() {
       diagnosticAction.checkDiagnosticProvider(vscode, workspace));
     await check("code action provider applies the exact Unicode quick fix", () =>
       diagnosticAction.checkCodeActionProvider(vscode, workspace));
+    const tokens = require("./semantic-token-provider");
+    await check("semantic token full provider preserves exact Unicode LF CRLF streams and restored disk", () =>
+      tokens.runTokenProvider(vscode, workspace, "full"), 60000);
+    await check("semantic token delta client applies real edits across Unicode LF CRLF and Any degradation", () =>
+      tokens.runTokenProvider(vscode, workspace, "delta"), 60000);
+    await check("semantic token range provider preserves exact token line and empty Unicode LF CRLF ranges", () =>
+      tokens.runTokenProvider(vscode, workspace, "range"), 90000);
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

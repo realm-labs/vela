@@ -42,6 +42,8 @@ async function main() {
     fs.writeFileSync(destination, parseMarkers(source).text);
   }
   require("./completion-fixture").materializeCompletion(workspace);
+  const tokenModel = require("../../../scripts/lsp-matrix/semantic-token-oracle").tokenModel();
+  fs.writeFileSync(path.join(workspace, tokenModel.file), tokenModel.states[0].document.text);
   fs.mkdirSync(path.join(workspace, ".vscode"));
   fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
     "vela.trace.server": "verbose",
@@ -49,7 +51,8 @@ async function main() {
     "chat.disableAIFeatures": true,
     "workbench.secondarySideBar.defaultVisibility": "hidden",
     "workbench.startupEditor": "none",
-    "files.autoSave": "off"
+    "files.autoSave": "off",
+    "editor.semanticHighlighting.enabled": true
   }));
   const vsix = path.join(resultRoot, "vela.vsix");
   const packaged = spawnSync(process.execPath, [path.join(extensionRoot, "scripts", "package-vsix.js"), "--out", vsix], {

@@ -63,6 +63,36 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-range/editor/smoke",
+      "assertion": "Reviewed in reviews/semantic-token-editor.md. Public installed VSIX range commands use the exact full legend and compare every token range, every occupied line range and an empty document-start range twice with the independent complete-stream subset. Repeated public fulls and close/disk restoration agree; token bounds and surrogate boundaries are checked. All original, multiline Chinese/non-BMP shift and source-to-Any degradation states run under LF/CRLF without source/disk mutation by queries. UX09 input/render remains open.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "semantic token range provider preserves exact token line and empty Unicode LF CRLF ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/editor/smoke",
+      "assertion": "Reviewed in reviews/semantic-token-editor.md. The real workbench renderer establishes a baseline from an observed full or retained-cache empty delta before public queries run. Each changed source must yield a complete matched new nonempty full/delta response naming an observed predecessor whose words equal the previous independent state; applied actual edits equal the next independent stream and fresh public full. No test-owned delta request or full fallback can pass. All original, multiline Chinese/non-BMP shift and source-to-Any degradation states run under LF/CRLF without source/disk mutation by queries. UX09 input/render remains open.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "semantic token delta client applies real edits across Unicode LF CRLF and Any degradation"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/editor/smoke",
+      "assertion": "Reviewed in reviews/semantic-token-editor.md. Public installed VSIX full commands decode every original and edited token to independent text/type/all-modifier/UTF-16 marker expectations, repeat exact data, reject invalid tuples/bounds/overlaps/surrogate splits and restore disk after close. All original, multiline Chinese/non-BMP shift and source-to-Any degradation states run under LF/CRLF without source/disk mutation by queries. UX09 input/render remains open.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "semantic token full provider preserves exact Unicode LF CRLF streams and restored disk"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/states/missing_schema/protocol",
       "assertion": "Reviewed in reviews/semantic-token-schema-lifecycle.md. Disk-only/open/closed callers, schema deletion, truncated JSON and unsupported version yield complete source/builtin-only streams and controlled diagnostics; valid empty metadata has the same tokens/IDs with no schema error; repair restores all original facts. Independent 25 states under LF/CRLF pin exact complete kinds/modifiers/UTF-16 spans, repeated and fresh fulls/token ranges, line/empty ranges, applied previous and original missing/valid deltas, stable repeat IDs and no-rebuild counters. Real closed source spans cannot confer source ownership on schema facts.",
       "tests": [

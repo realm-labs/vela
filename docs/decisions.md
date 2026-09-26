@@ -5059,3 +5059,8 @@ bound at a path prefix cannot authorize an invalid descendant. Literal qualified
 task paths retain compiler ownership before imports; aliases cannot manufacture
 scoped-task capabilities. This is metadata resolution, without VM execution or
 runtime registry mutation.
+
+Installed-editor evidence fingerprints include shared matrix scripts as well as
+fixtures, editor tests, launcher and dependencies. Changes to an independent
+oracle, token decoder or passive client-trace parser invalidate old provider
+evidence even when extension and server bytes stay identical.

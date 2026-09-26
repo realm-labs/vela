@@ -6097,10 +6097,20 @@
         "tokens-range/states/stale_schema/protocol"
       ],
       "summary": "Close six full/delta/range missing_schema and stale_schema protocol obligations. Independent five-file fixture specifies 25 metadata states under LF/CRLF: 50 workspace states and 100 complete document streams with fixed caller bytes. Separate fields, methods, trait methods and variants are renamed and restored; known imported factory returns Any without guessed downstream members; host-to-record named/return facts change field provenance. Missing, deleted, truncated and unsupported-version schema clear all metadata and publish one controlled unavailable diagnostic for open callers. Valid empty metadata has the same source-only streams/IDs as missing schema without a schema error. Closed callers still track schema replacements/deletion/recreation while diagnostics remain cleared. Source and builtin controls survive; real closed nonzero source spans never confer source provenance on schema facts. Repeated/fresh fulls and token ranges, token/line/empty ranges, applied prior/original missing/valid deltas and no-rebuild counters agree; repairs restore both baseline IDs. Reproducer fixes alias metadata lookups for return, target/effect and callback facts through one import/ownership resolver. A 21-case analysis regression guards local shadowing, duplicate aliases, missing/private/noncallable source owners, stdlib aliases, host origins/effects and literal task capabilities. Whole source callable paths must resolve exactly, rejecting invalid function descendants; a callback regression covers host/Any/missing/repair facts. Workspace tests, fmt, Clippy and Node 83 passed; service 721 passed with two unchanged baseline ignores and protocol 723 passed. Fresh Windows installed VSIX 16 and native input 29 routes plus driver proof match source/server identities. Strict current-source B05 gate revalidates B00-B05 without changing accepted snapshots. Catalog 679 verified, 646 unreviewed, two N/A, zero failed. B06 has 169 verified and nine unreviewed of 178; resume B06.15 for the installed semantic-token smoke and UX09 input/render gates. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-vxaL8r/results.json; input editors/vscode/test-results/input-2YQd0K/results.json; audit target/lsp-matrix/run-UAY9uz/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.15",
+      "revision": null,
+      "requirements": [
+        "tokens-full/editor/smoke",
+        "tokens-delta/editor/smoke",
+        "tokens-range/editor/smoke"
+      ],
+      "summary": "Close three installed full/delta/range editor smoke obligations. Independently authored standard-client fixture specifies 43 original and 45 shifted/demoted tokens: multiline Chinese/non-BMP prefix edits, source receiver to Any and local rename. LF/CRLF full commands check complete text/type/all-modifier/UTF-16 streams, tuple shape/bounds/nonoverlap/surrogate boundaries, repeats, physical disk preservation and close restoration. Range commands use the same full legend and independently check every token/occupied-line/document-start-empty range twice across all six source states. Delta proof passively observes the real installed language client's renderer requests without manufacturing a client or test-owned delta request. Startup verifies an actual initial full or retained-cache empty delta from an observed predecessor. Each changed source requires a new complete matched nonempty delta after its action boundary, naming words equal to the preceding independent state; applied edits equal both the next independent stream and a fresh public full. Wire requests/responses, prior/applied words and client logs are retained. Node sensitivity checks reject incomplete/malformed/incorrect streams, disjoint-offset violations, unmatched/partial/duplicate traces and missing predecessors. Editor fingerprints now include shared matrix scripts; explicit sensitivity proves oracle/decoder/trace changes stale old evidence despite unchanged server bytes. Node 89, fmt and workspace Clippy passed; fresh Windows installed VSIX 19 and native input 29 routes plus driver 30 passed with matching frozen source/server identities. Current-source strict B05 regression ran service 721 with two unchanged historical ignores and protocol 723 successfully, preserving B00-B05 acceptance snapshots. Catalog 682 verified, 643 unreviewed, two N/A, zero failed. B06 has 172 verified and six UX09 input/render cells remaining of 178; resume B06.16 for native edit-scroll, toggle-off-on and unresolved-token input/render. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-ZYGCa2/results.json; input editors/vscode/test-results/input-NqhwJH/results.json; audit target/lsp-matrix/run-Loziqv/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.15",
+  "nextTask": "B06.16",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8461,7 +8471,10 @@
     "editors/vscode/test-results/input-L2Xt3W/results.json",
     "target/lsp-matrix/run-UAY9uz/report.json",
     "editors/vscode/test-results/run-vxaL8r/results.json",
-    "editors/vscode/test-results/input-2YQd0K/results.json"
+    "editors/vscode/test-results/input-2YQd0K/results.json",
+    "target/lsp-matrix/run-Loziqv/report.json",
+    "editors/vscode/test-results/run-ZYGCa2/results.json",
+    "editors/vscode/test-results/input-NqhwJH/results.json"
   ],
   "openIssues": [
     {
@@ -10765,8 +10778,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7c6d2c3284942d792923d29ffb8a5a911e1388af",
-          "treeSha256": "d72d5be48062d27b8b94cceaba273e58e6592dd150e16c332286cffe262659b1"
+          "revision": "25cfa001be96f3e2e168933a45cf759e66474744",
+          "treeSha256": "1d140a6fc9c2eff5893f928bf32b08760930885ba3c280cf637453a3f111a7e3"
         },
         "profile": {
           "platform": "win32",
@@ -10774,11 +10787,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-UAY9uz/report.json"
+          "target/lsp-matrix/run-Loziqv/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-vxaL8r/results.json --local-results editors/vscode/test-results/input-2YQd0K/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-ZYGCa2/results.json --local-results editors/vscode/test-results/input-NqhwJH/results.json",
             "exitCode": 0
           }
         ]
