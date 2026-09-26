@@ -92,3 +92,6 @@ pub(super) fn delta(server: &mut TestServer, uri: &str, previous_id: &Value) -> 
     assert!(response.get("error").is_none(), "{response}");
     response["result"].clone()
 }
+
+mod scenarios;
+pub(super) use scenarios::assert_fixture;

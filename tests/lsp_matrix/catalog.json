@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::body_tests::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete negative S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::bodies::body_scopes_writes_captures_and_unresolved_names_have_exact_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S1/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-top-level.md. Hand-marked complete S1 positive streams pin every token text, type, modifier and byte/UTF-16 coordinate in LF/CRLF. Cover declarations, signatures/defaults and impl ownership; duplicates, unresolved imports and unknown/abstract/Any receivers retain conservative exact classifications. Apply actual deltas, compare fresh analysis, restore disk and assert exact per-line/per-token/empty-boundary ranges.",
       "tests": [

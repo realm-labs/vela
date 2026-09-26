@@ -21,6 +21,11 @@ and editor APIs use the UTF-16 position. Oracles never call production LineIndex
 or providers to obtain expected ranges. Edit helpers reject reversed/overlapping
 ranges, split surrogate pairs and out-of-bounds positions before applying edits.
 
+Complete semantic-token oracles normally use range markers. They may use a
+cursor marker before a token whose literal `[` would collide with the following
+range marker. In that case the independently authored `text` determines its
+byte/UTF-16 length; the oracle still checks exact source text and scalar bounds.
+
 A workspace has `version`, `id`, `files`, ordered `actions`, and an independent
 `oracle`. Each relative file path rejects traversal, absolute/drive paths and
 backslashes. `open`, `change`, `save`, `close`, disk `write`, and disk `delete`

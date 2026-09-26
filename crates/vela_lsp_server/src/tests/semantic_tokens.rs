@@ -1,5 +1,6 @@
 use super::{TestServer, notification_value, notify, request, response_value};
 
+mod bodies;
 mod coordinates;
 mod support;
 mod tasks;

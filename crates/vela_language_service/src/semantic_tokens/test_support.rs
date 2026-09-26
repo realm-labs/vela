@@ -20,3 +20,6 @@ pub(super) fn rows(document: &Document, tokens: &[SemanticToken]) -> Vec<oracle:
         })
         .collect()
 }
+
+mod scenarios;
+pub(super) use scenarios::assert_fixture;

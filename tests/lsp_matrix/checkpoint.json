@@ -5868,10 +5868,29 @@
         "tokens-range/syntax/S1/negative/protocol"
       ],
       "summary": "Close twelve S1 positive/negative full/delta/range service/protocol obligations. Hand-marked independent complete streams pin 172 positive and 163 negative tokens, including declarations, contextual state, required/default method parameters and constant defaults, struct/enum fields and variants, and inherent/trait impls. Duplicate declarations and unresolved imports retain exact conservative tokens; abstract, unknown and explicit Any receivers cannot borrow a concrete field. Actual deltas match independently checked fresh streams; exact per-line/per-token/empty-boundary ranges hold in LF/CRLF. Encoded Unicode workspace overlays close back to original disk stream and ID. Fixed missing method signature/body binding ownership, impl header type uses and resolved impl self member ownership without runtime changes. Focused service/protocol tests, full workspace tests, fmt, workspace Clippy and Node 83 passed. Fresh Windows installed VSIX 16 and native input 29 passed. Strict current-source B05 gate revalidates accepted B00-B05; catalog 534 verified, 791 unreviewed, two N/A and zero failed. B06 has 24 verified and 154 unreviewed of 178; resume B06.3. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-OoYwNE/results.json; input editors/vscode/test-results/input-ETH31D/results.json; audit target/lsp-matrix/run-KxNoyb/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.3",
+      "revision": null,
+      "requirements": [
+        "tokens-full/syntax/S2/positive/service",
+        "tokens-full/syntax/S2/positive/protocol",
+        "tokens-full/syntax/S2/negative/service",
+        "tokens-full/syntax/S2/negative/protocol",
+        "tokens-delta/syntax/S2/positive/service",
+        "tokens-delta/syntax/S2/positive/protocol",
+        "tokens-delta/syntax/S2/negative/service",
+        "tokens-delta/syntax/S2/negative/protocol",
+        "tokens-range/syntax/S2/positive/service",
+        "tokens-range/syntax/S2/positive/protocol",
+        "tokens-range/syntax/S2/negative/service",
+        "tokens-range/syntax/S2/negative/protocol"
+      ],
+      "summary": "Close twelve S2 positive/negative semantic-token full/delta/range service/protocol obligations. Independent whole-stream oracles pin all 325 positive and 238 negative tokens across function, inherent method, default trait method and trait implementation bodies: local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits, lambdas, captures and callbacks from an unopened dependency. Missing reads/writes and later/expired block, lambda, loop and arm bindings retain exact unresolved classification, without borrowed declaration/source flags. Actual applied deltas match independently checked fresh streams; every line/token/empty-boundary range is exact in LF/CRLF and encoded Unicode workspace URIs; close restores original disk stream and ID. Extracted reusable scenario drivers while preserving all S1 assertions and test identities. Cursor token oracles resolve fixture delimiter ambiguity around opening brackets and separately pin byte/UTF-16 Unicode lengths. No product/runtime behavior changed. Service semantic-token 44 and protocol 40 tests, full workspace tests, fmt, workspace Clippy and Node 83 passed. Fresh Windows installed VSIX 16 and native input 29 passed. Strict current-source B05 gate revalidates accepted B00-B05; catalog 546 verified, 779 unreviewed, two N/A and zero failed. B06 is 36 verified and 142 unreviewed of 178; resume B06.4 for S3 type positions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-iBJuh9/results.json; input editors/vscode/test-results/input-lFnQot/results.json; audit target/lsp-matrix/run-cy5keC/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.3",
+  "nextTask": "B06.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8202,7 +8221,8 @@
     "target/lsp-matrix/run-zI9gH1/report.json",
     "target/lsp-matrix/run-YLh9ud/report.json",
     "target/lsp-matrix/run-rvt0cH/report.json",
-    "target/lsp-matrix/run-KxNoyb/report.json"
+    "target/lsp-matrix/run-KxNoyb/report.json",
+    "target/lsp-matrix/run-cy5keC/report.json"
   ],
   "openIssues": [
     {
@@ -10506,8 +10526,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "da730d88a6c8bff2bfa81580949acf461aa41ad7",
-          "treeSha256": "e115918e06402e57fb27d470cd036d58797ad6aa0e075cfd8fc70a3bb0a203f5"
+          "revision": "eb4a62b5af19495ea89d1d6eff19e8a963df9582",
+          "treeSha256": "a6a0ce8787bccffe513f95e2d2643db049e41a235793cf2f5846965c9979c1b1"
         },
         "profile": {
           "platform": "win32",
@@ -10515,11 +10535,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-KxNoyb/report.json"
+          "target/lsp-matrix/run-cy5keC/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-OoYwNE/results.json --local-results editors/vscode/test-results/input-ETH31D/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-iBJuh9/results.json --local-results editors/vscode/test-results/input-lFnQot/results.json",
             "exitCode": 0
           }
         ]

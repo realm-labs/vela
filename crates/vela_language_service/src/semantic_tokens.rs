@@ -1165,6 +1165,8 @@ fn token_range(span: vela_common::Span) -> Option<TextRange> {
 }
 
 #[cfg(test)]
+mod body_tests;
+#[cfg(test)]
 mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;

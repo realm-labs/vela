@@ -53,6 +53,7 @@ pub(crate) fn expected(document: &Document, oracle: &Value, utf16: bool) -> Vec<
         .expect("complete token oracle")
         .iter()
         .map(|entry| {
+            let text = entry["text"].as_str().expect("token text");
             let marker = document.markers[entry["marker"].as_str().expect("marker")];
             assert_eq!(marker.start.line, marker.end.line);
             let line_start = document.text[..marker.start.byte]
@@ -63,7 +64,13 @@ pub(crate) fn expected(document: &Document, oracle: &Value, utf16: bool) -> Vec<
             } else {
                 marker.start.byte - line_start
             };
-            let length = if utf16 {
+            let length = if marker.start == marker.end {
+                if utf16 {
+                    text.encode_utf16().count()
+                } else {
+                    text.len()
+                }
+            } else if utf16 {
                 marker.end.character - marker.start.character
             } else {
                 marker.end.byte - marker.start.byte
@@ -80,7 +87,7 @@ pub(crate) fn expected(document: &Document, oracle: &Value, utf16: bool) -> Vec<
                     .collect(),
                 utf16,
             );
-            assert_eq!(result.text, entry["text"].as_str().expect("token text"));
+            assert_eq!(result.text, text);
             result
         })
         .collect()
@@ -98,5 +105,30 @@ pub(crate) fn assert_stream(actual: &[Row], expected: &[Row]) {
     assert_eq!(actual.len(), expected.len(), "complete token count");
     for (index, (actual, expected)) in actual.iter().zip(expected).enumerate() {
         assert_eq!(actual, expected, "complete token stream at token {index}");
+    }
+}
+
+#[test]
+fn cursor_token_oracles_pin_literal_brackets_and_unicode_lengths() {
+    let document =
+        super::parse_markers("/* 文😀 */ [[open]][ [[word]]文😀 [[close:start]]][[close:end]]\r\n")
+            .expect("cursor beside literal bracket");
+    let oracle = serde_json::json!([
+        {"marker":"open","text":"[","type":"bracket","modifiers":[]},
+        {"marker":"word","text":"文😀","type":"string","modifiers":[]},
+        {"marker":"close","text":"]","type":"bracket","modifiers":[]}
+    ]);
+    for (utf16, wanted) in [
+        (false, [(14, 1), (16, 7), (24, 1)]),
+        (true, [(10, 1), (12, 3), (16, 1)]),
+    ] {
+        let rows = expected(&document, &oracle, utf16);
+        assert_eq!(
+            rows.iter()
+                .map(|row| (row.column, row.length))
+                .collect::<Vec<_>>(),
+            wanted
+        );
+        assert!(rows.iter().all(|row| row.line == 0));
     }
 }
