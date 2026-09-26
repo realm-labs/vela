@@ -1,55 +1,50 @@
-use vela_common::Span;
-use vela_hir::module_graph::{Import, ImportResolution, ModuleGraph};
+//! Exact import targets and alias declarations, with source ownership first.
+use std::collections::BTreeMap;
 
-use crate::TextRange;
+use vela_common::SourceId;
+
+use crate::LanguageServiceDatabases;
 
 use super::{
-    SemanticTokenClassification, SemanticTokenModifiers, SemanticTokenType,
-    declaration_use_classification, span_contains_range,
+    SemanticTokenClassification as C, SemanticTokenModifiers as M, SemanticTokenType as T,
+    path_targets::Targets,
 };
 
-pub(super) fn classification(
-    graph: &ModuleGraph,
-    _text: &str,
-    name: &str,
-    range: TextRange,
-    span: Span,
-) -> Option<SemanticTokenClassification> {
+pub(super) fn collect(
+    db: &LanguageServiceDatabases,
+    source: SourceId,
+) -> BTreeMap<(usize, usize), C> {
+    let graph = db.hir_db().graph();
+    let mut result = BTreeMap::new();
     for module in graph.module_ids() {
         let Some(imports) = graph.imports(module) else {
             continue;
         };
-        for import in imports {
-            if import.span.source != span.source || !import.span.contains(span.start) {
-                continue;
+        if !imports.iter().any(|import| import.span.source == source) {
+            continue;
+        }
+        let targets = Targets::new(db, module);
+        for import in imports.iter().filter(|import| import.span.source == source) {
+            let target = targets.import(&import.path, import.resolution);
+            for (index, span) in import.path_spans.iter().enumerate() {
+                result.insert(
+                    (span.start as usize, span.end as usize),
+                    if index + 1 == import.path.len() {
+                        target
+                    } else {
+                        C::new(T::Module, M::NONE)
+                    },
+                );
             }
-            let Some(segment_index) = segment_index(import, name, range) else {
-                continue;
-            };
-            if segment_index + 1 < import.path.len() {
-                return Some(SemanticTokenClassification::new(
-                    SemanticTokenType::Module,
-                    SemanticTokenModifiers::NONE,
-                ));
+            if let Some(span) = import.alias_span {
+                let alias = if target.token_type == T::UnresolvedReference {
+                    target
+                } else {
+                    C::new(target.token_type, target.modifiers.union(M::DECLARATION))
+                };
+                result.insert((span.start as usize, span.end as usize), alias);
             }
-            let Some(ImportResolution::Declaration(declaration)) = import.resolution else {
-                return Some(SemanticTokenClassification::new(
-                    SemanticTokenType::UnresolvedReference,
-                    SemanticTokenModifiers::UNRESOLVED,
-                ));
-            };
-            return graph
-                .declaration(declaration)
-                .map(declaration_use_classification);
         }
     }
-    None
-}
-
-fn segment_index(import: &Import, name: &str, range: TextRange) -> Option<usize> {
-    import
-        .path
-        .iter()
-        .zip(&import.path_spans)
-        .position(|(segment, span)| segment == name && span_contains_range(*span, range))
+    result
 }

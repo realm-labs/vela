@@ -152,15 +152,14 @@ fn classify_path(
     }) else {
         return;
     };
-    if tokens.len() < 2 {
-        return;
+    if tokens.len() >= 2 {
+        insert(
+            result,
+            &tokens[..tokens.len() - 1],
+            tokens.len() - 2,
+            enum_owner,
+        );
     }
-    insert(
-        result,
-        &tokens[..tokens.len() - 1],
-        tokens.len() - 2,
-        enum_owner,
-    );
     let known = if enum_owner.modifiers == M::BUILTIN {
         vela_analysis::stdlib::stdlib_enum_variants(&parent.join("::"))
             .any(|entry| entry == variant)

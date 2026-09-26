@@ -4,8 +4,37 @@ use lsp_types::{notification as n, request as r};
 use serde_json::json;
 
 use super::{apply_delta, delta, full, rows, start};
-use crate::matrix_fixture::{FixtureWorkspace, load, parse_markers, semantic_tokens as oracle};
+use crate::matrix_fixture::{
+    FixtureWorkspace, Spec, load, parse_markers, semantic_tokens as oracle,
+};
 use crate::tests::{notify, request, response_value, sync_diagnostics};
+
+fn load_marked_schema(
+    server: &mut crate::tests::TestServer,
+    spec: &Spec,
+    fixture: &FixtureWorkspace,
+    root: &std::path::Path,
+) {
+    if spec.oracle["schema"].is_null() {
+        return;
+    }
+    let path = root.join("schema.json");
+    let existed = path.exists();
+    let snapshot = server.snapshot();
+    let artifact =
+        crate::matrix_fixture::schema_artifact(&spec.oracle["schema"], fixture, |file| {
+            let uri = lsp_types::Url::from_file_path(root.join(file)).expect("schema source URI");
+            snapshot.databases().source_db().records()
+                [&vela_language_service::DocumentId::from(uri.to_string())]
+                .source_id()
+                .get()
+        });
+    fs::write(&path, artifact.to_string()).expect("marked schema");
+    let _ = notify::<n::DidChangeWatchedFiles>(
+        server,
+        json!({"changes":[{"uri":lsp_types::Url::from_file_path(path).expect("schema URI"),"type":if existed {2} else {1}}]}),
+    );
+}
 
 pub(in super::super) fn assert_fixture(fixture: &str) {
     let spec = load(fixture);
@@ -19,10 +48,9 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             .expect("document")
         };
         let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
-        fixture.disk.insert(
-            "scripts/main.vela".into(),
-            source(&spec.files["scripts/main.vela"]),
-        );
+        for (file, document) in &mut fixture.disk {
+            *document = source(&spec.files[file]);
+        }
         let positive = &fixture.disk["scripts/main.vela"];
         let negative = source(
             spec.oracle["negative"]["source"]
@@ -37,6 +65,7 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             .to_string();
         assert!(uri.contains('%'));
         let (mut server, legend) = start(&root);
+        load_marked_schema(&mut server, &spec, &fixture, &root);
         let _ = sync_diagnostics::<n::DidOpenTextDocument>(
             &mut server,
             json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":positive.text}}),
@@ -74,6 +103,7 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             );
             assert_eq!(full(&mut server, &uri), current);
             let (mut fresh, fresh_legend) = start(&root);
+            load_marked_schema(&mut fresh, &spec, &fixture, &root);
             let _ = sync_diagnostics::<n::DidOpenTextDocument>(
                 &mut fresh,
                 json!({"textDocument":{"uri":uri,"languageId":"vela","version":1,"text":document.text}}),

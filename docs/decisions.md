@@ -4999,3 +4999,17 @@ without introducing recursive traversal. Comments inside expressions use the
 normal comment scanner, while literal chunks shield comment-like text. Multiline
 chunks retain the established nonempty line-slice policy. This is a read-only
 tooling projection and does not alter language syntax or runtime behavior.
+
+Semantic-token import aliases retain the target kind and provenance and add the
+declaration modifier, without claiming the target's definition. Exact import
+spans are collected once per source. Import and known value paths share scoped
+source ownership, visibility and exact builtin/schema identities; private source
+ownership and invalid source descendants block registry fallback. Direct enum
+variant imports and aliases retain enum-member ownership, including single-token
+constructor uses. Direct source/builtin/schema module imports
+retain their origin, while qualified value-path prefixes are structural namespace
+tokens and only the terminal retains target attributes. Local bindings shadow
+namespace-looking paths: only the first token inherits their role; unknown suffixes
+gain no callable or member ownership. Explicit record labels start without
+provenance and acquire property attributes only from known field facts, while
+shorthand retains its value binding. These rules are read-only tooling projections.

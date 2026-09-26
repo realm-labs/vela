@@ -27,11 +27,13 @@ mod interpolation;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
+mod path_targets;
 mod range;
 mod record_labels;
 mod result_id;
 mod type_hints;
 mod unresolved;
+mod value_paths;
 mod variant_uses;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -575,8 +577,10 @@ impl LanguageServiceDatabases {
         input: &SemanticClassificationInput<'_>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = type_hints::collect(self, input.source_id);
+        classifications.extend(import_paths::collect(self, input.source_id));
         classifications.extend(impl_headers::collect(self, input.source_id));
         classifications.extend(record_labels::collect(self, input.source_id));
+        classifications.extend(value_paths::collect(self, input.source_id));
         classifications.extend(constructor_paths::collect(self, input.source_id));
         classifications.extend(calls::collect(self, input.source_id));
         let graph = self.hir_db().graph();
@@ -637,10 +641,6 @@ impl LanguageServiceDatabases {
                 SemanticTokenType::Keyword,
                 SemanticTokenModifiers::NONE,
             ));
-        }
-
-        if let Some(classification) = import_paths::classification(graph, text, name, range, span) {
-            return Some(classification);
         }
 
         for declaration in graph.declarations() {
@@ -1142,6 +1142,8 @@ mod control_tests;
 mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;
+#[cfg(test)]
+mod import_tests;
 #[cfg(test)]
 mod literal_tests;
 #[cfg(test)]

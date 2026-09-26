@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored positive S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::import_tests::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-imports.md. Complete independently authored negative S8 streams pin imported functions/consts/states/structs/enums/traits, plain and aliased imports, file/directory/deep module aliases, exact alias declaration versus target use, qualified function values and const/state reads/writes, imported type hints/constructors/variants/direct variant aliases/patterns/fields/methods/trait defaults and closure captures. Source-backed schema functions/types/modules and metadata-only functions/traits retain host/schema ownership; immutable builtin function/module aliases retain defaultLibrary. Public source ownership wins exact registry collisions and private source ownership and invalid source enum descendants block fallback. Unknown/wrong/private imports, duplicate aliases, local declaration conflicts, namespace-looking local shadows, unknown constructor labels and Any members cannot borrow facts. Only path terminals gain target provenance; local prefixes retain their binding role. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::imports::module_imports_aliases_and_cross_file_owners_have_exact_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S7/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-literals.md. Complete independently authored positive S7 streams pin all integer suffixes, decimal/hex/binary/underscore numbers, exponent floats and both float suffixes, Unicode/escaped/multiline strings and chars, escaped bytes, booleans, unit/tuple/array/map/set/record values and all unary/binary/comparison/logical/assignment/compound/range/index roles. Ordinary/multiline/nested interpolation separates literal text, escaped braces, delimiters, embedded parameters/functions/properties/operators and real expression comments with exact original byte/UTF-16 spans. Unknown value/callee names are unresolved; Any members and unowned field bases gain no invented ownership. Invalid literal suffixes/escapes preserve lexical classes independently of diagnostics. Applied deltas, fresh parity, LF/CRLF line/token/empty-end ranges and encoded-URI overlay close restoration are exact.",
       "tests": [

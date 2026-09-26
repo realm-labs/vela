@@ -1,19 +1,46 @@
 use super::rows;
-use crate::matrix_fixture::{Document, load, parse_markers, semantic_tokens as oracle};
+use crate::matrix_fixture::{
+    Document, FixtureWorkspace, Spec, load, parse_markers, semantic_tokens as oracle,
+};
 use crate::{
     DiagnosticRange, DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
     WorkspaceConfig, WorkspaceRoot, assemble_project_sources,
 };
 
-fn update(db: &mut LanguageServiceDatabases, document: &Document, helper: &str) {
+fn update(db: &mut LanguageServiceDatabases, document: &Document, fixture: &FixtureWorkspace) {
+    let sources: Vec<_> = fixture
+        .disk
+        .iter()
+        .filter(|(file, _)| file.ends_with(".vela"))
+        .map(|(file, source)| {
+            SourceFileSnapshot::new(
+                format!("/workspace/{file}"),
+                if file == "scripts/main.vela" {
+                    document.text.as_str()
+                } else {
+                    source.text.as_str()
+                },
+            )
+        })
+        .collect();
     db.update(&assemble_project_sources(
         &WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]),
-        &[
-            SourceFileSnapshot::new("/workspace/scripts/main.vela", document.text.as_str()),
-            SourceFileSnapshot::new("/workspace/scripts/defs.vela", helper),
-        ],
+        &sources,
         &Workspace::new().snapshot(),
     ));
+}
+
+fn load_marked_schema(db: &mut LanguageServiceDatabases, spec: &Spec, fixture: &FixtureWorkspace) {
+    if spec.oracle["schema"].is_null() {
+        return;
+    }
+    let artifact =
+        crate::matrix_fixture::schema_artifact(&spec.oracle["schema"], fixture, |file| {
+            db.source_db().records()[&DocumentId::from(format!("/workspace/{file}"))]
+                .source_id()
+                .get()
+        });
+    db.load_schema_artifact_json("/workspace/schema.json", &artifact.to_string());
 }
 
 pub(in super::super) fn assert_fixture(fixture: &str) {
@@ -34,11 +61,16 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
                 .as_str()
                 .expect("negative source"),
         );
+        let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
+        for (file, document) in &mut fixture.disk {
+            *document = source(&spec.files[file]);
+        }
         let mut db = LanguageServiceDatabases::new();
         if let Some(schema) = spec.files.get("schema.json") {
             db.load_schema_artifact_json("/workspace/schema.json", schema);
         }
-        update(&mut db, &positive, &spec.files["scripts/defs.vela"]);
+        update(&mut db, &positive, &fixture);
+        load_marked_schema(&mut db, &spec, &fixture);
         let original = db.semantic_tokens(&id);
         let mut previous = original.clone();
         for (document, expected) in [
@@ -46,7 +78,7 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             (&negative, &spec.oracle["negative"]["tokens"]),
             (&positive, &spec.oracle["positive"]),
         ] {
-            update(&mut db, document, &spec.files["scripts/defs.vela"]);
+            update(&mut db, document, &fixture);
             let expected = oracle::expected(document, expected, false);
             let full = db.semantic_tokens(&id);
             oracle::assert_stream(&rows(document, full.tokens()), &expected);
@@ -69,7 +101,8 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
             if let Some(schema) = spec.files.get("schema.json") {
                 fresh.load_schema_artifact_json("/workspace/schema.json", schema);
             }
-            update(&mut fresh, document, &spec.files["scripts/defs.vela"]);
+            update(&mut fresh, document, &fixture);
+            load_marked_schema(&mut fresh, &spec, &fixture);
             assert_eq!(fresh.semantic_tokens(&id), full, "incremental equals fresh");
             for line in 0..document.text.lines().count() {
                 let selected: Vec<_> = expected

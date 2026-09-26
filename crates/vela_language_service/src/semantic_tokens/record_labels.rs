@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 
 use vela_common::SourceId;
+use vela_syntax::ast::{AstNode, SyntaxRecordExpr};
 
 use crate::{LanguageServiceDatabases, schema_record_fields, source_record_fields};
 
@@ -22,6 +23,29 @@ pub(super) fn collect(
     else {
         return result;
     };
+    if let Some(parsed) = db.parse_db().syntax_parse(source.document_id()) {
+        for record in parsed
+            .tree()
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxRecordExpr::cast)
+        {
+            for label in record
+                .fields()
+                .into_iter()
+                .filter(|field| !field.is_shorthand())
+                .filter_map(|field| field.label_token())
+            {
+                result.insert(
+                    (
+                        usize::from(label.text_range().start()),
+                        usize::from(label.text_range().end()),
+                    ),
+                    C::new(T::Variable, M::NONE),
+                );
+            }
+        }
+    }
     for site in source_record_fields::record_sites(db, source)
         .into_iter()
         .filter(|site| !site.shorthand)
