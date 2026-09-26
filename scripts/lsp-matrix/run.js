@@ -24,8 +24,11 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 function cargo(args, log) {
   console.log(`cargo ${args.join(" ")}`);
+  // Expanded suites may exceed five minutes on a loaded local machine. Keep
+  // discovery/build commands bounded separately from whole-suite execution.
+  const timeout = args[0] === "test" && !args.includes("--list") ? 600000 : 300000;
   const result = spawnSync("cargo", args, {
-    cwd: root, encoding: "utf8", timeout: 300000, maxBuffer: 32 * 1024 * 1024, windowsHide: true,
+    cwd: root, encoding: "utf8", timeout, maxBuffer: 32 * 1024 * 1024, windowsHide: true,
     env: { ...process.env, CARGO_TERM_COLOR: "never" }
   });
   fs.writeFileSync(path.join(output, log), (result.stdout || "") + (result.stderr || ""));
