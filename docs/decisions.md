@@ -4952,3 +4952,13 @@ Unowned schema lookup uses the complete expanded path, never a matching terminal
 from another namespace. Missing facts retain a type token with no provenance;
 recognized builtin hints keep defaultLibrary classification independently of
 argument-validity diagnostics. These are read-only tooling projections.
+
+Semantic-token constructor and variant paths resolve in the requesting module
+and retain exact segment spans. Explicit constructor/pattern field labels are
+properties of known source/schema fields; shorthand keeps its local binding
+role. Known source receiver owners block schema member fallback, qualified
+receiver identities do not lose their namespace, and inherited trait defaults
+resolve in the impl's own module. Enum methods use the enum owner independently
+of a known payload variant; payload fields retain the variant owner. Unknown
+members gain no provenance. Tooling consumes the existing scoped type-hint
+resolver and immutable metadata without executing source or accessing host state.

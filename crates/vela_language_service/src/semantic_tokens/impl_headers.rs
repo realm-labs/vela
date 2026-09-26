@@ -50,6 +50,17 @@ pub(super) fn collect(
             let modifiers = expanded.as_ref().map_or(M::NONE, |expanded| {
                 if graph
                     .resolve_visible_declaration_path(module, expanded, kind)
+                    .or_else(|| {
+                        (kind == DeclarationKind::Struct)
+                            .then(|| {
+                                graph.resolve_visible_declaration_path(
+                                    module,
+                                    expanded,
+                                    DeclarationKind::Enum,
+                                )
+                            })
+                            .flatten()
+                    })
                     .is_some_and(|declaration| {
                         declaration.module == module || declaration.visibility == Visibility::Public
                     })

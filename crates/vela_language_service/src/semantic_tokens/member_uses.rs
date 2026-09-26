@@ -5,9 +5,9 @@ use vela_analysis::{
 };
 use vela_hir::{
     binding::{BindingMap, BindingResolution},
-    ids::HirLocalId,
+    ids::{HirLocalId, ModuleId},
     module_graph::{Declaration, DeclarationKind, ModuleGraph},
-    type_hint::{HirTypeHint, ImplMetadata, ImplMetadataKind},
+    type_hint::{ImplMetadata, ImplMetadataKind},
 };
 
 use crate::{TextRange, expression_facts::ExpressionFacts};
@@ -54,6 +54,7 @@ pub(super) fn classify(
                 .and_then(|resolution| {
                     type_fact_for_resolution(
                         resolution,
+                        context.graph,
                         context.bindings,
                         context.facts,
                         context.schema,
@@ -98,6 +99,14 @@ fn method_use_classification(
     receiver: &TypeFact,
     name: &str,
 ) -> Option<SemanticTokenClassification> {
+    if source_owner_exists(graph, receiver) {
+        return script_method_exists(graph, receiver, name).then(|| {
+            SemanticTokenClassification::new(
+                SemanticTokenType::Method,
+                SemanticTokenModifiers::SOURCE,
+            )
+        });
+    }
     if let Some(modifiers) = schema_method_modifiers(schema, receiver, name) {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Method,
@@ -121,6 +130,14 @@ fn field_use_classification(
     receiver: &TypeFact,
     name: &str,
 ) -> Option<SemanticTokenClassification> {
+    if source_owner_exists(graph, receiver) {
+        return script_field_exists(graph, receiver, name).then(|| {
+            SemanticTokenClassification::new(
+                SemanticTokenType::Property,
+                SemanticTokenModifiers::SOURCE,
+            )
+        });
+    }
     if schema_field_exists(schema, receiver, name) {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Property,
@@ -137,6 +154,7 @@ fn field_use_classification(
 
 fn type_fact_for_resolution(
     resolution: &BindingResolution,
+    graph: &ModuleGraph,
     bindings: &BindingMap,
     facts: &AnalysisFacts,
     schema: &RegistryFacts,
@@ -150,28 +168,20 @@ fn type_fact_for_resolution(
                 .cloned()
                 .filter(|fact| !matches!(fact, TypeFact::Unknown))
                 .or_else(|| inferred_local_facts.get(local).cloned())
-                .or_else(|| schema_fact_for_local_hint(binding.type_hint.as_ref(), schema))
+                .or_else(|| {
+                    let module = graph.declaration(bindings.declaration)?.module;
+                    let hint = binding.type_hint.as_ref()?;
+                    let fact = vela_analysis::hints::type_fact_from_hint_with_schema(
+                        graph,
+                        module,
+                        hint,
+                        Some(schema),
+                    );
+                    (!matches!(fact, TypeFact::Unknown)).then_some(fact)
+                })
         }
         BindingResolution::Declaration(declaration) => facts.declaration(*declaration).cloned(),
         BindingResolution::Import(_) | BindingResolution::QualifiedPath(_) => None,
-    }
-}
-
-fn schema_fact_for_local_hint(
-    hint: Option<&HirTypeHint>,
-    schema: &RegistryFacts,
-) -> Option<TypeFact> {
-    let hint = hint?;
-    if hint.args.is_empty() {
-        let qualified = hint.path.join("::");
-        schema
-            .type_fact(&qualified)
-            .or_else(|| hint.path.last().and_then(|name| schema.type_fact(name)))
-            .or_else(|| schema.trait_fact(&qualified))
-            .or_else(|| hint.path.last().and_then(|name| schema.trait_fact(name)))
-            .cloned()
-    } else {
-        None
     }
 }
 
@@ -198,7 +208,7 @@ fn schema_field_exists(schema: &RegistryFacts, receiver: &TypeFact, field: &str)
 }
 
 fn script_method_exists(graph: &ModuleGraph, receiver: &TypeFact, method: &str) -> bool {
-    let owner_names = owner_names(receiver);
+    let owner_names = method_owner_names(receiver);
     graph
         .declarations()
         .any(|declaration| match declaration.kind {
@@ -232,7 +242,7 @@ fn script_trait_default_method_exists(
     receiver: &TypeFact,
     method: &str,
 ) -> bool {
-    let owner_names = owner_names(receiver);
+    let owner_names = method_owner_names(receiver);
     graph.declarations().any(|declaration| {
         if !matches!(declaration.kind, DeclarationKind::Impl) {
             return false;
@@ -250,12 +260,13 @@ fn script_trait_default_method_exists(
         if metadata.methods.iter().any(|entry| entry.name == method) {
             return true;
         }
-        trait_default_method_exists(graph, metadata, trait_path, method)
+        trait_default_method_exists(graph, declaration.module, metadata, trait_path, method)
     })
 }
 
 fn trait_default_method_exists(
     graph: &ModuleGraph,
+    module: ModuleId,
     metadata: &ImplMetadata,
     trait_path: &[String],
     method: &str,
@@ -263,7 +274,7 @@ fn trait_default_method_exists(
     if metadata.methods.iter().any(|entry| entry.name == method) {
         return false;
     }
-    let Some(trait_declaration) = trait_declaration_for_path(graph, trait_path) else {
+    let Some(trait_declaration) = trait_declaration_for_path(graph, module, trait_path) else {
         return false;
     };
     graph.trait_shape(trait_declaration).is_some_and(|shape| {
@@ -276,19 +287,43 @@ fn trait_default_method_exists(
 
 fn trait_declaration_for_path(
     graph: &ModuleGraph,
+    module: ModuleId,
     trait_path: &[String],
 ) -> Option<vela_hir::ids::HirDeclId> {
-    let owner = trait_path.join("::");
+    let path = graph.expand_import_path(module, trait_path)?;
     graph
-        .declarations()
-        .find(|declaration| {
-            declaration.kind == DeclarationKind::Trait
-                && declaration_name_matches(graph, declaration, &owner)
-        })
+        .resolve_visible_declaration_path(module, &path, DeclarationKind::Trait)
         .map(|declaration| declaration.id)
 }
 
 fn script_field_exists(graph: &ModuleGraph, receiver: &TypeFact, field: &str) -> bool {
+    if let TypeFact::Enum {
+        name,
+        variant: Some(variant),
+    } = receiver
+    {
+        return graph
+            .declarations()
+            .filter(|declaration| {
+                declaration.kind == DeclarationKind::Enum
+                    && declaration_name_matches(graph, declaration, name)
+            })
+            .filter_map(|declaration| graph.enum_shape(declaration.id))
+            .any(|shape| {
+                shape.variants.iter().any(|entry| {
+                    entry.name == *variant
+                        && match &entry.fields {
+                            vela_hir::type_hint::EnumVariantFieldsHint::Record(fields) => {
+                                fields.iter().any(|entry| entry.name == field)
+                            }
+                            vela_hir::type_hint::EnumVariantFieldsHint::Tuple(fields) => {
+                                fields.iter().any(|entry| entry.name == field)
+                            }
+                            vela_hir::type_hint::EnumVariantFieldsHint::Unit => false,
+                        }
+                })
+            });
+    }
     let owner_names = owner_names(receiver);
     graph.declarations().any(|declaration| {
         if !matches!(declaration.kind, DeclarationKind::Struct) {
@@ -307,13 +342,27 @@ fn owner_names(receiver: &TypeFact) -> Vec<String> {
     let Some(owner) = receiver_owner_name(receiver) else {
         return Vec::new();
     };
-    let mut names = vec![owner.clone()];
-    if let Some(short) = owner.rsplit("::").next()
-        && short != owner
-    {
-        names.push(short.to_owned());
+    vec![owner]
+}
+
+fn method_owner_names(receiver: &TypeFact) -> Vec<String> {
+    match receiver {
+        TypeFact::Enum { name, .. } => vec![name.clone()],
+        _ => owner_names(receiver),
     }
-    names
+}
+
+fn source_owner_exists(graph: &ModuleGraph, receiver: &TypeFact) -> bool {
+    let name = match receiver {
+        TypeFact::Record { name } | TypeFact::Trait { name } | TypeFact::Enum { name, .. } => name,
+        _ => return false,
+    };
+    graph.declarations().any(|declaration| {
+        matches!(
+            declaration.kind,
+            DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+        ) && declaration_name_matches(graph, declaration, name)
+    })
 }
 
 fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
@@ -350,27 +399,26 @@ fn impl_target_names(
     declaration: &Declaration,
     target_path: &[String],
 ) -> Vec<String> {
-    let raw = target_path.join("::");
-    let mut names = vec![raw.clone()];
-    if target_path.len() == 1
-        && let Some(module_path) = graph.module_path(declaration.module)
+    let Some(path) = graph.expand_import_path(declaration.module, target_path) else {
+        return Vec::new();
+    };
+    if let Some(current) = graph.module_key(declaration.module)
+        && let Some(owner) = [
+            DeclarationKind::Struct,
+            DeclarationKind::Enum,
+            DeclarationKind::Trait,
+        ]
+        .into_iter()
+        .find_map(|kind| graph.declaration_by_type_path(&path, current, kind))
     {
-        let qualified = module_path
-            .segments()
-            .iter()
-            .chain(target_path.iter())
-            .cloned()
-            .collect::<Vec<_>>()
-            .join("::");
-        if qualified != raw {
-            names.push(qualified);
-        }
+        return vec![qualified_declaration_name(graph, owner)];
     }
-    names
+    vec![path.join("::")]
 }
 
 fn declaration_name_matches(graph: &ModuleGraph, declaration: &Declaration, owner: &str) -> bool {
-    declaration.name == owner || qualified_declaration_name(graph, declaration) == owner
+    qualified_declaration_name(graph, declaration) == owner
+        || !owner.contains("::") && declaration.name == owner
 }
 
 fn qualified_declaration_name(graph: &ModuleGraph, declaration: &Declaration) -> String {

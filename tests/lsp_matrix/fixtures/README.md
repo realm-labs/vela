@@ -26,6 +26,10 @@ cursor marker before a token whose literal `[` would collide with the following
 range marker. In that case the independently authored `text` determines its
 byte/UTF-16 length; the oracle still checks exact source text and scalar bounds.
 
+`semantic-token-members.json` pins complete source/schema member, constructor
+and variant streams, including explicit label versus shorthand binding roles
+and negative same-named source/schema ownership collisions.
+
 A workspace has `version`, `id`, `files`, ordered `actions`, and an independent
 `oracle`. Each relative file path rejects traversal, absolute/drive paths and
 backslashes. `open`, `change`, `save`, `close`, disk `write`, and disk `delete`

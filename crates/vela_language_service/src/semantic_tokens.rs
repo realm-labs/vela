@@ -22,12 +22,14 @@ use self::result_id::{
 };
 
 mod binding_scope;
+mod constructor_paths;
 mod impl_headers;
 mod import_paths;
 mod local_record_facts;
 mod member_uses;
 mod path_sites;
 mod range;
+mod record_labels;
 mod result_id;
 mod type_hints;
 mod unresolved;
@@ -577,6 +579,8 @@ impl LanguageServiceDatabases {
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
         let mut classifications = type_hints::collect(self, input.source_id);
         classifications.extend(impl_headers::collect(self, input.source_id));
+        classifications.extend(record_labels::collect(self, input.source_id));
+        classifications.extend(constructor_paths::collect(self, input.source_id));
         let graph = self.hir_db().graph();
         let facts = self.graph_analysis_facts();
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
@@ -1166,6 +1170,8 @@ mod body_tests;
 mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;
+#[cfg(test)]
+mod member_tests;
 #[cfg(test)]
 mod range_tests;
 #[cfg(test)]
