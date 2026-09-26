@@ -139,6 +139,11 @@ async function run() {
           }));
           break;
         }
+        case "token-setting": {
+          value = { key: "editor.semanticHighlighting.enabled",
+            value: vscode.workspace.getConfiguration().get("editor.semanticHighlighting.enabled") };
+          break;
+        }
         case "setup": {
           const uri = vscode.Uri.joinPath(
             vscode.workspace.workspaceFolders[0].uri,

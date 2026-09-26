@@ -12,8 +12,11 @@ Completed execution plans and acceptance reports live under
 
 Current implementation focus is the M20.5 local LSP coverage goal under the
 [execution plan](lsp-test-execution-plan.md). The execution checkpoint owns
-accepted batches and the next local task. B00-B05 are accepted; B06 semantic
-tokens is next. Incremental HIR re-lowering remains an open
+accepted batches, the next local task and fresh platform audits. Semantic-token
+coverage includes exact installed provider results and native editing, scrolling,
+setting changes and unresolved-reference styles; see the
+[workbench review](../tests/lsp_matrix/reviews/semantic-token-workbench.md).
+Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)
 is complete.
@@ -618,8 +621,8 @@ success or failure. The execution checkpoint records fresh strict batch
 acceptance. B14 still owns the later semantic
 partition completeness review.
 
-B00-B05 are accepted, with B06 next in the execution checkpoint. Diagnostics
-and code-action proof covers all 94 B05 obligations, including exact clearing,
+The execution checkpoint owns batch acceptance and remaining obligations.
+Diagnostics and code-action proof covers all 94 B05 obligations, including exact clearing,
 safe applied fixes, ownership and recovery boundaries, schema/dependency
 lifecycle, and installed Windows editor/input workflows. Current completion proof covers source/schema/stdlib
 types and members, enum construction and patterns, named arguments, import and
@@ -984,10 +987,11 @@ requests. B04.31 checks seven syntax recovery actions at service and protocol
 layers: damage after or before a valid imported call, repair, and redamage.
 `E_PARSE` appears and clears; complete references and edits retain their owner,
 while a damaged same-named type token and independent decoy stay separate.
-The execution checkpoint records the remaining B06-and-later cells and next task;
-accepted B00-B05 snapshots stay fixed. The Windows B05 gate passes against
-current source, while macOS needs fresh independent evidence when that registered
-machine is used.
+The execution checkpoint records remaining cells, the next task and current
+Windows strict audits; earlier accepted snapshots stay fixed. Semantic-token
+provider and native Input/Render proof covers full/delta/range streams, Unicode
+editing and scrolling, the real settings UI and unresolved-call style recovery.
+macOS needs fresh independent evidence when that registered machine is used.
 Windows x64 has installed VSIX and native input coverage for B01/UX02/UX03/UX04:
 suggestion acceptance, F12/back and palettes, modifier-click, context-menu Peek,
 exact Unicode targets and no-jump outcomes. The original macOS acceptance is
@@ -1027,9 +1031,9 @@ provides it.
 
 ## Next Up
 
-1. Continue LSP B06 semantic-token coverage from the execution
-   checkpoint; B00-B05 are accepted. Then complete B07-B15 and B17-B19;
-   B16 stays deferred.
+1. Continue the local LSP matrix from the execution checkpoint's next task
+   through B15 and B17-B19; B16 stays deferred. Preserve accepted snapshots and
+   require fresh independent evidence on each registered platform.
 2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
    the message loop when required by local state/scale acceptance.
 3. Audit the parameterized container and value-keyed Map/Set plans against

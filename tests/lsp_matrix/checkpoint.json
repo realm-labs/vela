@@ -2415,6 +2415,743 @@
           }
         ]
       }
+    },
+    {
+      "id": "B06",
+      "requirements": [
+        {
+          "id": "tokens-delta/editor/smoke",
+          "contractHash": "ed397de972e7a56428011a81a8bbbfe4d7a898752d0e37fbfff520d87b486fbc"
+        },
+        {
+          "id": "tokens-delta/environments/crlf/protocol",
+          "contractHash": "8b7a3b1e866b9249a6dc5e235df0777f4d7036d440b282a69e521420bf731bd2"
+        },
+        {
+          "id": "tokens-delta/environments/encoded_uri/protocol",
+          "contractHash": "d9d38df79af640c4dc97aacffc933ec5f569ab80e3126c61a41ae1710fa493f2"
+        },
+        {
+          "id": "tokens-delta/environments/utf16/protocol",
+          "contractHash": "1cd777785f7e87bf3b74e9af31c3aa3a21752fea0ff00c2df45a1660146ae945"
+        },
+        {
+          "id": "tokens-delta/states/cancellation/protocol",
+          "contractHash": "266f8cdb5ec540e60dfb05293d79d912d47243b90d5c7285242f5ebfb855186c"
+        },
+        {
+          "id": "tokens-delta/states/close_restore/protocol",
+          "contractHash": "16f53f2b771de5f300cb316a2ca39bcf28a5f0a65bfd903d88cce5c65b9159db"
+        },
+        {
+          "id": "tokens-delta/states/dependency_change/protocol",
+          "contractHash": "aac295071a5c7592239702f8dd62da92f841bbf3846151ed2c0a52e9829d3b94"
+        },
+        {
+          "id": "tokens-delta/states/dependency_delete/protocol",
+          "contractHash": "9cd13c190a8768275c60365ad8cae8451d85a123e9419f7df08f71d57bd0e444"
+        },
+        {
+          "id": "tokens-delta/states/dirty/protocol",
+          "contractHash": "1cb7de24db9133118d4acaede8dc115ed5723a36f2015ae66181b52973098081"
+        },
+        {
+          "id": "tokens-delta/states/dynamic/protocol",
+          "contractHash": "effec3f826f61bd8b6fd0f3ed2f6a834ae2f914b06b4a4b20eec13067a81451c"
+        },
+        {
+          "id": "tokens-delta/states/missing_schema/protocol",
+          "contractHash": "80ae4d920ad7d73b4bbfc4edfd861b612336dea69c0c5ef0bc484f13f974ee59"
+        },
+        {
+          "id": "tokens-delta/states/recovery/protocol",
+          "contractHash": "46f9e3e184d8263038a8ea61cd7ad07eb2939940f32c8c8a54f26fe85bb536e7"
+        },
+        {
+          "id": "tokens-delta/states/repeat/protocol",
+          "contractHash": "ae1dc5737aaaa82c82cc90c8db969f24046f90380bc9324576cf7eb989b68db6"
+        },
+        {
+          "id": "tokens-delta/states/stale_schema/protocol",
+          "contractHash": "e13bbf71f1e37018f7ec681260efecef2e0dc14b21f87129852fa546690c4bee"
+        },
+        {
+          "id": "tokens-delta/states/stale_version/protocol",
+          "contractHash": "cd87089566db578786132ea41358b6571536f5bd7d43cc6d48d77f14c241f32b"
+        },
+        {
+          "id": "tokens-delta/states/unresolved/protocol",
+          "contractHash": "b6e967f83fbe1b9f7a9da62093783bee25517c70c3186f8436e0ddf13a2739e7"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/protocol",
+          "contractHash": "661a54ecd59f7d2601770e57863b2657d4a8849b2766b492c2998116d5df6e56"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/service",
+          "contractHash": "aae65db397d4ba20d22f530c9947dca054c2c00a7302c05e91ad452e93aa72bf"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/protocol",
+          "contractHash": "f27f871b91f2c302196cb551e7ad128ab38a183e7fe4c3fe6d2a53ddca287b34"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/service",
+          "contractHash": "78bf07d50698423098b3deb3f7c1bd64277315e77e50d4ea6e85d9f9a7ee1e5b"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/negative/protocol",
+          "contractHash": "e267c23cd1574165fc4d6004fca497b58b4d8e8ee62511206595bb80aba4e16e"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/negative/service",
+          "contractHash": "9314c1821fd10b35667754a3136deb71388f9c427e9bf1b29bdb2cf578f864cc"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/positive/protocol",
+          "contractHash": "554154269cb88d0fd8f691cff17899aedf7d284408331e5bf48222e8e75049ba"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/positive/service",
+          "contractHash": "ec2e3963e14812c35c3142df9f6d29ed853b1c652b7085e27d09f87905dc8ec7"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/negative/protocol",
+          "contractHash": "c722ded13952e457014177950e1d712bfac5ecb3ac3f8355d2e21de162ec3f4e"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/negative/service",
+          "contractHash": "9344e181277b64349f05343e4dea31d3919d81eea493b10b2fdc64b43d9125d1"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/positive/protocol",
+          "contractHash": "d52c26f34d6abdc7ae7d6219df8732ac2d71c56d0f4ba2f652447da5c899c651"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/positive/service",
+          "contractHash": "d6d7e5043f0488033bdfeae9bfdbf63bc2a68bf0662643aa0ab42ff57856ad3d"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/negative/protocol",
+          "contractHash": "deb837cdb782ec5786250a539301932314f4e27e1f4c445b849da07f0a193e0e"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/negative/service",
+          "contractHash": "6c06371c84801130f863650825347863286ab991ce16705674aa32af333da012"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/positive/protocol",
+          "contractHash": "054b2d0f049bb5c7acd8c9d607cca736cfcf4e68ba3676474adee0307e6d36dd"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/positive/service",
+          "contractHash": "0b554b23a71955ecfe50d4340ebbf846aaa10647e4dfed838c7af54d52bfc74a"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/protocol",
+          "contractHash": "3ce68a6f40511fcd9e044220de06cd3b25148085d588b9811b96f49b8fa0bdce"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/service",
+          "contractHash": "fcd25a92682108a2f69f15ab3a4e770637496c960f06f7bf02280fa79dec2d98"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/protocol",
+          "contractHash": "11730638c0037ed32e45ea7a2832aefa8d491d1146a3d92a14c3d72e91634cf8"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/service",
+          "contractHash": "da97aa7a6ac30f4ca272bab748e5d262cd623dee0f2199deaa15b9c0d074274d"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/negative/protocol",
+          "contractHash": "9d70b919a0ed0d04ea4d2d1d01e598bc81696ea31c01b10ead0af238b07bdfb2"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/negative/service",
+          "contractHash": "23cb9a9e04d02f9854f435430799d540e509f237d369d1dd256c04824ea61131"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/positive/protocol",
+          "contractHash": "74f66a0152d4258ea434f808a82b3d120f9424f6a3d27e1764f80eaad1508c79"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/positive/service",
+          "contractHash": "83cc5b8d920232b6e7bbb3d74b29aa4a7f1059f996069091c651309716bbac38"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/negative/protocol",
+          "contractHash": "696a40c76f27348413bfa06dc9c42da8abf406982d315c34562dc24743427bec"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/negative/service",
+          "contractHash": "c497eec2fec086d246fb699eb4aa2f1d4075d12566c90b4160e28060bf94efc3"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/positive/protocol",
+          "contractHash": "9d9d94c15e799172a6a36dcab8dc602d70eb1f9e22495983ef6e37d008f73f06"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/positive/service",
+          "contractHash": "ded928dd699dc6eca30a1442e271b6c8313857b19deecbfa78a2c282347a817e"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/negative/protocol",
+          "contractHash": "28383bb8ad5f5e27fe35db848c52e52a7f5359c4b64cca9530a1095dd7507217"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/negative/service",
+          "contractHash": "ae9ed7c0f964eb1c2be1515cbf0be24cebe3f5de675c876fcb3c8fdf4ce17c8b"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/positive/protocol",
+          "contractHash": "6557440c83aedd39a9127d7efe3694e9234ff2a694f787c00bc58d917516941d"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/positive/service",
+          "contractHash": "34f7f398a40ade2720b85215252108ca282d1f60de05164f10153e77f062a695"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/negative/protocol",
+          "contractHash": "0a0cc70c21ff3126fbfe98d9df1c35cdc362730f93114614ed2d6826c3686380"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/negative/service",
+          "contractHash": "2e90dd8dc15226cf4e5c890b5675696ae50fe8a9b378edc9fb9e630c9573c5cc"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/positive/protocol",
+          "contractHash": "d9568efd273b7244e590ba775ba15c42cfc3cab21944eb7ab7d55650a6897fcd"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/positive/service",
+          "contractHash": "fdbcfd22e67151a9f929d042eac14bc873efc4d99b376902091845055943867f"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/negative/protocol",
+          "contractHash": "badc65a3be7e2b4178e78a44edd1be33429794074844ddcbee6962ada1d46101"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/negative/service",
+          "contractHash": "65176d4101ca12e6f3164eaeb2d3bf16ae2ab092153a2a20cd899fed2ac911d4"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/positive/protocol",
+          "contractHash": "d1f8b0b3ec3b78b0649e4c21a1bb6952fb548d322f62e979462d8a5747526408"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/positive/service",
+          "contractHash": "a6aa1542fccac413f9c55aa6f4b80df411abac021e68c31ede60c81a09bfdf58"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/negative/protocol",
+          "contractHash": "0f0f959bd5c8e8394a5562be5cb69e7583f0ccf613d304beef4e46f91ebfa444"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/negative/service",
+          "contractHash": "ff61b64425617128a8b2c86c33fdeeb9062a0d8254500a9460e1c12f8503dea6"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/positive/protocol",
+          "contractHash": "f20cec0524cf117fe9188946d7103a551a3a6aac44edb0405cc1483ba2fbf561"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/positive/service",
+          "contractHash": "dc0d1fed73cce8b3d32ad72ab870f6ddb55c70761c7de344bd7eb47a8f56eaa8"
+        },
+        {
+          "id": "tokens-full/editor/smoke",
+          "contractHash": "1d2fc4b9bfaf360b27bfda343d594e28ef19efe95ea3c239e40bf3e6484a6d16"
+        },
+        {
+          "id": "tokens-full/environments/crlf/protocol",
+          "contractHash": "dbf5e9f9a11933bc0a9420e64a2f92b011e3e6539c57bdd587388f02e44af9a1"
+        },
+        {
+          "id": "tokens-full/environments/encoded_uri/protocol",
+          "contractHash": "28e8dd845f747d8ad6e92ec0527ac08dd859f7e464281ea7fa886e888e0c8003"
+        },
+        {
+          "id": "tokens-full/environments/utf16/protocol",
+          "contractHash": "b0c1af5b0769f67d8e0922f23a6df80aa762fd88a5c510b10b7d7d8c43cab34f"
+        },
+        {
+          "id": "tokens-full/states/close_restore/protocol",
+          "contractHash": "4c8043bde4bfff63652b272ee056e5dd5b55f25991cd4498ecc6f8f7b3b7a2a8"
+        },
+        {
+          "id": "tokens-full/states/dependency_change/protocol",
+          "contractHash": "5b8aee65f616de6d568641a3c3c0e27abcacaee2cb2d641bc5e7138fbc53ed0e"
+        },
+        {
+          "id": "tokens-full/states/dependency_delete/protocol",
+          "contractHash": "3f62a41ae4b127988798b2597784bd49a613819455c3e949ca83bfc53b1c97aa"
+        },
+        {
+          "id": "tokens-full/states/dirty/protocol",
+          "contractHash": "c1c6fba7b6300b4d33dda7c1e58112819033967f452f31ff3434c58762dda659"
+        },
+        {
+          "id": "tokens-full/states/dynamic/protocol",
+          "contractHash": "73d2b8717f3d7461f2b60d360710d0a40b3fbe5d817ab30d22fb7f41a0524bcd"
+        },
+        {
+          "id": "tokens-full/states/missing_schema/protocol",
+          "contractHash": "f7aa3800b79d184c5dbeb8c8075a8e5be897c586529c0a5f7afcd97a001c9df9"
+        },
+        {
+          "id": "tokens-full/states/recovery/protocol",
+          "contractHash": "f062b4e9c8b684cbcd63aea09deee2771f1735f0431053fdf9b147fb608ccfd1"
+        },
+        {
+          "id": "tokens-full/states/repeat/protocol",
+          "contractHash": "9cc67a066c81437066a2ec1e90525abb8660097b817be280d06c49d2204ebc9f"
+        },
+        {
+          "id": "tokens-full/states/stale_schema/protocol",
+          "contractHash": "ce98e7935df7822f24fb91bcbc35c9d2996b59d89c5535b65c1b8e7c1b9d75e6"
+        },
+        {
+          "id": "tokens-full/states/unresolved/protocol",
+          "contractHash": "d7e354993bbd2fb2ba4234b4ad5324851ce8ce84bcf8f597e8d9e98a5c198a10"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/protocol",
+          "contractHash": "646195e83782cb65325aaa4b37ec0e352ff54a43e8e7e5fd93fcd9556c393b8a"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/service",
+          "contractHash": "bd37064399849472c3adcd8772493f89d97b3e1bf67b1cc7de84158980c2692b"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/protocol",
+          "contractHash": "f5e0f0b2350fb61ce3865c202f9ebb9468cd5522b349e445812f97f51744fcdc"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/service",
+          "contractHash": "50e9e8a2a03a230b3c13492c499a9dca0e1c85a153bf3d6ae8ec3235da39bff5"
+        },
+        {
+          "id": "tokens-full/syntax/S10/negative/protocol",
+          "contractHash": "034f5c3dea152673c3d2c671988eb95dc410f1b46c01ec2a6fb89ca574fec74f"
+        },
+        {
+          "id": "tokens-full/syntax/S10/negative/service",
+          "contractHash": "4c2a30f8c6bdaa2744a733e1fa148fd09ae392ed9801c2860914114c435b7df1"
+        },
+        {
+          "id": "tokens-full/syntax/S10/positive/protocol",
+          "contractHash": "0d06a4609437fb22df09623f92cdf77f64e17a15867defd0ec22d94cc6417adf"
+        },
+        {
+          "id": "tokens-full/syntax/S10/positive/service",
+          "contractHash": "46fb4423c90eac6e2122fd4f4198505991ad8d1873d0847c80b4ac0d3fd360b5"
+        },
+        {
+          "id": "tokens-full/syntax/S2/negative/protocol",
+          "contractHash": "8b425843526f6849f268be735aa5a221211700d413f25b6372663af13071271d"
+        },
+        {
+          "id": "tokens-full/syntax/S2/negative/service",
+          "contractHash": "c536b729795581bac387e5e589c4f62c65067227ff678abf9709959f7a2f5d78"
+        },
+        {
+          "id": "tokens-full/syntax/S2/positive/protocol",
+          "contractHash": "dd23324bc1429c41762b63a870cc5f281c4f017bd1d6e96dcfb53d12d5a03644"
+        },
+        {
+          "id": "tokens-full/syntax/S2/positive/service",
+          "contractHash": "6b0bc65ca1ab3501cfc6ee887542b8aeac493e99eca56fd578e87f0771fe3ec4"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/protocol",
+          "contractHash": "470b3d2ddf37264d990359b170477ae35dd3175e451a74ca97d39450253726cd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/service",
+          "contractHash": "5d084c69282eb2b238bc3e08e577b9f9112584f9133fea53f073439b6dc38abd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/protocol",
+          "contractHash": "600e66bd8c558f19206092d6a76aa05c16d1792464feb27f5e14d05257d22246"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/service",
+          "contractHash": "73bf93244a54b7f9c69a258b2c17fe32bb29e5c96ab29d4b6eee3c98daa3468b"
+        },
+        {
+          "id": "tokens-full/syntax/S4/negative/protocol",
+          "contractHash": "0c211a0225d9d7350ca9d9c6c2218bca2be24f968bb3a7846f248e42aa55f836"
+        },
+        {
+          "id": "tokens-full/syntax/S4/negative/service",
+          "contractHash": "f193b27614d73fa8c6735475ecab38cfa6be4a8d218cb825c6747d2788aaafa3"
+        },
+        {
+          "id": "tokens-full/syntax/S4/positive/protocol",
+          "contractHash": "c4f5375b90922082ed397843e407815053f8f193f26211776483f9b9228f6a6d"
+        },
+        {
+          "id": "tokens-full/syntax/S4/positive/service",
+          "contractHash": "2f72618f94e9e29146c75920485dfa1cb1d996a38272cd4ace300af6bf87235e"
+        },
+        {
+          "id": "tokens-full/syntax/S5/negative/protocol",
+          "contractHash": "5c1227d0b14d247bc16f05f8a6b6e54d6940490a38bfc06348d00ff0ca028cf6"
+        },
+        {
+          "id": "tokens-full/syntax/S5/negative/service",
+          "contractHash": "8004cc944723367116c7235d3dba1976509c24fa69bc540e4735e85c414352e1"
+        },
+        {
+          "id": "tokens-full/syntax/S5/positive/protocol",
+          "contractHash": "8b0384d4820b24de63e7c2154e1c7c1abee2ce8e03b13f9b78d8bad7b06787d4"
+        },
+        {
+          "id": "tokens-full/syntax/S5/positive/service",
+          "contractHash": "032af8ade81f4423b6e68f07ce34f905905c4bbafb156e301f3ce886903ccc0e"
+        },
+        {
+          "id": "tokens-full/syntax/S6/negative/protocol",
+          "contractHash": "6f5dcb620fd17667aadbed36f9dfe1df5c6f7a35fade5ceec39bd4d1741442ba"
+        },
+        {
+          "id": "tokens-full/syntax/S6/negative/service",
+          "contractHash": "0ab3e4c34b6921b71bb92d06e88a32134a6a1a0525b91378635ac75bea8d5b1e"
+        },
+        {
+          "id": "tokens-full/syntax/S6/positive/protocol",
+          "contractHash": "f06952c3cfc3d92e0bdc865855011dd89a655cef043ed6b8cd9fce00070c4a74"
+        },
+        {
+          "id": "tokens-full/syntax/S6/positive/service",
+          "contractHash": "149c5795a4a0d07e089f180f1a3029cea784908a398bbb7fb7b8405db94ee89a"
+        },
+        {
+          "id": "tokens-full/syntax/S7/negative/protocol",
+          "contractHash": "4f9758d438ec48cb15cd0951e536b09ddf344d1aa28dd2f5bcf1e0568ab48120"
+        },
+        {
+          "id": "tokens-full/syntax/S7/negative/service",
+          "contractHash": "bb8b082616956267e297d8039cb2980a0e9970dcbd8f48607a82c77f7402c3e6"
+        },
+        {
+          "id": "tokens-full/syntax/S7/positive/protocol",
+          "contractHash": "d7fc552cab8599e82588121600ee19a0695782408f9538a66b609502c88a2169"
+        },
+        {
+          "id": "tokens-full/syntax/S7/positive/service",
+          "contractHash": "189a3e3b86fb43f52489c589356e68d3c4e0acf78ea5c6e20f824d4732b2c6c9"
+        },
+        {
+          "id": "tokens-full/syntax/S8/negative/protocol",
+          "contractHash": "084a7b423712d565902cbb58de08de5e7aa0622369665c9b22502faab09aaedb"
+        },
+        {
+          "id": "tokens-full/syntax/S8/negative/service",
+          "contractHash": "cb8d7817938f2318b67dadc26b79297f2bf564287b68162b21cbb123ff6d92ca"
+        },
+        {
+          "id": "tokens-full/syntax/S8/positive/protocol",
+          "contractHash": "66ad6e0068eba966b9c5c7ca8ad82497b0cd7d31faa5a918c12d35f6d68e64d4"
+        },
+        {
+          "id": "tokens-full/syntax/S8/positive/service",
+          "contractHash": "3d46921e6481903ae6ad0ca9358f308195d176e852fb52c858e1e21b10b712d9"
+        },
+        {
+          "id": "tokens-full/syntax/S9/negative/protocol",
+          "contractHash": "c1bec715a2b93e328f451d80b118f7a1d580f24a39133608034c69fa0dbd4e6b"
+        },
+        {
+          "id": "tokens-full/syntax/S9/negative/service",
+          "contractHash": "f9856eee844525800080341e71f1a9008a5d6a9acee638aff0ea96e3fae09d72"
+        },
+        {
+          "id": "tokens-full/syntax/S9/positive/protocol",
+          "contractHash": "8223d81d1ebadeaa4182313efe722ffd14fcebf72f605c14e73597038971267f"
+        },
+        {
+          "id": "tokens-full/syntax/S9/positive/service",
+          "contractHash": "4f817216bd569a6c908766bd71c42dfbaa4bfc714a4064712167fc066b9d1ec6"
+        },
+        {
+          "id": "tokens-range/editor/smoke",
+          "contractHash": "d05a95c94f99b37bc9ebf3bcea96635bf685950832e0bc9026eeaf2f20da6a40"
+        },
+        {
+          "id": "tokens-range/environments/crlf/protocol",
+          "contractHash": "014583da826f893bdbde943c3a48d6ee13d2abf84f375b9e7423fabb8d93b395"
+        },
+        {
+          "id": "tokens-range/environments/encoded_uri/protocol",
+          "contractHash": "f94ac12d5c9b6709b2f57d8ad738a08d98e9879fc29df7475c9c1f651fa30df2"
+        },
+        {
+          "id": "tokens-range/environments/utf16/protocol",
+          "contractHash": "1cfd1cc6b1f6661c6ee8ee4918d41c50d4b4f32f551314bf38447f8a99d4c7fd"
+        },
+        {
+          "id": "tokens-range/states/close_restore/protocol",
+          "contractHash": "09e53f9a6a83f4b5fddb54206cc85d94967dd569f180bc9699765af212ee3ac8"
+        },
+        {
+          "id": "tokens-range/states/dependency_change/protocol",
+          "contractHash": "ae3f42395b7671b0ffe16eb483f998486d21b50003b0d84a31cbbf9667a64ba9"
+        },
+        {
+          "id": "tokens-range/states/dependency_delete/protocol",
+          "contractHash": "305af66271fad457273a8447a14fcfad8ae7c04663a0ebc84e383f45c32fb3cc"
+        },
+        {
+          "id": "tokens-range/states/dirty/protocol",
+          "contractHash": "7f190691956d2c458ee90830a4f7d005bd8f97fc8a0943ea74024c838b0e13de"
+        },
+        {
+          "id": "tokens-range/states/dynamic/protocol",
+          "contractHash": "a0ae5b6340a10cf3e8ba6f889d0901f0b1102d43a4c1b7e89cda9aa1d05e536a"
+        },
+        {
+          "id": "tokens-range/states/missing_schema/protocol",
+          "contractHash": "77e460b217a60477caa425a58d29009a32ae663575cb4cc02b4333ce7820e856"
+        },
+        {
+          "id": "tokens-range/states/recovery/protocol",
+          "contractHash": "12e482840a44bd0968e10c140729c34d3f3889e7180eddb34f20043e4214b375"
+        },
+        {
+          "id": "tokens-range/states/repeat/protocol",
+          "contractHash": "500a37fbbc7c6427e8ad4d13e7b8986fbb98affc335179bc75c558b704990b14"
+        },
+        {
+          "id": "tokens-range/states/stale_schema/protocol",
+          "contractHash": "fbb68791d8d96dbafab47f37b083553a8d5f45aa622c1e8ae07d02d16dda2aa1"
+        },
+        {
+          "id": "tokens-range/states/unresolved/protocol",
+          "contractHash": "14e7aecf581ca6fd9074a0e398ac15e0ebbb668a455633dc52b9babba5b6ce15"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/protocol",
+          "contractHash": "9837827b34ab9179344f2c8d6ea754acbc5f3afe77e9ed2cb4b63cc32316e490"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/service",
+          "contractHash": "39912c21a88ecb6f513b4fb9f09f192e82c75b8172645ae0b97f971ebdcdaa1b"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/protocol",
+          "contractHash": "fccbf29fddd2eab8746f9f72ae196192bd14479ae89a343d7ad5f89e582a577c"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/service",
+          "contractHash": "128015bee101c389cde2e9aceb0548260a8118cac33a201a0f071e8adcc7670a"
+        },
+        {
+          "id": "tokens-range/syntax/S10/negative/protocol",
+          "contractHash": "b661079b0ce259ac0410444080ba755897e7fd8bc209b425a4670c2c6a97e79b"
+        },
+        {
+          "id": "tokens-range/syntax/S10/negative/service",
+          "contractHash": "d741f2aa8a9f76febfc68a4831475e1c7cb7ed68bbee2204b91491700de29594"
+        },
+        {
+          "id": "tokens-range/syntax/S10/positive/protocol",
+          "contractHash": "5a5ac977daa20e35b87747c7276da51414f2a8cf71f0270770b19e93f2d7d879"
+        },
+        {
+          "id": "tokens-range/syntax/S10/positive/service",
+          "contractHash": "2f5fcc125041988df5b07522f7b1ecf2ff750852e483f9d49a1a03ac9a8a33e6"
+        },
+        {
+          "id": "tokens-range/syntax/S11/negative/protocol",
+          "contractHash": "f8a059df60aab954bfe8e16b181873d64416b212d5b27548c54483eaff9fe7b8"
+        },
+        {
+          "id": "tokens-range/syntax/S11/negative/service",
+          "contractHash": "47523f2d0e893af124dc482d7e0ced835ae3e72c67fd8466850686302d9abca9"
+        },
+        {
+          "id": "tokens-range/syntax/S11/positive/protocol",
+          "contractHash": "a8a5b2af44362465045cb58dfdd34f7ab9c92cd60d3b7f3a66ba676a73611cb1"
+        },
+        {
+          "id": "tokens-range/syntax/S11/positive/service",
+          "contractHash": "4ba3f6c56163ea2066b1ad926962b767df0587c18e59a490e8cf59268dcc4b3a"
+        },
+        {
+          "id": "tokens-range/syntax/S2/negative/protocol",
+          "contractHash": "0d48202544a5e70bc2b95acee0442561dd014ea3e1356651f4a6539e3890f06e"
+        },
+        {
+          "id": "tokens-range/syntax/S2/negative/service",
+          "contractHash": "d7ae534ca8089f45114da4107f1eeb1765a51c039149ff0b0a35671bd6cb9eb4"
+        },
+        {
+          "id": "tokens-range/syntax/S2/positive/protocol",
+          "contractHash": "d2734ce07370e20acc728fb38fc0e0d34b1710c586cc40b2d35fd3410d158e25"
+        },
+        {
+          "id": "tokens-range/syntax/S2/positive/service",
+          "contractHash": "1e8542ea0020b91ce3a4ada64c184cd6e2254b32920e40a8b82e2d23e23b61d8"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/protocol",
+          "contractHash": "032d59932fffc83bb2fd1dfe76b4a2257907933e5c8c8543003f9c77024ba042"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/service",
+          "contractHash": "1e6b71e1622b6d873fbf3c1f8133a0db13f803630904a8956bae1b4c0e1e545b"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/protocol",
+          "contractHash": "f304770c21801161353956e5434db6df1ba2229bc4a3608a8f14f9b82cba3358"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/service",
+          "contractHash": "d1e42d5e34f46150ce1d7cf67625d3c9fbc54c2eae5e342bc5f9681dce6637ec"
+        },
+        {
+          "id": "tokens-range/syntax/S4/negative/protocol",
+          "contractHash": "00d59657686f3d39c2587cd78a9f52af50bb3e6c67f8cfc12966e8c57324e587"
+        },
+        {
+          "id": "tokens-range/syntax/S4/negative/service",
+          "contractHash": "56a60202c5b1ab9ee66b1af92515a0ddb4640dfd1c455b759fa786ecab5138ab"
+        },
+        {
+          "id": "tokens-range/syntax/S4/positive/protocol",
+          "contractHash": "adb96d0230fb1f63eb682d99f12287774beba84dda9587c7288e9428de4733cd"
+        },
+        {
+          "id": "tokens-range/syntax/S4/positive/service",
+          "contractHash": "0b194c5d0c64eed65c18d28a722a07ad7d09dffea1d507d6a18e462654fa82d7"
+        },
+        {
+          "id": "tokens-range/syntax/S5/negative/protocol",
+          "contractHash": "ff7936f477e171e6123a951465b86ca84716fde062d57271eb230c7b638441c9"
+        },
+        {
+          "id": "tokens-range/syntax/S5/negative/service",
+          "contractHash": "62e1c6d3d1f306dadd3a7c168468d4e9a15d93f1f8edc32d0c470a10c997403b"
+        },
+        {
+          "id": "tokens-range/syntax/S5/positive/protocol",
+          "contractHash": "8f2dd9b21329ac2939702b41d1ae7f5ee214223ad9b68502c6acf9ba325b330f"
+        },
+        {
+          "id": "tokens-range/syntax/S5/positive/service",
+          "contractHash": "2ddf5dbf5cb610974112f64dd16a12091d641e728e47815994d1d548019038da"
+        },
+        {
+          "id": "tokens-range/syntax/S6/negative/protocol",
+          "contractHash": "5e8d00f2f40430b2b4c3fe47e014757cd78245c5c2b4b9c8a007a5f6c26afa95"
+        },
+        {
+          "id": "tokens-range/syntax/S6/negative/service",
+          "contractHash": "6622cc8037591fc6c71f86ecf0e1bcb16b959175ca27b4ad652a244afe43da65"
+        },
+        {
+          "id": "tokens-range/syntax/S6/positive/protocol",
+          "contractHash": "cbdea1ba1549f8d331582a04b4f8dc429103fc4854f288bda50e2329ffa57251"
+        },
+        {
+          "id": "tokens-range/syntax/S6/positive/service",
+          "contractHash": "2e404fd34e4e89e71527569c370cecf6dec443cc34119ad28604764b878994f5"
+        },
+        {
+          "id": "tokens-range/syntax/S7/negative/protocol",
+          "contractHash": "e99eaecdd55929b1f3f579159a4d2b807ebf17d2b148bcf9710d865f195c5bc9"
+        },
+        {
+          "id": "tokens-range/syntax/S7/negative/service",
+          "contractHash": "eb17a0add39a57569e00f2582d8826dc4504784856430abf72fb614e0c6a9c3c"
+        },
+        {
+          "id": "tokens-range/syntax/S7/positive/protocol",
+          "contractHash": "f3597819064cab1735fec8f2d9beba67cbdbf8e25d3ecb9d8733e9d8d89105a3"
+        },
+        {
+          "id": "tokens-range/syntax/S7/positive/service",
+          "contractHash": "ed16919fcca1f504be728a8c7aab07770f50d9127703c71c877a91b01b2fb16a"
+        },
+        {
+          "id": "tokens-range/syntax/S8/negative/protocol",
+          "contractHash": "2d5a0b114a59e5ce2777f116367dcc6c8c813e9f72af27cc7513a56cc62ad9f3"
+        },
+        {
+          "id": "tokens-range/syntax/S8/negative/service",
+          "contractHash": "89ef6046080f10aede5cea3fdca75bcc939ca305ca7567a792b90a80d11d15e7"
+        },
+        {
+          "id": "tokens-range/syntax/S8/positive/protocol",
+          "contractHash": "4457e4c3d175c9222d96a18f07c549a6030def97747aca75ff211ebe40f7cfbd"
+        },
+        {
+          "id": "tokens-range/syntax/S8/positive/service",
+          "contractHash": "4c24a7c1661e6e6c6c35d0b41955e2dbd7ceb6a52b0b67a88178f400a48d4541"
+        },
+        {
+          "id": "tokens-range/syntax/S9/negative/protocol",
+          "contractHash": "37f8081b974636feffb6701bf363c6b6e760ab0e10ce94fd22d1d5e0905ef2f0"
+        },
+        {
+          "id": "tokens-range/syntax/S9/negative/service",
+          "contractHash": "c8751dc993cc9f2d1831acd35f118d3c79572586a67808f78744ef30c4694150"
+        },
+        {
+          "id": "tokens-range/syntax/S9/positive/protocol",
+          "contractHash": "a30f0b86c775b98a75ae69aba621f7d714e18c3e48229d253d3a583b29783ce8"
+        },
+        {
+          "id": "tokens-range/syntax/S9/positive/service",
+          "contractHash": "a4f3dc49e693a019d1a332f4465dce8f928694dd39ee98014d7c139b153dc3fd"
+        },
+        {
+          "id": "vscode/UX09/edit-scroll/input/local",
+          "contractHash": "b0f56a3cf7d7bcdfd31cc436d7be7dd8d71a89394e19123ddafdf2597165eea9"
+        },
+        {
+          "id": "vscode/UX09/edit-scroll/render/local",
+          "contractHash": "b0f56a3cf7d7bcdfd31cc436d7be7dd8d71a89394e19123ddafdf2597165eea9"
+        },
+        {
+          "id": "vscode/UX09/toggle-off-on/input/local",
+          "contractHash": "c1aa590679118c79c256c09de6e70b74fdf7244e788eb26f089b4c4022cf1c4c"
+        },
+        {
+          "id": "vscode/UX09/toggle-off-on/render/local",
+          "contractHash": "c1aa590679118c79c256c09de6e70b74fdf7244e788eb26f089b4c4022cf1c4c"
+        },
+        {
+          "id": "vscode/UX09/unresolved-token/input/local",
+          "contractHash": "f5176eefd5f3c2f2b0b3d447456a8edcdde26f089cf9334c0e7a46cc44e49381"
+        },
+        {
+          "id": "vscode/UX09/unresolved-token/render/local",
+          "contractHash": "f5176eefd5f3c2f2b0b3d447456a8edcdde26f089cf9334c0e7a46cc44e49381"
+        }
+      ],
+      "validation": {
+        "source": {
+          "revision": "16d63f6df2b2ed4f8951c3df0b41094dc9bc73b1",
+          "treeSha256": "bf078bff48439b8f82270481ca756581a204613e6c5c6fc239ae025e72bb02ff"
+        },
+        "profile": {
+          "platform": "win32",
+          "arch": "x64",
+          "vscodeVersion": "1.137.0"
+        },
+        "artifacts": [
+          "target/lsp-matrix/run-y1nGIb/report.json"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-W0t0d9/results.json --local-results editors/vscode/test-results/input-XH0Y2K/results.json",
+            "exitCode": 0
+          }
+        ]
+      }
     }
   ],
   "reopenedBatches": [],
@@ -6107,10 +6844,23 @@
         "tokens-range/editor/smoke"
       ],
       "summary": "Close three installed full/delta/range editor smoke obligations. Independently authored standard-client fixture specifies 43 original and 45 shifted/demoted tokens: multiline Chinese/non-BMP prefix edits, source receiver to Any and local rename. LF/CRLF full commands check complete text/type/all-modifier/UTF-16 streams, tuple shape/bounds/nonoverlap/surrogate boundaries, repeats, physical disk preservation and close restoration. Range commands use the same full legend and independently check every token/occupied-line/document-start-empty range twice across all six source states. Delta proof passively observes the real installed language client's renderer requests without manufacturing a client or test-owned delta request. Startup verifies an actual initial full or retained-cache empty delta from an observed predecessor. Each changed source requires a new complete matched nonempty delta after its action boundary, naming words equal to the preceding independent state; applied edits equal both the next independent stream and a fresh public full. Wire requests/responses, prior/applied words and client logs are retained. Node sensitivity checks reject incomplete/malformed/incorrect streams, disjoint-offset violations, unmatched/partial/duplicate traces and missing predecessors. Editor fingerprints now include shared matrix scripts; explicit sensitivity proves oracle/decoder/trace changes stale old evidence despite unchanged server bytes. Node 89, fmt and workspace Clippy passed; fresh Windows installed VSIX 19 and native input 29 routes plus driver 30 passed with matching frozen source/server identities. Current-source strict B05 regression ran service 721 with two unchanged historical ignores and protocol 723 successfully, preserving B00-B05 acceptance snapshots. Catalog 682 verified, 643 unreviewed, two N/A, zero failed. B06 has 172 verified and six UX09 input/render cells remaining of 178; resume B06.16 for native edit-scroll, toggle-off-on and unresolved-token input/render. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-ZYGCa2/results.json; input editors/vscode/test-results/input-NqhwJH/results.json; audit target/lsp-matrix/run-Loziqv/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.16",
+      "revision": null,
+      "requirements": [
+        "vscode/UX09/edit-scroll/input/local",
+        "vscode/UX09/edit-scroll/render/local",
+        "vscode/UX09/toggle-off-on/input/local",
+        "vscode/UX09/toggle-off-on/render/local",
+        "vscode/UX09/unresolved-token/input/local",
+        "vscode/UX09/unresolved-token/render/local"
+      ],
+      "summary": "Close six UX09 native Input/Render obligations and accept all 178 B06 obligations. Installed production VSIX uses a reviewed independent Unicode token fixture, bundled Dark Modern theme and lexical grammar colors. DOM-only whole-span UTF-16 observations check exact text, columns, color, font style/weight/decoration, viewport visibility and line alignment. Native two-line Unicode insertion shifts every marked style; 36 fixed wheel ticks out/back require all head spans absent and the unique tail visible, then restore shifted styles. Seven independently specified native Undo groups check complete intermediate documents and clean source/style restoration. Actual Settings UI search, pointer dropdown and Home/Down/Enter disable then enable semantics; observation-only configuration reads confirm values while exact source stays clean and lexical/semantic styles change and recover. Native double-click and typing replace a resolved call with an unknown name: function yellow becomes variable blue, unrelated styles stay exact, closed unimported same-named decoy stays unopened, and Undo restores clean source/styles. All action receipts, DOM observations, screenshots, accessibility snapshots and client/server logs retained. Node 92, fmt and workspace Clippy pass. Fresh Windows installed VSIX 19 and native 32 routes plus driver 33 pass with identical frozen source/server identities; strict B06 gate runs service 721 with two unchanged historical ignores and protocol 723, revalidating B00-B06 and preserving original B00-B05 snapshots. Catalog 682 verified, 643 unreviewed, two N/A, zero failed. B06 178/178 verified; resume B07.1 hover/signature. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-W0t0d9/results.json; input editors/vscode/test-results/input-XH0Y2K/results.json; audit target/lsp-matrix/run-y1nGIb/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.16",
+  "nextTask": "B07.1",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -6702,188 +7452,10 @@
     "stdio/environments/process_transport/protocol",
     "stdio/syntax/S0/negative/protocol",
     "stdio/syntax/S0/positive/protocol",
-    "tokens-delta/editor/smoke",
-    "tokens-delta/environments/crlf/protocol",
-    "tokens-delta/environments/encoded_uri/protocol",
-    "tokens-delta/environments/utf16/protocol",
-    "tokens-delta/states/cancellation/protocol",
-    "tokens-delta/states/close_restore/protocol",
-    "tokens-delta/states/dependency_change/protocol",
-    "tokens-delta/states/dependency_delete/protocol",
-    "tokens-delta/states/dirty/protocol",
-    "tokens-delta/states/dynamic/protocol",
-    "tokens-delta/states/missing_schema/protocol",
-    "tokens-delta/states/recovery/protocol",
-    "tokens-delta/states/repeat/protocol",
-    "tokens-delta/states/stale_schema/protocol",
-    "tokens-delta/states/stale_version/protocol",
-    "tokens-delta/states/unresolved/protocol",
-    "tokens-delta/syntax/S1/negative/protocol",
-    "tokens-delta/syntax/S1/negative/service",
-    "tokens-delta/syntax/S1/positive/protocol",
-    "tokens-delta/syntax/S1/positive/service",
-    "tokens-delta/syntax/S10/negative/protocol",
-    "tokens-delta/syntax/S10/negative/service",
-    "tokens-delta/syntax/S10/positive/protocol",
-    "tokens-delta/syntax/S10/positive/service",
-    "tokens-delta/syntax/S11/negative/protocol",
-    "tokens-delta/syntax/S11/negative/service",
-    "tokens-delta/syntax/S11/positive/protocol",
-    "tokens-delta/syntax/S11/positive/service",
-    "tokens-delta/syntax/S2/negative/protocol",
-    "tokens-delta/syntax/S2/negative/service",
-    "tokens-delta/syntax/S2/positive/protocol",
-    "tokens-delta/syntax/S2/positive/service",
-    "tokens-delta/syntax/S3/negative/protocol",
-    "tokens-delta/syntax/S3/negative/service",
-    "tokens-delta/syntax/S3/positive/protocol",
-    "tokens-delta/syntax/S3/positive/service",
-    "tokens-delta/syntax/S4/negative/protocol",
-    "tokens-delta/syntax/S4/negative/service",
-    "tokens-delta/syntax/S4/positive/protocol",
-    "tokens-delta/syntax/S4/positive/service",
-    "tokens-delta/syntax/S5/negative/protocol",
-    "tokens-delta/syntax/S5/negative/service",
-    "tokens-delta/syntax/S5/positive/protocol",
-    "tokens-delta/syntax/S5/positive/service",
-    "tokens-delta/syntax/S6/negative/protocol",
-    "tokens-delta/syntax/S6/negative/service",
-    "tokens-delta/syntax/S6/positive/protocol",
-    "tokens-delta/syntax/S6/positive/service",
-    "tokens-delta/syntax/S7/negative/protocol",
-    "tokens-delta/syntax/S7/negative/service",
-    "tokens-delta/syntax/S7/positive/protocol",
-    "tokens-delta/syntax/S7/positive/service",
-    "tokens-delta/syntax/S8/negative/protocol",
-    "tokens-delta/syntax/S8/negative/service",
-    "tokens-delta/syntax/S8/positive/protocol",
-    "tokens-delta/syntax/S8/positive/service",
-    "tokens-delta/syntax/S9/negative/protocol",
-    "tokens-delta/syntax/S9/negative/service",
-    "tokens-delta/syntax/S9/positive/protocol",
-    "tokens-delta/syntax/S9/positive/service",
-    "tokens-full/editor/smoke",
-    "tokens-full/environments/crlf/protocol",
-    "tokens-full/environments/encoded_uri/protocol",
-    "tokens-full/environments/utf16/protocol",
-    "tokens-full/states/close_restore/protocol",
-    "tokens-full/states/dependency_change/protocol",
-    "tokens-full/states/dependency_delete/protocol",
-    "tokens-full/states/dirty/protocol",
-    "tokens-full/states/dynamic/protocol",
-    "tokens-full/states/missing_schema/protocol",
-    "tokens-full/states/recovery/protocol",
-    "tokens-full/states/repeat/protocol",
-    "tokens-full/states/stale_schema/protocol",
-    "tokens-full/states/unresolved/protocol",
-    "tokens-full/syntax/S1/negative/protocol",
-    "tokens-full/syntax/S1/negative/service",
-    "tokens-full/syntax/S1/positive/protocol",
-    "tokens-full/syntax/S1/positive/service",
-    "tokens-full/syntax/S10/negative/protocol",
-    "tokens-full/syntax/S10/negative/service",
-    "tokens-full/syntax/S10/positive/protocol",
-    "tokens-full/syntax/S10/positive/service",
-    "tokens-full/syntax/S2/negative/protocol",
-    "tokens-full/syntax/S2/negative/service",
-    "tokens-full/syntax/S2/positive/protocol",
-    "tokens-full/syntax/S2/positive/service",
-    "tokens-full/syntax/S3/negative/protocol",
-    "tokens-full/syntax/S3/negative/service",
-    "tokens-full/syntax/S3/positive/protocol",
-    "tokens-full/syntax/S3/positive/service",
-    "tokens-full/syntax/S4/negative/protocol",
-    "tokens-full/syntax/S4/negative/service",
-    "tokens-full/syntax/S4/positive/protocol",
-    "tokens-full/syntax/S4/positive/service",
-    "tokens-full/syntax/S5/negative/protocol",
-    "tokens-full/syntax/S5/negative/service",
-    "tokens-full/syntax/S5/positive/protocol",
-    "tokens-full/syntax/S5/positive/service",
-    "tokens-full/syntax/S6/negative/protocol",
-    "tokens-full/syntax/S6/negative/service",
-    "tokens-full/syntax/S6/positive/protocol",
-    "tokens-full/syntax/S6/positive/service",
-    "tokens-full/syntax/S7/negative/protocol",
-    "tokens-full/syntax/S7/negative/service",
-    "tokens-full/syntax/S7/positive/protocol",
-    "tokens-full/syntax/S7/positive/service",
-    "tokens-full/syntax/S8/negative/protocol",
-    "tokens-full/syntax/S8/negative/service",
-    "tokens-full/syntax/S8/positive/protocol",
-    "tokens-full/syntax/S8/positive/service",
-    "tokens-full/syntax/S9/negative/protocol",
-    "tokens-full/syntax/S9/negative/service",
-    "tokens-full/syntax/S9/positive/protocol",
-    "tokens-full/syntax/S9/positive/service",
-    "tokens-range/editor/smoke",
-    "tokens-range/environments/crlf/protocol",
-    "tokens-range/environments/encoded_uri/protocol",
-    "tokens-range/environments/utf16/protocol",
-    "tokens-range/states/close_restore/protocol",
-    "tokens-range/states/dependency_change/protocol",
-    "tokens-range/states/dependency_delete/protocol",
-    "tokens-range/states/dirty/protocol",
-    "tokens-range/states/dynamic/protocol",
-    "tokens-range/states/missing_schema/protocol",
-    "tokens-range/states/recovery/protocol",
-    "tokens-range/states/repeat/protocol",
-    "tokens-range/states/stale_schema/protocol",
-    "tokens-range/states/unresolved/protocol",
-    "tokens-range/syntax/S1/negative/protocol",
-    "tokens-range/syntax/S1/negative/service",
-    "tokens-range/syntax/S1/positive/protocol",
-    "tokens-range/syntax/S1/positive/service",
-    "tokens-range/syntax/S10/negative/protocol",
-    "tokens-range/syntax/S10/negative/service",
-    "tokens-range/syntax/S10/positive/protocol",
-    "tokens-range/syntax/S10/positive/service",
-    "tokens-range/syntax/S11/negative/protocol",
-    "tokens-range/syntax/S11/negative/service",
-    "tokens-range/syntax/S11/positive/protocol",
-    "tokens-range/syntax/S11/positive/service",
-    "tokens-range/syntax/S2/negative/protocol",
-    "tokens-range/syntax/S2/negative/service",
-    "tokens-range/syntax/S2/positive/protocol",
-    "tokens-range/syntax/S2/positive/service",
-    "tokens-range/syntax/S3/negative/protocol",
-    "tokens-range/syntax/S3/negative/service",
-    "tokens-range/syntax/S3/positive/protocol",
-    "tokens-range/syntax/S3/positive/service",
-    "tokens-range/syntax/S4/negative/protocol",
-    "tokens-range/syntax/S4/negative/service",
-    "tokens-range/syntax/S4/positive/protocol",
-    "tokens-range/syntax/S4/positive/service",
-    "tokens-range/syntax/S5/negative/protocol",
-    "tokens-range/syntax/S5/negative/service",
-    "tokens-range/syntax/S5/positive/protocol",
-    "tokens-range/syntax/S5/positive/service",
-    "tokens-range/syntax/S6/negative/protocol",
-    "tokens-range/syntax/S6/negative/service",
-    "tokens-range/syntax/S6/positive/protocol",
-    "tokens-range/syntax/S6/positive/service",
-    "tokens-range/syntax/S7/negative/protocol",
-    "tokens-range/syntax/S7/negative/service",
-    "tokens-range/syntax/S7/positive/protocol",
-    "tokens-range/syntax/S7/positive/service",
-    "tokens-range/syntax/S8/negative/protocol",
-    "tokens-range/syntax/S8/negative/service",
-    "tokens-range/syntax/S8/positive/protocol",
-    "tokens-range/syntax/S8/positive/service",
-    "tokens-range/syntax/S9/negative/protocol",
-    "tokens-range/syntax/S9/negative/service",
-    "tokens-range/syntax/S9/positive/protocol",
-    "tokens-range/syntax/S9/positive/service",
     "vscode/UX01/install-open/command/local",
     "vscode/UX01/install-open/input/local",
     "vscode/UX01/unrelated-file/command/local",
     "vscode/UX01/unrelated-file/input/local",
-    "vscode/UX09/edit-scroll/input/local",
-    "vscode/UX09/edit-scroll/render/local",
-    "vscode/UX09/toggle-off-on/input/local",
-    "vscode/UX09/toggle-off-on/render/local",
-    "vscode/UX09/unresolved-token/input/local",
-    "vscode/UX09/unresolved-token/render/local",
     "vscode/UX10/dismiss-hover/input/local",
     "vscode/UX10/dismiss-hover/render/local",
     "vscode/UX10/keyboard-hover/input/local",
@@ -8474,7 +9046,10 @@
     "editors/vscode/test-results/input-2YQd0K/results.json",
     "target/lsp-matrix/run-Loziqv/report.json",
     "editors/vscode/test-results/run-ZYGCa2/results.json",
-    "editors/vscode/test-results/input-NqhwJH/results.json"
+    "editors/vscode/test-results/input-NqhwJH/results.json",
+    "target/lsp-matrix/run-y1nGIb/report.json",
+    "editors/vscode/test-results/run-W0t0d9/results.json",
+    "editors/vscode/test-results/input-XH0Y2K/results.json"
   ],
   "openIssues": [
     {
@@ -8512,7 +9087,8 @@
         "B02",
         "B03",
         "B04",
-        "B05"
+        "B05",
+        "B06"
       ],
       "requirements": [
         {
@@ -10774,12 +11350,724 @@
         {
           "id": "vscode/UX08/shortcut-fix/render/local",
           "contractHash": "b98fce64561227841db51e4f31c12d3843bf6297c715ee755f726f0090289848"
+        },
+        {
+          "id": "tokens-delta/editor/smoke",
+          "contractHash": "ed397de972e7a56428011a81a8bbbfe4d7a898752d0e37fbfff520d87b486fbc"
+        },
+        {
+          "id": "tokens-delta/environments/crlf/protocol",
+          "contractHash": "8b7a3b1e866b9249a6dc5e235df0777f4d7036d440b282a69e521420bf731bd2"
+        },
+        {
+          "id": "tokens-delta/environments/encoded_uri/protocol",
+          "contractHash": "d9d38df79af640c4dc97aacffc933ec5f569ab80e3126c61a41ae1710fa493f2"
+        },
+        {
+          "id": "tokens-delta/environments/utf16/protocol",
+          "contractHash": "1cd777785f7e87bf3b74e9af31c3aa3a21752fea0ff00c2df45a1660146ae945"
+        },
+        {
+          "id": "tokens-delta/states/cancellation/protocol",
+          "contractHash": "266f8cdb5ec540e60dfb05293d79d912d47243b90d5c7285242f5ebfb855186c"
+        },
+        {
+          "id": "tokens-delta/states/close_restore/protocol",
+          "contractHash": "16f53f2b771de5f300cb316a2ca39bcf28a5f0a65bfd903d88cce5c65b9159db"
+        },
+        {
+          "id": "tokens-delta/states/dependency_change/protocol",
+          "contractHash": "aac295071a5c7592239702f8dd62da92f841bbf3846151ed2c0a52e9829d3b94"
+        },
+        {
+          "id": "tokens-delta/states/dependency_delete/protocol",
+          "contractHash": "9cd13c190a8768275c60365ad8cae8451d85a123e9419f7df08f71d57bd0e444"
+        },
+        {
+          "id": "tokens-delta/states/dirty/protocol",
+          "contractHash": "1cb7de24db9133118d4acaede8dc115ed5723a36f2015ae66181b52973098081"
+        },
+        {
+          "id": "tokens-delta/states/dynamic/protocol",
+          "contractHash": "effec3f826f61bd8b6fd0f3ed2f6a834ae2f914b06b4a4b20eec13067a81451c"
+        },
+        {
+          "id": "tokens-delta/states/missing_schema/protocol",
+          "contractHash": "80ae4d920ad7d73b4bbfc4edfd861b612336dea69c0c5ef0bc484f13f974ee59"
+        },
+        {
+          "id": "tokens-delta/states/recovery/protocol",
+          "contractHash": "46f9e3e184d8263038a8ea61cd7ad07eb2939940f32c8c8a54f26fe85bb536e7"
+        },
+        {
+          "id": "tokens-delta/states/repeat/protocol",
+          "contractHash": "ae1dc5737aaaa82c82cc90c8db969f24046f90380bc9324576cf7eb989b68db6"
+        },
+        {
+          "id": "tokens-delta/states/stale_schema/protocol",
+          "contractHash": "e13bbf71f1e37018f7ec681260efecef2e0dc14b21f87129852fa546690c4bee"
+        },
+        {
+          "id": "tokens-delta/states/stale_version/protocol",
+          "contractHash": "cd87089566db578786132ea41358b6571536f5bd7d43cc6d48d77f14c241f32b"
+        },
+        {
+          "id": "tokens-delta/states/unresolved/protocol",
+          "contractHash": "b6e967f83fbe1b9f7a9da62093783bee25517c70c3186f8436e0ddf13a2739e7"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/protocol",
+          "contractHash": "661a54ecd59f7d2601770e57863b2657d4a8849b2766b492c2998116d5df6e56"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/service",
+          "contractHash": "aae65db397d4ba20d22f530c9947dca054c2c00a7302c05e91ad452e93aa72bf"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/protocol",
+          "contractHash": "f27f871b91f2c302196cb551e7ad128ab38a183e7fe4c3fe6d2a53ddca287b34"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/service",
+          "contractHash": "78bf07d50698423098b3deb3f7c1bd64277315e77e50d4ea6e85d9f9a7ee1e5b"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/negative/protocol",
+          "contractHash": "e267c23cd1574165fc4d6004fca497b58b4d8e8ee62511206595bb80aba4e16e"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/negative/service",
+          "contractHash": "9314c1821fd10b35667754a3136deb71388f9c427e9bf1b29bdb2cf578f864cc"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/positive/protocol",
+          "contractHash": "554154269cb88d0fd8f691cff17899aedf7d284408331e5bf48222e8e75049ba"
+        },
+        {
+          "id": "tokens-delta/syntax/S10/positive/service",
+          "contractHash": "ec2e3963e14812c35c3142df9f6d29ed853b1c652b7085e27d09f87905dc8ec7"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/negative/protocol",
+          "contractHash": "c722ded13952e457014177950e1d712bfac5ecb3ac3f8355d2e21de162ec3f4e"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/negative/service",
+          "contractHash": "9344e181277b64349f05343e4dea31d3919d81eea493b10b2fdc64b43d9125d1"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/positive/protocol",
+          "contractHash": "d52c26f34d6abdc7ae7d6219df8732ac2d71c56d0f4ba2f652447da5c899c651"
+        },
+        {
+          "id": "tokens-delta/syntax/S11/positive/service",
+          "contractHash": "d6d7e5043f0488033bdfeae9bfdbf63bc2a68bf0662643aa0ab42ff57856ad3d"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/negative/protocol",
+          "contractHash": "deb837cdb782ec5786250a539301932314f4e27e1f4c445b849da07f0a193e0e"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/negative/service",
+          "contractHash": "6c06371c84801130f863650825347863286ab991ce16705674aa32af333da012"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/positive/protocol",
+          "contractHash": "054b2d0f049bb5c7acd8c9d607cca736cfcf4e68ba3676474adee0307e6d36dd"
+        },
+        {
+          "id": "tokens-delta/syntax/S2/positive/service",
+          "contractHash": "0b554b23a71955ecfe50d4340ebbf846aaa10647e4dfed838c7af54d52bfc74a"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/protocol",
+          "contractHash": "3ce68a6f40511fcd9e044220de06cd3b25148085d588b9811b96f49b8fa0bdce"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/service",
+          "contractHash": "fcd25a92682108a2f69f15ab3a4e770637496c960f06f7bf02280fa79dec2d98"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/protocol",
+          "contractHash": "11730638c0037ed32e45ea7a2832aefa8d491d1146a3d92a14c3d72e91634cf8"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/service",
+          "contractHash": "da97aa7a6ac30f4ca272bab748e5d262cd623dee0f2199deaa15b9c0d074274d"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/negative/protocol",
+          "contractHash": "9d70b919a0ed0d04ea4d2d1d01e598bc81696ea31c01b10ead0af238b07bdfb2"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/negative/service",
+          "contractHash": "23cb9a9e04d02f9854f435430799d540e509f237d369d1dd256c04824ea61131"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/positive/protocol",
+          "contractHash": "74f66a0152d4258ea434f808a82b3d120f9424f6a3d27e1764f80eaad1508c79"
+        },
+        {
+          "id": "tokens-delta/syntax/S4/positive/service",
+          "contractHash": "83cc5b8d920232b6e7bbb3d74b29aa4a7f1059f996069091c651309716bbac38"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/negative/protocol",
+          "contractHash": "696a40c76f27348413bfa06dc9c42da8abf406982d315c34562dc24743427bec"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/negative/service",
+          "contractHash": "c497eec2fec086d246fb699eb4aa2f1d4075d12566c90b4160e28060bf94efc3"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/positive/protocol",
+          "contractHash": "9d9d94c15e799172a6a36dcab8dc602d70eb1f9e22495983ef6e37d008f73f06"
+        },
+        {
+          "id": "tokens-delta/syntax/S5/positive/service",
+          "contractHash": "ded928dd699dc6eca30a1442e271b6c8313857b19deecbfa78a2c282347a817e"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/negative/protocol",
+          "contractHash": "28383bb8ad5f5e27fe35db848c52e52a7f5359c4b64cca9530a1095dd7507217"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/negative/service",
+          "contractHash": "ae9ed7c0f964eb1c2be1515cbf0be24cebe3f5de675c876fcb3c8fdf4ce17c8b"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/positive/protocol",
+          "contractHash": "6557440c83aedd39a9127d7efe3694e9234ff2a694f787c00bc58d917516941d"
+        },
+        {
+          "id": "tokens-delta/syntax/S6/positive/service",
+          "contractHash": "34f7f398a40ade2720b85215252108ca282d1f60de05164f10153e77f062a695"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/negative/protocol",
+          "contractHash": "0a0cc70c21ff3126fbfe98d9df1c35cdc362730f93114614ed2d6826c3686380"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/negative/service",
+          "contractHash": "2e90dd8dc15226cf4e5c890b5675696ae50fe8a9b378edc9fb9e630c9573c5cc"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/positive/protocol",
+          "contractHash": "d9568efd273b7244e590ba775ba15c42cfc3cab21944eb7ab7d55650a6897fcd"
+        },
+        {
+          "id": "tokens-delta/syntax/S7/positive/service",
+          "contractHash": "fdbcfd22e67151a9f929d042eac14bc873efc4d99b376902091845055943867f"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/negative/protocol",
+          "contractHash": "badc65a3be7e2b4178e78a44edd1be33429794074844ddcbee6962ada1d46101"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/negative/service",
+          "contractHash": "65176d4101ca12e6f3164eaeb2d3bf16ae2ab092153a2a20cd899fed2ac911d4"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/positive/protocol",
+          "contractHash": "d1f8b0b3ec3b78b0649e4c21a1bb6952fb548d322f62e979462d8a5747526408"
+        },
+        {
+          "id": "tokens-delta/syntax/S8/positive/service",
+          "contractHash": "a6aa1542fccac413f9c55aa6f4b80df411abac021e68c31ede60c81a09bfdf58"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/negative/protocol",
+          "contractHash": "0f0f959bd5c8e8394a5562be5cb69e7583f0ccf613d304beef4e46f91ebfa444"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/negative/service",
+          "contractHash": "ff61b64425617128a8b2c86c33fdeeb9062a0d8254500a9460e1c12f8503dea6"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/positive/protocol",
+          "contractHash": "f20cec0524cf117fe9188946d7103a551a3a6aac44edb0405cc1483ba2fbf561"
+        },
+        {
+          "id": "tokens-delta/syntax/S9/positive/service",
+          "contractHash": "dc0d1fed73cce8b3d32ad72ab870f6ddb55c70761c7de344bd7eb47a8f56eaa8"
+        },
+        {
+          "id": "tokens-full/editor/smoke",
+          "contractHash": "1d2fc4b9bfaf360b27bfda343d594e28ef19efe95ea3c239e40bf3e6484a6d16"
+        },
+        {
+          "id": "tokens-full/environments/crlf/protocol",
+          "contractHash": "dbf5e9f9a11933bc0a9420e64a2f92b011e3e6539c57bdd587388f02e44af9a1"
+        },
+        {
+          "id": "tokens-full/environments/encoded_uri/protocol",
+          "contractHash": "28e8dd845f747d8ad6e92ec0527ac08dd859f7e464281ea7fa886e888e0c8003"
+        },
+        {
+          "id": "tokens-full/environments/utf16/protocol",
+          "contractHash": "b0c1af5b0769f67d8e0922f23a6df80aa762fd88a5c510b10b7d7d8c43cab34f"
+        },
+        {
+          "id": "tokens-full/states/close_restore/protocol",
+          "contractHash": "4c8043bde4bfff63652b272ee056e5dd5b55f25991cd4498ecc6f8f7b3b7a2a8"
+        },
+        {
+          "id": "tokens-full/states/dependency_change/protocol",
+          "contractHash": "5b8aee65f616de6d568641a3c3c0e27abcacaee2cb2d641bc5e7138fbc53ed0e"
+        },
+        {
+          "id": "tokens-full/states/dependency_delete/protocol",
+          "contractHash": "3f62a41ae4b127988798b2597784bd49a613819455c3e949ca83bfc53b1c97aa"
+        },
+        {
+          "id": "tokens-full/states/dirty/protocol",
+          "contractHash": "c1c6fba7b6300b4d33dda7c1e58112819033967f452f31ff3434c58762dda659"
+        },
+        {
+          "id": "tokens-full/states/dynamic/protocol",
+          "contractHash": "73d2b8717f3d7461f2b60d360710d0a40b3fbe5d817ab30d22fb7f41a0524bcd"
+        },
+        {
+          "id": "tokens-full/states/missing_schema/protocol",
+          "contractHash": "f7aa3800b79d184c5dbeb8c8075a8e5be897c586529c0a5f7afcd97a001c9df9"
+        },
+        {
+          "id": "tokens-full/states/recovery/protocol",
+          "contractHash": "f062b4e9c8b684cbcd63aea09deee2771f1735f0431053fdf9b147fb608ccfd1"
+        },
+        {
+          "id": "tokens-full/states/repeat/protocol",
+          "contractHash": "9cc67a066c81437066a2ec1e90525abb8660097b817be280d06c49d2204ebc9f"
+        },
+        {
+          "id": "tokens-full/states/stale_schema/protocol",
+          "contractHash": "ce98e7935df7822f24fb91bcbc35c9d2996b59d89c5535b65c1b8e7c1b9d75e6"
+        },
+        {
+          "id": "tokens-full/states/unresolved/protocol",
+          "contractHash": "d7e354993bbd2fb2ba4234b4ad5324851ce8ce84bcf8f597e8d9e98a5c198a10"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/protocol",
+          "contractHash": "646195e83782cb65325aaa4b37ec0e352ff54a43e8e7e5fd93fcd9556c393b8a"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/service",
+          "contractHash": "bd37064399849472c3adcd8772493f89d97b3e1bf67b1cc7de84158980c2692b"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/protocol",
+          "contractHash": "f5e0f0b2350fb61ce3865c202f9ebb9468cd5522b349e445812f97f51744fcdc"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/service",
+          "contractHash": "50e9e8a2a03a230b3c13492c499a9dca0e1c85a153bf3d6ae8ec3235da39bff5"
+        },
+        {
+          "id": "tokens-full/syntax/S10/negative/protocol",
+          "contractHash": "034f5c3dea152673c3d2c671988eb95dc410f1b46c01ec2a6fb89ca574fec74f"
+        },
+        {
+          "id": "tokens-full/syntax/S10/negative/service",
+          "contractHash": "4c2a30f8c6bdaa2744a733e1fa148fd09ae392ed9801c2860914114c435b7df1"
+        },
+        {
+          "id": "tokens-full/syntax/S10/positive/protocol",
+          "contractHash": "0d06a4609437fb22df09623f92cdf77f64e17a15867defd0ec22d94cc6417adf"
+        },
+        {
+          "id": "tokens-full/syntax/S10/positive/service",
+          "contractHash": "46fb4423c90eac6e2122fd4f4198505991ad8d1873d0847c80b4ac0d3fd360b5"
+        },
+        {
+          "id": "tokens-full/syntax/S2/negative/protocol",
+          "contractHash": "8b425843526f6849f268be735aa5a221211700d413f25b6372663af13071271d"
+        },
+        {
+          "id": "tokens-full/syntax/S2/negative/service",
+          "contractHash": "c536b729795581bac387e5e589c4f62c65067227ff678abf9709959f7a2f5d78"
+        },
+        {
+          "id": "tokens-full/syntax/S2/positive/protocol",
+          "contractHash": "dd23324bc1429c41762b63a870cc5f281c4f017bd1d6e96dcfb53d12d5a03644"
+        },
+        {
+          "id": "tokens-full/syntax/S2/positive/service",
+          "contractHash": "6b0bc65ca1ab3501cfc6ee887542b8aeac493e99eca56fd578e87f0771fe3ec4"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/protocol",
+          "contractHash": "470b3d2ddf37264d990359b170477ae35dd3175e451a74ca97d39450253726cd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/service",
+          "contractHash": "5d084c69282eb2b238bc3e08e577b9f9112584f9133fea53f073439b6dc38abd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/protocol",
+          "contractHash": "600e66bd8c558f19206092d6a76aa05c16d1792464feb27f5e14d05257d22246"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/service",
+          "contractHash": "73bf93244a54b7f9c69a258b2c17fe32bb29e5c96ab29d4b6eee3c98daa3468b"
+        },
+        {
+          "id": "tokens-full/syntax/S4/negative/protocol",
+          "contractHash": "0c211a0225d9d7350ca9d9c6c2218bca2be24f968bb3a7846f248e42aa55f836"
+        },
+        {
+          "id": "tokens-full/syntax/S4/negative/service",
+          "contractHash": "f193b27614d73fa8c6735475ecab38cfa6be4a8d218cb825c6747d2788aaafa3"
+        },
+        {
+          "id": "tokens-full/syntax/S4/positive/protocol",
+          "contractHash": "c4f5375b90922082ed397843e407815053f8f193f26211776483f9b9228f6a6d"
+        },
+        {
+          "id": "tokens-full/syntax/S4/positive/service",
+          "contractHash": "2f72618f94e9e29146c75920485dfa1cb1d996a38272cd4ace300af6bf87235e"
+        },
+        {
+          "id": "tokens-full/syntax/S5/negative/protocol",
+          "contractHash": "5c1227d0b14d247bc16f05f8a6b6e54d6940490a38bfc06348d00ff0ca028cf6"
+        },
+        {
+          "id": "tokens-full/syntax/S5/negative/service",
+          "contractHash": "8004cc944723367116c7235d3dba1976509c24fa69bc540e4735e85c414352e1"
+        },
+        {
+          "id": "tokens-full/syntax/S5/positive/protocol",
+          "contractHash": "8b0384d4820b24de63e7c2154e1c7c1abee2ce8e03b13f9b78d8bad7b06787d4"
+        },
+        {
+          "id": "tokens-full/syntax/S5/positive/service",
+          "contractHash": "032af8ade81f4423b6e68f07ce34f905905c4bbafb156e301f3ce886903ccc0e"
+        },
+        {
+          "id": "tokens-full/syntax/S6/negative/protocol",
+          "contractHash": "6f5dcb620fd17667aadbed36f9dfe1df5c6f7a35fade5ceec39bd4d1741442ba"
+        },
+        {
+          "id": "tokens-full/syntax/S6/negative/service",
+          "contractHash": "0ab3e4c34b6921b71bb92d06e88a32134a6a1a0525b91378635ac75bea8d5b1e"
+        },
+        {
+          "id": "tokens-full/syntax/S6/positive/protocol",
+          "contractHash": "f06952c3cfc3d92e0bdc865855011dd89a655cef043ed6b8cd9fce00070c4a74"
+        },
+        {
+          "id": "tokens-full/syntax/S6/positive/service",
+          "contractHash": "149c5795a4a0d07e089f180f1a3029cea784908a398bbb7fb7b8405db94ee89a"
+        },
+        {
+          "id": "tokens-full/syntax/S7/negative/protocol",
+          "contractHash": "4f9758d438ec48cb15cd0951e536b09ddf344d1aa28dd2f5bcf1e0568ab48120"
+        },
+        {
+          "id": "tokens-full/syntax/S7/negative/service",
+          "contractHash": "bb8b082616956267e297d8039cb2980a0e9970dcbd8f48607a82c77f7402c3e6"
+        },
+        {
+          "id": "tokens-full/syntax/S7/positive/protocol",
+          "contractHash": "d7fc552cab8599e82588121600ee19a0695782408f9538a66b609502c88a2169"
+        },
+        {
+          "id": "tokens-full/syntax/S7/positive/service",
+          "contractHash": "189a3e3b86fb43f52489c589356e68d3c4e0acf78ea5c6e20f824d4732b2c6c9"
+        },
+        {
+          "id": "tokens-full/syntax/S8/negative/protocol",
+          "contractHash": "084a7b423712d565902cbb58de08de5e7aa0622369665c9b22502faab09aaedb"
+        },
+        {
+          "id": "tokens-full/syntax/S8/negative/service",
+          "contractHash": "cb8d7817938f2318b67dadc26b79297f2bf564287b68162b21cbb123ff6d92ca"
+        },
+        {
+          "id": "tokens-full/syntax/S8/positive/protocol",
+          "contractHash": "66ad6e0068eba966b9c5c7ca8ad82497b0cd7d31faa5a918c12d35f6d68e64d4"
+        },
+        {
+          "id": "tokens-full/syntax/S8/positive/service",
+          "contractHash": "3d46921e6481903ae6ad0ca9358f308195d176e852fb52c858e1e21b10b712d9"
+        },
+        {
+          "id": "tokens-full/syntax/S9/negative/protocol",
+          "contractHash": "c1bec715a2b93e328f451d80b118f7a1d580f24a39133608034c69fa0dbd4e6b"
+        },
+        {
+          "id": "tokens-full/syntax/S9/negative/service",
+          "contractHash": "f9856eee844525800080341e71f1a9008a5d6a9acee638aff0ea96e3fae09d72"
+        },
+        {
+          "id": "tokens-full/syntax/S9/positive/protocol",
+          "contractHash": "8223d81d1ebadeaa4182313efe722ffd14fcebf72f605c14e73597038971267f"
+        },
+        {
+          "id": "tokens-full/syntax/S9/positive/service",
+          "contractHash": "4f817216bd569a6c908766bd71c42dfbaa4bfc714a4064712167fc066b9d1ec6"
+        },
+        {
+          "id": "tokens-range/editor/smoke",
+          "contractHash": "d05a95c94f99b37bc9ebf3bcea96635bf685950832e0bc9026eeaf2f20da6a40"
+        },
+        {
+          "id": "tokens-range/environments/crlf/protocol",
+          "contractHash": "014583da826f893bdbde943c3a48d6ee13d2abf84f375b9e7423fabb8d93b395"
+        },
+        {
+          "id": "tokens-range/environments/encoded_uri/protocol",
+          "contractHash": "f94ac12d5c9b6709b2f57d8ad738a08d98e9879fc29df7475c9c1f651fa30df2"
+        },
+        {
+          "id": "tokens-range/environments/utf16/protocol",
+          "contractHash": "1cfd1cc6b1f6661c6ee8ee4918d41c50d4b4f32f551314bf38447f8a99d4c7fd"
+        },
+        {
+          "id": "tokens-range/states/close_restore/protocol",
+          "contractHash": "09e53f9a6a83f4b5fddb54206cc85d94967dd569f180bc9699765af212ee3ac8"
+        },
+        {
+          "id": "tokens-range/states/dependency_change/protocol",
+          "contractHash": "ae3f42395b7671b0ffe16eb483f998486d21b50003b0d84a31cbbf9667a64ba9"
+        },
+        {
+          "id": "tokens-range/states/dependency_delete/protocol",
+          "contractHash": "305af66271fad457273a8447a14fcfad8ae7c04663a0ebc84e383f45c32fb3cc"
+        },
+        {
+          "id": "tokens-range/states/dirty/protocol",
+          "contractHash": "7f190691956d2c458ee90830a4f7d005bd8f97fc8a0943ea74024c838b0e13de"
+        },
+        {
+          "id": "tokens-range/states/dynamic/protocol",
+          "contractHash": "a0ae5b6340a10cf3e8ba6f889d0901f0b1102d43a4c1b7e89cda9aa1d05e536a"
+        },
+        {
+          "id": "tokens-range/states/missing_schema/protocol",
+          "contractHash": "77e460b217a60477caa425a58d29009a32ae663575cb4cc02b4333ce7820e856"
+        },
+        {
+          "id": "tokens-range/states/recovery/protocol",
+          "contractHash": "12e482840a44bd0968e10c140729c34d3f3889e7180eddb34f20043e4214b375"
+        },
+        {
+          "id": "tokens-range/states/repeat/protocol",
+          "contractHash": "500a37fbbc7c6427e8ad4d13e7b8986fbb98affc335179bc75c558b704990b14"
+        },
+        {
+          "id": "tokens-range/states/stale_schema/protocol",
+          "contractHash": "fbb68791d8d96dbafab47f37b083553a8d5f45aa622c1e8ae07d02d16dda2aa1"
+        },
+        {
+          "id": "tokens-range/states/unresolved/protocol",
+          "contractHash": "14e7aecf581ca6fd9074a0e398ac15e0ebbb668a455633dc52b9babba5b6ce15"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/protocol",
+          "contractHash": "9837827b34ab9179344f2c8d6ea754acbc5f3afe77e9ed2cb4b63cc32316e490"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/service",
+          "contractHash": "39912c21a88ecb6f513b4fb9f09f192e82c75b8172645ae0b97f971ebdcdaa1b"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/protocol",
+          "contractHash": "fccbf29fddd2eab8746f9f72ae196192bd14479ae89a343d7ad5f89e582a577c"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/service",
+          "contractHash": "128015bee101c389cde2e9aceb0548260a8118cac33a201a0f071e8adcc7670a"
+        },
+        {
+          "id": "tokens-range/syntax/S10/negative/protocol",
+          "contractHash": "b661079b0ce259ac0410444080ba755897e7fd8bc209b425a4670c2c6a97e79b"
+        },
+        {
+          "id": "tokens-range/syntax/S10/negative/service",
+          "contractHash": "d741f2aa8a9f76febfc68a4831475e1c7cb7ed68bbee2204b91491700de29594"
+        },
+        {
+          "id": "tokens-range/syntax/S10/positive/protocol",
+          "contractHash": "5a5ac977daa20e35b87747c7276da51414f2a8cf71f0270770b19e93f2d7d879"
+        },
+        {
+          "id": "tokens-range/syntax/S10/positive/service",
+          "contractHash": "2f5fcc125041988df5b07522f7b1ecf2ff750852e483f9d49a1a03ac9a8a33e6"
+        },
+        {
+          "id": "tokens-range/syntax/S11/negative/protocol",
+          "contractHash": "f8a059df60aab954bfe8e16b181873d64416b212d5b27548c54483eaff9fe7b8"
+        },
+        {
+          "id": "tokens-range/syntax/S11/negative/service",
+          "contractHash": "47523f2d0e893af124dc482d7e0ced835ae3e72c67fd8466850686302d9abca9"
+        },
+        {
+          "id": "tokens-range/syntax/S11/positive/protocol",
+          "contractHash": "a8a5b2af44362465045cb58dfdd34f7ab9c92cd60d3b7f3a66ba676a73611cb1"
+        },
+        {
+          "id": "tokens-range/syntax/S11/positive/service",
+          "contractHash": "4ba3f6c56163ea2066b1ad926962b767df0587c18e59a490e8cf59268dcc4b3a"
+        },
+        {
+          "id": "tokens-range/syntax/S2/negative/protocol",
+          "contractHash": "0d48202544a5e70bc2b95acee0442561dd014ea3e1356651f4a6539e3890f06e"
+        },
+        {
+          "id": "tokens-range/syntax/S2/negative/service",
+          "contractHash": "d7ae534ca8089f45114da4107f1eeb1765a51c039149ff0b0a35671bd6cb9eb4"
+        },
+        {
+          "id": "tokens-range/syntax/S2/positive/protocol",
+          "contractHash": "d2734ce07370e20acc728fb38fc0e0d34b1710c586cc40b2d35fd3410d158e25"
+        },
+        {
+          "id": "tokens-range/syntax/S2/positive/service",
+          "contractHash": "1e8542ea0020b91ce3a4ada64c184cd6e2254b32920e40a8b82e2d23e23b61d8"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/protocol",
+          "contractHash": "032d59932fffc83bb2fd1dfe76b4a2257907933e5c8c8543003f9c77024ba042"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/service",
+          "contractHash": "1e6b71e1622b6d873fbf3c1f8133a0db13f803630904a8956bae1b4c0e1e545b"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/protocol",
+          "contractHash": "f304770c21801161353956e5434db6df1ba2229bc4a3608a8f14f9b82cba3358"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/service",
+          "contractHash": "d1e42d5e34f46150ce1d7cf67625d3c9fbc54c2eae5e342bc5f9681dce6637ec"
+        },
+        {
+          "id": "tokens-range/syntax/S4/negative/protocol",
+          "contractHash": "00d59657686f3d39c2587cd78a9f52af50bb3e6c67f8cfc12966e8c57324e587"
+        },
+        {
+          "id": "tokens-range/syntax/S4/negative/service",
+          "contractHash": "56a60202c5b1ab9ee66b1af92515a0ddb4640dfd1c455b759fa786ecab5138ab"
+        },
+        {
+          "id": "tokens-range/syntax/S4/positive/protocol",
+          "contractHash": "adb96d0230fb1f63eb682d99f12287774beba84dda9587c7288e9428de4733cd"
+        },
+        {
+          "id": "tokens-range/syntax/S4/positive/service",
+          "contractHash": "0b194c5d0c64eed65c18d28a722a07ad7d09dffea1d507d6a18e462654fa82d7"
+        },
+        {
+          "id": "tokens-range/syntax/S5/negative/protocol",
+          "contractHash": "ff7936f477e171e6123a951465b86ca84716fde062d57271eb230c7b638441c9"
+        },
+        {
+          "id": "tokens-range/syntax/S5/negative/service",
+          "contractHash": "62e1c6d3d1f306dadd3a7c168468d4e9a15d93f1f8edc32d0c470a10c997403b"
+        },
+        {
+          "id": "tokens-range/syntax/S5/positive/protocol",
+          "contractHash": "8f2dd9b21329ac2939702b41d1ae7f5ee214223ad9b68502c6acf9ba325b330f"
+        },
+        {
+          "id": "tokens-range/syntax/S5/positive/service",
+          "contractHash": "2ddf5dbf5cb610974112f64dd16a12091d641e728e47815994d1d548019038da"
+        },
+        {
+          "id": "tokens-range/syntax/S6/negative/protocol",
+          "contractHash": "5e8d00f2f40430b2b4c3fe47e014757cd78245c5c2b4b9c8a007a5f6c26afa95"
+        },
+        {
+          "id": "tokens-range/syntax/S6/negative/service",
+          "contractHash": "6622cc8037591fc6c71f86ecf0e1bcb16b959175ca27b4ad652a244afe43da65"
+        },
+        {
+          "id": "tokens-range/syntax/S6/positive/protocol",
+          "contractHash": "cbdea1ba1549f8d331582a04b4f8dc429103fc4854f288bda50e2329ffa57251"
+        },
+        {
+          "id": "tokens-range/syntax/S6/positive/service",
+          "contractHash": "2e404fd34e4e89e71527569c370cecf6dec443cc34119ad28604764b878994f5"
+        },
+        {
+          "id": "tokens-range/syntax/S7/negative/protocol",
+          "contractHash": "e99eaecdd55929b1f3f579159a4d2b807ebf17d2b148bcf9710d865f195c5bc9"
+        },
+        {
+          "id": "tokens-range/syntax/S7/negative/service",
+          "contractHash": "eb17a0add39a57569e00f2582d8826dc4504784856430abf72fb614e0c6a9c3c"
+        },
+        {
+          "id": "tokens-range/syntax/S7/positive/protocol",
+          "contractHash": "f3597819064cab1735fec8f2d9beba67cbdbf8e25d3ecb9d8733e9d8d89105a3"
+        },
+        {
+          "id": "tokens-range/syntax/S7/positive/service",
+          "contractHash": "ed16919fcca1f504be728a8c7aab07770f50d9127703c71c877a91b01b2fb16a"
+        },
+        {
+          "id": "tokens-range/syntax/S8/negative/protocol",
+          "contractHash": "2d5a0b114a59e5ce2777f116367dcc6c8c813e9f72af27cc7513a56cc62ad9f3"
+        },
+        {
+          "id": "tokens-range/syntax/S8/negative/service",
+          "contractHash": "89ef6046080f10aede5cea3fdca75bcc939ca305ca7567a792b90a80d11d15e7"
+        },
+        {
+          "id": "tokens-range/syntax/S8/positive/protocol",
+          "contractHash": "4457e4c3d175c9222d96a18f07c549a6030def97747aca75ff211ebe40f7cfbd"
+        },
+        {
+          "id": "tokens-range/syntax/S8/positive/service",
+          "contractHash": "4c24a7c1661e6e6c6c35d0b41955e2dbd7ceb6a52b0b67a88178f400a48d4541"
+        },
+        {
+          "id": "tokens-range/syntax/S9/negative/protocol",
+          "contractHash": "37f8081b974636feffb6701bf363c6b6e760ab0e10ce94fd22d1d5e0905ef2f0"
+        },
+        {
+          "id": "tokens-range/syntax/S9/negative/service",
+          "contractHash": "c8751dc993cc9f2d1831acd35f118d3c79572586a67808f78744ef30c4694150"
+        },
+        {
+          "id": "tokens-range/syntax/S9/positive/protocol",
+          "contractHash": "a30f0b86c775b98a75ae69aba621f7d714e18c3e48229d253d3a583b29783ce8"
+        },
+        {
+          "id": "tokens-range/syntax/S9/positive/service",
+          "contractHash": "a4f3dc49e693a019d1a332f4465dce8f928694dd39ee98014d7c139b153dc3fd"
+        },
+        {
+          "id": "vscode/UX09/edit-scroll/input/local",
+          "contractHash": "b0f56a3cf7d7bcdfd31cc436d7be7dd8d71a89394e19123ddafdf2597165eea9"
+        },
+        {
+          "id": "vscode/UX09/edit-scroll/render/local",
+          "contractHash": "b0f56a3cf7d7bcdfd31cc436d7be7dd8d71a89394e19123ddafdf2597165eea9"
+        },
+        {
+          "id": "vscode/UX09/toggle-off-on/input/local",
+          "contractHash": "c1aa590679118c79c256c09de6e70b74fdf7244e788eb26f089b4c4022cf1c4c"
+        },
+        {
+          "id": "vscode/UX09/toggle-off-on/render/local",
+          "contractHash": "c1aa590679118c79c256c09de6e70b74fdf7244e788eb26f089b4c4022cf1c4c"
+        },
+        {
+          "id": "vscode/UX09/unresolved-token/input/local",
+          "contractHash": "f5176eefd5f3c2f2b0b3d447456a8edcdde26f089cf9334c0e7a46cc44e49381"
+        },
+        {
+          "id": "vscode/UX09/unresolved-token/render/local",
+          "contractHash": "f5176eefd5f3c2f2b0b3d447456a8edcdde26f089cf9334c0e7a46cc44e49381"
         }
       ],
       "validation": {
         "source": {
-          "revision": "25cfa001be96f3e2e168933a45cf759e66474744",
-          "treeSha256": "1d140a6fc9c2eff5893f928bf32b08760930885ba3c280cf637453a3f111a7e3"
+          "revision": "16d63f6df2b2ed4f8951c3df0b41094dc9bc73b1",
+          "treeSha256": "bf078bff48439b8f82270481ca756581a204613e6c5c6fc239ae025e72bb02ff"
         },
         "profile": {
           "platform": "win32",
@@ -10787,11 +12075,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-Loziqv/report.json"
+          "target/lsp-matrix/run-y1nGIb/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-ZYGCa2/results.json --local-results editors/vscode/test-results/input-NqhwJH/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-W0t0d9/results.json --local-results editors/vscode/test-results/input-XH0Y2K/results.json",
             "exitCode": 0
           }
         ]
