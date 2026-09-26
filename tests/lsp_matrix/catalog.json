@@ -14023,6 +14023,46 @@
           "name": "tests::hover::coordinates::hover_signature_coordinates_preserve_complete_unicode_results_and_repeats"
         }
       ]
+    },
+    {
+      "requirement": "signature-help/syntax/S5/positive/service",
+      "assertion": "Reviewed in reviews/signature-s5.md. Independent signature-s5 fixture authors 27 whole signature templates over 161 positions (85 positive, 76 explicit null), repeated with LF/CRLF. Compare every signature label and parameter name/type/label/default plus active signature/semantic slot; service also checks complete canonical owner lists and named-argument authority. Reviewed argument mapping/import/Service source fixtures cover named reordering, duplicate/unknown/overflow fallback, nested/lambda/incomplete calls, async/defaulted source/schema functions, aliases/visibility/shadowing, inherent/trait/default/override and returned receivers. Ordinary/missing service sets cannot borrow colliding registry metadata. Type-only schema arg0/arg1 remain presentation-only. Builtin math/String/Array/Map/Option/Result retain static specialized facts. Dynamic, unresolved, non-callable, wrong-owner and Any-return results stay null. Real protocol dispatch uses UTF-16 markers and encoded isolated roots; repeats and physical disk preservation are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S5/positive/protocol",
+      "assertion": "Reviewed in reviews/signature-s5.md. Independent signature-s5 fixture authors 27 whole signature templates over 161 positions (85 positive, 76 explicit null), repeated with LF/CRLF. Compare every signature label and parameter name/type/label/default plus active signature/semantic slot; service also checks complete canonical owner lists and named-argument authority. Reviewed argument mapping/import/Service source fixtures cover named reordering, duplicate/unknown/overflow fallback, nested/lambda/incomplete calls, async/defaulted source/schema functions, aliases/visibility/shadowing, inherent/trait/default/override and returned receivers. Ordinary/missing service sets cannot borrow colliding registry metadata. Type-only schema arg0/arg1 remain presentation-only. Builtin math/String/Array/Map/Option/Result retain static specialized facts. Dynamic, unresolved, non-callable, wrong-owner and Any-return results stay null. Real protocol dispatch uses UTF-16 markers and encoded isolated roots; repeats and physical disk preservation are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S5/negative/service",
+      "assertion": "Reviewed in reviews/signature-s5.md. Independent signature-s5 fixture authors 27 whole signature templates over 161 positions (85 positive, 76 explicit null), repeated with LF/CRLF. Compare every signature label and parameter name/type/label/default plus active signature/semantic slot; service also checks complete canonical owner lists and named-argument authority. Reviewed argument mapping/import/Service source fixtures cover named reordering, duplicate/unknown/overflow fallback, nested/lambda/incomplete calls, async/defaulted source/schema functions, aliases/visibility/shadowing, inherent/trait/default/override and returned receivers. Ordinary/missing service sets cannot borrow colliding registry metadata. Type-only schema arg0/arg1 remain presentation-only. Builtin math/String/Array/Map/Option/Result retain static specialized facts. Dynamic, unresolved, non-callable, wrong-owner and Any-return results stay null. Real protocol dispatch uses UTF-16 markers and encoded isolated roots; repeats and physical disk preservation are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S5/negative/protocol",
+      "assertion": "Reviewed in reviews/signature-s5.md. Independent signature-s5 fixture authors 27 whole signature templates over 161 positions (85 positive, 76 explicit null), repeated with LF/CRLF. Compare every signature label and parameter name/type/label/default plus active signature/semantic slot; service also checks complete canonical owner lists and named-argument authority. Reviewed argument mapping/import/Service source fixtures cover named reordering, duplicate/unknown/overflow fallback, nested/lambda/incomplete calls, async/defaulted source/schema functions, aliases/visibility/shadowing, inherent/trait/default/override and returned receivers. Ordinary/missing service sets cannot borrow colliding registry metadata. Type-only schema arg0/arg1 remain presentation-only. Builtin math/String/Array/Map/Option/Result retain static specialized facts. Dynamic, unresolved, non-callable, wrong-owner and Any-return results stay null. Real protocol dispatch uses UTF-16 markers and encoded isolated roots; repeats and physical disk preservation are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

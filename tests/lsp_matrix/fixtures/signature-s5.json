@@ -1,0 +1,694 @@
+{
+  "version": 1,
+  "id": "signature-s5",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.signature_s5\"\nname = \"signature_s5\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
+    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Preview\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Preview\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::current\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::opaque\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"any\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"update\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Preview\",\n        \"name\": \"check\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "scripts/methods.vela": "/* 中😀 */\nstruct Player { level: i64 }\nimpl Player { fn grant(self, amount: i64, bonus: i64 = 2) -> i64 { return amount + bonus; } }\ntrait Rewardable { fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus; } }\nimpl Rewardable for Player {}\ntrait Adjustable { fn change(self, value: u32, reason: String) -> bool; }\nimpl Adjustable for Player { fn change(self, value: u32, reason: String) -> bool { return true; } }\nfn current() -> Player { return Player { level: 1 }; }\nfn opaque() -> Any { return Player { level: 1 }; }\nasync fn fetch(code: i64, reason: String = \"x\") -> String { return reason; }\nfn main(player: Player, reward: Rewardable, row: host::Row, preview: host::Preview, any: Any, unknown) {\n player.grant(1, bonus = [[inherent]]2);\n current().grant(1, [[source-return]]2);\n player.preview(1, [[trait-default]]2);\n reward.preview(1, [[trait-interface]]2);\n player.change(1, reason = [[trait-override]]\"ok\");\n fetch(reason = \"ok\", code = [[source-async]]1);\n row.update(reason = \"ok\", amount = [[schema-named]]1);\n host::current().update(1, [[schema-return]]\"ok\");\n row.legacy(1, [[schema-legacy]]\"ok\");\n row.legacy(arg1 = [[schema-legacy-named]]\"ok\");\n preview.check(1, [[schema-trait]]\"ok\");\n opaque().grant(1, [[source-any]]2);\n host::opaque().update(1, [[schema-any]]\"ok\");\n any.grant(1, [[any]]2);\n unknown.grant(1, [[unknown]]2);\n row.grant(1, [[wrong-owner]]2);\n missing([[unresolved]]1);\n player.absent([[unknown-member]]1);\n let local = 1; local([[non-callable]]1);\n}\n",
+    "scripts/standard.vela": "/* 中😀 */\nfn main(text: String, values: Array<i64>, optional: Option<i64>, result: Result<i64, String>, map: Map<String, i64>, any: Any) {\n text.split_once([[string]]\",\");\n values.filter([[array]]|item| { return item > 0; });\n optional.unwrap_or([[option]]1);\n result.unwrap_or([[result]]1);\n map.insert(\"key\", [[map]]1);\n any.filter([[dynamic-standard]]|item| { return true; });\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "signatures": {
+      "grant": {
+        "label": "grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "count",
+            "type": "i64",
+            "label": "count: i64"
+          },
+          {
+            "name": "flag",
+            "type": "bool",
+            "label": "flag: bool"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::grant"
+        },
+        "named": true
+      },
+      "empty": {
+        "label": "empty() -> bool",
+        "parameters": [],
+        "owner": {
+          "kind": "Source",
+          "name": "api::empty"
+        },
+        "named": true
+      },
+      "player-grant": {
+        "label": "Player.grant(count: i64, flag: bool, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "count",
+            "type": "i64",
+            "label": "count: i64"
+          },
+          {
+            "name": "flag",
+            "type": "bool",
+            "label": "flag: bool"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::Player.grant"
+        },
+        "named": true
+      },
+      "host-grant": {
+        "label": "host::grant(count: u32, flag: bool, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "count",
+            "type": "u32",
+            "label": "count: u32"
+          },
+          {
+            "name": "flag",
+            "type": "bool",
+            "label": "flag: bool"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::grant"
+        },
+        "named": true
+      },
+      "math": {
+        "label": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "parameters": [
+          {
+            "name": "left",
+            "type": "i64 | f64",
+            "label": "left: i64 | f64"
+          },
+          {
+            "name": "right",
+            "type": "i64 | f64",
+            "label": "right: i64 | f64"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "math::max"
+        },
+        "named": true
+      },
+      "base": {
+        "label": "async service::base::handle(amount: i64, reason: String) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "i64",
+            "label": "amount: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "api::Handler.handle"
+        },
+        "named": false
+      },
+      "peer": {
+        "label": "api::Peer.take(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "u32",
+            "label": "amount: u32"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "api::Peer.take"
+        },
+        "named": true
+      },
+      "state": {
+        "label": "api::State::Ready(arg0: i64, arg1: String) -> api::State::Ready",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "i64",
+            "label": "arg0: i64"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::State::Ready"
+        },
+        "named": false
+      },
+      "host-import": {
+        "label": "async host::grant(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "u32",
+            "label": "amount: u32"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::grant"
+        },
+        "named": true
+      },
+      "source-import": {
+        "label": "grant(source_value: i64) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "type": "i64",
+            "label": "source_value: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::grant"
+        },
+        "named": true
+      },
+      "local-function": {
+        "label": "grant(local_value: String) -> bool",
+        "parameters": [
+          {
+            "name": "local_value",
+            "type": "String",
+            "label": "local_value: String"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "local_function::grant"
+        },
+        "named": true
+      },
+      "enum-local": {
+        "label": "enum_local::State::Ready(value: i64) -> enum_local::State::Ready",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "i64",
+            "label": "value: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "enum_local::State::Ready"
+        },
+        "named": false
+      },
+      "enum-import": {
+        "label": "api::State::Ready(value: i64) -> api::State::Ready",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "i64",
+            "label": "value: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::State::Ready"
+        },
+        "named": false
+      },
+      "base-sibling": {
+        "label": "service::base::other(value: u32) -> ()",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "u32",
+            "label": "value: u32"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "api::Handler.other"
+        },
+        "named": false
+      },
+      "pinned": {
+        "label": "service::pinned::peer::take(amount: u32) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "u32",
+            "label": "amount: u32"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "api::Peer.take"
+        },
+        "named": false
+      },
+      "inherent": {
+        "label": "Player.grant(amount: i64, bonus: i64 (defaulted)) -> i64",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "i64",
+            "label": "amount: i64"
+          },
+          {
+            "name": "bonus",
+            "type": "i64",
+            "label": "bonus: i64 (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "methods::Player.grant"
+        },
+        "named": true
+      },
+      "trait-default": {
+        "label": "methods::Rewardable.preview(amount: i64, bonus: i64) -> i64",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "i64",
+            "label": "amount: i64"
+          },
+          {
+            "name": "bonus",
+            "type": "i64",
+            "label": "bonus: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "methods::Rewardable.preview"
+        },
+        "named": true
+      },
+      "trait-override": {
+        "label": "Adjustable for Player.change(value: u32, reason: String) -> bool",
+        "parameters": [
+          {
+            "name": "value",
+            "type": "u32",
+            "label": "value: u32"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "Adjustable for Player.change"
+        },
+        "named": true
+      },
+      "fetch": {
+        "label": "async fetch(code: i64, reason: String (defaulted)) -> String",
+        "parameters": [
+          {
+            "name": "code",
+            "type": "i64",
+            "label": "code: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "methods::fetch"
+        },
+        "named": true
+      },
+      "row-update": {
+        "label": "async host::Row.update(amount: i64, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "amount",
+            "type": "i64",
+            "label": "amount: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Row.update"
+        },
+        "named": true
+      },
+      "row-legacy": {
+        "label": "host::Row.legacy(arg0: i64, arg1: String) -> bool",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "i64",
+            "label": "arg0: i64"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Row.legacy"
+        },
+        "named": false
+      },
+      "schema-trait": {
+        "label": "host::Preview.check(arg0: i64, arg1: String) -> bool",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "i64",
+            "label": "arg0: i64"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Preview.check"
+        },
+        "named": false
+      },
+      "string": {
+        "label": "String.split_once(separator: String) -> Option((String, String))",
+        "parameters": [
+          {
+            "name": "separator",
+            "type": "String",
+            "label": "separator: String"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "String.split_once"
+        },
+        "named": true
+      },
+      "array": {
+        "label": "Array(i64).filter(callback: Function(i64) -> bool) -> Array(i64)",
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "Function(i64) -> bool",
+            "label": "callback: Function(i64) -> bool"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "Array(i64).filter"
+        },
+        "named": true
+      },
+      "option": {
+        "label": "Option(i64).unwrap_or(default: Any) -> i64 | Any",
+        "parameters": [
+          {
+            "name": "default",
+            "type": "Any",
+            "label": "default: Any"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "Option(i64).unwrap_or"
+        },
+        "named": true
+      },
+      "result": {
+        "label": "Result(i64, String).unwrap_or(default: Any) -> i64 | Any",
+        "parameters": [
+          {
+            "name": "default",
+            "type": "Any",
+            "label": "default: Any"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "Result(i64, String).unwrap_or"
+        },
+        "named": true
+      },
+      "map": {
+        "label": "Map(String, i64).insert(key: String, value: i64) -> Option(i64)",
+        "parameters": [
+          {
+            "name": "key",
+            "type": "String",
+            "label": "key: String"
+          },
+          {
+            "name": "value",
+            "type": "i64",
+            "label": "value: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "Map(String, i64).insert"
+        },
+        "named": true
+      }
+    },
+    "groups": [
+      {
+        "fixture": "call-parameter-mapping",
+        "mode": "full",
+        "queries": [
+          {"id":"named_last","file":"scripts/named_last.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"named_middle","file":"scripts/named_middle.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"named_first_after_last","file":"scripts/named_first_after_last.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"named_last_after_first","file":"scripts/named_last_after_first.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"empty_after_last","file":"scripts/empty_after_last.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"empty_after_middle","file":"scripts/empty_after_middle.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"empty_mixed","file":"scripts/empty_mixed.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"empty_all_used","file":"scripts/empty_all_used.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"default_remaining","file":"scripts/default_remaining.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"empty_start","file":"scripts/empty_start.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"positional_second","file":"scripts/positional_second.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"positional_overflow","file":"scripts/positional_overflow.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"unknown_name","file":"scripts/unknown_name.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"duplicate_name","file":"scripts/duplicate_name.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"duplicate_positional","file":"scripts/duplicate_positional.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"positional_after_named","file":"scripts/positional_after_named.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"identifier_after_named","file":"scripts/identifier_after_named.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"known_after_unknown","file":"scripts/known_after_unknown.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"empty_after_unknown","file":"scripts/empty_after_unknown.vela","marker":"cursor","signature":"grant","active":0},
+          {"id":"empty_with_following_named","file":"scripts/empty_with_following_named.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"empty_between_named","file":"scripts/empty_between_named.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"current_before_duplicate","file":"scripts/current_before_duplicate.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"inside_named_token","file":"scripts/inside_named_token.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"after_equal_comment","file":"scripts/after_equal_comment.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"after_nested","file":"scripts/after_nested.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"nested_inner","file":"scripts/nested_inner.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"comma_in_string","file":"scripts/comma_in_string.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"missing_close","file":"scripts/missing_close.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"zero_empty","file":"scripts/zero_empty.vela","marker":"cursor","signature":"empty","active":0},
+          {"id":"zero_named","file":"scripts/zero_named.vela","marker":"cursor","signature":"empty","active":0},
+          {"id":"source_method","file":"scripts/source_method.vela","marker":"cursor","signature":"player-grant","active":1},
+          {"id":"schema_named","file":"scripts/schema_named.vela","marker":"cursor","signature":"host-grant","active":2},
+          {"id":"schema_mixed","file":"scripts/schema_mixed.vela","marker":"cursor","signature":"host-grant","active":1},
+          {"id":"schema_alias","file":"scripts/schema_alias.vela","marker":"cursor","signature":"host-grant","active":0},
+          {"id":"stdlib_named","file":"scripts/stdlib_named.vela","marker":"cursor","signature":"math","active":1},
+          {"id":"service_named_rejected","file":"scripts/service_named_rejected.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"service_positional","file":"scripts/service_positional.vela","marker":"cursor","signature":"base","active":1},
+          {"id":"service_receiver_named","file":"scripts/service_receiver_named.vela","marker":"cursor","signature":"peer","active":0},
+          {"id":"enum_named_rejected","file":"scripts/enum_named_rejected.vela","marker":"cursor","signature":"state","active":0},
+          {"id":"enum_positional","file":"scripts/enum_positional.vela","marker":"cursor","signature":"state","active":1},
+          {"id":"multiline","file":"scripts/multiline.vela","marker":"cursor","signature":"grant","active":1},
+          {"id":"nested_lambda","file":"scripts/nested_lambda.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"missing_earlier_positional","file":"scripts/missing_earlier_positional.vela","marker":"cursor","signature":"grant","active":2},
+          {"id":"missing_before_named","file":"scripts/missing_before_named.vela","marker":"cursor","signature":"grant","active":1}
+        ]
+      },
+      {
+        "fixture": "callable-imports",
+        "mode": "full",
+        "queries": [
+          {"id":"host_direct","file":"scripts/host_direct.vela","marker":"cursor","signature":"host-import","active":0},
+          {"id":"host_import","file":"scripts/host_import.vela","marker":"cursor","signature":"host-import","active":0},
+          {"id":"host_alias","file":"scripts/host_alias.vela","marker":"cursor","signature":"host-import","active":0},
+          {"id":"host_namespace","file":"scripts/host_namespace.vela","marker":"cursor","signature":"host-import","active":0},
+          {"id":"source_direct","file":"scripts/source_direct.vela","marker":"cursor","signature":"source-import","active":0},
+          {"id":"source_import","file":"scripts/source_import.vela","marker":"cursor","signature":"source-import","active":0},
+          {"id":"source_alias","file":"scripts/source_alias.vela","marker":"cursor","signature":"source-import","active":0},
+          {"id":"source_namespace","file":"scripts/source_namespace.vela","marker":"cursor","signature":"source-import","active":0},
+          {"id":"private_direct","file":"scripts/private_direct.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"private_alias","file":"scripts/private_alias.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"local_shadow","file":"scripts/local_shadow.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"const_shadow","file":"scripts/const_shadow.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"local_function","file":"scripts/local_function.vela","marker":"cursor","signature":"local-function","active":0},
+          {"id":"missing_import","file":"scripts/missing_import.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"unimported","file":"scripts/unimported.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_qualified","file":"scripts/missing_qualified.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ambiguous_external","file":"scripts/ambiguous_external.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ambiguous_source","file":"scripts/ambiguous_source.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"stdlib_direct","file":"scripts/stdlib_direct.vela","marker":"cursor","signature":"math","active":0},
+          {"id":"stdlib_alias","file":"scripts/stdlib_alias.vela","marker":"cursor","signature":"math","active":0},
+          {"id":"stdlib_namespace","file":"scripts/stdlib_namespace.vela","marker":"cursor","signature":"math","active":0},
+          {"id":"stdlib_unimported","file":"scripts/stdlib_unimported.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":"host-import","active":0},
+          {"id":"qualified_const","file":"scripts/qualified_const.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"private_namespace","file":"scripts/private_namespace.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_namespace","file":"scripts/missing_namespace.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"enum_local","file":"scripts/enum_local.vela","marker":"cursor","signature":"enum-local","active":0},
+          {"id":"enum_import","file":"scripts/enum_import.vela","marker":"cursor","signature":"enum-import","active":0},
+          {"id":"enum_ambiguous","file":"scripts/enum_ambiguous.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"enum_private","file":"scripts/enum_private.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"enum_unimported","file":"scripts/enum_unimported.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"reserved_import","file":"scripts/reserved_import.vela","marker":"cursor","signature":null,"active":0}
+        ]
+      },
+      {
+        "fixture": "completion-service-calls",
+        "mode": "full",
+        "queries": [
+          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":"base","active":1},
+          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":"base-sibling","active":0},
+          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":"pinned","active":0},
+          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":"pinned","active":0},
+          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":"base","active":0},
+          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":"base","active":0}
+        ]
+      },
+      {
+        "fixture": "completion-service-calls",
+        "mode": "ordinary",
+        "queries": [
+          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":null,"active":1},
+          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":null,"active":0}
+        ]
+      },
+      {
+        "fixture": "completion-service-calls",
+        "mode": "missing",
+        "queries": [
+          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":null,"active":1},
+          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":null,"active":0}
+        ]
+      }
+    ],
+    "queries": [
+      {"id":"inherent","file":"scripts/methods.vela","marker":"inherent","signature":"inherent","active":1},
+      {"id":"source-return","file":"scripts/methods.vela","marker":"source-return","signature":"inherent","active":1},
+      {"id":"trait-default","file":"scripts/methods.vela","marker":"trait-default","signature":"trait-default","active":1},
+      {"id":"trait-interface","file":"scripts/methods.vela","marker":"trait-interface","signature":"trait-default","active":1},
+      {"id":"trait-override","file":"scripts/methods.vela","marker":"trait-override","signature":"trait-override","active":1},
+      {"id":"source-async","file":"scripts/methods.vela","marker":"source-async","signature":"fetch","active":0},
+      {"id":"schema-named","file":"scripts/methods.vela","marker":"schema-named","signature":"row-update","active":0},
+      {"id":"schema-return","file":"scripts/methods.vela","marker":"schema-return","signature":"row-update","active":1},
+      {"id":"schema-legacy","file":"scripts/methods.vela","marker":"schema-legacy","signature":"row-legacy","active":1},
+      {"id":"schema-legacy-named","file":"scripts/methods.vela","marker":"schema-legacy-named","signature":"row-legacy","active":0},
+      {"id":"schema-trait","file":"scripts/methods.vela","marker":"schema-trait","signature":"schema-trait","active":1},
+      {"id":"source-any","file":"scripts/methods.vela","marker":"source-any","signature":null,"active":0},
+      {"id":"schema-any","file":"scripts/methods.vela","marker":"schema-any","signature":null,"active":0},
+      {"id":"any","file":"scripts/methods.vela","marker":"any","signature":null,"active":0},
+      {"id":"unknown","file":"scripts/methods.vela","marker":"unknown","signature":null,"active":0},
+      {"id":"wrong-owner","file":"scripts/methods.vela","marker":"wrong-owner","signature":null,"active":0},
+      {"id":"unresolved","file":"scripts/methods.vela","marker":"unresolved","signature":null,"active":0},
+      {"id":"unknown-member","file":"scripts/methods.vela","marker":"unknown-member","signature":null,"active":0},
+      {"id":"non-callable","file":"scripts/methods.vela","marker":"non-callable","signature":null,"active":0},
+      {"id":"string","file":"scripts/standard.vela","marker":"string","signature":"string","active":0},
+      {"id":"array","file":"scripts/standard.vela","marker":"array","signature":"array","active":0},
+      {"id":"option","file":"scripts/standard.vela","marker":"option","signature":"option","active":0},
+      {"id":"result","file":"scripts/standard.vela","marker":"result","signature":"result","active":0},
+      {"id":"map","file":"scripts/standard.vela","marker":"map","signature":"map","active":1},
+      {"id":"dynamic-standard","file":"scripts/standard.vela","marker":"dynamic-standard","signature":null,"active":0}
+    ]
+  }
+}

@@ -155,6 +155,9 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
 }
 
 #[cfg(test)]
+mod call_matrix_tests;
+
+#[cfg(test)]
 mod tests {
     use vela_analysis::registry::{
         CallableSignatureFact, RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef,

@@ -5,6 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::{TestServer, notification_value, notify, request, response_value};
 
+mod call_matrix;
 mod dynamic;
 mod fixtures;
 mod schema_method_return_receivers;
