@@ -1135,6 +1135,8 @@ mod body_tests;
 #[cfg(test)]
 mod call_tests;
 #[cfg(test)]
+mod control_tests;
+#[cfg(test)]
 mod coordinate_tests;
 #[cfg(test)]
 mod degradation_tests;

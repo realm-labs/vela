@@ -4974,3 +4974,19 @@ match exact expanded Host identities, enum methods use their enum owner, and
 source kind/visibility prevents non-type or private fallback. Record and tuple
 label projections have separate ownership so token collection does not navigate
 every named call twice. All projections remain analysis-only.
+
+Semantic-token pattern paths preserve source/schema owner segment spans,
+including unqualified record owners. Unowned, wrong-path or inaccessible pattern
+owners have unresolved path tokens; exact private source ownership blocks schema
+variant fallback. Payload bindings retain their independent local roles and
+explicit unknown labels carry no provenance. CST let bindings distinguish a
+single identifier from compound record/tuple/path patterns, and an outer let
+annotation must precede its initializer. Typed lambda parameter annotations do
+not become annotations of the containing let. These corrections implement the
+existing syntax and read-only tooling contracts.
+
+Builtin enum pattern owners and variants resolve through the immutable standard
+library manifest after visible source ownership and before schema fallback.
+Option/Result owners and known variants retain defaultLibrary flags even when
+schema facts collide at that exact path. Unknown variants remain unresolved and
+wrong namespaces cannot gain provenance through a matching terminal name.

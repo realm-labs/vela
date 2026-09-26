@@ -38,18 +38,37 @@ pub(super) fn collect(
         return result;
     };
     for node in parsed.tree().syntax().descendants() {
-        let Some(tokens) = path_tokens(node) else {
+        let Some((tokens, pattern)) = path_tokens(node) else {
             continue;
         };
         if is_local(db, source, &tokens) {
             continue;
         }
         classify_path(db, module, &tokens, &mut result);
+        if pattern
+            && tokens.first().is_some_and(|token| {
+                !result.contains_key(&(
+                    usize::from(token.text_range().start()),
+                    usize::from(token.text_range().end()),
+                ))
+            })
+        {
+            for token in &tokens {
+                result.insert(
+                    (
+                        usize::from(token.text_range().start()),
+                        usize::from(token.text_range().end()),
+                    ),
+                    C::new(T::UnresolvedReference, M::UNRESOLVED),
+                );
+            }
+        }
     }
     result
 }
 
-fn path_tokens(node: vela_syntax::SyntaxNode) -> Option<Vec<SyntaxToken>> {
+fn path_tokens(node: vela_syntax::SyntaxNode) -> Option<(Vec<SyntaxToken>, bool)> {
+    let is_pattern = SyntaxPattern::can_cast(node.kind());
     let tokens = if let Some(path) = SyntaxPathExpr::cast(node.clone()) {
         path.path_tokens()
     } else if let Some(record) = SyntaxRecordExpr::cast(node.clone()) {
@@ -59,14 +78,20 @@ fn path_tokens(node: vela_syntax::SyntaxNode) -> Option<Vec<SyntaxToken>> {
         if pattern.is_binding() {
             return None;
         }
-        pattern.path_tokens()
+        if let Some(record) = pattern.record_pattern() {
+            record.path_tokens()
+        } else if let Some(tuple) = pattern.tuple_pattern() {
+            tuple.path_tokens()
+        } else {
+            pattern.path_tokens()
+        }
     };
     let tokens: Vec<_> = tokens
         .into_iter()
         .filter(|token| token.kind() == SyntaxKind::Ident)
         .collect();
 
-    (!tokens.is_empty()).then_some(tokens)
+    (!tokens.is_empty()).then_some((tokens, is_pattern))
 }
 
 fn is_local(db: &LanguageServiceDatabases, source: SourceId, tokens: &[SyntaxToken]) -> bool {
@@ -115,6 +140,7 @@ fn classify_path(
     };
     let Some(enum_owner) = owner(db, module, parent).filter(|owner| {
         owner.token_type == T::Enum
+            || owner.token_type == T::BuiltinType && owner.modifiers == M::BUILTIN
             || owner.token_type == T::Type
                 && db
                     .schema_db()
@@ -135,7 +161,10 @@ fn classify_path(
         tokens.len() - 2,
         enum_owner,
     );
-    let known = if enum_owner.modifiers == M::SOURCE {
+    let known = if enum_owner.modifiers == M::BUILTIN {
+        vela_analysis::stdlib::stdlib_enum_variants(&parent.join("::"))
+            .any(|entry| entry == variant)
+    } else if enum_owner.modifiers == M::SOURCE {
         graph
             .resolve_visible_declaration_path(module, parent, DeclarationKind::Enum)
             .and_then(|declaration| graph.enum_shape(declaration.id))
@@ -189,6 +218,13 @@ fn owner(db: &LanguageServiceDatabases, module: ModuleId, path: &[String]) -> Op
                 )
             });
         }
+    }
+    if path.len() == 1
+        && vela_analysis::stdlib::stdlib_enum_variants(&path[0])
+            .next()
+            .is_some()
+    {
+        return Some(C::new(T::BuiltinType, M::BUILTIN));
     }
     db.schema_db()
         .facts()

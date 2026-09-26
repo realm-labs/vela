@@ -34,6 +34,10 @@ and negative same-named source/schema ownership collisions.
 source/schema/stdlib functions and methods, named/default/reordered positions,
 callback values and conservative unknown/dynamic/collision boundaries.
 
+`semantic-token-control.json` pins complete control-flow, expression and pattern
+streams, including guard/loop/arm scopes, record labels versus bindings,
+let destructuring, schema ownership and conservative unresolved paths.
+
 A workspace has `version`, `id`, `files`, ordered `actions`, and an independent
 `oracle`. Each relative file path rejects traversal, absolute/drive paths and
 backslashes. `open`, `change`, `save`, `close`, disk `write`, and disk `delete`

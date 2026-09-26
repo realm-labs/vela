@@ -817,3 +817,97 @@ fn ast_let_statement_exposes_tuple_pattern_binding() {
         ["amount", "label"]
     );
 }
+
+#[test]
+fn let_path_patterns_preserve_nested_bindings_and_simple_names() {
+    let parsed = parse_source(
+        "fn inspect(input) {\n\
+         let Cell { value: (nested, _) } = input;\n\
+         let defs::Choice::Tuple(value) = input;\n\
+         let ordinary: i64 = 1;\n\
+         let callback = |value: i64| { value };\n\
+         let pending;\n\
+         let deferred\n\
+         let typed_pending: i64;\n\
+         }\n",
+    );
+    assert!(
+        parsed.diagnostics().is_empty(),
+        "{:?}",
+        parsed.diagnostics()
+    );
+    let body = parsed
+        .tree()
+        .functions()
+        .next()
+        .expect("function")
+        .body()
+        .expect("body");
+    let lets: Vec<_> = body.let_statements().collect();
+    assert_eq!(lets.len(), 7);
+    assert!(lets[0].name_token().is_none());
+    let pattern = lets[0]
+        .pattern()
+        .expect("record binding")
+        .record_pattern()
+        .expect("record pattern");
+    assert_eq!(pattern.path_segments(), ["Cell"]);
+    let fields: Vec<_> = pattern.fields().collect();
+    assert_eq!(fields.len(), 1);
+    assert_eq!(
+        fields[0].label_token().expect("field label").text(),
+        "value"
+    );
+    let tuple = fields[0]
+        .pattern()
+        .expect("field binding")
+        .tuple_pattern()
+        .expect("nested tuple");
+    let bindings: Vec<_> = tuple.patterns().collect();
+    assert_eq!(bindings[0].binding_name().as_deref(), Some("nested"));
+    assert!(bindings[1].is_wildcard());
+    assert!(lets[1].name_token().is_none());
+    let tuple = lets[1]
+        .pattern()
+        .expect("variant binding")
+        .tuple_pattern()
+        .expect("tuple variant");
+    assert_eq!(tuple.path_segments(), ["defs", "Choice", "Tuple"]);
+    assert_eq!(
+        tuple
+            .patterns()
+            .next()
+            .expect("payload binding")
+            .binding_name()
+            .as_deref(),
+        Some("value")
+    );
+    assert_eq!(lets[2].name_text().as_deref(), Some("ordinary"));
+    assert!(lets[2].pattern().is_none());
+    assert_eq!(
+        lets[2].type_hint().expect("type hint").syntax().text(),
+        "i64"
+    );
+    assert_eq!(lets[3].name_text().as_deref(), Some("callback"));
+    assert!(lets[3].type_hint().is_none());
+    assert!(
+        lets[3]
+            .initializer()
+            .expect("lambda initializer")
+            .as_lambda()
+            .is_some()
+    );
+    for (index, name) in [(4, "pending"), (5, "deferred"), (6, "typed_pending")] {
+        assert_eq!(lets[index].name_text().as_deref(), Some(name));
+        assert!(lets[index].pattern().is_none());
+        assert!(lets[index].initializer().is_none());
+    }
+    assert_eq!(
+        lets[6]
+            .type_hint()
+            .expect("pending type hint")
+            .syntax()
+            .text(),
+        "i64"
+    );
+}

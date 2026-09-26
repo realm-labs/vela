@@ -42,6 +42,15 @@ pub(super) fn collect(
         .into_iter()
         .filter(|site| !site.shorthand)
     {
+        // Builtin enum contracts have unit/tuple payloads; schema collisions
+        // cannot manufacture record fields on those exact owners.
+        if site.owner.rsplit_once("::").is_some_and(|(owner, _)| {
+            vela_analysis::stdlib::stdlib_enum_variants(owner)
+                .next()
+                .is_some()
+        }) {
+            continue;
+        }
         let known = db
             .schema_db()
             .facts()

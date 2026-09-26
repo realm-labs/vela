@@ -6,6 +6,14 @@ mod parameter_metadata;
 pub use parameter_metadata::StdlibParameterMetadata;
 mod reflect;
 
+/// Enumerate immutable builtin enum variants for one exact owner path.
+pub fn stdlib_enum_variants(owner: &str) -> impl Iterator<Item = &'static str> + '_ {
+    vela_stdlib::STD_VARIANTS
+        .iter()
+        .filter(move |variant| variant.owner == owner)
+        .map(|variant| variant.name)
+}
+
 #[cfg(test)]
 mod function_tests;
 

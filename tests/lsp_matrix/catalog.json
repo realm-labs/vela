@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S6/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S6/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent positive S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S6/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::control_tests::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S6/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-control.md. Complete independent negative S6 streams pin statement/value branches, loops/pair/tuple/record bindings, guards and arm scopes, source/schema unit/tuple/record and qualified patterns, explicit labels versus shorthand, nested let patterns and lambda captures. Unary/binary/assignment/compound/logical/comparison/range operators, indexed writes, tuple/array/map values and literal patterns retain exact roles. Unknown/wrong/private owners and out-of-scope names cannot borrow schema/source provenance; exact source/schema and builtin/schema collisions preserve owners. Option/Result unit/tuple patterns use immutable builtin metadata with no wrong-path or unknown-variant borrowing. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI overlay close restoration are exact.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::control::control_flow_patterns_and_expression_roles_have_exact_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S5/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-calls.md. Complete independent positive S5 streams pin source/schema/stdlib functions and methods, qualified paths, defaults/reordered/nested/named positions, caller values versus labels, enum tuple payload labels and method calls, callbacks/aliases/lambdas and returned receiver chains. Actual impl/trait self and Host script extensions have scoped ownership. Unknown/private/wrong-path/non-callable/local-shadow/legacy/Any receivers and labels cannot borrow source/schema facts; exact builtin/source collisions preserve owners. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are exact.",
       "tests": [
