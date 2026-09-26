@@ -1,0 +1,4 @@
+#[test]
+fn type_positions_have_exact_resolved_and_unknown_token_streams() {
+    super::support::assert_fixture("semantic-token-type-positions");
+}

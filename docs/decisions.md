@@ -4942,3 +4942,13 @@ targets and abstract trait receivers gain no guessed field ownership, and an
 explicit `Any` fact remains authoritative. Reserved `self` keeps its lexical
 keyword classification; contextual `state` is a keyword only at a state
 declaration introducer.
+
+Semantic-token type positions use exact syntax AST path spans, including nested
+lambda annotations and required trait-signature defaults. Qualified prefixes
+are namespaces and only the terminal carries type provenance. Imports resolve
+in the requesting module; visible source struct/enum/trait ownership wins over
+schema metadata, and private or non-type source owners block schema fallback.
+Unowned schema lookup uses the complete expanded path, never a matching terminal
+from another namespace. Missing facts retain a type token with no provenance;
+recognized builtin hints keep defaultLibrary classification independently of
+argument-validity diagnostics. These are read-only tooling projections.

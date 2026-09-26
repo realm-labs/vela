@@ -5887,10 +5887,29 @@
         "tokens-range/syntax/S2/negative/protocol"
       ],
       "summary": "Close twelve S2 positive/negative semantic-token full/delta/range service/protocol obligations. Independent whole-stream oracles pin all 325 positive and 238 negative tokens across function, inherent method, default trait method and trait implementation bodies: local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits, lambdas, captures and callbacks from an unopened dependency. Missing reads/writes and later/expired block, lambda, loop and arm bindings retain exact unresolved classification, without borrowed declaration/source flags. Actual applied deltas match independently checked fresh streams; every line/token/empty-boundary range is exact in LF/CRLF and encoded Unicode workspace URIs; close restores original disk stream and ID. Extracted reusable scenario drivers while preserving all S1 assertions and test identities. Cursor token oracles resolve fixture delimiter ambiguity around opening brackets and separately pin byte/UTF-16 Unicode lengths. No product/runtime behavior changed. Service semantic-token 44 and protocol 40 tests, full workspace tests, fmt, workspace Clippy and Node 83 passed. Fresh Windows installed VSIX 16 and native input 29 passed. Strict current-source B05 gate revalidates accepted B00-B05; catalog 546 verified, 779 unreviewed, two N/A and zero failed. B06 is 36 verified and 142 unreviewed of 178; resume B06.4 for S3 type positions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-iBJuh9/results.json; input editors/vscode/test-results/input-lFnQot/results.json; audit target/lsp-matrix/run-cy5keC/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B06.4",
+      "revision": null,
+      "requirements": [
+        "tokens-full/syntax/S3/positive/service",
+        "tokens-full/syntax/S3/positive/protocol",
+        "tokens-full/syntax/S3/negative/service",
+        "tokens-full/syntax/S3/negative/protocol",
+        "tokens-delta/syntax/S3/positive/service",
+        "tokens-delta/syntax/S3/positive/protocol",
+        "tokens-delta/syntax/S3/negative/service",
+        "tokens-delta/syntax/S3/negative/protocol",
+        "tokens-range/syntax/S3/positive/service",
+        "tokens-range/syntax/S3/positive/protocol",
+        "tokens-range/syntax/S3/negative/service",
+        "tokens-range/syntax/S3/negative/protocol"
+      ],
+      "summary": "Close twelve S3 positive/negative full/delta/range service/protocol obligations. Independent complete streams pin all 398 positive and 195 negative tokens for concrete primitives, erased/nested builtin containers and views, Function/Closure/Range, Option/Result, unit/tuples, local/imported/qualified source struct/enum/trait and static schema host/trait types. Precise AST spans include typed lambda parameters/locals and required-signature default bodies. Qualified prefixes are namespace tokens; only terminals receive provenance. Current-module import resolution and source visibility prevent unimported/private/non-type/wrong-path owners from borrowing source/schema flags; visible source wins over same-named schema and private/non-type source blocks schema fallback. Unknown and removed spellings retain conservative tokens; Range/Closure used as locals remain variables; invalid source generic/Option arity does not invent ownership. Fixed missing Range/Closure/view builtin flags, global-name source guessing, schema terminal-name fallback, missing path prefix classification and incomplete nested annotation coverage by collecting exact AST type spans once per document. Actual applied deltas match independently checked fresh streams; every line/token/empty-boundary range is exact under LF/CRLF and encoded Unicode URIs; close restores original disk stream/ID. Service token tests 45, protocol 41, full workspace tests, fmt, workspace Clippy and Node 83 passed. Fresh Windows installed VSIX 16 and native input 29 passed. Strict current-source B05 gate revalidates accepted B00-B05; catalog 558 verified, 767 unreviewed, two N/A and zero failed. B06 is 48 verified and 130 unreviewed of 178; resume B06.5 for S4 members/constructors. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-NVprAO/results.json; input editors/vscode/test-results/input-fuSTX1/results.json; audit target/lsp-matrix/run-gINoxy/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B06.4",
+  "nextTask": "B06.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8222,7 +8241,8 @@
     "target/lsp-matrix/run-YLh9ud/report.json",
     "target/lsp-matrix/run-rvt0cH/report.json",
     "target/lsp-matrix/run-KxNoyb/report.json",
-    "target/lsp-matrix/run-cy5keC/report.json"
+    "target/lsp-matrix/run-cy5keC/report.json",
+    "target/lsp-matrix/run-gINoxy/report.json"
   ],
   "openIssues": [
     {
@@ -10526,8 +10546,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "eb4a62b5af19495ea89d1d6eff19e8a963df9582",
-          "treeSha256": "a6a0ce8787bccffe513f95e2d2643db049e41a235793cf2f5846965c9979c1b1"
+          "revision": "d8d191d513df1400e0a5279eb9be8542b47f8c2e",
+          "treeSha256": "6b19f4ba3c8480c8467bc8e6b2e885617e2361a9202bdde85b0b88d246e3b91f"
         },
         "profile": {
           "platform": "win32",
@@ -10535,11 +10555,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-cy5keC/report.json"
+          "target/lsp-matrix/run-gINoxy/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-iBJuh9/results.json --local-results editors/vscode/test-results/input-lFnQot/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B05 --editor-results editors/vscode/test-results/run-NVprAO/results.json --local-results editors/vscode/test-results/input-fuSTX1/results.json",
             "exitCode": 0
           }
         ]

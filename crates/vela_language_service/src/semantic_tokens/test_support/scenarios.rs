@@ -35,6 +35,9 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
                 .expect("negative source"),
         );
         let mut db = LanguageServiceDatabases::new();
+        if let Some(schema) = spec.files.get("schema.json") {
+            db.load_schema_artifact_json("/workspace/schema.json", schema);
+        }
         update(&mut db, &positive, &spec.files["scripts/defs.vela"]);
         let original = db.semantic_tokens(&id);
         let mut previous = original.clone();
@@ -63,6 +66,9 @@ pub(in super::super) fn assert_fixture(fixture: &str) {
                     .is_empty()
             );
             let mut fresh = LanguageServiceDatabases::new();
+            if let Some(schema) = spec.files.get("schema.json") {
+                fresh.load_schema_artifact_json("/workspace/schema.json", schema);
+            }
             update(&mut fresh, document, &spec.files["scripts/defs.vela"]);
             assert_eq!(fresh.semantic_tokens(&id), full, "incremental equals fresh");
             for line in 0..document.text.lines().count() {

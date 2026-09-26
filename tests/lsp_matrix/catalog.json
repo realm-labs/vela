@@ -63,6 +63,126 @@
   ],
   "evidence": [
     {
+      "requirement": "tokens-full/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-full/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-delta/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent positive S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
+      "requirement": "tokens-range/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/semantic-token-type-positions.md. Complete independent negative S3 streams pin every primitive/container/view/callable/Option/Result/source/schema/trait/Any/unknown type token and precise path segment across parameters, returns, fields, locals, tuples, lambdas and required-signature defaults. Exact current-module ownership and visibility prevent private, unimported, non-type and wrong-path source/schema borrowing; source wins over schema collisions. Applied deltas, fresh parity, LF/CRLF line/token/empty ranges and encoded-URI close restoration are checked.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
+        }
+      ]
+    },
+    {
       "requirement": "tokens-full/syntax/S2/positive/service",
       "assertion": "Reviewed in reviews/semantic-token-bodies.md. Independently hand-marked complete positive S2 streams pin every token text, type, modifier and byte/UTF-16 coordinate across functions, inherent/default/trait methods, explicit local hints, ordinary/all five compound writes, returns, nested shadow blocks, if/match/guards, loops/exits and lambdas/captures/callbacks. Later/expired bindings and missing reads/writes remain unresolved. Apply actual deltas, compare fresh analysis, restore disk and check every line/token/empty-boundary range in LF/CRLF.",
       "tests": [

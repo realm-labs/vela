@@ -575,7 +575,8 @@ impl LanguageServiceDatabases {
         &self,
         input: &SemanticClassificationInput<'_>,
     ) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
-        let mut classifications = impl_headers::collect(self, input.source_id);
+        let mut classifications = type_hints::collect(self, input.source_id);
+        classifications.extend(impl_headers::collect(self, input.source_id));
         let graph = self.hir_db().graph();
         let facts = self.graph_analysis_facts();
         let unresolved_identifiers = unresolved::ranges(graph, input.source_id);
@@ -647,11 +648,6 @@ impl LanguageServiceDatabases {
             }
             if let Some(classification) =
                 member_declaration_classification(graph, declaration, text, name, range)
-            {
-                return Some(classification);
-            }
-            if let Some(classification) =
-                type_hints::classification(graph, declaration, schema, text, name, range)
             {
                 return Some(classification);
             }
@@ -1184,5 +1180,7 @@ mod test_support;
 mod tests;
 #[cfg(test)]
 mod top_level_tests;
+#[cfg(test)]
+mod type_position_tests;
 #[cfg(test)]
 mod variant_use_tests;

@@ -5,6 +5,7 @@ mod coordinates;
 mod support;
 mod tasks;
 mod top_level;
+mod type_positions;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 struct DecodedToken {

@@ -1,127 +1,139 @@
-use vela_analysis::registry::RegistryFacts;
+//! Precise type-path spans and provenance in the requesting module's scope.
+use std::collections::BTreeMap;
+
+use vela_common::SourceId;
 use vela_hir::{
-    binding::BindingMap,
-    module_graph::{Declaration, DeclarationKind, ModuleGraph},
-    type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint},
+    ids::ModuleId,
+    module_graph::{DeclarationKind, Visibility},
+};
+use vela_syntax::{
+    SyntaxKind,
+    ast::{AstNode, SyntaxTypeHint},
 };
 
-use crate::TextRange;
+use super::{SemanticTokenClassification, SemanticTokenModifiers as M, SemanticTokenType as T};
+use crate::LanguageServiceDatabases;
 
-use super::{
-    SemanticTokenClassification, SemanticTokenModifiers, SemanticTokenType, span_contains_range,
-    token_text,
-};
-
-pub(super) fn classification(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-    schema: &RegistryFacts,
-    text: &str,
-    name: &str,
-    range: TextRange,
-) -> Option<SemanticTokenClassification> {
-    let mut classification = None;
-    for_each_type_hint_in_declaration(graph, declaration, |hint| {
-        if classification.is_none() {
-            classification = type_hint_classification(graph, schema, text, hint, name, range);
-        }
-    });
-    classification
-}
-
-fn type_hint_classification(
-    graph: &ModuleGraph,
-    schema: &RegistryFacts,
-    text: &str,
-    hint: &HirTypeHint,
-    name: &str,
-    range: TextRange,
-) -> Option<SemanticTokenClassification> {
-    let path_name = hint.path.last()?;
-    if path_name != name || !span_contains_range(hint.span, range) {
-        return None;
-    }
-    if token_text(text, range) != Some(name) {
-        return None;
-    }
-
-    let token_type = if is_builtin_type_hint(hint) {
-        SemanticTokenType::BuiltinType
-    } else {
-        SemanticTokenType::Type
+pub(super) fn collect(
+    db: &LanguageServiceDatabases,
+    source_id: SourceId,
+) -> BTreeMap<(usize, usize), SemanticTokenClassification> {
+    let mut result = BTreeMap::new();
+    let Some(source) = db
+        .source_db()
+        .records()
+        .values()
+        .find(|source| source.source_id() == source_id)
+    else {
+        return result;
     };
-    let modifiers = type_hint_modifiers(graph, schema, hint);
-    Some(SemanticTokenClassification::new(token_type, modifiers))
-}
-
-fn type_hint_modifiers(
-    graph: &ModuleGraph,
-    schema: &RegistryFacts,
-    hint: &HirTypeHint,
-) -> SemanticTokenModifiers {
-    if is_builtin_type_hint(hint) {
-        return SemanticTokenModifiers::BUILTIN;
-    }
-    let qualified = hint.path.join("::");
-    if schema.type_fact(&qualified).is_some()
-        || schema.trait_fact(&qualified).is_some()
-        || hint.path.last().is_some_and(|name| {
-            schema.type_fact(name).is_some() || schema.trait_fact(name).is_some()
-        })
+    let Some(parse) = db.parse_db().syntax_parse(source.document_id()) else {
+        return result;
+    };
+    let Some(module) = db.hir_db().graph().module_id(source.module_key()) else {
+        return result;
+    };
+    for hint in parse
+        .tree()
+        .syntax()
+        .descendants()
+        .filter_map(SyntaxTypeHint::cast)
     {
-        return SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+        let path = hint.path_segments();
+        let tokens = hint
+            .path_tokens()
+            .into_iter()
+            .filter(|token| token.kind() == SyntaxKind::Ident)
+            .collect::<Vec<_>>();
+        let builtin = is_builtin(&path);
+        let modifiers = if builtin {
+            M::BUILTIN
+        } else {
+            provenance(db, module, &path)
+        };
+        for (index, token) in tokens.iter().enumerate() {
+            let terminal = index + 1 == tokens.len();
+            let kind = if !terminal {
+                T::Module
+            } else if builtin {
+                T::BuiltinType
+            } else {
+                T::Type
+            };
+            result.insert(
+                (
+                    usize::from(token.text_range().start()),
+                    usize::from(token.text_range().end()),
+                ),
+                SemanticTokenClassification::new(kind, if terminal { modifiers } else { M::NONE }),
+            );
+        }
     }
-    if is_source_type_hint(graph, hint) {
-        return SemanticTokenModifiers::SOURCE;
-    }
-    SemanticTokenModifiers::NONE
+    result
 }
 
-fn is_source_type_hint(graph: &ModuleGraph, hint: &HirTypeHint) -> bool {
-    graph.declarations().any(|declaration| {
-        matches!(
-            declaration.kind,
-            DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
-        ) && type_hint_matches_declaration(graph, hint, declaration)
-    })
-}
-
-fn type_hint_matches_declaration(
-    graph: &ModuleGraph,
-    hint: &HirTypeHint,
-    declaration: &Declaration,
-) -> bool {
-    if hint.path.len() == 1 {
-        return hint
-            .path
-            .first()
-            .is_some_and(|name| name == &declaration.name);
+fn provenance(db: &LanguageServiceDatabases, module: ModuleId, path: &[String]) -> M {
+    let graph = db.hir_db().graph();
+    let Some(path) = graph.expand_import_path(module, path) else {
+        return M::NONE;
+    };
+    let Some(current) = graph.module_key(module) else {
+        return M::NONE;
+    };
+    for kind in [
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+    ] {
+        if let Some(declaration) = graph.declaration_by_type_path(&path, current, kind) {
+            return if matches!(
+                kind,
+                DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
+            ) && (declaration.module == module
+                || declaration.visibility == Visibility::Public)
+            {
+                M::SOURCE
+            } else {
+                M::NONE
+            };
+        }
     }
-    graph.module_path(declaration.module).is_some_and(|module| {
-        module
-            .segments()
-            .iter()
-            .chain(std::iter::once(&declaration.name))
-            .eq(hint.path.iter())
-    })
+    let schema = db.schema_db().facts();
+    let name = path.join("::");
+    if schema.type_fact(&name).is_some() || schema.trait_fact(&name).is_some() {
+        M::HOST.union(M::SCHEMA)
+    } else {
+        M::NONE
+    }
 }
 
-fn is_builtin_type_hint(hint: &HirTypeHint) -> bool {
-    let [name] = hint.path.as_slice() else {
+fn is_builtin(path: &[String]) -> bool {
+    let [name] = path else {
         return false;
     };
     matches!(
         name.as_str(),
         "Any"
-            | "Array"
+            | "String"
             | "Bytes"
             | "Function"
+            | "Closure"
+            | "Range"
             | "Iterator"
+            | "Array"
+            | "ArrayView"
+            | "ArrayMut"
             | "Map"
+            | "MapView"
+            | "MapMut"
+            | "Set"
+            | "SetView"
+            | "SetMut"
             | "Option"
             | "Result"
-            | "Set"
-            | "String"
             | "bool"
             | "char"
             | "f32"
@@ -135,97 +147,4 @@ fn is_builtin_type_hint(hint: &HirTypeHint) -> bool {
             | "u32"
             | "u64"
     )
-}
-
-fn for_each_type_hint_in_declaration(
-    graph: &ModuleGraph,
-    declaration: &Declaration,
-    mut visit: impl FnMut(&HirTypeHint),
-) {
-    if let Some(metadata) = graph.const_metadata(declaration.id)
-        && let Some(type_hint) = &metadata.type_hint
-    {
-        visit_type_hint_and_args(type_hint, &mut visit);
-    }
-    if let Some(metadata) = graph.state_metadata(declaration.id) {
-        visit_type_hint_and_args(&metadata.type_hint, &mut visit);
-    }
-    if let Some(signature) = graph.function_signature(declaration.id) {
-        visit_signature_type_hints(signature, &mut visit);
-    }
-    if let Some(shape) = graph.struct_shape(declaration.id) {
-        for field in &shape.fields {
-            if let Some(type_hint) = &field.type_hint {
-                visit_type_hint_and_args(type_hint, &mut visit);
-            }
-        }
-    }
-    if let Some(shape) = graph.enum_shape(declaration.id) {
-        for variant in &shape.variants {
-            match &variant.fields {
-                EnumVariantFieldsHint::Unit => {}
-                EnumVariantFieldsHint::Tuple(params) => {
-                    for param in params {
-                        if let Some(type_hint) = &param.type_hint {
-                            visit_type_hint_and_args(type_hint, &mut visit);
-                        }
-                    }
-                }
-                EnumVariantFieldsHint::Record(fields) => {
-                    for field in fields {
-                        if let Some(type_hint) = &field.type_hint {
-                            visit_type_hint_and_args(type_hint, &mut visit);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if let Some(shape) = graph.trait_shape(declaration.id) {
-        for method in &shape.methods {
-            visit_signature_type_hints(&method.signature, &mut visit);
-            if let Some(node) = method.default_body_node
-                && let Some(bindings) = graph.trait_default_method_bindings(node)
-            {
-                visit_binding_type_hints(bindings, &mut visit);
-            }
-        }
-    }
-    if let Some(metadata) = graph.impl_metadata(declaration.id) {
-        for method in &metadata.methods {
-            visit_signature_type_hints(&method.signature, &mut visit);
-            if let Some(bindings) = graph.impl_method_bindings(method.node) {
-                visit_binding_type_hints(bindings, &mut visit);
-            }
-        }
-    }
-    if let Some(bindings) = graph.bindings(declaration.id) {
-        visit_binding_type_hints(bindings, &mut visit);
-    }
-}
-
-fn visit_signature_type_hints(signature: &FunctionSignature, visit: &mut impl FnMut(&HirTypeHint)) {
-    for param in &signature.params {
-        if let Some(type_hint) = &param.type_hint {
-            visit_type_hint_and_args(type_hint, visit);
-        }
-    }
-    if let Some(type_hint) = &signature.return_type {
-        visit_type_hint_and_args(type_hint, visit);
-    }
-}
-
-fn visit_binding_type_hints(bindings: &BindingMap, visit: &mut impl FnMut(&HirTypeHint)) {
-    for binding in bindings.locals() {
-        if let Some(type_hint) = &binding.type_hint {
-            visit_type_hint_and_args(type_hint, visit);
-        }
-    }
-}
-
-fn visit_type_hint_and_args(hint: &HirTypeHint, visit: &mut impl FnMut(&HirTypeHint)) {
-    visit(hint);
-    for arg in &hint.args {
-        visit_type_hint_and_args(arg, visit);
-    }
 }
