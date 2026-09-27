@@ -14373,6 +14373,46 @@
           "name": "signature help provider preserves exact Unicode signatures recovery and shadowing"
         }
       ]
+    },
+    {
+      "requirement": "hover/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/hover-s3.md. Independently authored 245 queries (236 complete hovers, nine explicit null), including 74 parameter declaration/use/type-token triples, run present/physically absent schema at LF/CRLF. Start/interior positions yield 1924 positions per layer plus repeats. Full labels/kinds/details/docs and independent byte/UTF-16 token ranges are exact; service additionally asserts canonical source/schema/builtin/local identities. All primitives including unit, Any/Range, bare and specialized Array/Map/Set View/Mut families, Iterator, Option/Result, tuples, nested containers and erased Function/Closure retain reviewed types. Unsupported mutation-mode arguments remain unknown; unit/tuple punctuation is null. Qualified/individual/namespace source aliases and source struct/enum/trait docs retain current-module ownership despite registry and unrelated same-name decoys. Qualified/schema-alias host/enum/trait facts and nested leaves retain exact metadata without source spans; missing physical schema removes schema-dependent docs/identities and preserves container unknown leaves and source/builtin facts. Const/state/extern-state/field/variant/trait/method/function/let/lambda hint positions and nested type leaves have independent precise results. Literal compiler task::Error retains its existing fact. Private/unimported/non-type/missing/obsolete/unsupported generic hints degrade to Any without false identity, while parameters retain unknown. Any/unknown type/builtin-looking member names and unresolved lower/uppercase expressions are null. Real protocol initialization/open/request dispatch asserts complete Markdown, advertised hoverProvider, explicit null, encoded isolated roots, repeats and all physical input bytes unchanged. No other hover partition/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/hover-s3.md. Independently authored 245 queries (236 complete hovers, nine explicit null), including 74 parameter declaration/use/type-token triples, run present/physically absent schema at LF/CRLF. Start/interior positions yield 1924 positions per layer plus repeats. Full labels/kinds/details/docs and independent byte/UTF-16 token ranges are exact; service additionally asserts canonical source/schema/builtin/local identities. All primitives including unit, Any/Range, bare and specialized Array/Map/Set View/Mut families, Iterator, Option/Result, tuples, nested containers and erased Function/Closure retain reviewed types. Unsupported mutation-mode arguments remain unknown; unit/tuple punctuation is null. Qualified/individual/namespace source aliases and source struct/enum/trait docs retain current-module ownership despite registry and unrelated same-name decoys. Qualified/schema-alias host/enum/trait facts and nested leaves retain exact metadata without source spans; missing physical schema removes schema-dependent docs/identities and preserves container unknown leaves and source/builtin facts. Const/state/extern-state/field/variant/trait/method/function/let/lambda hint positions and nested type leaves have independent precise results. Literal compiler task::Error retains its existing fact. Private/unimported/non-type/missing/obsolete/unsupported generic hints degrade to Any without false identity, while parameters retain unknown. Any/unknown type/builtin-looking member names and unresolved lower/uppercase expressions are null. Real protocol initialization/open/request dispatch asserts complete Markdown, advertised hoverProvider, explicit null, encoded isolated roots, repeats and all physical input bytes unchanged. No other hover partition/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/hover-s3.md. Independently authored 245 queries (236 complete hovers, nine explicit null), including 74 parameter declaration/use/type-token triples, run present/physically absent schema at LF/CRLF. Start/interior positions yield 1924 positions per layer plus repeats. Full labels/kinds/details/docs and independent byte/UTF-16 token ranges are exact; service additionally asserts canonical source/schema/builtin/local identities. All primitives including unit, Any/Range, bare and specialized Array/Map/Set View/Mut families, Iterator, Option/Result, tuples, nested containers and erased Function/Closure retain reviewed types. Unsupported mutation-mode arguments remain unknown; unit/tuple punctuation is null. Qualified/individual/namespace source aliases and source struct/enum/trait docs retain current-module ownership despite registry and unrelated same-name decoys. Qualified/schema-alias host/enum/trait facts and nested leaves retain exact metadata without source spans; missing physical schema removes schema-dependent docs/identities and preserves container unknown leaves and source/builtin facts. Const/state/extern-state/field/variant/trait/method/function/let/lambda hint positions and nested type leaves have independent precise results. Literal compiler task::Error retains its existing fact. Private/unimported/non-type/missing/obsolete/unsupported generic hints degrade to Any without false identity, while parameters retain unknown. Any/unknown type/builtin-looking member names and unresolved lower/uppercase expressions are null. Real protocol initialization/open/request dispatch asserts complete Markdown, advertised hoverProvider, explicit null, encoded isolated roots, repeats and all physical input bytes unchanged. No other hover partition/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/hover-s3.md. Independently authored 245 queries (236 complete hovers, nine explicit null), including 74 parameter declaration/use/type-token triples, run present/physically absent schema at LF/CRLF. Start/interior positions yield 1924 positions per layer plus repeats. Full labels/kinds/details/docs and independent byte/UTF-16 token ranges are exact; service additionally asserts canonical source/schema/builtin/local identities. All primitives including unit, Any/Range, bare and specialized Array/Map/Set View/Mut families, Iterator, Option/Result, tuples, nested containers and erased Function/Closure retain reviewed types. Unsupported mutation-mode arguments remain unknown; unit/tuple punctuation is null. Qualified/individual/namespace source aliases and source struct/enum/trait docs retain current-module ownership despite registry and unrelated same-name decoys. Qualified/schema-alias host/enum/trait facts and nested leaves retain exact metadata without source spans; missing physical schema removes schema-dependent docs/identities and preserves container unknown leaves and source/builtin facts. Const/state/extern-state/field/variant/trait/method/function/let/lambda hint positions and nested type leaves have independent precise results. Literal compiler task::Error retains its existing fact. Private/unimported/non-type/missing/obsolete/unsupported generic hints degrade to Any without false identity, while parameters retain unknown. Any/unknown type/builtin-looking member names and unresolved lower/uppercase expressions are null. Real protocol initialization/open/request dispatch asserts complete Markdown, advertised hoverProvider, explicit null, encoded isolated roots, repeats and all physical input bytes unchanged. No other hover partition/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        }
+      ]
     }
   ],
   "featureFiles": [

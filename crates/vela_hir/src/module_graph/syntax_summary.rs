@@ -1,3 +1,4 @@
+use crate::type_hint::lower_syntax_type_hint;
 use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
     AstChildren, AstNode, SyntaxAttribute, SyntaxAttributeValue, SyntaxConstItem, SyntaxEnumItem,
@@ -15,8 +16,8 @@ use crate::ids::HirNodeId;
 use crate::top_level::validate_syntax_const_initializer;
 use crate::type_hint::{
     ConstMetadata, EnumShape, EnumVariantFieldsHint, EnumVariantHint, FunctionSignature,
-    HirTypeHint, ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint, StateMetadata,
-    StateStorage, StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
+    ImplMetadata, ImplMetadataKind, ImplMethodMetadata, ParamHint, StateMetadata, StateStorage,
+    StructFieldHint, StructShape, TraitMethodMetadata, TraitShape,
 };
 
 use super::model::{DeclarationKind, Visibility};
@@ -523,7 +524,7 @@ fn const_metadata(source: SourceId, item: &SyntaxConstItem) -> ConstMetadata {
         type_hint: item
             .type_hint()
             .as_ref()
-            .map(|hint| hir_type_hint(source, hint)),
+            .map(|hint| lower_syntax_type_hint(source, hint)),
         value_span: item.value().as_ref().map_or_else(
             || span_for(source, item.syntax().text_range()),
             |value| span_for(source, value.syntax().text_range()),
@@ -537,7 +538,7 @@ fn state_metadata(source: SourceId, item: &SyntaxStateItem) -> Option<StateMetad
             SyntaxStateStorage::Vm => StateStorage::Vm,
             SyntaxStateStorage::Extern => StateStorage::Extern,
         },
-        type_hint: hir_type_hint(source, &item.type_hint()?),
+        type_hint: lower_syntax_type_hint(source, &item.type_hint()?),
         initializer_span: item
             .initializer()
             .map(|initializer| span_for(source, initializer.syntax().text_range())),
@@ -564,7 +565,7 @@ fn function_signature(
             .collect(),
         return_type: return_type
             .as_ref()
-            .map(|return_type| hir_type_hint(source, return_type)),
+            .map(|return_type| lower_syntax_type_hint(source, return_type)),
     }
 }
 
@@ -731,7 +732,7 @@ fn struct_field_hint(source: SourceId, field: &SyntaxStructField) -> Option<Stru
         type_hint: field
             .type_hint()
             .as_ref()
-            .map(|hint| hir_type_hint(source, hint)),
+            .map(|hint| lower_syntax_type_hint(source, hint)),
         default_value_span: field
             .default_value()
             .as_ref()
@@ -748,51 +749,13 @@ fn param_hint(source: SourceId, param: &SyntaxParam) -> Option<ParamHint> {
         type_hint: param
             .type_hint()
             .as_ref()
-            .map(|hint| hir_type_hint(source, hint)),
+            .map(|hint| lower_syntax_type_hint(source, hint)),
         default_value_span: param
             .default_value()
             .as_ref()
             .map(|value| span_for(source, value.syntax().text_range())),
         default_body: None,
     })
-}
-
-fn hir_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> HirTypeHint {
-    let span = span_for(source, hint.syntax().text_range());
-    if hint.is_unit() {
-        return HirTypeHint {
-            path: vec![HirTypeHint::UNIT_PATH.to_owned()],
-            args: Vec::new(),
-            span,
-        };
-    }
-
-    let tuple_elements = hint.tuple_element_hints().collect::<Vec<_>>();
-    if hint.is_tuple() {
-        return HirTypeHint {
-            path: vec![HirTypeHint::UNIT_PATH.to_owned()],
-            args: tuple_elements
-                .iter()
-                .map(|arg| hir_type_hint(source, arg))
-                .collect(),
-            span,
-        };
-    }
-
-    if hint.l_paren_token().is_some() && tuple_elements.len() == 1 {
-        return hir_type_hint(source, &tuple_elements[0]);
-    }
-
-    HirTypeHint {
-        path: hint.path_segments(),
-        args: hint
-            .type_arg_list()
-            .into_iter()
-            .flat_map(|args| args.type_hints())
-            .map(|arg| hir_type_hint(source, &arg))
-            .collect(),
-        span,
-    }
 }
 
 fn attrs_from_cst(source: SourceId, attrs: AstChildren<SyntaxAttribute>) -> Vec<HirAttribute> {

@@ -10,6 +10,7 @@ mod cross_file;
 mod dynamic;
 mod schema_method_return_receivers;
 mod source_return_receivers;
+mod type_matrix;
 
 static NEXT_WORKSPACE_ID: AtomicU64 = AtomicU64::new(0);
 

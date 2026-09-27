@@ -1,3 +1,6 @@
+mod syntax;
+pub use syntax::lower_syntax_type_hint;
+
 use vela_common::{CallableAsyncness, Span};
 
 use crate::{

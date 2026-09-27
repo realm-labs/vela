@@ -1,7 +1,7 @@
 use vela_analysis::facts::AnalysisFacts;
 mod schema;
+mod type_hints;
 
-use vela_analysis::registry::RegistryFacts;
 use vela_analysis::stdlib::{
     StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts, stdlib_method_fact,
 };
@@ -132,12 +132,15 @@ impl LanguageServiceDatabases {
         let target = SymbolTarget::from_query(self, &query)?;
         let offset = u32::try_from(target.range().start).ok()?;
         let range = diagnostic_range(query.text(), target.range());
+        if let Some(hover) = type_hints::hover(self, &query, &target, range) {
+            return hover;
+        }
         let facts = self.graph_analysis_facts();
 
-        if let Some(receiver_fact) = target.member_receiver_fact()
-            && let Some(hover) = self.member_hover(receiver_fact, &target, range)
-        {
-            return Some(hover);
+        if query.member_receiver_range().is_some() {
+            return target
+                .member_receiver_fact()
+                .and_then(|fact| self.member_hover(fact, &target, range));
         }
 
         for declaration in graph.declarations() {
@@ -150,9 +153,7 @@ impl LanguageServiceDatabases {
                 {
                     return Some(hover);
                 }
-                if let Some(hover) =
-                    hover_from_local_declaration(self, bindings, facts, &target, range)
-                {
+                if let Some(hover) = hover_from_local_declaration(self, bindings, &target, range) {
                     return Some(hover);
                 }
             }
@@ -192,10 +193,8 @@ impl LanguageServiceDatabases {
             return Some(hover);
         }
 
-        source_type_hint_hover(graph, facts, target.text(), range)
-            .or_else(|| schema::symbol_hover(self.schema_db().facts(), target.text(), range))
+        schema::symbol_hover(self.schema_db().facts(), target.text(), range)
             .or_else(|| stdlib_function_hover(target.text(), range))
-            .or_else(|| type_hint_hover(self.schema_db().facts(), target.text(), range))
     }
 
     fn member_hover(
@@ -377,7 +376,7 @@ fn hover_from_resolution_at_target(
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
-            let fact = local_fact(binding, facts)
+            let fact = local_fact(binding, databases.schema_analysis_facts())
                 .filter(|fact| !matches!(fact, TypeFact::Unknown))
                 .or_else(|| {
                     crate::query_context::type_fact_for_source_range(
@@ -771,7 +770,6 @@ fn enum_variant_detail(owner: &str, variant: &EnumVariantHint) -> String {
 fn hover_from_local_declaration(
     databases: &LanguageServiceDatabases,
     bindings: &BindingMap,
-    facts: &AnalysisFacts,
     target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
@@ -781,7 +779,7 @@ fn hover_from_local_declaration(
         local_hover(
             databases,
             binding,
-            local_fact(binding, facts).unwrap_or(TypeFact::Unknown),
+            local_fact(binding, databases.schema_analysis_facts()).unwrap_or(TypeFact::Unknown),
             range,
             target.symbol().cloned(),
         )
@@ -904,48 +902,8 @@ fn local_symbol_for_binding(
     SymbolRef::local_for_binding(binding, source.document_id().clone())
 }
 
-fn source_type_hint_hover(
-    graph: &vela_hir::module_graph::ModuleGraph,
-    facts: &AnalysisFacts,
-    name: &str,
-    range: DiagnosticRange,
-) -> Option<Hover> {
-    starts_like_type_name(name).then_some(())?;
-    graph
-        .declarations()
-        .filter(|declaration| {
-            matches!(
-                declaration.kind,
-                DeclarationKind::Struct | DeclarationKind::Enum | DeclarationKind::Trait
-            )
-        })
-        .find(|declaration| {
-            declaration.name == name || qualified_declaration_label(graph, declaration) == name
-        })
-        .map(|declaration| hover_from_declaration(graph, facts, declaration, range))
-}
-
 fn local_fact(binding: &LocalBinding, facts: &AnalysisFacts) -> Option<TypeFact> {
     facts.local(binding.id).cloned()
-}
-
-fn type_hint_hover(schema: &RegistryFacts, name: &str, range: DiagnosticRange) -> Option<Hover> {
-    starts_like_type_name(name).then(|| {
-        Hover::new(
-            range,
-            name.to_owned(),
-            HoverKind::Type,
-            DisplayParts::type_name(
-                schema
-                    .type_fact(name)
-                    .cloned()
-                    .unwrap_or(TypeFact::Any)
-                    .display_name(),
-            ),
-            None,
-            None,
-        )
-    })
 }
 
 fn record_owner_names(fact: &TypeFact) -> Vec<String> {
@@ -1168,10 +1126,6 @@ fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {
     )
 }
 
-fn starts_like_type_name(name: &str) -> bool {
-    name.chars().next().is_some_and(char::is_uppercase)
-}
-
 #[cfg(test)]
 mod cross_file_tests;
 #[cfg(test)]
@@ -1179,3 +1133,6 @@ mod tests;
 
 #[cfg(test)]
 mod coordinate_tests;
+
+#[cfg(test)]
+mod type_matrix_tests;

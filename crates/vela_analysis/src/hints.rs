@@ -164,7 +164,8 @@ pub(crate) fn declaration_schema_fact(
     }
 }
 
-fn builtin_type_fact(name: &str) -> Option<TypeFact> {
+/// The language-owned bare builtin hint fact, before source/schema lookup.
+pub fn builtin_type_fact(name: &str) -> Option<TypeFact> {
     if let Some(tag) = PrimitiveTag::from_name(name) {
         return Some(TypeFact::primitive(tag));
     }
