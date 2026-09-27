@@ -3,6 +3,45 @@ use vela_hir::module_graph::{DeclarationKind, ImportResolution, Visibility};
 use super::Hover;
 use crate::{DiagnosticRange, LanguageServiceDatabases, QueryContext, symbol_target::SymbolTarget};
 
+// Unresolved HIR imports can still name registered or builtin metadata. Expand
+// the actual scoped alias; private source owners remain closed to that fallback.
+pub(super) fn use_hover(
+    db: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    target: &SymbolTarget,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let path = query.expand_import_path(&[target.text().to_owned()])?;
+    let graph = db.hir_db().graph();
+    let key = query.module_key()?;
+    let module = graph.module_id(key)?;
+    for kind in [
+        DeclarationKind::Function,
+        DeclarationKind::Const,
+        DeclarationKind::State,
+        DeclarationKind::Struct,
+        DeclarationKind::Enum,
+        DeclarationKind::Trait,
+    ] {
+        if let Some(declaration) = graph.declaration_by_type_path(&path, key, kind) {
+            return (declaration.module == module || declaration.visibility == Visibility::Public)
+                .then(|| {
+                    super::hover_from_declaration(
+                        graph,
+                        db.graph_analysis_facts(),
+                        declaration,
+                        range,
+                    )
+                });
+        }
+    }
+    super::module_hover(graph, key, &path, range, None).or_else(|| {
+        let name = path.join("::");
+        super::schema::symbol_hover(db.schema_db().facts(), &name, range)
+            .or_else(|| super::stdlib_function_hover(&name, range))
+    })
+}
+
 // Import paths and alias declarations own unresolved results, so inaccessible
 // source names cannot fall through to an unrelated short registry/builtin name.
 pub(super) fn hover(

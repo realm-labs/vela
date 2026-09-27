@@ -6,6 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use super::{TestServer, request, response_value};
 
 mod bodies;
+mod calls;
 mod coordinates;
 mod cross_file;
 mod declarations;

@@ -3898,6 +3898,19 @@ a same-named method. These are static tooling queries, not constructor execution
 or new pattern semantics. Struct-pattern bindings retain the compiler's unknown
 facts; schema variants retain their available fact without invented source shapes.
 
+Hover on a named call label consumes the resolved callable's parameter contract.
+Body-backed source parameters retain their canonical declaration location;
+required trait signatures retain their parameter span without creating a body.
+Schema and stdlib parameter metadata may supply a name and type, but cannot
+invent a source local identity. Unknown labels, unnamed callable contracts,
+dynamic or unresolved callees, and missing source ownership own null rather than
+borrowing a caller local or unrelated registry entry. Explicit tuple-constructor
+labels retain their existing field handling. Argument values continue to belong
+to their own lexical bindings. Unresolved HIR import uses can still expose static
+schema/stdlib hover after scoped alias expansion; private source owners remain
+closed to that fallback. Callable signatures and fact display retain their
+existing formats, and tooling does not execute calls or default expressions.
+
 Inference that walks bodies must be scoped to the body it is walking. Seeding a
 per-body walk from a workspace-wide map, or scanning every declaration in the
 graph to answer a per-module question, makes editor latency grow with the square

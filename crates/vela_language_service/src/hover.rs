@@ -1,4 +1,5 @@
 use vela_analysis::facts::AnalysisFacts;
+mod call_labels;
 mod constructor_fields;
 mod enum_fields;
 mod impl_headers;
@@ -141,6 +142,9 @@ impl LanguageServiceDatabases {
         if let Some(hover) = constructor_fields::hover(self, &query, &target, range) {
             return hover;
         }
+        if let Some(hover) = call_labels::hover(self, &query, &target, range) {
+            return hover;
+        }
         if let Some(hover) = paths::hover(self, &query, &target, range) {
             return hover;
         }
@@ -162,6 +166,9 @@ impl LanguageServiceDatabases {
             && let Some(resolution) =
                 binding_resolution_for_source_range(graph, bindings, target.range())
         {
+            if matches!(resolution, BindingResolution::Import(_)) {
+                return imports::use_hover(self, &query, &target, range);
+            }
             return hover_from_resolution(bindings, facts, &target, range, self, resolution);
         }
         if let Some(hover) = parameters::interface_hover(self, &query, &target, range) {
@@ -1096,6 +1103,8 @@ mod type_matrix_tests;
 
 #[cfg(test)]
 mod body_matrix_tests;
+#[cfg(test)]
+mod call_matrix_tests;
 #[cfg(test)]
 mod declaration_matrix_tests;
 #[cfg(test)]
