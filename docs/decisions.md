@@ -3879,6 +3879,25 @@ executable bodies for interface methods. A callback parameter declaration owns
 its exact token even when cursor context carries a collection receiver for
 completion inference.
 
+Member hover retains the identity of the source metadata it renders. A schema
+symbol with the same spelling cannot replace that identity or fill a missing
+source member. Receiver owners and impl targets use complete scoped names;
+inherent methods precede trait overrides, and defaults resolve their trait in
+the impl's module. Known enum methods remain available without a known variant;
+variant fields require a known record variant. Complete receiver alternatives
+must agree on the whole hover, including identity and docs. Incomplete source
+origins and mixed source/non-source alternatives cannot select a speculative
+owner; alternatives sharing one default method may retain its common hover.
+
+Explicit constructor labels own field metadata or null; shorthand tokens keep
+their lexical binding identity. Bare record constructors follow HIR's declaration
+namespace, while qualified heads and call arguments respect lexical value
+shadowing. Source visibility and variant form are checked before schema lookup;
+schema labels require a registered type/variant and an actual field, rather than
+a same-named method. These are static tooling queries, not constructor execution
+or new pattern semantics. Struct-pattern bindings retain the compiler's unknown
+facts; schema variants retain their available fact without invented source shapes.
+
 Inference that walks bodies must be scoped to the body it is walking. Seeding a
 per-body walk from a workspace-wide map, or scanning every declaration in the
 graph to answer a per-module question, makes editor latency grow with the square

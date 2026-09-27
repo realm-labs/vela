@@ -1,7 +1,9 @@
 use vela_analysis::facts::AnalysisFacts;
+mod constructor_fields;
 mod enum_fields;
 mod impl_headers;
 mod imports;
+mod member_targets;
 mod parameters;
 mod paths;
 mod schema;
@@ -116,13 +118,6 @@ impl Hover {
     pub fn symbol(&self) -> Option<&SymbolRef> {
         self.symbol.as_ref()
     }
-
-    fn with_preferred_symbol(mut self, symbol: Option<SymbolRef>) -> Self {
-        if let Some(symbol) = symbol {
-            self.symbol = Some(symbol);
-        }
-        self
-    }
 }
 
 impl LanguageServiceDatabases {
@@ -143,6 +138,9 @@ impl LanguageServiceDatabases {
         if let Some(hover) = impl_headers::hover(self, &query, &target, range) {
             return hover;
         }
+        if let Some(hover) = constructor_fields::hover(self, &query, &target, range) {
+            return hover;
+        }
         if let Some(hover) = paths::hover(self, &query, &target, range) {
             return hover;
         }
@@ -157,9 +155,7 @@ impl LanguageServiceDatabases {
         }
 
         if query.member_receiver_range().is_some() {
-            return target
-                .member_receiver_fact()
-                .and_then(|fact| self.member_hover(fact, &target, range));
+            return member_targets::hover(self, &target, range);
         }
 
         if let Some(bindings) = query.bindings()
@@ -218,15 +214,18 @@ impl LanguageServiceDatabases {
         target: &SymbolTarget,
         range: DiagnosticRange,
     ) -> Option<Hover> {
+        if let Some(hover) = constructor_fields::member_hover(self, receiver_fact, target, range) {
+            return hover;
+        }
         if let Some(hover) =
             script_member_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
+            return Some(hover);
         }
         if let Some(hover) =
             script_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
+            return Some(hover);
         }
         if let Some(hover) = script_trait_default_method_hover(
             self.hir_db().graph(),
@@ -234,12 +233,17 @@ impl LanguageServiceDatabases {
             target.text(),
             range,
         ) {
-            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
+            return Some(hover);
         }
         if let Some(hover) =
             script_trait_method_hover(self.hir_db().graph(), receiver_fact, target.text(), range)
         {
-            return Some(hover.with_preferred_symbol(target.symbol().cloned()));
+            return Some(hover);
+        }
+        // A source receiver owns missing members too. A registry entry with
+        // the same spelling cannot add fields or methods to that source type.
+        if target.member_receiver_declaration().is_some() {
+            return None;
         }
         if let Some(hover) = schema::member_hover(
             self.schema_db().facts(),
@@ -519,24 +523,28 @@ fn script_method_hover(
     range: DiagnosticRange,
 ) -> Option<Hover> {
     let owner_names = record_owner_names(receiver);
-    graph.declarations().find_map(|declaration| {
-        if declaration.kind != DeclarationKind::Impl {
-            return None;
-        }
-        let metadata = graph.impl_metadata(declaration.id)?;
-        if !matches!(metadata.kind, ImplMetadataKind::Inherent)
-            || !owner_names
-                .iter()
-                .any(|owner| impl_target_matches(&metadata.target_path, owner))
-        {
-            return None;
-        }
-        metadata
-            .methods
-            .iter()
-            .find(|entry| entry.name == method)
-            .map(|entry| impl_method_hover(graph, declaration, metadata, entry, range))
-    })
+    let (declaration, metadata, method) = graph
+        .declarations()
+        .filter(|declaration| declaration.kind == DeclarationKind::Impl)
+        .filter_map(|declaration| {
+            let metadata = graph.impl_metadata(declaration.id)?;
+            if !owner_names.iter().any(|owner| {
+                crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner)
+            }) {
+                return None;
+            }
+            let method = metadata.methods.iter().find(|entry| entry.name == method)?;
+            Some((declaration, metadata, method))
+        })
+        // Inherent methods retain priority over trait implementations.
+        .min_by_key(|(_, metadata, _)| matches!(metadata.kind, ImplMetadataKind::Trait { .. }))?;
+    Some(impl_method_hover(
+        graph,
+        declaration,
+        metadata,
+        method,
+        range,
+    ))
 }
 
 fn script_trait_method_hover(
@@ -580,12 +588,12 @@ fn script_trait_default_method_hover(
         };
         if !owner_names
             .iter()
-            .any(|owner| impl_target_matches(&metadata.target_path, owner))
+            .any(|owner| crate::symbol_ref::source_impl_owner_matches(graph, declaration.id, owner))
             || metadata.methods.iter().any(|entry| entry.name == method)
         {
             return None;
         }
-        let trait_declaration = trait_declaration_for_path(graph, trait_path)?;
+        let trait_declaration = trait_declaration_for_path(graph, declaration, trait_path)?;
         graph
             .trait_shape(trait_declaration.id)?
             .methods
@@ -877,7 +885,7 @@ fn record_owner_names(fact: &TypeFact) -> Vec<String> {
 
 fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
     match fact {
-        TypeFact::Record { name } => push_owner_names(names, name),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } => push_owner_names(names, name),
         TypeFact::Union(facts) => {
             for fact in facts {
                 collect_record_owner_names(fact, names);
@@ -907,7 +915,6 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
         | TypeFact::Closure
-        | TypeFact::Enum { .. }
         | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
@@ -967,12 +974,6 @@ fn push_owner_names(names: &mut Vec<String>, name: &str) {
     if !names.iter().any(|owner| owner == name) {
         names.push(name.to_owned());
     }
-    if let Some(short) = name.rsplit("::").next()
-        && short != name
-        && !names.iter().any(|owner| owner == short)
-    {
-        names.push(short.to_owned());
-    }
 }
 
 fn declaration_name_matches(
@@ -985,14 +986,11 @@ fn declaration_name_matches(
 
 fn trait_declaration_for_path<'a>(
     graph: &'a vela_hir::module_graph::ModuleGraph,
+    implementation: &Declaration,
     trait_path: &[String],
 ) -> Option<&'a Declaration> {
-    let owner = trait_path.join("::");
-    graph.declarations().find(|declaration| {
-        declaration.kind == DeclarationKind::Trait
-            && (declaration.name == owner
-                || qualified_declaration_label(graph, declaration) == owner)
-    })
+    let path = graph.expand_import_path(implementation.module, trait_path)?;
+    graph.resolve_visible_declaration_path(implementation.module, &path, DeclarationKind::Trait)
 }
 
 fn impl_owner_label(
@@ -1012,10 +1010,6 @@ fn impl_owner_label(
             format!("{trait_name} for {target}")
         }
     }
-}
-
-fn impl_target_matches(path: &[String], owner: &str) -> bool {
-    path.last().is_some_and(|name| name == owner) || path.join("::") == owner
 }
 
 fn qualified_module_member_label(
@@ -1106,3 +1100,5 @@ mod body_matrix_tests;
 mod declaration_matrix_tests;
 #[cfg(test)]
 mod matrix_tests;
+#[cfg(test)]
+mod member_matrix_tests;

@@ -14493,6 +14493,46 @@
           "name": "tests::hover::bodies::hover_body_matrix_preserves_scoped_facts_captures_and_callbacks"
         }
       ]
+    },
+    {
+      "requirement": "hover/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/hover-s4.md. Independent 158 queries (114 complete hovers and 44 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1034 positions per layer. Complete metadata, Markdown, ranges and source/schema/local identities cover distinct same-named source fields and traits, alias/nested/returned receivers, Any fields, plain and five compound writes; struct/enum inherent, async, interface/default/override methods, method priority and chained receivers; complete common defaults versus different/mixed/incomplete receiver alternatives; aliased/qualified/namespace and empty constructors, explicit labels, lexical shorthand/value identities, declaration namespace versus qualified value shadowing; unit/tuple/record variants, named tuple labels, sibling record fields, record-variant reads/writes and static pattern labels with compiler-owned unknown struct-pattern bindings. Schema fields retain writable/reflection/permission metadata, including read-only write-position hover; methods retain permissions, asyncness, docs and existing unknown effects, and Any returns cannot invent members. Registered constructors, variants and record fields preserve available facts without invented source shape text. Unknown variants allow type methods but no variant-field guesses. Missing/dynamic/primitive/Any members, private owners, wrong forms, method labels, ambiguous variants and shadowed qualified heads are null despite registry decoys. Source metadata identity cannot be replaced by same-named schema methods; source misses cannot borrow fields or variants. Service asserts whole metadata/identities; protocol uses real initialize/open/request dispatch, complete Markdown/ranges or JSON null, encoded roots, unchanged physical inputs and absent schema. Queries execute no scripts or host state. Accepted coordinates own same-line non-BMP proof; no other hover syntax/state or full UX10 claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::member_matrix_tests::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/hover-s4.md. Independent 158 queries (114 complete hovers and 44 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1034 positions per layer. Complete metadata, Markdown, ranges and source/schema/local identities cover distinct same-named source fields and traits, alias/nested/returned receivers, Any fields, plain and five compound writes; struct/enum inherent, async, interface/default/override methods, method priority and chained receivers; complete common defaults versus different/mixed/incomplete receiver alternatives; aliased/qualified/namespace and empty constructors, explicit labels, lexical shorthand/value identities, declaration namespace versus qualified value shadowing; unit/tuple/record variants, named tuple labels, sibling record fields, record-variant reads/writes and static pattern labels with compiler-owned unknown struct-pattern bindings. Schema fields retain writable/reflection/permission metadata, including read-only write-position hover; methods retain permissions, asyncness, docs and existing unknown effects, and Any returns cannot invent members. Registered constructors, variants and record fields preserve available facts without invented source shape text. Unknown variants allow type methods but no variant-field guesses. Missing/dynamic/primitive/Any members, private owners, wrong forms, method labels, ambiguous variants and shadowed qualified heads are null despite registry decoys. Source metadata identity cannot be replaced by same-named schema methods; source misses cannot borrow fields or variants. Service asserts whole metadata/identities; protocol uses real initialize/open/request dispatch, complete Markdown/ranges or JSON null, encoded roots, unchanged physical inputs and absent schema. Queries execute no scripts or host state. Accepted coordinates own same-line non-BMP proof; no other hover syntax/state or full UX10 claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::members::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/hover-s4.md. Independent 158 queries (114 complete hovers and 44 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1034 positions per layer. Complete metadata, Markdown, ranges and source/schema/local identities cover distinct same-named source fields and traits, alias/nested/returned receivers, Any fields, plain and five compound writes; struct/enum inherent, async, interface/default/override methods, method priority and chained receivers; complete common defaults versus different/mixed/incomplete receiver alternatives; aliased/qualified/namespace and empty constructors, explicit labels, lexical shorthand/value identities, declaration namespace versus qualified value shadowing; unit/tuple/record variants, named tuple labels, sibling record fields, record-variant reads/writes and static pattern labels with compiler-owned unknown struct-pattern bindings. Schema fields retain writable/reflection/permission metadata, including read-only write-position hover; methods retain permissions, asyncness, docs and existing unknown effects, and Any returns cannot invent members. Registered constructors, variants and record fields preserve available facts without invented source shape text. Unknown variants allow type methods but no variant-field guesses. Missing/dynamic/primitive/Any members, private owners, wrong forms, method labels, ambiguous variants and shadowed qualified heads are null despite registry decoys. Source metadata identity cannot be replaced by same-named schema methods; source misses cannot borrow fields or variants. Service asserts whole metadata/identities; protocol uses real initialize/open/request dispatch, complete Markdown/ranges or JSON null, encoded roots, unchanged physical inputs and absent schema. Queries execute no scripts or host state. Accepted coordinates own same-line non-BMP proof; no other hover syntax/state or full UX10 claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::member_matrix_tests::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/hover-s4.md. Independent 158 queries (114 complete hovers and 44 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1034 positions per layer. Complete metadata, Markdown, ranges and source/schema/local identities cover distinct same-named source fields and traits, alias/nested/returned receivers, Any fields, plain and five compound writes; struct/enum inherent, async, interface/default/override methods, method priority and chained receivers; complete common defaults versus different/mixed/incomplete receiver alternatives; aliased/qualified/namespace and empty constructors, explicit labels, lexical shorthand/value identities, declaration namespace versus qualified value shadowing; unit/tuple/record variants, named tuple labels, sibling record fields, record-variant reads/writes and static pattern labels with compiler-owned unknown struct-pattern bindings. Schema fields retain writable/reflection/permission metadata, including read-only write-position hover; methods retain permissions, asyncness, docs and existing unknown effects, and Any returns cannot invent members. Registered constructors, variants and record fields preserve available facts without invented source shape text. Unknown variants allow type methods but no variant-field guesses. Missing/dynamic/primitive/Any members, private owners, wrong forms, method labels, ambiguous variants and shadowed qualified heads are null despite registry decoys. Source metadata identity cannot be replaced by same-named schema methods; source misses cannot borrow fields or variants. Service asserts whole metadata/identities; protocol uses real initialize/open/request dispatch, complete Markdown/ranges or JSON null, encoded roots, unchanged physical inputs and absent schema. Queries execute no scripts or host state. Accepted coordinates own same-line non-BMP proof; no other hover syntax/state or full UX10 claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::members::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        }
+      ]
     }
   ],
   "featureFiles": [

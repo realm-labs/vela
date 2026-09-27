@@ -6968,10 +6968,21 @@
         "hover/syntax/S2/negative/protocol"
       ],
       "summary": "Close four hover S2 positive/negative service/protocol obligations under reviews/hover-s2.md. Independent 183 queries contain 157 complete hovers and 26 explicit null results with schema present. Positive start/interior positions, LF/CRLF and present/absent schema yield 1358 positions per layer plus repeats; the absent host field becomes null. Complete metadata, Markdown, ranges and canonical source/local identities cover typed parameters and inferred/annotated locals, reads/writes and five compound assignments, aliases and tuple destructuring, array/tuple and if/match expression results, shadows and initializer ownership, block/closure captures, nested typed/untyped lambdas, numeric/tuple loops, tuple guards and source enum patterns. Array map/filter, Iterator fold and Map key/value callbacks infer static parameters/results; erased Function and dynamic Any callbacks retain unknown boundaries. Trait default, inherent and trait-impl self, source fields/methods, captured receivers and inferred locals retain owner identity. Schema host callbacks/copies/fields degrade to unknown/null without schema. Missing, dynamic/unknown members and out-of-scope locals are explicit null despite unrelated source declarations. Repair callback declaration ownership ahead of collection receiver routing and seed whole-module implicit receivers from scoped trait/impl owners with source origins. Two analysis tests verify alias/source/schema decoys, host/missing-schema boundaries, explicit Any, external local facts and separate concrete executable receiver seeds. Existing container/function fact display and language/runtime semantics remain unchanged. Protocol uses real initialization/open/request dispatch, encoded isolated roots, immutable physical inputs and physically absent schema; accepted coordinates own same-line non-BMP proof. Whole workspace validation, hover service 38, protocol 30, cache isolation one, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 20 and native 33 prove matching source/server identities. Strict B06 reruns service 731 with two unchanged historical ignores and protocol 733; B00-B06 original acceptance snapshots remain unchanged. Catalog 730 verified, 595 unreviewed, two N/A, zero failed; B07 49/96. Continue B07.10; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-xRcM3s/results.json; input editors/vscode/test-results/input-vO1VSa/results.json; audit target/lsp-matrix/run-HRD6dM/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.10",
+      "revision": null,
+      "requirements": [
+        "hover/syntax/S4/positive/service",
+        "hover/syntax/S4/positive/protocol",
+        "hover/syntax/S4/negative/service",
+        "hover/syntax/S4/negative/protocol"
+      ],
+      "summary": "Close four hover S4 positive/negative service/protocol obligations under reviews/hover-s4.md. Independent 158 queries contain 114 complete hovers and 44 explicit null results with schema present. Start/interior positives, LF/CRLF and present/absent schema yield 1034 positions per layer plus repeats. Exact metadata, Markdown, ranges and source/schema/local identities cover same-named cross-module fields, scoped traits, inherent/interface/default/override and enum methods, async/Any results, chained and nested receivers, plain/five compound writes, constructor aliases/qualified heads, explicit labels versus lexical shorthand/value facts, bare declaration namespace and qualified value shadows, unit/tuple/record variants, named tuple labels, sibling record fields and static pattern labels. Schema writable/reflection/permission and unknown-effect metadata remain exact; queries execute no scripts or host state. Complete agreeing alternatives retain shared default methods; different, mixed or incomplete owners are null. Fix scoped source owner and impl/default lookup, retain source metadata identity, suppress registry decoys for source misses, validate enum terminals through actual HIR bindings, and resolve constructor/known variant labels in focused modules with visibility/form checks. Existing ordinary struct-pattern bindings remain unknown under the compiler contract; no destructuring or schema shape facts are invented. Dynamic/missing/private/wrong-form labels, members and variants, ambiguous variants and shadowed qualified heads are null. Protocol uses real dispatch, encoded isolated roots, immutable physical inputs and physically absent schema. Accepted coordinate evidence owns same-line non-BMP proof; no other hover state or full UX10 acceptance is claimed. Workspace tests, hover service 39/protocol 31, cache one, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 20/native 33 have matching source/server identities. Strict B06 reruns service 732 with two unchanged historical ignores and protocol 734; accepted B00-B06 snapshots remain unchanged. Catalog 734 verified, 591 unreviewed, two N/A, zero failed; B07 53/96. Continue B07.11; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-rMkXhl/results.json; input editors/vscode/test-results/input-dn5Tvh/results.json; audit target/lsp-matrix/run-wVN78P/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.10",
+  "nextTask": "B07.11",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9187,7 +9198,10 @@
     "editors/vscode/test-results/input-iqtca6/results.json",
     "target/lsp-matrix/run-HRD6dM/report.json",
     "editors/vscode/test-results/run-xRcM3s/results.json",
-    "editors/vscode/test-results/input-vO1VSa/results.json"
+    "editors/vscode/test-results/input-vO1VSa/results.json",
+    "target/lsp-matrix/run-wVN78P/report.json",
+    "editors/vscode/test-results/run-rMkXhl/results.json",
+    "editors/vscode/test-results/input-dn5Tvh/results.json"
   ],
   "openIssues": [
     {
@@ -12204,8 +12218,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "49641ddca03fc0c76228df3a09d1e6b0ba648a68",
-          "treeSha256": "453eb72d162f6130f8cd93a7d8fc156aa5888cf537bba00ce8ff87ee23a04ac7"
+          "revision": "acc73314d8e8067e3235a6d023663f1c6b96895d",
+          "treeSha256": "92d2b24d53f38729af479d4e71cd9a50deedf1672c93bda3157acee9235a802c"
         },
         "profile": {
           "platform": "win32",
@@ -12213,11 +12227,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-HRD6dM/report.json"
+          "target/lsp-matrix/run-wVN78P/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-xRcM3s/results.json --local-results editors/vscode/test-results/input-vO1VSa/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-rMkXhl/results.json --local-results editors/vscode/test-results/input-dn5Tvh/results.json",
             "exitCode": 0
           }
         ]

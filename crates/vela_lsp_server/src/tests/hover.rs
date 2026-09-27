@@ -11,6 +11,7 @@ mod cross_file;
 mod declarations;
 mod dynamic;
 mod matrix;
+mod members;
 mod schema_method_return_receivers;
 mod source_return_receivers;
 mod type_matrix;

@@ -4,7 +4,10 @@ use vela_syntax::{
     ast::{AstNode, SyntaxPathExpr, SyntaxTypeHint},
 };
 
-use crate::{LanguageServiceDatabases, QueryContext, SymbolRef};
+use crate::{
+    LanguageServiceDatabases, QueryContext, SymbolRef,
+    query_context::binding_resolution_for_source_range,
+};
 
 /// A qualified path owns even an unresolved result, preventing fallback to an
 /// unrelated unqualified schema or builtin name. Terminal bindings retain their
@@ -37,7 +40,23 @@ pub(super) fn path_symbol_ref(
         }) else {
             continue;
         };
-        if !is_type && index + 1 == names.len() && source.is_some() {
+        // HIR may resolve an invalid Enum::Variant path to the enum owner.
+        // Validate that selected terminal segment before retaining its binding.
+        let enum_owner = source.is_some_and(|symbol| {
+            query
+                .bindings()
+                .and_then(|bindings| binding_resolution_for_source_range(graph, bindings, range))
+                .and_then(|resolution| match resolution {
+                    vela_hir::binding::BindingResolution::Declaration(id) => graph.declaration(*id),
+                    _ => None,
+                })
+                .is_some_and(|declaration| {
+                    declaration.kind == DeclarationKind::Enum
+                        && crate::symbol_ref::source_symbol_for_declaration(graph, declaration)
+                            == *symbol
+                })
+        });
+        if !is_type && index + 1 == names.len() && source.is_some() && !enum_owner {
             return Some(source.cloned());
         }
         let path = names[..=index]
