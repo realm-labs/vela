@@ -102,6 +102,9 @@ pub(super) fn verify_queries(
         if missing_schema && case.get("missingResult").is_some() {
             case["result"] = case["missingResult"].clone();
         }
+        if missing_schema && case.get("missingDefinition").is_some() {
+            case["definition"] = case["missingDefinition"].clone();
+        }
         let file = case["file"].as_str().expect("file");
         let document = fixture.document(file).expect("current query document");
         let target = uri(root, file);

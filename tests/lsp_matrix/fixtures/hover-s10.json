@@ -1,0 +1,2127 @@
+{
+  "version": 1,
+  "id": "hover-s10",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.hover_s10\"\nname=\"hover_s10\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "scripts/api.vela": "#[doc(\"Source grant\")] pub fn grant(value:i64)->i64{return value;}\n#[doc(\"Source row\")] pub struct Row { #[doc(\"Source count\")] count:i64 }\nimpl Row { #[doc(\"Source rank\")] pub fn rank(self,value:i64)->i64{return value;} }\n#[doc(\"Source reader\")] pub trait Reader { #[doc(\"Source read\")] fn read(self)->bool {return true;} }\nimpl Reader for Row {}\n#[doc(\"Source choice\")] pub enum Choice { #[doc(\"Source unit\")] Unit, #[doc(\"Source pair\")] Pair(value:i64), #[doc(\"Source record\")] Record {value:i64} }\n#[doc(\"Source factory\")] pub fn make()->Row{return Row {count:1};}\n#[doc(\"Source dynamic\")] pub fn opaque()->Any{return 1;}\nfn hidden(value:i64)->i64{return value;}\n",
+    "scripts/other.vela": "#[doc(\"Other grant\")] pub fn grant(value:String)->String{return value;}\n#[doc(\"Other row\")] pub struct Row {count:String}\nimpl Row {#[doc(\"Other rank\")] pub fn rank(self,value:String)->String{return value;}}\n",
+    "scripts/a_origin.vela": "pub fn [[registered:start]]registered[[registered:end]]()->bool{return true;} pub fn [[standard:start]]standard[[standard:end]]()->i64{return 1;}\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Host row\"},{\"name\":\"host::Choice\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\"},\"docs\":\"Host choice\"},{\"name\":\"grant\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::grant\"},\"docs\":\"Wrong bare grant\"},{\"name\":\"Row\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::Row\"},\"docs\":\"Wrong bare Row\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::count\"},\"docs\":\"Wrong bare count\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::rank\"},\"docs\":\"Wrong bare rank\"},{\"name\":\"Unit\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::Unit\"},\"docs\":\"Wrong bare Unit\"},{\"name\":\"Pair\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::Pair\"},\"docs\":\"Wrong bare Pair\"},{\"name\":\"Record\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::Record\"},\"docs\":\"Wrong bare Record\"},{\"name\":\"read\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::read\"},\"docs\":\"Wrong bare read\"},{\"name\":\"unknown\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::unknown\"},\"docs\":\"Wrong bare unknown\"},{\"name\":\"missing\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::missing\"},\"docs\":\"Wrong bare missing\"},{\"name\":\"max\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::max\"},\"docs\":\"Wrong bare max\"},{\"name\":\"Array\",\"fact\":{\"kind\":\"host\",\"name\":\"wrong::Array\"},\"docs\":\"Wrong bare Array\"}],\"traits\":[{\"name\":\"host::Reader\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Reader\"},\"docs\":\"Host reader\"}],\"modules\":[{\"name\":\"host\",\"fact\":{\"kind\":\"module\",\"name\":\"host\"},\"docs\":\"Host namespace\"},{\"name\":\"api\",\"fact\":{\"kind\":\"module\",\"name\":\"wrong::api\"},\"docs\":\"Wrong module\"},{\"name\":\"math\",\"fact\":{\"kind\":\"module\",\"name\":\"wrong::math\"},\"docs\":\"Wrong standard namespace\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"docs\":\"Host count\"},{\"owner\":\"api::Row\",\"name\":\"alien\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"docs\":\"Wrong source member\"}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"rank\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Host rank\"}],\"traitMethods\":[{\"owner\":\"host::Reader\",\"name\":\"read\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Host read\"}],\"functions\":[{\"name\":\"api::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Wrong source function\"},{\"name\":\"api::hidden\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Wrong private function\"},{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Host grant\",\"sourceSpan\":{\"source\":1,\"start\":7,\"end\":17}},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Host dynamic\"},{\"name\":\"math::max\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Wrong standard function\",\"sourceSpan\":{\"source\":1,\"start\":47,\"end\":55}}],\"variants\":[{\"owner\":\"host::Choice\",\"name\":\"Unit\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Unit\"},\"docs\":\"Host Unit\"},{\"owner\":\"host::Choice\",\"name\":\"Pair\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Pair\"},\"docs\":\"Host Pair\"},{\"owner\":\"host::Choice\",\"name\":\"Record\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Record\"},\"docs\":\"Host Record\"}]}}\n",
+    "scripts/case_lexical.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[lexical-before:start]]grant[[lexical-before:end]](1);\nlet [[lexical-outer:start]]grant[[lexical-outer:end]]=[[lexical-initializer:start]]grant[[lexical-initializer:end]](1); [[lexical-after:start]]grant[[lexical-after:end]];\n{let [[lexical-inner:start]]grant[[lexical-inner:end]]=\"inner\"; [[lexical-inner-use:start]]grant[[lexical-inner-use:end]]; let capture=||{[[lexical-capture-inner:start]]grant[[lexical-capture-inner:end]];};}\n[[lexical-after-block:start]]grant[[lexical-after-block:end]]; let captured=||{[[lexical-capture-outer:start]]grant[[lexical-capture-outer:end]];};\nlet [[lexical-dynamic:start]]Row[[lexical-dynamic:end]]:Any=1; [[lexical-dynamic-use:start]]Row[[lexical-dynamic-use:end]].[[lexical-dynamic-member:start]]count[[lexical-dynamic-member:end]];\nlet [[lexical-unknown:start]]missing[[lexical-unknown:end]]=no_value; [[lexical-unknown-use:start]]missing[[lexical-unknown-use:end]].[[lexical-unknown-member:start]]rank[[lexical-unknown-member:end]];\nlet callback=|[[lexical-lambda:start]]grant[[lexical-lambda:end]]:bool|{[[lexical-lambda-use:start]]grant[[lexical-lambda-use:end]];};\nfor [[lexical-loop:start]]grant[[lexical-loop:end]] in [1,2] {[[lexical-loop-use:start]]grant[[lexical-loop-use:end]];} [[lexical-after-loop:start]]grant[[lexical-after-loop:end]];\nmatch Choice::Pair(1) { Choice::Pair([[lexical-pattern:start]]grant[[lexical-pattern:end]]) => [[lexical-pattern-use:start]]grant[[lexical-pattern-use:end]], _=>0 };\n[[lexical-qualified-module:start]]api[[lexical-qualified-module:end]]::[[lexical-qualified-function:start]]grant[[lexical-qualified-function:end]](1);\n}\n",
+    "scripts/case_parameter_typed.vela": "use api::grant;\n/* 中😀 */fn run([[parameter-typed-decl:start]]grant[[parameter-typed-decl:end]]:i64){ [[parameter-typed-use:start]]grant[[parameter-typed-use:end]]; let captured=||{[[parameter-typed-capture:start]]grant[[parameter-typed-capture:end]];}; }\n",
+    "scripts/case_parameter_any.vela": "use api::grant;\n/* 中😀 */fn run([[parameter-any-decl:start]]grant[[parameter-any-decl:end]]:Any){ [[parameter-any-use:start]]grant[[parameter-any-use:end]]; let captured=||{[[parameter-any-capture:start]]grant[[parameter-any-capture:end]];}; }\n",
+    "scripts/case_parameter_unknown.vela": "use api::grant;\n/* 中😀 */fn run([[parameter-unknown-decl:start]]grant[[parameter-unknown-decl:end]]){ [[parameter-unknown-use:start]]grant[[parameter-unknown-use:end]]; let captured=||{[[parameter-unknown-capture:start]]grant[[parameter-unknown-capture:end]];}; }\n",
+    "scripts/case_source_owners.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[source-owners-grant:start]]grant[[source-owners-grant:end]](1); [[source-owners-row:start]]Row[[source-owners-row:end]] { [[source-owners-field-label:start]]count[[source-owners-field-label:end]]:1 }; let [[source-owners-receiver:start]]value[[source-owners-receiver:end]]=make(); [[source-owners-receiver-use:start]]value[[source-owners-receiver-use:end]].[[source-owners-field:start]]count[[source-owners-field:end]]; value.[[source-owners-method:start]]rank[[source-owners-method:end]](1); value.[[source-owners-default:start]]read[[source-owners-default:end]](); value.[[source-owners-absent-source-member:start]]alien[[source-owners-absent-source-member:end]]; [[source-owners-factory:start]]make[[source-owners-factory:end]]().[[source-owners-returned:start]]rank[[source-owners-returned:end]](1); [[source-owners-trait:start]]Reader[[source-owners-trait:end]]; [[source-owners-enum:start]]Choice[[source-owners-enum:end]]; [[source-owners-dynamic-call:start]]opaque[[source-owners-dynamic-call:end]]().[[source-owners-dynamic-suffix:start]]rank[[source-owners-dynamic-suffix:end]]; api::[[source-owners-private:start]]hidden[[source-owners-private:end]](1);\n}\n",
+    "scripts/case_variant_unit.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[variant-unit-type:start]]Choice[[variant-unit-type:end]]::[[variant-unit-variant:start]]Unit[[variant-unit-variant:end]];\n}\n",
+    "scripts/case_variant_pair.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[variant-pair-type:start]]Choice[[variant-pair-type:end]]::[[variant-pair-variant:start]]Pair[[variant-pair-variant:end]](1);\n}\n",
+    "scripts/case_variant_record.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[variant-record-type:start]]Choice[[variant-record-type:end]]::[[variant-record-variant:start]]Record[[variant-record-variant:end]] {value:1};\n}\n",
+    "scripts/case_other_owner.vela": "/* 中😀 */fn run(){\n/* 中😀 */other::[[other-owner-callee:start]]grant[[other-owner-callee:end]](\"s\");\n}\n",
+    "scripts/case_alias.vela": "use api::grant as Selected; use api as ns;\n/* 中😀 */fn run(){\n/* 中😀 */[[alias-use:start]]Selected[[alias-use:end]](1); [[alias-module:start]]ns[[alias-module:end]]::[[alias-member:start]]grant[[alias-member:end]](1);\n}\n",
+    "scripts/case_schema_owners.vela": "/* 中😀 */fn run(){\n/* 中😀 */[[schema-owners-module:start]]host[[schema-owners-module:end]]::[[schema-owners-callee:start]]grant[[schema-owners-callee:end]](true);\n}\n",
+    "scripts/case_host_members.vela": "/* 中😀 */fn run([[host-param:start]]value[[host-param:end]]:host::[[host-type:start]]Row[[host-type:end]],[[host-trait-param:start]]contract[[host-trait-param:end]]:host::[[host-trait-type:start]]Reader[[host-trait-type:end]]){ [[host-value:start]]value[[host-value:end]].[[host-field:start]]count[[host-field:end]]; value.[[host-method:start]]rank[[host-method:end]](true); contract.[[host-trait-method:start]]read[[host-trait-method:end]](); value.[[host-missing:start]]missing[[host-missing:end]]; host::[[host-dynamic-call:start]]opaque[[host-dynamic-call:end]]().[[host-dynamic-member:start]]rank[[host-dynamic-member:end]]; }\n",
+    "scripts/case_host_variant_unit.vela": "/* 中😀 */fn run(){\n/* 中😀 */host::[[host-variant-unit-type:start]]Choice[[host-variant-unit-type:end]]::[[host-variant-unit-variant:start]]Unit[[host-variant-unit-variant:end]];\n}\n",
+    "scripts/case_host_variant_pair.vela": "/* 中😀 */fn run(){\n/* 中😀 */host::[[host-variant-pair-type:start]]Choice[[host-variant-pair-type:end]]::[[host-variant-pair-variant:start]]Pair[[host-variant-pair-variant:end]];\n}\n",
+    "scripts/case_host_variant_record.vela": "/* 中😀 */fn run(){\n/* 中😀 */host::[[host-variant-record-type:start]]Choice[[host-variant-record-type:end]]::[[host-variant-record-variant:start]]Record[[host-variant-record-variant:end]];\n}\n",
+    "scripts/case_standard.vela": "use math::max as largest;\n/* 中😀 */fn run(){\n/* 中😀 */[[standard-math:start]]math[[standard-math:end]]::[[standard-maximum:start]]max[[standard-maximum:end]](1,2); [[standard-alias:start]]largest[[standard-alias:end]](1,2); let [[standard-shadow:start]]largest[[standard-shadow:end]]=\"s\"; [[standard-shadow-use:start]]largest[[standard-shadow-use:end]]; math::[[standard-through-shadow:start]]max[[standard-through-shadow:end]](1,2); let values=[1]; values.[[standard-first:start]]first[[standard-first:end]](); \"text\".[[standard-split:start]]split[[standard-split:end]](\",\");\n}\n",
+    "scripts/case_builtin_hints.vela": "/* 中😀 */fn run([[builtin-i64-param:start]]count[[builtin-i64-param:end]]:[[builtin-i64:start]]i64[[builtin-i64:end]],[[builtin-array-param:start]]values[[builtin-array-param:end]]:[[builtin-array:start]]Array[[builtin-array:end]]<i64>){ [[builtin-true:start]]true[[builtin-true:end]]; [[builtin-keyword:start]]return[[builtin-keyword:end]]; }\n",
+    "scripts/case_negative.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */let [[negative-any:start]]dynamic[[negative-any:end]]:Any=1; dynamic.[[negative-any-count:start]]count[[negative-any-count:end]]; let [[negative-unknown:start]]unknown[[negative-unknown:end]]=not_known; [[negative-unknown-use:start]]unknown[[negative-unknown-use:end]].[[negative-unknown-rank:start]]rank[[negative-unknown-rank:end]]; [[negative-missing:start]]no_such_name[[negative-missing:end]]; api::[[negative-missing-path:start]]missing[[negative-missing-path:end]]; Row::[[negative-not-enum:start]]Pair[[negative-not-enum:end]]; Choice::[[negative-missing-variant:start]]Missing[[negative-missing-variant:end]];\n}\n",
+    "scripts/case_callable_locals.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */let [[callable-locals-copy:start]]grant[[callable-locals-copy:end]]=api::grant; [[callable-locals-copy-use:start]]grant[[callable-locals-copy-use:end]](1); let capture=||{[[callable-locals-copy-capture:start]]grant[[callable-locals-copy-capture:end]](1);}; let [[callable-locals-lambda:start]]closure[[callable-locals-lambda:end]]=|[[callable-locals-parameter:start]]grant[[callable-locals-parameter:end]]:bool| [[callable-locals-parameter-use:start]]grant[[callable-locals-parameter-use:end]]; [[callable-locals-lambda-use:start]]closure[[callable-locals-lambda-use:end]](true);\n}\n",
+    "scripts/case_module_precedence.vela": "use api::grant; #[doc(\"Module grant\")] fn grant(flag:bool)->bool{return flag;}\n/* 中😀 */fn run(){\n/* 中😀 */[[module-precedence-call:start]]grant[[module-precedence-call:end]](true); api::[[module-precedence-qualified:start]]grant[[module-precedence-qualified:end]](1);\n}\n",
+    "scripts/case_schema_alias.vela": "use host::grant as selected; use host as hs;\n/* 中😀 */fn run(){\n/* 中😀 */[[schema-alias-use:start]]selected[[schema-alias-use:end]](true); [[schema-alias-namespace:start]]hs[[schema-alias-namespace:end]]::[[schema-alias-qualified:start]]grant[[schema-alias-qualified:end]](true); let [[schema-alias-shadow:start]]selected[[schema-alias-shadow:end]]=1; [[schema-alias-shadow-use:start]]selected[[schema-alias-shadow-use:end]]; let [[schema-alias-module-shadow:start]]hs[[schema-alias-module-shadow:end]]:Any=1; [[schema-alias-module-local:start]]hs[[schema-alias-module-local:end]]; [[schema-alias-closed-head:start]]hs[[schema-alias-closed-head:end]]::[[schema-alias-closed-leaf:start]]grant[[schema-alias-closed-leaf:end]](true);\n}\n",
+    "scripts/case_bare_schema_type.vela": "use api::grant; use api::Row; use api::Choice; use api::Reader; use api::make; use api::opaque;\n/* 中😀 */fn run(){\n/* 中😀 */[[bare-schema-type-type:start]]max[[bare-schema-type-type:end]];\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "lexical-before",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-before",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-outer",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-outer",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-outer"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-initializer",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-initializer",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-after",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-after",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-outer"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-inner",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-inner",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "String",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-inner"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: String"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-inner-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-inner-use",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "String",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-inner"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: String"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-capture-inner",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-capture-inner",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "String",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-inner"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: String"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-after-block",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-after-block",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-outer"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-capture-outer",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-capture-outer",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-outer"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-dynamic",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-dynamic",
+        "result": {
+          "label": "Row",
+          "kind": "Local",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "Row",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-dynamic"
+          },
+          "markdown": "```vela\nRow\n```\n\n_local_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-dynamic-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-dynamic-use",
+        "result": {
+          "label": "Row",
+          "kind": "Local",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "Row",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-dynamic"
+          },
+          "markdown": "```vela\nRow\n```\n\n_local_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-dynamic-member",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-dynamic-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-unknown",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-unknown",
+        "result": {
+          "label": "missing",
+          "kind": "Local",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "missing",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-unknown"
+          },
+          "markdown": "```vela\nmissing\n```\n\n_local_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-unknown-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-unknown-use",
+        "result": {
+          "label": "missing",
+          "kind": "Local",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "missing",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-unknown"
+          },
+          "markdown": "```vela\nmissing\n```\n\n_local_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-unknown-member",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-unknown-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-lambda",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-lambda",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-lambda"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-lambda-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-lambda-use",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-lambda"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-loop",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-loop",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-loop"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-loop-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-loop-use",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-loop"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-after-loop",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-after-loop",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-outer"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-pattern",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-pattern",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-pattern"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-pattern-use",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-pattern-use",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_lexical.vela",
+            "marker": "lexical-pattern"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-qualified-module",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-qualified-module",
+        "result": {
+          "label": "api",
+          "kind": "Module",
+          "detail": "module api",
+          "docs": null,
+          "symbol": {
+            "kind": "source",
+            "name": "dev.vela.anonymous::api"
+          },
+          "markdown": "```vela\napi\n```\n\n_module_: module api"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "lexical-qualified-function",
+        "file": "scripts/case_lexical.vela",
+        "marker": "lexical-qualified-function",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-typed-decl",
+        "file": "scripts/case_parameter_typed.vela",
+        "marker": "parameter-typed-decl",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_typed.vela",
+            "marker": "parameter-typed-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-typed-use",
+        "file": "scripts/case_parameter_typed.vela",
+        "marker": "parameter-typed-use",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_typed.vela",
+            "marker": "parameter-typed-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-typed-capture",
+        "file": "scripts/case_parameter_typed.vela",
+        "marker": "parameter-typed-capture",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_typed.vela",
+            "marker": "parameter-typed-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-any-decl",
+        "file": "scripts/case_parameter_any.vela",
+        "marker": "parameter-any-decl",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_any.vela",
+            "marker": "parameter-any-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-any-use",
+        "file": "scripts/case_parameter_any.vela",
+        "marker": "parameter-any-use",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_any.vela",
+            "marker": "parameter-any-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-any-capture",
+        "file": "scripts/case_parameter_any.vela",
+        "marker": "parameter-any-capture",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_any.vela",
+            "marker": "parameter-any-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-unknown-decl",
+        "file": "scripts/case_parameter_unknown.vela",
+        "marker": "parameter-unknown-decl",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_unknown.vela",
+            "marker": "parameter-unknown-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-unknown-use",
+        "file": "scripts/case_parameter_unknown.vela",
+        "marker": "parameter-unknown-use",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_unknown.vela",
+            "marker": "parameter-unknown-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "parameter-unknown-capture",
+        "file": "scripts/case_parameter_unknown.vela",
+        "marker": "parameter-unknown-capture",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_parameter_unknown.vela",
+            "marker": "parameter-unknown-decl"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-grant",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-grant",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-row",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-row",
+        "result": {
+          "label": "api::Row",
+          "kind": "Type",
+          "detail": "api::Row",
+          "docs": "Source row",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row"
+          },
+          "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nSource row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-field-label",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-field-label",
+        "result": {
+          "label": "api::Row.count",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": "Source count",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.count"
+          },
+          "markdown": "```vela\napi::Row.count\n```\n\n_field_: i64\n\nSource count"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-receiver",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-receiver",
+        "result": {
+          "label": "value",
+          "kind": "Local",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_source_owners.vela",
+            "marker": "source-owners-receiver"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_local_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-receiver-use",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-receiver-use",
+        "result": {
+          "label": "value",
+          "kind": "Local",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_source_owners.vela",
+            "marker": "source-owners-receiver"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_local_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-field",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-field",
+        "result": {
+          "label": "api::Row.count",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": "Source count",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.count"
+          },
+          "markdown": "```vela\napi::Row.count\n```\n\n_field_: i64\n\nSource count"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-method",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-method",
+        "result": {
+          "label": "api::Row.rank",
+          "kind": "Method",
+          "detail": "(self, value: i64) -> i64",
+          "docs": "Source rank",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.rank"
+          },
+          "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: i64) -> i64\n\nSource rank"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-default",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-default",
+        "result": {
+          "label": "api::Reader.read",
+          "kind": "Method",
+          "detail": "(self) -> bool",
+          "docs": "Source read",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Reader.read"
+          },
+          "markdown": "```vela\napi::Reader.read\n```\n\n_method_: (self) -> bool\n\nSource read"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-absent-source-member",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-absent-source-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-factory",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-factory",
+        "result": {
+          "label": "api::make",
+          "kind": "Function",
+          "detail": "() -> Row",
+          "docs": "Source factory",
+          "symbol": {
+            "kind": "source",
+            "name": "api::make"
+          },
+          "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nSource factory"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-returned",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-returned",
+        "result": {
+          "label": "api::Row.rank",
+          "kind": "Method",
+          "detail": "(self, value: i64) -> i64",
+          "docs": "Source rank",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.rank"
+          },
+          "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: i64) -> i64\n\nSource rank"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-trait",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-trait",
+        "result": {
+          "label": "api::Reader",
+          "kind": "Trait",
+          "detail": "api::Reader",
+          "docs": "Source reader",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Reader"
+          },
+          "markdown": "```vela\napi::Reader\n```\n\n_trait_: api::Reader\n\nSource reader"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-enum",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-enum",
+        "result": {
+          "label": "api::Choice",
+          "kind": "Type",
+          "detail": "api::Choice",
+          "docs": "Source choice",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice"
+          },
+          "markdown": "```vela\napi::Choice\n```\n\n_type_: api::Choice\n\nSource choice"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-dynamic-call",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-dynamic-call",
+        "result": {
+          "label": "api::opaque",
+          "kind": "Function",
+          "detail": "() -> Any",
+          "docs": "Source dynamic",
+          "symbol": {
+            "kind": "source",
+            "name": "api::opaque"
+          },
+          "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nSource dynamic"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-dynamic-suffix",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-dynamic-suffix",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "source-owners-private",
+        "file": "scripts/case_source_owners.vela",
+        "marker": "source-owners-private",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "variant-unit-type",
+        "file": "scripts/case_variant_unit.vela",
+        "marker": "variant-unit-type",
+        "result": {
+          "label": "api::Choice",
+          "kind": "Type",
+          "detail": "api::Choice",
+          "docs": "Source choice",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice"
+          },
+          "markdown": "```vela\napi::Choice\n```\n\n_type_: api::Choice\n\nSource choice"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "variant-unit-variant",
+        "file": "scripts/case_variant_unit.vela",
+        "marker": "variant-unit-variant",
+        "result": {
+          "label": "api::Choice::Unit",
+          "kind": "Variant",
+          "detail": "api::Choice::Unit",
+          "docs": "Source unit",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice::Unit"
+          },
+          "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nSource unit"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "variant-pair-type",
+        "file": "scripts/case_variant_pair.vela",
+        "marker": "variant-pair-type",
+        "result": {
+          "label": "api::Choice",
+          "kind": "Type",
+          "detail": "api::Choice",
+          "docs": "Source choice",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice"
+          },
+          "markdown": "```vela\napi::Choice\n```\n\n_type_: api::Choice\n\nSource choice"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "variant-pair-variant",
+        "file": "scripts/case_variant_pair.vela",
+        "marker": "variant-pair-variant",
+        "result": {
+          "label": "api::Choice::Pair",
+          "kind": "Variant",
+          "detail": "api::Choice::Pair(value)",
+          "docs": "Source pair",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice::Pair"
+          },
+          "markdown": "```vela\napi::Choice::Pair\n```\n\n_variant_: api::Choice::Pair(value)\n\nSource pair"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "variant-record-type",
+        "file": "scripts/case_variant_record.vela",
+        "marker": "variant-record-type",
+        "result": {
+          "label": "api::Choice",
+          "kind": "Type",
+          "detail": "api::Choice",
+          "docs": "Source choice",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice"
+          },
+          "markdown": "```vela\napi::Choice\n```\n\n_type_: api::Choice\n\nSource choice"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "variant-record-variant",
+        "file": "scripts/case_variant_record.vela",
+        "marker": "variant-record-variant",
+        "result": {
+          "label": "api::Choice::Record",
+          "kind": "Variant",
+          "detail": "api::Choice::Record { value }",
+          "docs": "Source record",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice::Record"
+          },
+          "markdown": "```vela\napi::Choice::Record\n```\n\n_variant_: api::Choice::Record { value }\n\nSource record"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "other-owner-callee",
+        "file": "scripts/case_other_owner.vela",
+        "marker": "other-owner-callee",
+        "result": {
+          "label": "other::grant",
+          "kind": "Function",
+          "detail": "(value: String) -> String",
+          "docs": "Other grant",
+          "symbol": {
+            "kind": "source",
+            "name": "other::grant"
+          },
+          "markdown": "```vela\nother::grant\n```\n\n_function_: (value: String) -> String\n\nOther grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "alias-use",
+        "file": "scripts/case_alias.vela",
+        "marker": "alias-use",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "alias-module",
+        "file": "scripts/case_alias.vela",
+        "marker": "alias-module",
+        "result": {
+          "label": "api",
+          "kind": "Module",
+          "detail": "module api",
+          "docs": null,
+          "symbol": {
+            "kind": "source",
+            "name": "dev.vela.anonymous::api"
+          },
+          "markdown": "```vela\napi\n```\n\n_module_: module api"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "alias-member",
+        "file": "scripts/case_alias.vela",
+        "marker": "alias-member",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-owners-module",
+        "file": "scripts/case_schema_owners.vela",
+        "marker": "schema-owners-module",
+        "result": {
+          "label": "host",
+          "kind": "Module",
+          "detail": "module host",
+          "docs": "Host namespace",
+          "symbol": {
+            "kind": "schema",
+            "name": "host"
+          },
+          "markdown": "```vela\nhost\n```\n\n_module_: module host\n\nHost namespace"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "schema-owners-callee",
+        "file": "scripts/case_schema_owners.vela",
+        "marker": "schema-owners-callee",
+        "result": {
+          "label": "host::grant",
+          "kind": "Function",
+          "detail": "Function(bool) -> String; effects: unknown",
+          "docs": "Host grant",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::grant"
+          },
+          "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> String; effects: unknown\n\nHost grant"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": {
+          "file": "scripts/a_origin.vela",
+          "marker": "registered"
+        },
+        "missingDefinition": null
+      },
+      {
+        "id": "host-param",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-param",
+        "result": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-trait-param",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-trait-param",
+        "result": {
+          "label": "contract",
+          "kind": "Parameter",
+          "detail": "host::Reader",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "contract",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-trait-param"
+          },
+          "markdown": "```vela\ncontract\n```\n\n_parameter_: host::Reader"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "contract",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "contract",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-trait-param"
+          },
+          "markdown": "```vela\ncontract\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-type",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-type",
+        "result": {
+          "label": "host::Row",
+          "kind": "Type",
+          "detail": "host::Row",
+          "docs": "Host row",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row"
+          },
+          "markdown": "```vela\nhost::Row\n```\n\n_type_: host::Row\n\nHost row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "Row",
+          "kind": "Type",
+          "detail": "Any",
+          "docs": null,
+          "symbol": null,
+          "markdown": "```vela\nRow\n```\n\n_type_: Any"
+        }
+      },
+      {
+        "id": "host-trait-type",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-trait-type",
+        "result": {
+          "label": "host::Reader",
+          "kind": "Trait",
+          "detail": "host::Reader",
+          "docs": "Host reader",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Reader"
+          },
+          "markdown": "```vela\nhost::Reader\n```\n\n_trait_: host::Reader\n\nHost reader"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "Reader",
+          "kind": "Type",
+          "detail": "Any",
+          "docs": null,
+          "symbol": null,
+          "markdown": "```vela\nReader\n```\n\n_type_: Any"
+        }
+      },
+      {
+        "id": "host-value",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-value",
+        "result": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/case_host_members.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-field",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-field",
+        "result": {
+          "label": "host::Row.count",
+          "kind": "Field",
+          "detail": "String",
+          "docs": "Host count",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.count"
+          },
+          "markdown": "```vela\nhost::Row.count\n```\n\n_field_: String\n\nHost count"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-method",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-method",
+        "result": {
+          "label": "host::Row.rank",
+          "kind": "Method",
+          "detail": "Function(bool) -> String; effects: unknown; permissions: none",
+          "docs": "Host rank",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.rank"
+          },
+          "markdown": "```vela\nhost::Row.rank\n```\n\n_method_: Function(bool) -> String; effects: unknown; permissions: none\n\nHost rank"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-trait-method",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-trait-method",
+        "result": {
+          "label": "host::Reader.read",
+          "kind": "Method",
+          "detail": "Function() -> String; effects: unknown; permissions: none",
+          "docs": "Host read",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Reader.read"
+          },
+          "markdown": "```vela\nhost::Reader.read\n```\n\n_method_: Function() -> String; effects: unknown; permissions: none\n\nHost read"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-missing",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-missing",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "host-dynamic-call",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-dynamic-call",
+        "result": {
+          "label": "host::opaque",
+          "kind": "Function",
+          "detail": "Function() -> Any; effects: unknown",
+          "docs": "Host dynamic",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::opaque"
+          },
+          "markdown": "```vela\nhost::opaque\n```\n\n_function_: Function() -> Any; effects: unknown\n\nHost dynamic"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-dynamic-member",
+        "file": "scripts/case_host_members.vela",
+        "marker": "host-dynamic-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "host-variant-unit-type",
+        "file": "scripts/case_host_variant_unit.vela",
+        "marker": "host-variant-unit-type",
+        "result": {
+          "label": "host::Choice",
+          "kind": "Type",
+          "detail": "host::Choice",
+          "docs": "Host choice",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice"
+          },
+          "markdown": "```vela\nhost::Choice\n```\n\n_type_: host::Choice\n\nHost choice"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-variant-unit-variant",
+        "file": "scripts/case_host_variant_unit.vela",
+        "marker": "host-variant-unit-variant",
+        "result": {
+          "label": "host::Choice::Unit",
+          "kind": "Variant",
+          "detail": "host::Choice::Unit",
+          "docs": "Host Unit",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice::Unit"
+          },
+          "markdown": "```vela\nhost::Choice::Unit\n```\n\n_variant_: host::Choice::Unit\n\nHost Unit"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-variant-pair-type",
+        "file": "scripts/case_host_variant_pair.vela",
+        "marker": "host-variant-pair-type",
+        "result": {
+          "label": "host::Choice",
+          "kind": "Type",
+          "detail": "host::Choice",
+          "docs": "Host choice",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice"
+          },
+          "markdown": "```vela\nhost::Choice\n```\n\n_type_: host::Choice\n\nHost choice"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-variant-pair-variant",
+        "file": "scripts/case_host_variant_pair.vela",
+        "marker": "host-variant-pair-variant",
+        "result": {
+          "label": "host::Choice::Pair",
+          "kind": "Variant",
+          "detail": "host::Choice::Pair",
+          "docs": "Host Pair",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice::Pair"
+          },
+          "markdown": "```vela\nhost::Choice::Pair\n```\n\n_variant_: host::Choice::Pair\n\nHost Pair"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-variant-record-type",
+        "file": "scripts/case_host_variant_record.vela",
+        "marker": "host-variant-record-type",
+        "result": {
+          "label": "host::Choice",
+          "kind": "Type",
+          "detail": "host::Choice",
+          "docs": "Host choice",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice"
+          },
+          "markdown": "```vela\nhost::Choice\n```\n\n_type_: host::Choice\n\nHost choice"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-variant-record-variant",
+        "file": "scripts/case_host_variant_record.vela",
+        "marker": "host-variant-record-variant",
+        "result": {
+          "label": "host::Choice::Record",
+          "kind": "Variant",
+          "detail": "host::Choice::Record",
+          "docs": "Host Record",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Choice::Record"
+          },
+          "markdown": "```vela\nhost::Choice::Record\n```\n\n_variant_: host::Choice::Record\n\nHost Record"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "standard-math",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-math",
+        "result": {
+          "label": "math",
+          "kind": "Module",
+          "detail": "module math",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math"
+          },
+          "markdown": "```vela\nmath\n```\n\n_module_: module math"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-maximum",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-maximum",
+        "result": {
+          "label": "math::max",
+          "kind": "Function",
+          "detail": "Function(i64 | f64, i64 | f64) -> i64 | f64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math::max"
+          },
+          "markdown": "```vela\nmath::max\n```\n\n_function_: Function(i64 | f64, i64 | f64) -> i64 | f64"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-alias",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-alias",
+        "result": {
+          "label": "math::max",
+          "kind": "Function",
+          "detail": "Function(i64 | f64, i64 | f64) -> i64 | f64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math::max"
+          },
+          "markdown": "```vela\nmath::max\n```\n\n_function_: Function(i64 | f64, i64 | f64) -> i64 | f64"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-shadow",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-shadow",
+        "result": {
+          "label": "largest",
+          "kind": "Local",
+          "detail": "String",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "largest",
+            "file": "scripts/case_standard.vela",
+            "marker": "standard-shadow"
+          },
+          "markdown": "```vela\nlargest\n```\n\n_local_: String"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "standard-shadow-use",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-shadow-use",
+        "result": {
+          "label": "largest",
+          "kind": "Local",
+          "detail": "String",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "largest",
+            "file": "scripts/case_standard.vela",
+            "marker": "standard-shadow"
+          },
+          "markdown": "```vela\nlargest\n```\n\n_local_: String"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "standard-through-shadow",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-through-shadow",
+        "result": {
+          "label": "math::max",
+          "kind": "Function",
+          "detail": "Function(i64 | f64, i64 | f64) -> i64 | f64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math::max"
+          },
+          "markdown": "```vela\nmath::max\n```\n\n_function_: Function(i64 | f64, i64 | f64) -> i64 | f64"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-first",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-first",
+        "result": {
+          "label": "Array(i64).first",
+          "kind": "Method",
+          "detail": "Function() -> Option(i64)",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "Array(i64).first"
+          },
+          "markdown": "```vela\nArray(i64).first\n```\n\n_method_: Function() -> Option(i64)"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-split",
+        "file": "scripts/case_standard.vela",
+        "marker": "standard-split",
+        "result": {
+          "label": "String.split",
+          "kind": "Method",
+          "detail": "Function(String) -> Array(String)",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "String.split"
+          },
+          "markdown": "```vela\nString.split\n```\n\n_method_: Function(String) -> Array(String)"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "builtin-i64-param",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-i64-param",
+        "result": {
+          "label": "count",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "count",
+            "file": "scripts/case_builtin_hints.vela",
+            "marker": "builtin-i64-param"
+          },
+          "markdown": "```vela\ncount\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "builtin-i64",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-i64",
+        "result": {
+          "label": "i64",
+          "kind": "Type",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "i64"
+          },
+          "markdown": "```vela\ni64\n```\n\n_type_: i64"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "builtin-array-param",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-array-param",
+        "result": {
+          "label": "values",
+          "kind": "Parameter",
+          "detail": "Array(i64)",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "values",
+            "file": "scripts/case_builtin_hints.vela",
+            "marker": "builtin-array-param"
+          },
+          "markdown": "```vela\nvalues\n```\n\n_parameter_: Array(i64)"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "builtin-array",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-array",
+        "result": {
+          "label": "Array",
+          "kind": "Type",
+          "detail": "Array(i64)",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "Array"
+          },
+          "markdown": "```vela\nArray\n```\n\n_type_: Array(i64)"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "builtin-true",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-true",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "builtin-keyword",
+        "file": "scripts/case_builtin_hints.vela",
+        "marker": "builtin-keyword",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-any",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-any",
+        "result": {
+          "label": "dynamic",
+          "kind": "Local",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "dynamic",
+            "file": "scripts/case_negative.vela",
+            "marker": "negative-any"
+          },
+          "markdown": "```vela\ndynamic\n```\n\n_local_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "negative-any-count",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-any-count",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-unknown",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-unknown",
+        "result": {
+          "label": "unknown",
+          "kind": "Local",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "unknown",
+            "file": "scripts/case_negative.vela",
+            "marker": "negative-unknown"
+          },
+          "markdown": "```vela\nunknown\n```\n\n_local_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "negative-unknown-use",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-unknown-use",
+        "result": {
+          "label": "unknown",
+          "kind": "Local",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "unknown",
+            "file": "scripts/case_negative.vela",
+            "marker": "negative-unknown"
+          },
+          "markdown": "```vela\nunknown\n```\n\n_local_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "negative-unknown-rank",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-unknown-rank",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-missing",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-missing",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-missing-path",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-missing-path",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-not-enum",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-not-enum",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "negative-missing-variant",
+        "file": "scripts/case_negative.vela",
+        "marker": "negative-missing-variant",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-copy",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-copy",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "Function(i64) -> i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-copy"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: Function(i64) -> i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-copy-use",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-copy-use",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "Function(i64) -> i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-copy"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: Function(i64) -> i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-copy-capture",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-copy-capture",
+        "result": {
+          "label": "grant",
+          "kind": "Local",
+          "detail": "Function(i64) -> i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-copy"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_local_: Function(i64) -> i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-lambda",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-lambda",
+        "result": {
+          "label": "closure",
+          "kind": "Local",
+          "detail": "Function(bool) -> bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "closure",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-lambda"
+          },
+          "markdown": "```vela\nclosure\n```\n\n_local_: Function(bool) -> bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-parameter",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-parameter",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-parameter"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-parameter-use",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-parameter-use",
+        "result": {
+          "label": "grant",
+          "kind": "Parameter",
+          "detail": "bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "grant",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-parameter"
+          },
+          "markdown": "```vela\ngrant\n```\n\n_parameter_: bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "callable-locals-lambda-use",
+        "file": "scripts/case_callable_locals.vela",
+        "marker": "callable-locals-lambda-use",
+        "result": {
+          "label": "closure",
+          "kind": "Local",
+          "detail": "Function(bool) -> bool",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "closure",
+            "file": "scripts/case_callable_locals.vela",
+            "marker": "callable-locals-lambda"
+          },
+          "markdown": "```vela\nclosure\n```\n\n_local_: Function(bool) -> bool"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "module-precedence-call",
+        "file": "scripts/case_module_precedence.vela",
+        "marker": "module-precedence-call",
+        "result": {
+          "label": "case_module_precedence::grant",
+          "kind": "Function",
+          "detail": "(flag: bool) -> bool",
+          "docs": "Module grant",
+          "symbol": {
+            "kind": "source",
+            "name": "case_module_precedence::grant"
+          },
+          "markdown": "```vela\ncase_module_precedence::grant\n```\n\n_function_: (flag: bool) -> bool\n\nModule grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "module-precedence-qualified",
+        "file": "scripts/case_module_precedence.vela",
+        "marker": "module-precedence-qualified",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Source grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nSource grant"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-use",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-use",
+        "result": {
+          "label": "host::grant",
+          "kind": "Function",
+          "detail": "Function(bool) -> String; effects: unknown",
+          "docs": "Host grant",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::grant"
+          },
+          "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> String; effects: unknown\n\nHost grant"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": {
+          "file": "scripts/a_origin.vela",
+          "marker": "registered"
+        },
+        "missingDefinition": null
+      },
+      {
+        "id": "schema-alias-namespace",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-namespace",
+        "result": {
+          "label": "host",
+          "kind": "Module",
+          "detail": "module host",
+          "docs": "Host namespace",
+          "symbol": {
+            "kind": "schema",
+            "name": "host"
+          },
+          "markdown": "```vela\nhost\n```\n\n_module_: module host\n\nHost namespace"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "schema-alias-qualified",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-qualified",
+        "result": {
+          "label": "host::grant",
+          "kind": "Function",
+          "detail": "Function(bool) -> String; effects: unknown",
+          "docs": "Host grant",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::grant"
+          },
+          "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> String; effects: unknown\n\nHost grant"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": {
+          "file": "scripts/a_origin.vela",
+          "marker": "registered"
+        },
+        "missingDefinition": null
+      },
+      {
+        "id": "schema-alias-shadow",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-shadow",
+        "result": {
+          "label": "selected",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "selected",
+            "file": "scripts/case_schema_alias.vela",
+            "marker": "schema-alias-shadow"
+          },
+          "markdown": "```vela\nselected\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-shadow-use",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-shadow-use",
+        "result": {
+          "label": "selected",
+          "kind": "Local",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "selected",
+            "file": "scripts/case_schema_alias.vela",
+            "marker": "schema-alias-shadow"
+          },
+          "markdown": "```vela\nselected\n```\n\n_local_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-module-shadow",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-module-shadow",
+        "result": {
+          "label": "hs",
+          "kind": "Local",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hs",
+            "file": "scripts/case_schema_alias.vela",
+            "marker": "schema-alias-module-shadow"
+          },
+          "markdown": "```vela\nhs\n```\n\n_local_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-module-local",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-module-local",
+        "result": {
+          "label": "hs",
+          "kind": "Local",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hs",
+            "file": "scripts/case_schema_alias.vela",
+            "marker": "schema-alias-module-shadow"
+          },
+          "markdown": "```vela\nhs\n```\n\n_local_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-closed-head",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-closed-head",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "schema-alias-closed-leaf",
+        "file": "scripts/case_schema_alias.vela",
+        "marker": "schema-alias-closed-leaf",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "bare-schema-type-type",
+        "file": "scripts/case_bare_schema_type.vela",
+        "marker": "bare-schema-type-type",
+        "result": {
+          "label": "max",
+          "kind": "Type",
+          "detail": "wrong::max",
+          "docs": "Wrong bare max",
+          "symbol": {
+            "kind": "schema",
+            "name": "max"
+          },
+          "markdown": "```vela\nmax\n```\n\n_type_: wrong::max\n\nWrong bare max"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "math::max",
+          "kind": "Function",
+          "detail": "Function(i64 | f64, i64 | f64) -> i64 | f64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math::max"
+          },
+          "markdown": "```vela\nmath::max\n```\n\n_function_: Function(i64 | f64, i64 | f64) -> i64 | f64"
+        },
+        "definition": null
+      }
+    ],
+    "locations": [
+      {
+        "kind": "function",
+        "name": "host::grant",
+        "spelling": "registered",
+        "file": "scripts/a_origin.vela"
+      },
+      {
+        "kind": "function",
+        "name": "math::max",
+        "spelling": "standard",
+        "file": "scripts/a_origin.vela"
+      }
+    ]
+  }
+}

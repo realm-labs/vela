@@ -14733,6 +14733,142 @@
           "name": "tests::hover::recovery::hover_recovery_matrix_preserves_known_facts_and_null_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "hover/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/hover-s10.md. Independent hover-s10 authors 120 queries (103 complete and 17 null), 27 physical inputs and 862 positions per layer plus repeats across LF/CRLF, schema present/physically absent and token start/interior. Without schema 21 expectations change and 32 are null; host parameters retain unknown, hint leaves retain Any without identity, and absence of an exact short registry type exposes existing short stdlib fallback. Whole service metadata with exact physical local/source/schema/builtin identities and whole protocol Markdown/ranges or JSON null. Optional definition assertions run 90 positions per layer plus repeats: real source-backed host function retains Schema identity and its marked physical declaration, removing schema removes both; standard functions/namespaces/types/methods and short metadata-only type have no jump despite a source-backed math::max registry decoy. Schema spans are independently authored and checked against actual source IDs. Same-spelled source/schema functions/types/fields/methods/variants/namespaces have distinct docs/types and cannot lend metadata. Local lets, nested scopes, initializer/before/after sites, ancestor-owned captures, typed/Any/unknown parameters, lambda/loop/pattern bindings, copied functions and typed lambda locals retain exact ownership. Current-module declarations, aliases, qualified source/standard paths through short shadows, source inherent/default/returned methods, source unit/tuple/record variants, schema functions/traits/members/variants/aliases and standard specialized methods preserve their concrete contracts. Schema-only source members, private declarations with exact registry decoys, shadowed namespaces, Any/unknown and Any-returned member suffixes, missing qualified targets and variants remain explicit null. Exact standard functions/namespaces win static external lookup and schema function site classification, while lexical/source ownership, visibility and short registry precedence remain authoritative. Supplementary accepted S1/S3/S4/S5/S6/S8 exact matrices independently cover state/const declarations, required/override/async/static call contracts, further hints/members/patterns/source-backed spans and package ownership. Actual dispatch, encoded roots, immutable disk and repeated full queries. Primary contracts own pipe lambdas, package-qualified module identity, field-name variant display, complete container facts and missing-schema hint/parameter degradation. No copied provider expectations, script execution or grammar/runtime changes; no lifecycle/S11 or UX10 closure. Windows/macOS evidence stays independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::ownership_matrix_tests::hover_ownership_matrix_preserves_exact_owners_and_shadowed_facts"
+        },
+        {
+          "layer": "service",
+          "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        },
+        {
+          "layer": "service",
+          "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "hover::member_matrix_tests::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        },
+        {
+          "layer": "service",
+          "name": "hover::call_matrix_tests::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments"
+        },
+        {
+          "layer": "service",
+          "name": "hover::pattern_matrix_tests::hover_pattern_matrix_preserves_bindings_variants_and_control_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "hover::module_matrix_tests::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/hover-s10.md. Independent hover-s10 authors 120 queries (103 complete and 17 null), 27 physical inputs and 862 positions per layer plus repeats across LF/CRLF, schema present/physically absent and token start/interior. Without schema 21 expectations change and 32 are null; host parameters retain unknown, hint leaves retain Any without identity, and absence of an exact short registry type exposes existing short stdlib fallback. Whole service metadata with exact physical local/source/schema/builtin identities and whole protocol Markdown/ranges or JSON null. Optional definition assertions run 90 positions per layer plus repeats: real source-backed host function retains Schema identity and its marked physical declaration, removing schema removes both; standard functions/namespaces/types/methods and short metadata-only type have no jump despite a source-backed math::max registry decoy. Schema spans are independently authored and checked against actual source IDs. Same-spelled source/schema functions/types/fields/methods/variants/namespaces have distinct docs/types and cannot lend metadata. Local lets, nested scopes, initializer/before/after sites, ancestor-owned captures, typed/Any/unknown parameters, lambda/loop/pattern bindings, copied functions and typed lambda locals retain exact ownership. Current-module declarations, aliases, qualified source/standard paths through short shadows, source inherent/default/returned methods, source unit/tuple/record variants, schema functions/traits/members/variants/aliases and standard specialized methods preserve their concrete contracts. Schema-only source members, private declarations with exact registry decoys, shadowed namespaces, Any/unknown and Any-returned member suffixes, missing qualified targets and variants remain explicit null. Exact standard functions/namespaces win static external lookup and schema function site classification, while lexical/source ownership, visibility and short registry precedence remain authoritative. Supplementary accepted S1/S3/S4/S5/S6/S8 exact matrices independently cover state/const declarations, required/override/async/static call contracts, further hints/members/patterns/source-backed spans and package ownership. Actual dispatch, encoded roots, immutable disk and repeated full queries. Primary contracts own pipe lambdas, package-qualified module identity, field-name variant display, complete container facts and missing-schema hint/parameter degradation. No copied provider expectations, script execution or grammar/runtime changes; no lifecycle/S11 or UX10 closure. Windows/macOS evidence stays independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::ownership::hover_ownership_matrix_preserves_exact_owners_and_shadowed_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::members::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::calls::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::patterns::hover_pattern_matrix_preserves_bindings_variants_and_control_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::modules::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/hover-s10.md. Independent hover-s10 authors 120 queries (103 complete and 17 null), 27 physical inputs and 862 positions per layer plus repeats across LF/CRLF, schema present/physically absent and token start/interior. Without schema 21 expectations change and 32 are null; host parameters retain unknown, hint leaves retain Any without identity, and absence of an exact short registry type exposes existing short stdlib fallback. Whole service metadata with exact physical local/source/schema/builtin identities and whole protocol Markdown/ranges or JSON null. Optional definition assertions run 90 positions per layer plus repeats: real source-backed host function retains Schema identity and its marked physical declaration, removing schema removes both; standard functions/namespaces/types/methods and short metadata-only type have no jump despite a source-backed math::max registry decoy. Schema spans are independently authored and checked against actual source IDs. Same-spelled source/schema functions/types/fields/methods/variants/namespaces have distinct docs/types and cannot lend metadata. Local lets, nested scopes, initializer/before/after sites, ancestor-owned captures, typed/Any/unknown parameters, lambda/loop/pattern bindings, copied functions and typed lambda locals retain exact ownership. Current-module declarations, aliases, qualified source/standard paths through short shadows, source inherent/default/returned methods, source unit/tuple/record variants, schema functions/traits/members/variants/aliases and standard specialized methods preserve their concrete contracts. Schema-only source members, private declarations with exact registry decoys, shadowed namespaces, Any/unknown and Any-returned member suffixes, missing qualified targets and variants remain explicit null. Exact standard functions/namespaces win static external lookup and schema function site classification, while lexical/source ownership, visibility and short registry precedence remain authoritative. Supplementary accepted S1/S3/S4/S5/S6/S8 exact matrices independently cover state/const declarations, required/override/async/static call contracts, further hints/members/patterns/source-backed spans and package ownership. Actual dispatch, encoded roots, immutable disk and repeated full queries. Primary contracts own pipe lambdas, package-qualified module identity, field-name variant display, complete container facts and missing-schema hint/parameter degradation. No copied provider expectations, script execution or grammar/runtime changes; no lifecycle/S11 or UX10 closure. Windows/macOS evidence stays independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::ownership_matrix_tests::hover_ownership_matrix_preserves_exact_owners_and_shadowed_facts"
+        },
+        {
+          "layer": "service",
+          "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        },
+        {
+          "layer": "service",
+          "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "hover::member_matrix_tests::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        },
+        {
+          "layer": "service",
+          "name": "hover::call_matrix_tests::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments"
+        },
+        {
+          "layer": "service",
+          "name": "hover::pattern_matrix_tests::hover_pattern_matrix_preserves_bindings_variants_and_control_scopes"
+        },
+        {
+          "layer": "service",
+          "name": "hover::module_matrix_tests::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/hover-s10.md. Independent hover-s10 authors 120 queries (103 complete and 17 null), 27 physical inputs and 862 positions per layer plus repeats across LF/CRLF, schema present/physically absent and token start/interior. Without schema 21 expectations change and 32 are null; host parameters retain unknown, hint leaves retain Any without identity, and absence of an exact short registry type exposes existing short stdlib fallback. Whole service metadata with exact physical local/source/schema/builtin identities and whole protocol Markdown/ranges or JSON null. Optional definition assertions run 90 positions per layer plus repeats: real source-backed host function retains Schema identity and its marked physical declaration, removing schema removes both; standard functions/namespaces/types/methods and short metadata-only type have no jump despite a source-backed math::max registry decoy. Schema spans are independently authored and checked against actual source IDs. Same-spelled source/schema functions/types/fields/methods/variants/namespaces have distinct docs/types and cannot lend metadata. Local lets, nested scopes, initializer/before/after sites, ancestor-owned captures, typed/Any/unknown parameters, lambda/loop/pattern bindings, copied functions and typed lambda locals retain exact ownership. Current-module declarations, aliases, qualified source/standard paths through short shadows, source inherent/default/returned methods, source unit/tuple/record variants, schema functions/traits/members/variants/aliases and standard specialized methods preserve their concrete contracts. Schema-only source members, private declarations with exact registry decoys, shadowed namespaces, Any/unknown and Any-returned member suffixes, missing qualified targets and variants remain explicit null. Exact standard functions/namespaces win static external lookup and schema function site classification, while lexical/source ownership, visibility and short registry precedence remain authoritative. Supplementary accepted S1/S3/S4/S5/S6/S8 exact matrices independently cover state/const declarations, required/override/async/static call contracts, further hints/members/patterns/source-backed spans and package ownership. Actual dispatch, encoded roots, immutable disk and repeated full queries. Primary contracts own pipe lambdas, package-qualified module identity, field-name variant display, complete container facts and missing-schema hint/parameter degradation. No copied provider expectations, script execution or grammar/runtime changes; no lifecycle/S11 or UX10 closure. Windows/macOS evidence stays independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::ownership::hover_ownership_matrix_preserves_exact_owners_and_shadowed_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::members::hover_member_matrix_preserves_constructor_labels_and_scoped_owners"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::calls::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::patterns::hover_pattern_matrix_preserves_bindings_variants_and_control_scopes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::hover::modules::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
+        }
+      ]
     }
   ],
   "featureFiles": [

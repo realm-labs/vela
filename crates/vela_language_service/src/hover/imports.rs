@@ -62,8 +62,7 @@ pub(super) fn path_hover(
     }
     super::module_hover(graph, key, path, range, None).or_else(|| {
         let name = path.join("::");
-        super::schema::symbol_hover(db.schema_db().facts(), &name, range)
-            .or_else(|| super::stdlib_symbol_hover(&name, range))
+        super::static_symbol_hover(db, &name, range)
     })
 }
 

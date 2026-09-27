@@ -215,8 +215,7 @@ impl LanguageServiceDatabases {
             return Some(hover);
         }
 
-        schema::symbol_hover(self.schema_db().facts(), target.text(), range)
-            .or_else(|| stdlib_symbol_hover(target.text(), range))
+        static_symbol_hover(self, target.text(), range)
     }
 
     fn member_hover(
@@ -380,6 +379,18 @@ fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange
     })
 }
 
+fn static_symbol_hover(
+    db: &LanguageServiceDatabases,
+    name: &str,
+    range: DiagnosticRange,
+) -> Option<Hover> {
+    let standard = stdlib_symbol_hover(name, range);
+    if standard.as_ref().is_some_and(|hover| hover.label() == name) {
+        return standard;
+    }
+    schema::symbol_hover(db.schema_db().facts(), name, range).or(standard)
+}
+
 fn hover_from_resolution(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
@@ -419,8 +430,7 @@ fn hover_from_resolution(
         BindingResolution::Import(_) => None,
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
-            schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
-                .or_else(|| stdlib_symbol_hover(&qualified, range))
+            static_symbol_hover(databases, &qualified, range)
         }
     }
 }
@@ -1139,6 +1149,8 @@ mod matrix_tests;
 mod member_matrix_tests;
 #[cfg(test)]
 mod module_matrix_tests;
+#[cfg(test)]
+mod ownership_matrix_tests;
 #[cfg(test)]
 mod pattern_matrix_tests;
 #[cfg(test)]

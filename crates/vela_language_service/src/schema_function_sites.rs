@@ -32,14 +32,18 @@ pub(crate) fn declaration(
     source: SourceId,
     range: TextRange,
 ) -> Option<String> {
-    db.schema_db().facts().functions().find_map(|function| {
-        let span = db
-            .schema_db()
-            .source_locations()
-            .function_span(&function.name)?;
-        (span.source == source && hir_path_sites::text_range_for_span(span) == Some(range))
-            .then_some(function.name)
-    })
+    db.schema_db()
+        .facts()
+        .functions()
+        .filter(|function| !crate::symbol_target::is_standard_path(&function.name))
+        .find_map(|function| {
+            let span = db
+                .schema_db()
+                .source_locations()
+                .function_span(&function.name)?;
+            (span.source == source && hir_path_sites::text_range_for_span(span) == Some(range))
+                .then_some(function.name)
+        })
 }
 
 pub(crate) fn sites(db: &LanguageServiceDatabases, source: &SourceRecord) -> Vec<Site> {
@@ -56,6 +60,7 @@ fn collect(
         .schema_db()
         .facts()
         .functions()
+        .filter(|function| !crate::symbol_target::is_standard_path(&function.name))
         .map(|function| function.name)
         .collect();
     let lines = LineIndex::new(source.text());
@@ -110,6 +115,9 @@ fn import_sites(db: &LanguageServiceDatabases, source: &SourceRecord) -> Vec<Sit
         .filter(|import| import.span.source == source.source_id() && import.resolution.is_none())
         .filter_map(|import| {
             let name = import.path.join("::");
+            if crate::symbol_target::is_standard_path(&name) {
+                return None;
+            }
             db.schema_db().facts().function_fact(&name)?;
             let terminal = *import.path_spans.last()?;
             let range = hir_path_sites::text_range_for_span(import.alias_span.unwrap_or(terminal))?;

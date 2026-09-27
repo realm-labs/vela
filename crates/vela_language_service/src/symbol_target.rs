@@ -426,7 +426,23 @@ fn fact_symbol_ref_for(
             return Some(builtin_member_symbol(&receiver_fact.display_name(), text));
         }
     }
-    schema_symbol_ref(schema, text).or_else(|| stdlib_function_symbol_ref(text))
+    static_symbol_ref(schema, text)
+}
+
+// Once lexical and source ownership have been checked, exact standard paths
+// retain their builtin contract even if a registry repeats the same spelling.
+// Short registry names still own their metadata before short stdlib fallback.
+fn static_symbol_ref(schema: &RegistryFacts, text: &str) -> Option<SymbolRef> {
+    is_standard_path(text)
+        .then(|| builtin_symbol(text))
+        .or_else(|| schema_symbol_ref(schema, text))
+        .or_else(|| stdlib_function_symbol_ref(text))
+}
+
+pub(crate) fn is_standard_path(text: &str) -> bool {
+    stdlib_function_completion_facts()
+        .iter()
+        .any(|function| function.name == text || function.name.starts_with(&format!("{text}::")))
 }
 
 fn span_text_range(span: Span) -> Option<TextRange> {

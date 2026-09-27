@@ -5157,3 +5157,14 @@ local identity does not imply an executable LocalBinding. Nested lambda/default
 parameters cannot borrow that header owner, and missing hints/receivers acquire
 no guessed type. Impl self uses its actual target path. This preserves grammar
 and runtime semantics while retaining current static facts during editing.
+
+## Static standard paths retain builtin ownership in tooling
+
+After lexical and source ownership checks, exact standard function and namespace
+paths retain their builtin metadata before registry lookup. A registry entry
+cannot replace `math::max` or `math` hover/docs or supply a source jump for them.
+Shared SymbolTarget lookup and hover projection use this order. Short registry
+names still take precedence over short stdlib fallback, and actual source
+declarations/modules, local shadows and private source owners remain authoritative.
+The hover S10 matrix checks conflicting source-backed registry facts, aliases,
+lexical scopes and physical definitions with and without schema.

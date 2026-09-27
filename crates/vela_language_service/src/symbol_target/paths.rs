@@ -138,17 +138,8 @@ pub(super) fn path_symbol_ref(
             );
         }
         let qualified = path.join("::");
-        if let Some(symbol) = super::schema_symbol_ref(databases.schema_db().facts(), &qualified) {
+        if let Some(symbol) = super::static_symbol_ref(databases.schema_db().facts(), &qualified) {
             return Some(Some(symbol));
-        }
-        if let Some(symbol) = super::stdlib_function_symbol_ref(&qualified) {
-            return Some(Some(symbol));
-        }
-        if vela_analysis::stdlib::stdlib_function_completion_facts()
-            .iter()
-            .any(|function| function.name.starts_with(&format!("{qualified}::")))
-        {
-            return Some(Some(crate::symbol_ref::builtin_symbol(qualified)));
         }
         return (names.len() > 1).then_some(None);
     }
