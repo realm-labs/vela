@@ -5125,3 +5125,12 @@ An exact canonical source receiver also owns a missing member when collection
 iteration retained its nominal fact without source-origin metadata. This check
 does not give short names or host facts a guessed source identity. These rules
 preserve the existing grammar and pattern runtime behavior.
+
+Hover symbol ownership requires the actual CST identifier token under the cursor,
+including its half-open character bounds, rather than completion's textual prefix.
+Literal text, punctuation, trivia and EOF cannot borrow the preceding identifier
+or a same-spelled registry item. Path-shaped map keys follow the existing HIR
+static-key contract and do not read symbol metadata; map values and interpolation
+expressions retain ordinary code ownership. Specialized provider-ID literal
+metadata remains an earlier semantic query. Completion/signature prefix handling
+and language/runtime semantics remain unchanged.

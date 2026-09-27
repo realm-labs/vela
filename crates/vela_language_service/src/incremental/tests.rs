@@ -676,13 +676,25 @@ fn schema_reload_rebuilds_only_schema_backed_analysis_facts() {
     let mut db = LanguageServiceDatabases::new();
     db.update(&memoization_project("return grant()"));
 
-    let _ = db.hover(&document, Position::new(1, 22));
+    // Column 23 is the actual callee, rather than the preceding whitespace.
+    let caret = Position::new(1, 23);
+    assert_eq!(
+        db.hover(&document, caret)
+            .expect("source grant hover")
+            .label(),
+        "game::reward::grant"
+    );
     let _ = db.diagnostics_for_document(&document);
     assert_eq!(db.analysis_facts_build_count(), 2);
 
     db.set_schema_facts(RegistryFacts::default());
 
-    let _ = db.hover(&document, Position::new(1, 22));
+    assert_eq!(
+        db.hover(&document, caret)
+            .expect("source grant after schema reload")
+            .label(),
+        "game::reward::grant"
+    );
     assert_eq!(
         db.analysis_facts_build_count(),
         2,

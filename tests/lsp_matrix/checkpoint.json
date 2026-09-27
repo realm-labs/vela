@@ -7001,10 +7001,21 @@
         "hover/syntax/S6/negative/protocol"
       ],
       "summary": "Close four hover S6 positive/negative service/protocol obligations under reviews/hover-s6.md. Independent 212 queries contain 177 complete hovers and 35 explicit null results with schema present. Start/interior positives, LF/CRLF and present/physically absent schema yield 1532 positions per layer plus repeats; twelve registered queries become null without schema and nineteen affected host/schema parameter/local queries retain unknown. Exact metadata, Markdown, ranges and source/schema/local identities cover qualified/type-aliased/namespace-aliased source unit/tuple/record enum patterns; canonical module/type prefixes; foreign same-named owners; explicit field labels versus shorthand bindings; payload facts and member docs; guard/body identities, nested enum/tuple patterns, whole-value binding, let destructuring, match/if expression facts, branch scopes and nested shadow/restoration. Array/index-value/tuple/range/String/Bytes/Set/Iterator/MapEntry, source and foreign records, registered arrays/iterators and Any/unknown loop items retain exact facts. Unknown/private/invalid-form fields and variants, unrelated paths, source missing members with registry decoys, sibling-arm/out-of-scope bindings, keywords/wildcard/literal-pattern tokens return null; unavailable payload facts remain unknown. Fix qualified pattern path ownership, exact canonical source missing-member registry fallback and private source pattern payload inference. Independent analysis regression covers direct/type-aliased/namespace private patterns beside public source patterns with/without registry decoys. Host facts and short names gain no guessed source identity. Struct-pattern payload inference remains unknown under the existing contract; language grammar/runtime behavior is unchanged. Protocol uses real dispatch, encoded roots, immutable physical inputs, physically absent schema and repeats. Accepted coordinates own same-line non-BMP proof; no other hover state or full UX10 acceptance is claimed. Hover service 41/protocol 33, schema cache one, analysis 167+two integration tests, Node 92, fmt and workspace Clippy pass; workspace 4735 pass with two unchanged historical ignores. Fresh Windows VSIX 20/native 33 prove matching source/server identity. Strict B06 reruns service 734 with two unchanged historical ignores and protocol 736; B00-B06 original acceptance snapshots remain unchanged. Catalog 742 verified, 583 unreviewed, two N/A, zero failed; B07 61/96. Continue B07.13; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-SKYEzJ/results.json; input editors/vscode/test-results/input-y72zTA/results.json; audit target/lsp-matrix/run-WtWoVv/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.13",
+      "revision": null,
+      "requirements": [
+        "hover/syntax/S7/positive/service",
+        "hover/syntax/S7/positive/protocol",
+        "hover/syntax/S7/negative/service",
+        "hover/syntax/S7/negative/protocol"
+      ],
+      "summary": "Close four hover S7 positive/negative service/protocol obligations under reviews/hover-s7.md. Independent 439 queries contain 309 complete hovers and 130 explicit null results with schema present. Start/interior positives, LF/CRLF and present/physically absent schema yield 2978 positions per layer plus repeats; seven registered queries become null without schema and eight affected host/schema parameter/local queries retain unknown. Exact metadata, Markdown, ranges and source/schema/local identities cover primitive suffix/default/context facts and alternate numeric spellings; char/String/Bytes/bool/unit; active nested/multiline interpolation; array/tuple/map/set, source/schema constructors and labels versus shorthand bindings; indexing and source/schema field facts; arithmetic/comparison/logical/unary/range/assignment operands and results, typed lambda calls and Option/Result try payloads. Literal bodies/prefixes/escapes/quoted names and docs return null despite registry decoys. Static bare/qualified map path keys return null while values and interpolated key expressions retain code identity. Adjacent operators, punctuation, delimiters, separators, arrows, question suffixes, trivia and exact EOF do not borrow the preceding identifier. Missing source fields reject schema decoys; Any/unknown acquire no guessed members. Fix hover ownership through actual CST Ident/SelfKw character bounds and map-key context after specialized provider-ID hover. Preserve completion/signature prefix behavior and active interpolation code. Cache regression now queries real grant callee and asserts source label before/after schema reload with original exact build counts intact. Oracle spelling follows primary block/unit, tuple union and package-qualified module contracts; marker/bracket whitespace only disambiguates transport. No copied provider expectations or language/runtime changes. Protocol uses real dispatch, encoded roots, immutable physical inputs, physically absent schema and repeats. Accepted coordinates own same-line non-BMP proof; no other hover state or full UX10 acceptance is claimed. Hover service 42/protocol 34, schema cache one, Node 92, fmt and workspace Clippy pass; workspace 4737 pass with two unchanged historical ignores. An initial launcher audit hit seven protocol request timeouts, all individually passed with original budgets/assertions; failed run-FPwVFT is retained locally and excluded. Fresh gates use RUST_TEST_THREADS=8 to bound local concurrency without changing timeout/assertion contracts. Fresh Windows VSIX 20/native 33 prove matching source/server identity. Strict B06 reruns service 735 with two unchanged historical ignores and protocol 737; B00-B06 original acceptance snapshots remain unchanged. Catalog 746 verified, 579 unreviewed, two N/A, zero failed; B07 65/96. Continue B07.14; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-477Qpg/results.json; input editors/vscode/test-results/input-WkvZLZ/results.json; audit target/lsp-matrix/run-r8PIP9/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.13",
+  "nextTask": "B07.14",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9229,7 +9240,10 @@
     "editors/vscode/test-results/input-jQYfP9/results.json",
     "target/lsp-matrix/run-WtWoVv/report.json",
     "editors/vscode/test-results/run-SKYEzJ/results.json",
-    "editors/vscode/test-results/input-y72zTA/results.json"
+    "editors/vscode/test-results/input-y72zTA/results.json",
+    "target/lsp-matrix/run-r8PIP9/report.json",
+    "editors/vscode/test-results/run-477Qpg/results.json",
+    "editors/vscode/test-results/input-WkvZLZ/results.json"
   ],
   "openIssues": [
     {
@@ -12246,8 +12260,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "25474bc16ec422d08f5a802d932218d768368fcd",
-          "treeSha256": "5b3b782a0a2feb3d638c45a1e3819cc61133701684a23510d8e6efbd5a99e5cc"
+          "revision": "f51bcc10535e22b97610f2d3202196aa7cbc78a7",
+          "treeSha256": "021342463e971ccdfd75cc4367831e7be1d5fdb6ba4aa3a2050f72f2b34ffc98"
         },
         "profile": {
           "platform": "win32",
@@ -12255,11 +12269,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-WtWoVv/report.json"
+          "target/lsp-matrix/run-r8PIP9/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-SKYEzJ/results.json --local-results editors/vscode/test-results/input-y72zTA/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-477Qpg/results.json --local-results editors/vscode/test-results/input-WkvZLZ/results.json",
             "exitCode": 0
           }
         ]

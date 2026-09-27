@@ -4,6 +4,7 @@ mod constructor_fields;
 mod enum_fields;
 mod impl_headers;
 mod imports;
+mod lexical_targets;
 mod member_targets;
 mod parameters;
 mod paths;
@@ -129,6 +130,9 @@ impl LanguageServiceDatabases {
         let graph = self.hir_db().graph();
         if let Some(provider) = provider_hover(&query, graph, source_id) {
             return Some(provider);
+        }
+        if !lexical_targets::is_symbol_position(&query) {
+            return None;
         }
         let target = SymbolTarget::from_query(self, &query)?;
         let offset = u32::try_from(target.range().start).ok()?;
@@ -1109,6 +1113,8 @@ mod body_matrix_tests;
 mod call_matrix_tests;
 #[cfg(test)]
 mod declaration_matrix_tests;
+#[cfg(test)]
+mod literal_matrix_tests;
 #[cfg(test)]
 mod matrix_tests;
 #[cfg(test)]
