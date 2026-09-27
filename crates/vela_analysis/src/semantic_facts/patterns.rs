@@ -1,6 +1,6 @@
 use vela_hir::body::{HirBody, HirPatternKind};
 use vela_hir::ids::{HirLocalId, HirPatternId};
-use vela_hir::module_graph::ModuleGraph;
+use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 
 use crate::registry::RegistryFacts;
 use crate::type_fact::TypeFact;
@@ -120,6 +120,37 @@ pub(super) fn pattern_constructor_target(
         | HirPatternKind::Literal(_)
         | HirPatternKind::Missing => None,
     }?;
+    let module = graph
+        .declaration(graph.bindings_for_body(body.id)?.declaration)?
+        .module;
+    let key = graph.module_key(module)?;
+    let Some(expanded) = graph.expand_import_path(module, &path.path) else {
+        return Some(ConstructorTargetFact::Unresolved);
+    };
+    // An unavailable source constructor cannot be replaced by registry metadata
+    // with the same spelling. Visibility is authoritative for payload facts too.
+    let source = [
+        expanded.as_slice(),
+        &expanded[..expanded.len().saturating_sub(1)],
+    ]
+    .into_iter()
+    .find_map(|owner| {
+        [
+            DeclarationKind::Enum,
+            DeclarationKind::Struct,
+            DeclarationKind::Trait,
+            DeclarationKind::Function,
+            DeclarationKind::Const,
+            DeclarationKind::State,
+        ]
+        .into_iter()
+        .find_map(|kind| graph.declaration_by_type_path(owner, key, kind))
+    });
+    if source.is_some_and(|declaration| {
+        declaration.module != module && declaration.visibility != Visibility::Public
+    }) {
+        return Some(ConstructorTargetFact::Unresolved);
+    }
     let resolution = graph
         .bindings_for_body(body.id)
         .and_then(|bindings| bindings.pattern_constructor_resolution(&path.path));

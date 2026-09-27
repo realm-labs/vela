@@ -1,7 +1,7 @@
 use vela_hir::module_graph::{DeclarationKind, Visibility};
 use vela_syntax::{
     SyntaxKind,
-    ast::{AstNode, SyntaxPathExpr, SyntaxTypeHint},
+    ast::{AstNode, SyntaxPathExpr, SyntaxPattern, SyntaxPatternKind, SyntaxTypeHint},
 };
 
 use crate::{
@@ -23,10 +23,22 @@ pub(super) fn path_symbol_ref(
     let module = graph.module_id(key)?;
     for node in query.syntax_parse()?.tree().syntax().descendants() {
         let is_type = SyntaxTypeHint::can_cast(node.kind());
+        let is_pattern = SyntaxPattern::can_cast(node.kind());
         let tokens = if let Some(path) = SyntaxPathExpr::cast(node.clone()) {
             path.path_tokens()
-        } else if let Some(hint) = SyntaxTypeHint::cast(node) {
+        } else if let Some(hint) = SyntaxTypeHint::cast(node.clone()) {
             hint.path_tokens()
+        } else if let Some(pattern) = SyntaxPattern::cast(node)
+            && matches!(
+                pattern.pattern_kind(),
+                Some(
+                    SyntaxPatternKind::Path
+                        | SyntaxPatternKind::TupleVariant
+                        | SyntaxPatternKind::RecordVariant
+                )
+            )
+        {
+            pattern.path_tokens()
         } else {
             continue;
         };
@@ -56,7 +68,7 @@ pub(super) fn path_symbol_ref(
                             == *symbol
                 })
         });
-        if !is_type && index + 1 == names.len() && source.is_some() && !enum_owner {
+        if !is_type && !is_pattern && index + 1 == names.len() && source.is_some() && !enum_owner {
             return Some(source.cloned());
         }
         let path = names[..=index]

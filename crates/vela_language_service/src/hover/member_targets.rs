@@ -3,6 +3,25 @@ use vela_analysis::type_fact::TypeFact;
 use super::Hover;
 use crate::{DiagnosticRange, LanguageServiceDatabases, symbol_target::SymbolTarget};
 
+pub(super) fn has_source_owner(
+    graph: &vela_hir::module_graph::ModuleGraph,
+    fact: &TypeFact,
+) -> bool {
+    use vela_hir::module_graph::DeclarationKind;
+    let (name, kind) = match fact {
+        TypeFact::Record { name } => (name, DeclarationKind::Struct),
+        TypeFact::Enum { name, .. } => (name, DeclarationKind::Enum),
+        TypeFact::Trait { name } => (name, DeclarationKind::Trait),
+        _ => return false,
+    };
+    // Collection iteration can retain a canonical fact without a source-origin
+    // set. The exact source owner still owns a missing member; short names and
+    // host facts must not acquire source identity through this check.
+    graph.declarations().any(|declaration| {
+        declaration.kind == kind && super::qualified_declaration_label(graph, declaration) == *name
+    })
+}
+
 pub(super) fn hover(
     db: &LanguageServiceDatabases,
     target: &SymbolTarget,

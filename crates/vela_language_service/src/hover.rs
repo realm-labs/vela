@@ -249,7 +249,9 @@ impl LanguageServiceDatabases {
         }
         // A source receiver owns missing members too. A registry entry with
         // the same spelling cannot add fields or methods to that source type.
-        if target.member_receiver_declaration().is_some() {
+        if target.member_receiver_declaration().is_some()
+            || member_targets::has_source_owner(self.hir_db().graph(), receiver_fact)
+        {
             return None;
         }
         if let Some(hover) = schema::member_hover(
@@ -1111,3 +1113,5 @@ mod declaration_matrix_tests;
 mod matrix_tests;
 #[cfg(test)]
 mod member_matrix_tests;
+#[cfg(test)]
+mod pattern_matrix_tests;

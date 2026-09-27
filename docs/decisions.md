@@ -5115,3 +5115,13 @@ owners, while replacement locations bind against their new table. This prevents
 dependency creation/deletion from redirecting a schema symbol to an unrelated
 file that received the old numeric ID. Byte bounds retain the existing validation
 policy; this does not invent offsets for edits to schema declaration text.
+
+Qualified pattern segments use canonical module, type and variant identities in
+the same tooling path resolver as qualified expressions. An unresolved segment
+owns its null result; a same-spelled registry variant cannot repair the path.
+Pattern payload analysis checks source constructor visibility before registry
+fallback, so a private source enum cannot acquire registered payload facts.
+An exact canonical source receiver also owns a missing member when collection
+iteration retained its nominal fact without source-origin metadata. This check
+does not give short names or host facts a guessed source identity. These rules
+preserve the existing grammar and pattern runtime behavior.

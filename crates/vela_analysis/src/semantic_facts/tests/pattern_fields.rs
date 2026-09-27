@@ -10,6 +10,105 @@ use crate::semantic_facts::{CallTargetFact, ConstructorTargetFact, ScriptTypeTar
 use crate::type_fact::TypeFact;
 
 #[test]
+fn private_pattern_payloads_do_not_borrow_registry_facts() {
+    use crate::{facts::AnalysisFacts, registry::RegistryFacts};
+    use vela_hir::body::HirPatternKind;
+    use vela_package::PackageId;
+
+    let mut graph = ModuleGraph::new();
+    for (source, module, code) in [
+        (
+            96,
+            "api",
+            "enum Hidden { Record { value: i64 }, Tuple(value: i64) } pub enum Public { Record { value: bool } }",
+        ),
+        (
+            97,
+            "main",
+            "use api::Hidden as Alias; use api as ns; fn run(input) { match input { api::Hidden::Record { value: direct } => {}, Alias::Tuple(alias) => {}, ns::Hidden::Record { value: namespace } => {}, api::Public::Record { value: public } => {}, _ => {} } }",
+        ),
+    ] {
+        graph.add_source(ModuleSource::new(
+            SourceId::new(source),
+            PackageId::anonymous(),
+            ModulePath::from_qualified(module),
+            code,
+        ));
+    }
+    graph.resolve_imports();
+    let mut schema = RegistryFacts::default();
+    for (owner, variant, field) in [
+        ("api::Hidden", "Record", "value"),
+        ("api::Hidden", "Tuple", "0"),
+        ("api::Public", "Record", "value"),
+    ] {
+        schema.insert_type(owner, TypeFact::enum_type(owner, None::<&str>));
+        schema.insert_variant(owner, variant, TypeFact::enum_type(owner, Some(variant)));
+        schema.insert_field(format!("{owner}::{variant}"), field, TypeFact::STRING);
+    }
+    let run = graph
+        .declarations()
+        .find(|declaration| declaration.name == "run")
+        .expect("run declaration");
+    let body = graph.function_body(run.id).expect("run body");
+    for schema in [schema, RegistryFacts::default()] {
+        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
+        let mut checked = 0;
+        for pattern in body.patterns.values() {
+            if !matches!(
+                pattern.kind,
+                HirPatternKind::RecordVariant { .. } | HirPatternKind::TupleVariant { .. }
+            ) {
+                continue;
+            }
+            let values = crate::semantic_facts::patterns::pattern_local_facts(
+                &graph,
+                Some(&schema),
+                body,
+                pattern.id,
+                &TypeFact::Unknown,
+                None,
+            );
+            assert_eq!(values.len(), 1);
+            let path = match &pattern.kind {
+                HirPatternKind::RecordVariant { path, .. }
+                | HirPatternKind::TupleVariant { path, .. } => path.expect("constructor path"),
+                _ => unreachable!(),
+            };
+            let public =
+                body.paths.get(&path).expect("pattern path").path == ["api", "Public", "Record"];
+            if public {
+                assert_eq!(values[0].fact, TypeFact::BOOL);
+                assert!(matches!(
+                    facts.pattern_constructor_target(pattern.id),
+                    Some(ConstructorTargetFact::Variant { .. })
+                ));
+            } else {
+                assert_eq!(
+                    facts.pattern_constructor_target(pattern.id),
+                    Some(&ConstructorTargetFact::Unresolved)
+                );
+                assert_eq!(values[0].fact, TypeFact::Unknown);
+                assert!(values[0].script_type.is_none());
+            }
+            checked += 1;
+        }
+        assert_eq!(checked, 4);
+        assert_eq!(
+            body.patterns
+                .values()
+                .filter_map(|pattern| match &pattern.kind {
+                    HirPatternKind::Binding { local: Some(local) } => facts.local(*local),
+                    _ => None,
+                })
+                .filter(|fact| **fact == TypeFact::BOOL)
+                .count(),
+            1
+        );
+    }
+}
+
+#[test]
 fn executable_variant_pattern_fields_preserve_script_method_identity() {
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(

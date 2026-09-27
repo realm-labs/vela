@@ -1,6 +1,6 @@
 use vela_syntax::{
     SyntaxKind,
-    ast::{AstNode, SyntaxPathExpr},
+    ast::{AstNode, SyntaxPathExpr, SyntaxPattern},
 };
 
 use super::{Hover, HoverKind};
@@ -9,7 +9,7 @@ use crate::{
     symbol_target::SymbolTarget,
 };
 
-// A qualified expression owns its result. Resolve the selected segment's
+// A qualified expression or pattern owns its result. Resolve the selected segment's
 // canonical identity rather than the whole expression's lexical binding.
 pub(super) fn hover(
     db: &LanguageServiceDatabases,
@@ -22,10 +22,13 @@ pub(super) fn hover(
         .tree()
         .syntax()
         .descendants()
-        .filter_map(SyntaxPathExpr::cast)
-        .any(|path| {
-            let tokens = path
-                .path_tokens()
+        .filter_map(|node| {
+            SyntaxPathExpr::cast(node.clone())
+                .map(|path| path.path_tokens())
+                .or_else(|| SyntaxPattern::cast(node).map(|pattern| pattern.path_tokens()))
+        })
+        .any(|tokens| {
+            let tokens = tokens
                 .into_iter()
                 .filter(|token| matches!(token.kind(), SyntaxKind::Ident | SyntaxKind::SelfKw))
                 .collect::<Vec<_>>();
