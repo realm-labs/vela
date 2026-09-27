@@ -216,7 +216,7 @@ impl LanguageServiceDatabases {
         }
 
         schema::symbol_hover(self.schema_db().facts(), target.text(), range)
-            .or_else(|| stdlib_function_hover(target.text(), range))
+            .or_else(|| stdlib_symbol_hover(target.text(), range))
     }
 
     fn member_hover(
@@ -328,9 +328,10 @@ fn import_path_segment_at(import: &Import, target: &SymbolTarget) -> Option<usiz
     })
 }
 
-fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
-    stdlib_function_completion_facts()
-        .into_iter()
+fn stdlib_symbol_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
+    let functions = stdlib_function_completion_facts();
+    functions
+        .iter()
         .find(|function| {
             function.name == name
                 || function
@@ -344,10 +345,25 @@ fn stdlib_function_hover(name: &str, range: DiagnosticRange) -> Option<Hover> {
                 range,
                 function.name.to_owned(),
                 HoverKind::Function,
-                stdlib_function_detail_parts(&function),
+                stdlib_function_detail_parts(function),
                 None,
                 Some(builtin_symbol(function.name)),
             )
+        })
+        .or_else(|| {
+            functions
+                .iter()
+                .any(|function| function.name.starts_with(&format!("{name}::")))
+                .then(|| {
+                    Hover::new(
+                        range,
+                        name,
+                        HoverKind::Module,
+                        DisplayParts::keyword_symbol("module", name),
+                        None,
+                        Some(builtin_symbol(name)),
+                    )
+                })
         })
 }
 
@@ -404,7 +420,7 @@ fn hover_from_resolution(
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
             schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
-                .or_else(|| stdlib_function_hover(&qualified, range))
+                .or_else(|| stdlib_symbol_hover(&qualified, range))
         }
     }
 }
@@ -1114,10 +1130,14 @@ mod call_matrix_tests;
 #[cfg(test)]
 mod declaration_matrix_tests;
 #[cfg(test)]
+mod fixture_layout;
+#[cfg(test)]
 mod literal_matrix_tests;
 #[cfg(test)]
 mod matrix_tests;
 #[cfg(test)]
 mod member_matrix_tests;
+#[cfg(test)]
+mod module_matrix_tests;
 #[cfg(test)]
 mod pattern_matrix_tests;

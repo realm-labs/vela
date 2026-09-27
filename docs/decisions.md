@@ -5134,3 +5134,14 @@ static-key contract and do not read symbol metadata; map values and interpolatio
 expressions retain ordinary code ownership. Specialized provider-ID literal
 metadata remains an earlier semantic query. Completion/signature prefix handling
 and language/runtime semantics remain unchanged.
+
+Hover resolves selected import and qualified source paths in the caller's package
+and dependency-alias scope. SourceSymbol declaration labels retain their existing
+module-qualified spelling and cannot authorize a global first-match lookup when
+separate packages declare the same name. Import declarations, aliases and uses
+share selected-prefix classification for modules, declarations and enum variants;
+private source ownership rejects registry fallback. Registered module facts and
+known stdlib namespace prefixes supply static module hover metadata. Type-hint
+prefixes expand namespace aliases in type scope and accept only module/type/trait
+metadata; the existing terminal Any fallback without identity remains unchanged.
+These are tooling metadata rules and do not alter runtime or declaration naming.

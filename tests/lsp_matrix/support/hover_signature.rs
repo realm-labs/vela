@@ -40,14 +40,21 @@ pub(crate) fn position(document: &Document, marker: &str, utf16: bool, offset: u
     value
 }
 
+pub(crate) fn marker_range(document: &Document, marker: &str, utf16: bool) -> Value {
+    let marker = document.markers[marker];
+    json!({"start":point(document,marker.start,utf16),"end":point(document,marker.end,utf16)})
+}
+
 pub(crate) fn hover_result(document: &Document, query: &Value, utf16: bool) -> Value {
     let result = &query["result"];
     if result.is_null() {
         return Value::Null;
     }
-    let marker = document.markers[query["marker"].as_str().expect("hover marker")];
-    let range =
-        json!({"start":point(document,marker.start,utf16),"end":point(document,marker.end,utf16)});
+    let range = marker_range(
+        document,
+        query["marker"].as_str().expect("hover marker"),
+        utf16,
+    );
     if utf16 {
         json!({"contents":{"kind":"markdown","value":result["markdown"]},"range":range})
     } else {

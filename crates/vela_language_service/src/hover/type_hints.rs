@@ -48,13 +48,17 @@ pub(super) fn hover(
                 .iter()
                 .map(|token| token.text().to_owned())
                 .collect::<Vec<_>>();
-            return Some(super::module_hover(
-                graph,
-                query.module_key()?,
-                &path,
-                range,
-                target.symbol().cloned(),
-            ));
+            return Some(
+                graph
+                    .expand_import_path(module, &path)
+                    .and_then(|path| super::imports::path_hover(db, query, &path, range))
+                    .filter(|hover| {
+                        matches!(
+                            hover.kind(),
+                            HoverKind::Module | HoverKind::Type | HoverKind::Trait
+                        )
+                    }),
+            );
         }
         let hir = lower_syntax_type_hint(query.source_id()?, &hint);
         if (hir.path.len() == 1 && hints::builtin_type_fact(&hir.path[0]).is_some())

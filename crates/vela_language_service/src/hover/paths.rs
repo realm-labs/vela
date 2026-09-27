@@ -3,10 +3,9 @@ use vela_syntax::{
     ast::{AstNode, SyntaxPathExpr, SyntaxPattern},
 };
 
-use super::{Hover, HoverKind};
+use super::Hover;
 use crate::{
-    DiagnosticRange, DisplayParts, LanguageServiceDatabases, QueryContext, SymbolRef,
-    symbol_target::SymbolTarget,
+    DiagnosticRange, LanguageServiceDatabases, QueryContext, SymbolRef, symbol_target::SymbolTarget,
 };
 
 // A qualified expression or pattern owns its result. Resolve the selected segment's
@@ -17,7 +16,7 @@ pub(super) fn hover(
     target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Option<Hover>> {
-    let qualified = query
+    let path = query
         .syntax_parse()?
         .tree()
         .syntax()
@@ -27,71 +26,38 @@ pub(super) fn hover(
                 .map(|path| path.path_tokens())
                 .or_else(|| SyntaxPattern::cast(node).map(|pattern| pattern.path_tokens()))
         })
-        .any(|tokens| {
+        .find_map(|tokens| {
             let tokens = tokens
                 .into_iter()
                 .filter(|token| matches!(token.kind(), SyntaxKind::Ident | SyntaxKind::SelfKw))
                 .collect::<Vec<_>>();
-            tokens.len() > 1
-                && tokens.iter().any(|token| {
-                    usize::from(token.text_range().start()) == target.range().start
-                        && usize::from(token.text_range().end()) == target.range().end
-                })
-        });
-    if !qualified {
-        return None;
-    }
+            if tokens.len() < 2 {
+                return None;
+            }
+            let index = tokens.iter().position(|token| {
+                usize::from(token.text_range().start()) == target.range().start
+                    && usize::from(token.text_range().end()) == target.range().end
+            })?;
+            Some(
+                tokens[..=index]
+                    .iter()
+                    .map(|token| token.text().to_owned())
+                    .collect::<Vec<_>>(),
+            )
+        })?;
     let Some(symbol) = target.symbol() else {
         return Some(None);
     };
     Some(match symbol {
         SymbolRef::Source(_) => {
-            let graph = db.hir_db().graph();
-            let declaration = graph.declarations().find(|decl| {
-                crate::symbol_ref::source_symbol_for_declaration(graph, decl) == *symbol
-            });
-            if let Some(declaration) = declaration {
-                Some(super::hover_from_declaration(
-                    graph,
-                    db.graph_analysis_facts(),
-                    declaration,
-                    range,
-                ))
-            } else if let Some(key) = graph
-                .module_ids()
-                .filter_map(|id| graph.module_key(id))
-                .find(|key| crate::symbol_ref::source_module_symbol(key) == *symbol)
-            {
-                let label = key.path.join();
-                Some(Hover::new(
-                    range,
-                    &label,
-                    HoverKind::Module,
-                    DisplayParts::keyword_symbol("module", &label),
-                    None,
-                    target.symbol().cloned(),
-                ))
-            } else {
-                graph.declarations().find_map(|decl| {
-                    graph
-                        .enum_shape(decl.id)?
-                        .variants
-                        .iter()
-                        .find(|variant| {
-                            crate::symbol_ref::source_enum_variant_symbol(
-                                graph,
-                                decl.id,
-                                &variant.name,
-                            )
-                            .as_ref()
-                                == target.symbol()
-                        })
-                        .map(|variant| super::enum_variant_hover(graph, decl, variant, range))
-                })
-            }
+            // Declaration labels are scoped module paths; separate packages can
+            // have the same label. The caller's package and selected path own it.
+            query
+                .expand_import_path(&path)
+                .and_then(|path| super::imports::path_hover(db, query, &path, range))
         }
         SymbolRef::Schema(name) => super::schema::symbol_hover(db.schema_db().facts(), name, range),
-        SymbolRef::Builtin(name) => super::stdlib_function_hover(name, range),
+        SymbolRef::Builtin(name) => super::stdlib_symbol_hover(name, range),
         SymbolRef::Local(_) => None,
     })
 }

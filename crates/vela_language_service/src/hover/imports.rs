@@ -1,4 +1,4 @@
-use vela_hir::module_graph::{DeclarationKind, ImportResolution, Visibility};
+use vela_hir::module_graph::{DeclarationKind, Visibility};
 
 use super::Hover;
 use crate::{DiagnosticRange, LanguageServiceDatabases, QueryContext, symbol_target::SymbolTarget};
@@ -12,6 +12,17 @@ pub(super) fn use_hover(
     range: DiagnosticRange,
 ) -> Option<Hover> {
     let path = query.expand_import_path(&[target.text().to_owned()])?;
+    path_hover(db, query, &path, range)
+}
+
+// Resolve the selected import segment, rather than treating every prefix as a
+// module or using the terminal import's declaration for an enum variant.
+pub(super) fn path_hover(
+    db: &LanguageServiceDatabases,
+    query: &QueryContext<'_>,
+    path: &[String],
+    range: DiagnosticRange,
+) -> Option<Hover> {
     let graph = db.hir_db().graph();
     let key = query.module_key()?;
     let module = graph.module_id(key)?;
@@ -23,7 +34,7 @@ pub(super) fn use_hover(
         DeclarationKind::Enum,
         DeclarationKind::Trait,
     ] {
-        if let Some(declaration) = graph.declaration_by_type_path(&path, key, kind) {
+        if let Some(declaration) = graph.declaration_by_type_path(path, key, kind) {
             return (declaration.module == module || declaration.visibility == Visibility::Public)
                 .then(|| {
                     super::hover_from_declaration(
@@ -35,10 +46,24 @@ pub(super) fn use_hover(
                 });
         }
     }
-    super::module_hover(graph, key, &path, range, None).or_else(|| {
+    if let Some((name, owner)) = path.split_last()
+        && let Some(declaration) = graph.declaration_by_type_path(owner, key, DeclarationKind::Enum)
+    {
+        return (declaration.module == module || declaration.visibility == Visibility::Public)
+            .then(|| {
+                graph
+                    .enum_shape(declaration.id)?
+                    .variants
+                    .iter()
+                    .find(|variant| variant.name == *name)
+                    .map(|variant| super::enum_variant_hover(graph, declaration, variant, range))
+            })
+            .flatten();
+    }
+    super::module_hover(graph, key, path, range, None).or_else(|| {
         let name = path.join("::");
         super::schema::symbol_hover(db.schema_db().facts(), &name, range)
-            .or_else(|| super::stdlib_function_hover(&name, range))
+            .or_else(|| super::stdlib_symbol_hover(&name, range))
     })
 }
 
@@ -66,51 +91,7 @@ pub(super) fn hover(
         }) else {
             continue;
         };
-        if segment + 1 < import.path.len() {
-            return Some(super::module_hover(
-                graph,
-                key,
-                &import.path[..=segment],
-                range,
-                None,
-            ));
-        }
-        let declaration = import
-            .resolution
-            .and_then(|ImportResolution::Declaration(id)| graph.declaration(id))
-            .or_else(|| {
-                [
-                    DeclarationKind::Function,
-                    DeclarationKind::Const,
-                    DeclarationKind::State,
-                    DeclarationKind::Struct,
-                    DeclarationKind::Enum,
-                    DeclarationKind::Trait,
-                ]
-                .into_iter()
-                .find_map(|kind| graph.declaration_by_type_path(&import.path, key, kind))
-            });
-        if let Some(declaration) = declaration {
-            return Some(
-                (declaration.module == module || declaration.visibility == Visibility::Public)
-                    .then(|| {
-                        super::hover_from_declaration(
-                            graph,
-                            db.graph_analysis_facts(),
-                            declaration,
-                            range,
-                        )
-                    }),
-            );
-        }
-        if let Some(hover) = super::module_hover(graph, key, &import.path, range, None) {
-            return Some(Some(hover));
-        }
-        let name = import.path.join("::");
-        return Some(
-            super::schema::symbol_hover(db.schema_db().facts(), &name, range)
-                .or_else(|| super::stdlib_function_hover(&name, range)),
-        );
+        return Some(path_hover(db, query, &import.path[..=segment], range));
     }
     None
 }

@@ -14,6 +14,7 @@ mod dynamic;
 mod literals;
 mod matrix;
 mod members;
+mod modules;
 mod patterns;
 mod schema_method_return_receivers;
 mod source_return_receivers;

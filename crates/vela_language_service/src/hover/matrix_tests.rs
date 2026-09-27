@@ -1,13 +1,11 @@
 use crate::matrix_fixture::{FixtureWorkspace, hover_signature as oracle, load};
 use crate::{
-    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, SymbolRef, TextRange,
-    Workspace, WorkspaceConfig, assemble_project_sources,
+    LanguageServiceDatabases, Position, SourceFileSnapshot, SymbolRef, TextRange, Workspace,
+    WorkspaceConfig, assemble_project_sources,
 };
 use serde_json::{Value, json};
 
-fn uri(file: &str) -> DocumentId {
-    DocumentId::from(format!("/workspace/中文 % hover/{file}"))
-}
+use super::fixture_layout::{Layout, assert_schema_locations};
 
 pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_positions: usize) {
     let mut positions = 0;
@@ -20,30 +18,41 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
                 }
             }
             let fixture = FixtureWorkspace::new(&spec).expect("fixture");
+            let layout = Layout::new(&fixture, spec.oracle["package"].as_bool() == Some(true));
             let sources = fixture
                 .disk
                 .iter()
                 .filter(|(file, _)| file.ends_with(".vela"))
-                .map(|(file, document)| SourceFileSnapshot::new(uri(file), document.text.as_str()))
+                .map(|(file, document)| {
+                    SourceFileSnapshot::new(layout.uri(file), document.text.as_str())
+                })
                 .collect::<Vec<_>>();
             let config = WorkspaceConfig::from_vela_toml(
-                "/workspace/中文 % hover",
+                layout.path("").as_str(),
                 &fixture.disk["vela.toml"].text,
             );
             assert!(config.diagnostics.is_empty());
             let mut db = LanguageServiceDatabases::new();
-            db.update(&assemble_project_sources(
-                &config.config,
-                &sources,
-                &Workspace::new().snapshot(),
-            ));
+            let workspace = Workspace::new().snapshot();
+            if let Some(package) = &layout.package {
+                db.update(&crate::assemble_package_project_sources(
+                    package, &sources, &workspace,
+                ));
+            } else {
+                db.update(&assemble_project_sources(
+                    &config.config,
+                    &sources,
+                    &workspace,
+                ));
+            }
             if !missing_schema {
                 db.load_schema_artifact_json(
-                    "/workspace/中文 % hover/schema.json",
+                    layout.path("schema.json").as_str(),
                     &fixture.disk["schema.json"].text,
                 );
                 assert!(db.schema_db().diagnostics().is_empty());
             }
+            assert_schema_locations(&db, &fixture, &spec.oracle, &layout, missing_schema);
             let queries = spec.oracle["queries"].as_array().expect("queries");
             assert_eq!(queries.len(), expected_queries);
             for authored in queries {
@@ -65,7 +74,7 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
                         point["line"].as_u64().expect("line") as usize,
                         point["character"].as_u64().expect("column") as usize,
                     );
-                    let actual = db.hover(&uri(file), position);
+                    let actual = db.hover(&layout.uri(file), position);
                     let normalized = actual.as_ref().map_or(Value::Null, |hover| json!({
                         "label":hover.label(),"kind":format!("{:?}",hover.kind()),"detail":hover.detail(),"docs":hover.docs(),
                         "range":{"start":{"line":hover.range().start().line,"character":hover.range().start().character},
@@ -93,7 +102,7 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
                                         [symbol["marker"].as_str().expect("local marker")];
                                     SymbolRef::local_at(
                                         name,
-                                        uri(local_file),
+                                        layout.uri(local_file),
                                         TextRange::new(
                                             declaration.start.byte,
                                             declaration.end.byte,
@@ -105,7 +114,34 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
                         };
                         assert_eq!(hover.symbol(), expected.as_ref(), "{} identity", case["id"]);
                     }
-                    assert_eq!(db.hover(&uri(file), position), actual, "repeat hover");
+                    assert_eq!(
+                        db.hover(&layout.uri(file), position),
+                        actual,
+                        "repeat hover"
+                    );
+                    if let Some(owner) = case.get("definition") {
+                        let actual = db.definition(&layout.uri(file), position);
+                        let normalized = actual.as_ref().map_or(Value::Null, |target| json!({
+                            "uri":target.document_id().as_str(),
+                            "range":{
+                                "start":{"line":target.range().start().line,"character":target.range().start().character},
+                                "end":{"line":target.range().end().line,"character":target.range().end().character}
+                            }
+                        }));
+                        let expected = if owner.is_null() {
+                            Value::Null
+                        } else {
+                            let file = owner["file"].as_str().expect("owner file");
+                            let marker = owner["marker"].as_str().expect("owner marker");
+                            json!({"uri":layout.uri(file).as_str(),"range":oracle::marker_range(&fixture.disk[file],marker,false)})
+                        };
+                        assert_eq!(normalized, expected, "{} physical owner", case["id"]);
+                        assert_eq!(
+                            db.definition(&layout.uri(file), position),
+                            actual,
+                            "repeat owner"
+                        );
+                    }
                 }
             }
         }

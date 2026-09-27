@@ -80,6 +80,31 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
                         case["id"]
                     );
                     assert_eq!(hover(&mut server, &target, &point), actual, "repeat hover");
+                    if let Some(owner) = case.get("definition") {
+                        let params = json!({"textDocument":{"uri":target},"position":point});
+                        let response = response_value(request::<r::GotoDefinition>(
+                            &mut server,
+                            3,
+                            params.clone(),
+                        ));
+                        assert!(response.get("error").is_none(), "{response}");
+                        let expected = if owner.is_null() {
+                            Value::Null
+                        } else {
+                            let file = owner["file"].as_str().expect("owner file");
+                            let marker = owner["marker"].as_str().expect("owner marker");
+                            json!({"uri":uri(&root,file),"range":oracle::marker_range(&fixture.disk[file],marker,true)})
+                        };
+                        assert_eq!(
+                            response.get("result"),
+                            Some(&expected),
+                            "{} physical owner",
+                            case["id"]
+                        );
+                        let repeated =
+                            response_value(request::<r::GotoDefinition>(&mut server, 3, params));
+                        assert_eq!(repeated.get("result"), Some(&expected), "repeat owner");
+                    }
                 }
                 assert_eq!(
                     fs::read_to_string(root.join(file)).expect("disk bytes"),

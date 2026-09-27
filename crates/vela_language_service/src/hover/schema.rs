@@ -69,6 +69,16 @@ pub(super) fn symbol_hover(
             Some(schema_symbol(name)),
         ));
     }
+    if schema.module_fact(name).is_some() {
+        return Some(Hover::new(
+            range,
+            name,
+            HoverKind::Module,
+            DisplayParts::keyword_symbol("module", name),
+            schema.module_docs(name).map(str::to_owned),
+            Some(schema_symbol(name)),
+        ));
+    }
     schema
         .functions()
         .find(|function| {
