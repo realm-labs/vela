@@ -7045,10 +7045,26 @@
         "hover/syntax/S10/negative/protocol"
       ],
       "summary": "Close four hover S10 positive/negative service/protocol obligations under reviews/hover-s10.md. Independent hover-s10 authors 120 queries (103 complete and 17 null), 27 physical inputs, LF/CRLF, schema present/physically absent and token start/interior: 862 positions per layer plus repeats. Without schema 21 expectations change and 32 queries are null; host parameters retain unknown, missing hint leaves retain Any without identity, and absent short registry metadata exposes existing stdlib fallback. Whole metadata, docs, Markdown, ranges and exact physical local/source/schema/builtin identity. Optional definition expectations run 90 positions per layer plus repeats: source-backed schema function retains its registered identity and independently marked physical target, removing schema removes both; standard functions/namespaces/types/methods cannot borrow a registered source span. Actual schema source IDs/spans are checked. Same-spelled source/schema declarations/members/variants/namespaces, lexical lets, nested scopes, initializers/before/after sites, ancestor captures, typed/Any/unknown parameters, lambda/loop/pattern bindings, function copies and typed closure locals retain their exact owners. Current-module declarations and qualified source/standard paths survive appropriate short shadows. Source inherent/default/returned methods, unit/tuple/record variants and constructor labels, schema functions/traits/members/variants/aliases, specialized standard methods and builtin hints keep exact static contracts. Schema-only source members, private source names with exact registry decoys, shadowed namespaces and Any/unknown or Any-returned suffixes remain null. Supplementary accepted S1/S3/S4/S5/S6/S8 exact matrices cover other declarations, hints, required/override/async/Service/task call contracts, members/patterns/source-backed spans and package ownership. Fix exact standard function/namespace paths being replaced by registry facts in hover and static symbol identification; schema function site classification rejects these decoys so registry source spans cannot supply false jumps or edit owners. Lexical/source ownership and visibility remain authoritative; exact short registry names still precede short stdlib fallback. Primary contracts own pipe lambdas, package-qualified module identity, field-name variant display, complete container hints and missing-schema fact degradation; no copied provider results or grammar/runtime changes. Actual protocol dispatch, encoded roots, repeated queries, physically missing schema and immutable disk. No hover lifecycle/S11, installed hover smoke or full UX10 claim. Hover service 45/protocol 37, Node 92, fmt and workspace Clippy pass; workspace 4744 pass with two historical ignores. Fresh Windows VSIX 20/native 33 share current source/server identity. Strict B06 reruns service 738 with two historical ignores and protocol 740; original B00-B06 snapshots remain unchanged. Fresh jobs bound RUST_TEST_THREADS=8 without changing budgets/assertions. Catalog 758 verified, 567 unreviewed, two N/A, zero failed; B07 77/96. Continue B07.17; macOS requires independent fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-cDb0NP/results.json; input editors/vscode/test-results/input-MCBpZx/results.json; audit target/lsp-matrix/run-qGVKdm/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.17",
+      "revision": null,
+      "requirements": [
+        "hover/states/dirty/protocol",
+        "hover/states/close_restore/protocol",
+        "hover/states/recovery/protocol",
+        "hover/states/unresolved/protocol",
+        "hover/states/dynamic/protocol",
+        "hover/states/missing_schema/protocol",
+        "hover/states/stale_schema/protocol",
+        "hover/states/dependency_change/protocol",
+        "hover/states/dependency_delete/protocol"
+      ],
+      "summary": "Close nine hover protocol lifecycle obligations under reviews/hover-lifecycle.md. Independent hover-lifecycle authors 34 queries through 30 finite phases in five physical inputs; LF/CRLF, positive token start/interior and null start yield 3748 positions per incremental instance and independent fresh instance per layer, all repeated. Optional exact physical definitions or null add 1836 positions per instance plus repeats. Complete metadata, physical identity, Markdown and UTF-16 ranges match authored expectations before fresh equivalence. Dirty Unicode caller shifts; moved source signatures, fields, methods and docs; body-only changes; missing-delimiter recovery; unresolved callee/label; disk replacements hidden by overlays; close-to-current-disk; watched dependency delete/recreate and delete-with-dirty-overlay retain or clear exactly current facts. Known source/schema Any-return callables preserve metadata but never guess suffix facts; changing source factory return to Any clears the formerly known member and target. Watched schema replacement/removal/malformed JSON/physical deletion remove stale docs, types, members and named labels, publish schema::unavailable, preserve source/stdlib facts and restore on repair. Actual typed notifications and affected-caller publication counts, selected parse-error presence, SchemaDb diagnostics and absent SourceDb entries are checked. Independent encoded fresh roots carry current disk and overlays; guarded owned file mutations, immutable query bytes and final exact restoration. Primary contracts distinguish unchanged exports from caller invalidation, CST errors from lazy lowering and disk-backed close from scratch clearing. No production defect or new design decision; no B15, cancellation/generation or native UX10 closure claim. Full workspace 4746 pass with two historical ignores; hover service 46/protocol 38, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 20/native 33 share current source/server identity. Strict B06 service 739 with two historical ignores and protocol 741; accepted B00-B06 snapshots remain unchanged. Catalog 767 verified, 558 unreviewed, two N/A, zero failed; B07 86/96. Continue B07.18 for ten native UX10 cells; macOS requires independent fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-hpntOx/results.json; input editors/vscode/test-results/input-JDe8Hy/results.json; audit target/lsp-matrix/run-VWjtit/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.17",
+  "nextTask": "B07.18",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9285,7 +9301,10 @@
     "editors/vscode/test-results/input-LHdzmK/results.json",
     "target/lsp-matrix/run-qGVKdm/report.json",
     "editors/vscode/test-results/run-cDb0NP/results.json",
-    "editors/vscode/test-results/input-MCBpZx/results.json"
+    "editors/vscode/test-results/input-MCBpZx/results.json",
+    "target/lsp-matrix/run-VWjtit/report.json",
+    "editors/vscode/test-results/run-hpntOx/results.json",
+    "editors/vscode/test-results/input-JDe8Hy/results.json"
   ],
   "openIssues": [
     {
@@ -12302,8 +12321,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e6ced483dcbd1c8371a5a1edc35c0301ac549d22",
-          "treeSha256": "8800115fe349198ec86c190a66d2faa09790a432e61a9f696d1bfc593e8d6ab4"
+          "revision": "304bd95dbcda5c8326d406f2069322412be335a2",
+          "treeSha256": "c11645587f66f2ff5175925ba2b361b30d0ded2244b2b96ed98248911f8be9f3"
         },
         "profile": {
           "platform": "win32",
@@ -12311,11 +12330,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-qGVKdm/report.json"
+          "target/lsp-matrix/run-VWjtit/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-cDb0NP/results.json --local-results editors/vscode/test-results/input-MCBpZx/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-hpntOx/results.json --local-results editors/vscode/test-results/input-JDe8Hy/results.json",
             "exitCode": 0
           }
         ]

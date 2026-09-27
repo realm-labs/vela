@@ -1142,6 +1142,8 @@ mod declaration_matrix_tests;
 #[cfg(test)]
 mod fixture_layout;
 #[cfg(test)]
+mod lifecycle_states;
+#[cfg(test)]
 mod literal_matrix_tests;
 #[cfg(test)]
 mod matrix_tests;

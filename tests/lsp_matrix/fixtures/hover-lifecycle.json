@@ -1,0 +1,2282 @@
+{
+  "version": 1,
+  "id": "hover-lifecycle",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.hover_lifecycle\"\nname=\"hover_lifecycle\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "scripts/api.vela": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n",
+    "scripts/neighbor.vela": "pub fn harmless(){return;}\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Baseline host row\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"docs\":\"Baseline host count\"}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"rank\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Baseline host rank\"}],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Baseline host grant\"},{\"name\":\"host::make\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Baseline host factory\"},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n",
+    "scripts/main.vela": "use api::grant; use api::Row; use api::Choice; use api::make;\n/* 中😀 */fn run([[input-decl:start]]input[[input-decl:end]]:i64,[[source-param:start]]row[[source-param:end]]:[[source-hint:start]]Row[[source-hint:end]] ,[[host-param:start]]hosted[[host-param:end]]:host::[[host-hint:start]]Row[[host-hint:end]],[[dynamic-param:start]]dynamic[[dynamic-param:end]]:Any,[[unknown-param:start]]unknown[[unknown-param:end]]) {\n/* 中😀 */[[source-callee:start]]grant[[source-callee:end]]([[source-label:start]]value[[source-label:end]]=[[input-use:start]]input[[input-use:end]]);\n/* 中😀 */[[source-receiver:start]]row[[source-receiver:end]].[[source-field:start]]count[[source-field:end]]; row.[[source-method:start]]rank[[source-method:end]](input); [[source-factory:start]]make[[source-factory:end]]().[[source-returned:start]]rank[[source-returned:end]](input); Choice::[[source-variant:start]]Unit[[source-variant:end]];\n/* 中😀 */host::[[host-callee:start]]grant[[host-callee:end]]([[host-label:start]]flag[[host-label:end]]=true); [[host-receiver:start]]hosted[[host-receiver:end]].[[host-field:start]]count[[host-field:end]]; hosted.[[host-method:start]]rank[[host-method:end]](true); host::[[host-factory:start]]make[[host-factory:end]]().[[host-returned:start]]rank[[host-returned:end]](true);\n/* 中😀 */api::[[source-opaque:start]]opaque[[source-opaque:end]]().[[source-opaque-member:start]]rank[[source-opaque-member:end]]; host::[[host-opaque:start]]opaque[[host-opaque:end]]().[[host-opaque-member:start]]rank[[host-opaque-member:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]count[[dynamic-member:end]]; [[unknown-use:start]]unknown[[unknown-use:end]].[[unknown-member:start]]rank[[unknown-member:end]];\n/* 中😀 */math::[[standard-function:start]]max[[standard-function:end]](1,2); \"text\".[[standard-method:start]]split[[standard-method:end]](\",\"); let capture=||{[[captured-input:start]]input[[captured-input:end]];}; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "input-decl",
+        "file": "scripts/main.vela",
+        "marker": "input-decl",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input-decl"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-param",
+        "file": "scripts/main.vela",
+        "marker": "source-param",
+        "result": {
+          "label": "row",
+          "kind": "Parameter",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "row",
+            "file": "scripts/main.vela",
+            "marker": "source-param"
+          },
+          "markdown": "```vela\nrow\n```\n\n_parameter_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-hint",
+        "file": "scripts/main.vela",
+        "marker": "source-hint",
+        "result": {
+          "label": "api::Row",
+          "kind": "Type",
+          "detail": "api::Row",
+          "docs": "Baseline row",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row"
+          },
+          "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nBaseline row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "host-param",
+        "file": "scripts/main.vela",
+        "marker": "host-param",
+        "result": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-hint",
+        "file": "scripts/main.vela",
+        "marker": "host-hint",
+        "result": {
+          "label": "host::Row",
+          "kind": "Type",
+          "detail": "host::Row",
+          "docs": "Baseline host row",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row"
+          },
+          "markdown": "```vela\nhost::Row\n```\n\n_type_: host::Row\n\nBaseline host row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "Row",
+          "kind": "Type",
+          "detail": "Any",
+          "docs": null,
+          "symbol": null,
+          "markdown": "```vela\nRow\n```\n\n_type_: Any"
+        }
+      },
+      {
+        "id": "dynamic-param",
+        "file": "scripts/main.vela",
+        "marker": "dynamic-param",
+        "result": {
+          "label": "dynamic",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "dynamic",
+            "file": "scripts/main.vela",
+            "marker": "dynamic-param"
+          },
+          "markdown": "```vela\ndynamic\n```\n\n_parameter_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "unknown-param",
+        "file": "scripts/main.vela",
+        "marker": "unknown-param",
+        "result": {
+          "label": "unknown",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "unknown",
+            "file": "scripts/main.vela",
+            "marker": "unknown-param"
+          },
+          "markdown": "```vela\nunknown\n```\n\n_parameter_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-callee",
+        "file": "scripts/main.vela",
+        "marker": "source-callee",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Baseline grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nBaseline grant"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-grant"
+        }
+      },
+      {
+        "id": "source-label",
+        "file": "scripts/main.vela",
+        "marker": "source-label",
+        "result": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/api.vela",
+            "marker": "api-value"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-value"
+        }
+      },
+      {
+        "id": "input-use",
+        "file": "scripts/main.vela",
+        "marker": "input-use",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input-decl"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-receiver",
+        "file": "scripts/main.vela",
+        "marker": "source-receiver",
+        "result": {
+          "label": "row",
+          "kind": "Parameter",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "row",
+            "file": "scripts/main.vela",
+            "marker": "source-param"
+          },
+          "markdown": "```vela\nrow\n```\n\n_parameter_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-field",
+        "file": "scripts/main.vela",
+        "marker": "source-field",
+        "result": {
+          "label": "api::Row.count",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": "Baseline count",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.count"
+          },
+          "markdown": "```vela\napi::Row.count\n```\n\n_field_: i64\n\nBaseline count"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-count"
+        }
+      },
+      {
+        "id": "source-method",
+        "file": "scripts/main.vela",
+        "marker": "source-method",
+        "result": {
+          "label": "api::Row.rank",
+          "kind": "Method",
+          "detail": "(self, value: i64) -> i64",
+          "docs": "Baseline rank",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.rank"
+          },
+          "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: i64) -> i64\n\nBaseline rank"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-rank"
+        }
+      },
+      {
+        "id": "source-factory",
+        "file": "scripts/main.vela",
+        "marker": "source-factory",
+        "result": {
+          "label": "api::make",
+          "kind": "Function",
+          "detail": "() -> Row",
+          "docs": "Baseline factory",
+          "symbol": {
+            "kind": "source",
+            "name": "api::make"
+          },
+          "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nBaseline factory"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-make"
+        }
+      },
+      {
+        "id": "source-returned",
+        "file": "scripts/main.vela",
+        "marker": "source-returned",
+        "result": {
+          "label": "api::Row.rank",
+          "kind": "Method",
+          "detail": "(self, value: i64) -> i64",
+          "docs": "Baseline rank",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.rank"
+          },
+          "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: i64) -> i64\n\nBaseline rank"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-rank"
+        }
+      },
+      {
+        "id": "source-variant",
+        "file": "scripts/main.vela",
+        "marker": "source-variant",
+        "result": {
+          "label": "api::Choice::Unit",
+          "kind": "Variant",
+          "detail": "api::Choice::Unit",
+          "docs": "Baseline unit",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Choice::Unit"
+          },
+          "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nBaseline unit"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "host-callee",
+        "file": "scripts/main.vela",
+        "marker": "host-callee",
+        "result": {
+          "label": "host::grant",
+          "kind": "Function",
+          "detail": "Function(bool) -> String; effects: unknown",
+          "docs": "Baseline host grant",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::grant"
+          },
+          "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> String; effects: unknown\n\nBaseline host grant"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-label",
+        "file": "scripts/main.vela",
+        "marker": "host-label",
+        "result": {
+          "label": "flag",
+          "kind": "Parameter",
+          "detail": "bool",
+          "docs": null,
+          "symbol": null,
+          "markdown": "```vela\nflag\n```\n\n_parameter_: bool"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-receiver",
+        "file": "scripts/main.vela",
+        "marker": "host-receiver",
+        "result": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-field",
+        "file": "scripts/main.vela",
+        "marker": "host-field",
+        "result": {
+          "label": "host::Row.count",
+          "kind": "Field",
+          "detail": "String",
+          "docs": "Baseline host count",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.count"
+          },
+          "markdown": "```vela\nhost::Row.count\n```\n\n_field_: String\n\nBaseline host count"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-method",
+        "file": "scripts/main.vela",
+        "marker": "host-method",
+        "result": {
+          "label": "host::Row.rank",
+          "kind": "Method",
+          "detail": "Function(bool) -> String; effects: unknown; permissions: none",
+          "docs": "Baseline host rank",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.rank"
+          },
+          "markdown": "```vela\nhost::Row.rank\n```\n\n_method_: Function(bool) -> String; effects: unknown; permissions: none\n\nBaseline host rank"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-factory",
+        "file": "scripts/main.vela",
+        "marker": "host-factory",
+        "result": {
+          "label": "host::make",
+          "kind": "Function",
+          "detail": "Function() -> host::Row; effects: unknown",
+          "docs": "Baseline host factory",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::make"
+          },
+          "markdown": "```vela\nhost::make\n```\n\n_function_: Function() -> host::Row; effects: unknown\n\nBaseline host factory"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-returned",
+        "file": "scripts/main.vela",
+        "marker": "host-returned",
+        "result": {
+          "label": "host::Row.rank",
+          "kind": "Method",
+          "detail": "Function(bool) -> String; effects: unknown; permissions: none",
+          "docs": "Baseline host rank",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.rank"
+          },
+          "markdown": "```vela\nhost::Row.rank\n```\n\n_method_: Function(bool) -> String; effects: unknown; permissions: none\n\nBaseline host rank"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "source-opaque",
+        "file": "scripts/main.vela",
+        "marker": "source-opaque",
+        "result": {
+          "label": "api::opaque",
+          "kind": "Function",
+          "detail": "() -> Any",
+          "docs": "Baseline opaque",
+          "symbol": {
+            "kind": "source",
+            "name": "api::opaque"
+          },
+          "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nBaseline opaque"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-opaque"
+        }
+      },
+      {
+        "id": "source-opaque-member",
+        "file": "scripts/main.vela",
+        "marker": "source-opaque-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "host-opaque",
+        "file": "scripts/main.vela",
+        "marker": "host-opaque",
+        "result": {
+          "label": "host::opaque",
+          "kind": "Function",
+          "detail": "Function() -> Any; effects: unknown",
+          "docs": "Baseline host opaque",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::opaque"
+          },
+          "markdown": "```vela\nhost::opaque\n```\n\n_function_: Function() -> Any; effects: unknown\n\nBaseline host opaque"
+        },
+        "parseErrors": false,
+        "missingResult": null,
+        "definition": null
+      },
+      {
+        "id": "host-opaque-member",
+        "file": "scripts/main.vela",
+        "marker": "host-opaque-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "dynamic-use",
+        "file": "scripts/main.vela",
+        "marker": "dynamic-use",
+        "result": {
+          "label": "dynamic",
+          "kind": "Parameter",
+          "detail": "Any",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "dynamic",
+            "file": "scripts/main.vela",
+            "marker": "dynamic-param"
+          },
+          "markdown": "```vela\ndynamic\n```\n\n_parameter_: Any"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "dynamic-member",
+        "file": "scripts/main.vela",
+        "marker": "dynamic-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "unknown-use",
+        "file": "scripts/main.vela",
+        "marker": "unknown-use",
+        "result": {
+          "label": "unknown",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "unknown",
+            "file": "scripts/main.vela",
+            "marker": "unknown-param"
+          },
+          "markdown": "```vela\nunknown\n```\n\n_parameter_: unknown"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "unknown-member",
+        "file": "scripts/main.vela",
+        "marker": "unknown-member",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "standard-function",
+        "file": "scripts/main.vela",
+        "marker": "standard-function",
+        "result": {
+          "label": "math::max",
+          "kind": "Function",
+          "detail": "Function(i64 | f64, i64 | f64) -> i64 | f64",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "math::max"
+          },
+          "markdown": "```vela\nmath::max\n```\n\n_function_: Function(i64 | f64, i64 | f64) -> i64 | f64"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "standard-method",
+        "file": "scripts/main.vela",
+        "marker": "standard-method",
+        "result": {
+          "label": "String.split",
+          "kind": "Method",
+          "detail": "Function(String) -> Array(String)",
+          "docs": null,
+          "symbol": {
+            "kind": "builtin",
+            "name": "String.split"
+          },
+          "markdown": "```vela\nString.split\n```\n\n_method_: Function(String) -> Array(String)"
+        },
+        "parseErrors": false,
+        "definition": null
+      },
+      {
+        "id": "captured-input",
+        "file": "scripts/main.vela",
+        "marker": "captured-input",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input-decl"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      }
+    ],
+    "phases": [
+      {
+        "id": "closed-disk",
+        "actions": [],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": false
+      },
+      {
+        "id": "open-caller",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "dirty-caller-shift",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "/* unsaved 中😀 */\n\nuse api::grant; use api::Row; use api::Choice; use api::make;\n/* 中😀 */fn run([[input-decl:start]]input[[input-decl:end]]:i64,[[source-param:start]]row[[source-param:end]]:[[source-hint:start]]Row[[source-hint:end]] ,[[host-param:start]]hosted[[host-param:end]]:host::[[host-hint:start]]Row[[host-hint:end]],[[dynamic-param:start]]dynamic[[dynamic-param:end]]:Any,[[unknown-param:start]]unknown[[unknown-param:end]]) {\n/* 中😀 */[[source-callee:start]]grant[[source-callee:end]]([[source-label:start]]value[[source-label:end]]=[[input-use:start]]input[[input-use:end]]);\n/* 中😀 */[[source-receiver:start]]row[[source-receiver:end]].[[source-field:start]]count[[source-field:end]]; row.[[source-method:start]]rank[[source-method:end]](input); [[source-factory:start]]make[[source-factory:end]]().[[source-returned:start]]rank[[source-returned:end]](input); Choice::[[source-variant:start]]Unit[[source-variant:end]];\n/* 中😀 */host::[[host-callee:start]]grant[[host-callee:end]]([[host-label:start]]flag[[host-label:end]]=true); [[host-receiver:start]]hosted[[host-receiver:end]].[[host-field:start]]count[[host-field:end]]; hosted.[[host-method:start]]rank[[host-method:end]](true); host::[[host-factory:start]]make[[host-factory:end]]().[[host-returned:start]]rank[[host-returned:end]](true);\n/* 中😀 */api::[[source-opaque:start]]opaque[[source-opaque:end]]().[[source-opaque-member:start]]rank[[source-opaque-member:end]]; host::[[host-opaque:start]]opaque[[host-opaque:end]]().[[host-opaque-member:start]]rank[[host-opaque-member:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]count[[dynamic-member:end]]; [[unknown-use:start]]unknown[[unknown-use:end]].[[unknown-member:start]]rank[[unknown-member:end]];\n/* 中😀 */math::[[standard-function:start]]max[[standard-function:end]](1,2); \"text\".[[standard-method:start]]split[[standard-method:end]](\",\"); let capture=||{[[captured-input:start]]input[[captured-input:end]];}; }\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "open-definition",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": false
+      },
+      {
+        "id": "definition-body-edit",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value+1;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": false
+      },
+      {
+        "id": "definition-return-any",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Any{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Baseline factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Any\n\nBaseline factory"
+            }
+          },
+          "source-returned": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "definition-signature-docs",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "/* dirty 中😀 */\n#[doc(\"Dirty grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:String)->String {return value;}\n#[doc(\"Dirty row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Dirty count\")] [[api-count:start]]count[[api-count:end]]:String }\nimpl Row {#[doc(\"Dirty rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:String)->String {return value;}}\n#[doc(\"Dirty factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Dirty choice\")] pub enum Choice { #[doc(\"Dirty unit\")] Unit }\n#[doc(\"Dirty opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: String) -> String",
+              "docs": "Dirty grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: String) -> String\n\nDirty grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "String",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: String"
+            }
+          },
+          "source-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Dirty row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nDirty row"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "String",
+              "docs": "Dirty count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: String\n\nDirty count"
+            }
+          },
+          "source-method": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Dirty rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nDirty rank"
+            }
+          },
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Row",
+              "docs": "Dirty factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nDirty factory"
+            }
+          },
+          "source-returned": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Dirty rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nDirty rank"
+            }
+          },
+          "source-variant": {
+            "result": {
+              "label": "api::Choice::Unit",
+              "kind": "Variant",
+              "detail": "api::Choice::Unit",
+              "docs": "Dirty unit",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Choice::Unit"
+              },
+              "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nDirty unit"
+            }
+          },
+          "source-opaque": {
+            "result": {
+              "label": "api::opaque",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Dirty opaque",
+              "symbol": {
+                "kind": "source",
+                "name": "api::opaque"
+              },
+              "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nDirty opaque"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "definition-recovery",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "/* damaged 中😀 */\nfn damaged( { }\n#[doc(\"Damaged grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:String)->String {return value;}\n#[doc(\"Damaged row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Damaged count\")] [[api-count:start]]count[[api-count:end]]:String }\nimpl Row {#[doc(\"Damaged rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:String)->String {return value;}}\n#[doc(\"Damaged factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Damaged choice\")] pub enum Choice { #[doc(\"Damaged unit\")] Unit }\n#[doc(\"Damaged opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: String) -> String",
+              "docs": "Damaged grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: String) -> String\n\nDamaged grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "String",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: String"
+            }
+          },
+          "source-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Damaged row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nDamaged row"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "String",
+              "docs": "Damaged count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: String\n\nDamaged count"
+            }
+          },
+          "source-method": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Damaged rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nDamaged rank"
+            }
+          },
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Row",
+              "docs": "Damaged factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nDamaged factory"
+            }
+          },
+          "source-returned": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Damaged rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nDamaged rank"
+            }
+          },
+          "source-variant": {
+            "result": {
+              "label": "api::Choice::Unit",
+              "kind": "Variant",
+              "detail": "api::Choice::Unit",
+              "docs": "Damaged unit",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Choice::Unit"
+              },
+              "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nDamaged unit"
+            }
+          },
+          "source-opaque": {
+            "result": {
+              "label": "api::opaque",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Damaged opaque",
+              "symbol": {
+                "kind": "source",
+                "name": "api::opaque"
+              },
+              "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nDamaged opaque"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false,
+          "scripts/api.vela": true
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "definition-repair",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "disk-write-behind-overlay",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Disk grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:bool)->bool {return value;}\n#[doc(\"Disk row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Disk count\")] [[api-count:start]]count[[api-count:end]]:bool }\nimpl Row {#[doc(\"Disk rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:bool)->bool {return value;}}\n#[doc(\"Disk factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Disk choice\")] pub enum Choice { #[doc(\"Disk unit\")] Unit }\n#[doc(\"Disk opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "unresolved-caller",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "/* unsaved 中😀 */\n\nuse api::grant; use api::Row; use api::Choice; use api::make;\n/* 中😀 */fn run([[input-decl:start]]input[[input-decl:end]]:i64,[[source-param:start]]row[[source-param:end]]:[[source-hint:start]]Row[[source-hint:end]] ,[[host-param:start]]hosted[[host-param:end]]:host::[[host-hint:start]]Row[[host-hint:end]],[[dynamic-param:start]]dynamic[[dynamic-param:end]]:Any,[[unknown-param:start]]unknown[[unknown-param:end]]) {\n/* 中😀 */[[source-callee:start]]missing[[source-callee:end]]([[source-label:start]]value[[source-label:end]]=[[input-use:start]]input[[input-use:end]]);\n/* 中😀 */[[source-receiver:start]]row[[source-receiver:end]].[[source-field:start]]count[[source-field:end]]; row.[[source-method:start]]rank[[source-method:end]](input); [[source-factory:start]]make[[source-factory:end]]().[[source-returned:start]]rank[[source-returned:end]](input); Choice::[[source-variant:start]]Unit[[source-variant:end]];\n/* 中😀 */host::[[host-callee:start]]grant[[host-callee:end]]([[host-label:start]]flag[[host-label:end]]=true); [[host-receiver:start]]hosted[[host-receiver:end]].[[host-field:start]]count[[host-field:end]]; hosted.[[host-method:start]]rank[[host-method:end]](true); host::[[host-factory:start]]make[[host-factory:end]]().[[host-returned:start]]rank[[host-returned:end]](true);\n/* 中😀 */api::[[source-opaque:start]]opaque[[source-opaque:end]]().[[source-opaque-member:start]]rank[[source-opaque-member:end]]; host::[[host-opaque:start]]opaque[[host-opaque:end]]().[[host-opaque-member:start]]rank[[host-opaque-member:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]count[[dynamic-member:end]]; [[unknown-use:start]]unknown[[unknown-use:end]].[[unknown-member:start]]rank[[unknown-member:end]];\n/* 中😀 */math::[[standard-function:start]]max[[standard-function:end]](1,2); \"text\".[[standard-method:start]]split[[standard-method:end]](\",\"); let capture=||{[[captured-input:start]]input[[captured-input:end]];}; }\n"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": null,
+            "definition": null
+          },
+          "source-label": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "repair-caller",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "/* unsaved 中😀 */\n\nuse api::grant; use api::Row; use api::Choice; use api::make;\n/* 中😀 */fn run([[input-decl:start]]input[[input-decl:end]]:i64,[[source-param:start]]row[[source-param:end]]:[[source-hint:start]]Row[[source-hint:end]] ,[[host-param:start]]hosted[[host-param:end]]:host::[[host-hint:start]]Row[[host-hint:end]],[[dynamic-param:start]]dynamic[[dynamic-param:end]]:Any,[[unknown-param:start]]unknown[[unknown-param:end]]) {\n/* 中😀 */[[source-callee:start]]grant[[source-callee:end]]([[source-label:start]]value[[source-label:end]]=[[input-use:start]]input[[input-use:end]]);\n/* 中😀 */[[source-receiver:start]]row[[source-receiver:end]].[[source-field:start]]count[[source-field:end]]; row.[[source-method:start]]rank[[source-method:end]](input); [[source-factory:start]]make[[source-factory:end]]().[[source-returned:start]]rank[[source-returned:end]](input); Choice::[[source-variant:start]]Unit[[source-variant:end]];\n/* 中😀 */host::[[host-callee:start]]grant[[host-callee:end]]([[host-label:start]]flag[[host-label:end]]=true); [[host-receiver:start]]hosted[[host-receiver:end]].[[host-field:start]]count[[host-field:end]]; hosted.[[host-method:start]]rank[[host-method:end]](true); host::[[host-factory:start]]make[[host-factory:end]]().[[host-returned:start]]rank[[host-returned:end]](true);\n/* 中😀 */api::[[source-opaque:start]]opaque[[source-opaque:end]]().[[source-opaque-member:start]]rank[[source-opaque-member:end]]; host::[[host-opaque:start]]opaque[[host-opaque:end]]().[[host-opaque-member:start]]rank[[host-opaque-member:end]]; [[dynamic-use:start]]dynamic[[dynamic-use:end]].[[dynamic-member:start]]count[[dynamic-member:end]]; [[unknown-use:start]]unknown[[unknown-use:end]].[[unknown-member:start]]rank[[unknown-member:end]];\n/* 中😀 */math::[[standard-function:start]]max[[standard-function:end]](1,2); \"text\".[[standard-method:start]]split[[standard-method:end]](\",\"); let capture=||{[[captured-input:start]]input[[captured-input:end]];}; }\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "close-to-current-disk",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: bool) -> bool",
+              "docs": "Disk grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: bool) -> bool\n\nDisk grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "bool",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: bool"
+            }
+          },
+          "source-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Disk row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nDisk row"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "bool",
+              "docs": "Disk count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: bool\n\nDisk count"
+            }
+          },
+          "source-method": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: bool) -> bool",
+              "docs": "Disk rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: bool) -> bool\n\nDisk rank"
+            }
+          },
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Row",
+              "docs": "Disk factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nDisk factory"
+            }
+          },
+          "source-returned": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: bool) -> bool",
+              "docs": "Disk rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: bool) -> bool\n\nDisk rank"
+            }
+          },
+          "source-variant": {
+            "result": {
+              "label": "api::Choice::Unit",
+              "kind": "Variant",
+              "detail": "api::Choice::Unit",
+              "docs": "Disk unit",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Choice::Unit"
+              },
+              "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nDisk unit"
+            }
+          },
+          "source-opaque": {
+            "result": {
+              "label": "api::opaque",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Disk opaque",
+              "symbol": {
+                "kind": "source",
+                "name": "api::opaque"
+              },
+              "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nDisk opaque"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "delete-closed-dependency",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": null,
+            "definition": null
+          },
+          "source-label": {
+            "result": null,
+            "definition": null
+          },
+          "source-field": {
+            "result": null,
+            "definition": null
+          },
+          "source-method": {
+            "result": null,
+            "definition": null
+          },
+          "source-factory": {
+            "result": null,
+            "definition": null
+          },
+          "source-returned": {
+            "result": null,
+            "definition": null
+          },
+          "source-variant": {
+            "result": null,
+            "definition": null
+          },
+          "source-opaque": {
+            "result": null,
+            "definition": null
+          },
+          "source-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "source-param": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "source-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          },
+          "source-receiver": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "source-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true,
+        "absentFiles": [
+          "scripts/api.vela"
+        ]
+      },
+      {
+        "id": "recreate-closed-dependency",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "open-again",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": false
+      },
+      {
+        "id": "dirty-definition-again",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Retained grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:String)->String {return value;}\n#[doc(\"Retained row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Retained count\")] [[api-count:start]]count[[api-count:end]]:String }\nimpl Row {#[doc(\"Retained rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:String)->String {return value;}}\n#[doc(\"Retained factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Retained choice\")] pub enum Choice { #[doc(\"Retained unit\")] Unit }\n#[doc(\"Retained opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: String) -> String",
+              "docs": "Retained grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: String) -> String\n\nRetained grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "String",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: String"
+            }
+          },
+          "source-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Retained row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nRetained row"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "String",
+              "docs": "Retained count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: String\n\nRetained count"
+            }
+          },
+          "source-method": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Retained rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nRetained rank"
+            }
+          },
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Row",
+              "docs": "Retained factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nRetained factory"
+            }
+          },
+          "source-returned": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Retained rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nRetained rank"
+            }
+          },
+          "source-variant": {
+            "result": {
+              "label": "api::Choice::Unit",
+              "kind": "Variant",
+              "detail": "api::Choice::Unit",
+              "docs": "Retained unit",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Choice::Unit"
+              },
+              "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nRetained unit"
+            }
+          },
+          "source-opaque": {
+            "result": {
+              "label": "api::opaque",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Retained opaque",
+              "symbol": {
+                "kind": "source",
+                "name": "api::opaque"
+              },
+              "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nRetained opaque"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "delete-disk-keep-overlay",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: String) -> String",
+              "docs": "Retained grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: String) -> String\n\nRetained grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "String",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: String"
+            }
+          },
+          "source-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Retained row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nRetained row"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "String",
+              "docs": "Retained count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: String\n\nRetained count"
+            }
+          },
+          "source-method": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Retained rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nRetained rank"
+            }
+          },
+          "source-factory": {
+            "result": {
+              "label": "api::make",
+              "kind": "Function",
+              "detail": "() -> Row",
+              "docs": "Retained factory",
+              "symbol": {
+                "kind": "source",
+                "name": "api::make"
+              },
+              "markdown": "```vela\napi::make\n```\n\n_function_: () -> Row\n\nRetained factory"
+            }
+          },
+          "source-returned": {
+            "result": {
+              "label": "api::Row.rank",
+              "kind": "Method",
+              "detail": "(self, value: String) -> String",
+              "docs": "Retained rank",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.rank"
+              },
+              "markdown": "```vela\napi::Row.rank\n```\n\n_method_: (self, value: String) -> String\n\nRetained rank"
+            }
+          },
+          "source-variant": {
+            "result": {
+              "label": "api::Choice::Unit",
+              "kind": "Variant",
+              "detail": "api::Choice::Unit",
+              "docs": "Retained unit",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Choice::Unit"
+              },
+              "markdown": "```vela\napi::Choice::Unit\n```\n\n_variant_: api::Choice::Unit\n\nRetained unit"
+            }
+          },
+          "source-opaque": {
+            "result": {
+              "label": "api::opaque",
+              "kind": "Function",
+              "detail": "() -> Any",
+              "docs": "Retained opaque",
+              "symbol": {
+                "kind": "source",
+                "name": "api::opaque"
+              },
+              "markdown": "```vela\napi::opaque\n```\n\n_function_: () -> Any\n\nRetained opaque"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "close-deleted-definition",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {
+          "source-callee": {
+            "result": null,
+            "definition": null
+          },
+          "source-label": {
+            "result": null,
+            "definition": null
+          },
+          "source-field": {
+            "result": null,
+            "definition": null
+          },
+          "source-method": {
+            "result": null,
+            "definition": null
+          },
+          "source-factory": {
+            "result": null,
+            "definition": null
+          },
+          "source-returned": {
+            "result": null,
+            "definition": null
+          },
+          "source-variant": {
+            "result": null,
+            "definition": null
+          },
+          "source-opaque": {
+            "result": null,
+            "definition": null
+          },
+          "source-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "source-param": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "source-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          },
+          "source-receiver": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "source-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true,
+        "absentFiles": [
+          "scripts/api.vela"
+        ]
+      },
+      {
+        "id": "recreate-again",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Baseline grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64 {return value;}\n#[doc(\"Baseline row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Baseline count\")] [[api-count:start]]count[[api-count:end]]:i64 }\nimpl Row {#[doc(\"Baseline rank\")] pub fn [[api-rank:start]]rank[[api-rank:end]](self,value:i64)->i64 {return value;}}\n#[doc(\"Baseline factory\")] pub fn [[api-make:start]]make[[api-make:end]]()->Row{return Row {count:1};}\n#[doc(\"Baseline choice\")] pub enum Choice { #[doc(\"Baseline unit\")] Unit }\n#[doc(\"Baseline opaque\")] pub fn [[api-opaque:start]]opaque[[api-opaque:end]]()->Any{return 1;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "replace-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Fresh host row\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"docs\":\"Fresh host count\"}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"rank\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Fresh host rank\"}],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Fresh host grant\"},{\"name\":\"host::make\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Fresh host factory\"},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n"
+          }
+        ],
+        "overrides": {
+          "host-hint": {
+            "result": {
+              "label": "host::Row",
+              "kind": "Type",
+              "detail": "host::Row",
+              "docs": "Fresh host row",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::Row"
+              },
+              "markdown": "```vela\nhost::Row\n```\n\n_type_: host::Row\n\nFresh host row"
+            }
+          },
+          "host-field": {
+            "result": {
+              "label": "host::Row.count",
+              "kind": "Field",
+              "detail": "bool",
+              "docs": "Fresh host count",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::Row.count"
+              },
+              "markdown": "```vela\nhost::Row.count\n```\n\n_field_: bool\n\nFresh host count"
+            }
+          },
+          "host-method": {
+            "result": {
+              "label": "host::Row.rank",
+              "kind": "Method",
+              "detail": "Function(bool) -> bool; effects: unknown; permissions: none",
+              "docs": "Fresh host rank",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::Row.rank"
+              },
+              "markdown": "```vela\nhost::Row.rank\n```\n\n_method_: Function(bool) -> bool; effects: unknown; permissions: none\n\nFresh host rank"
+            }
+          },
+          "host-callee": {
+            "result": {
+              "label": "host::grant",
+              "kind": "Function",
+              "detail": "Function(bool) -> bool; effects: unknown",
+              "docs": "Fresh host grant",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::grant"
+              },
+              "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> bool; effects: unknown\n\nFresh host grant"
+            }
+          },
+          "host-factory": {
+            "result": {
+              "label": "host::make",
+              "kind": "Function",
+              "detail": "Function() -> Any; effects: unknown",
+              "docs": "Fresh host factory",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::make"
+              },
+              "markdown": "```vela\nhost::make\n```\n\n_function_: Function() -> Any; effects: unknown\n\nFresh host factory"
+            }
+          },
+          "host-returned": {
+            "result": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "remove-schema-members",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Fresh host row\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[],\"methods\":[],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Fresh host grant\"},{\"name\":\"host::make\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Fresh host factory\"},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n"
+          }
+        ],
+        "overrides": {
+          "host-hint": {
+            "result": {
+              "label": "host::Row",
+              "kind": "Type",
+              "detail": "host::Row",
+              "docs": "Fresh host row",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::Row"
+              },
+              "markdown": "```vela\nhost::Row\n```\n\n_type_: host::Row\n\nFresh host row"
+            }
+          },
+          "host-field": {
+            "result": null
+          },
+          "host-method": {
+            "result": null
+          },
+          "host-callee": {
+            "result": {
+              "label": "host::grant",
+              "kind": "Function",
+              "detail": "Function(bool) -> bool; effects: unknown",
+              "docs": "Fresh host grant",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::grant"
+              },
+              "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> bool; effects: unknown\n\nFresh host grant"
+            }
+          },
+          "host-factory": {
+            "result": {
+              "label": "host::make",
+              "kind": "Function",
+              "detail": "Function() -> Any; effects: unknown",
+              "docs": "Fresh host factory",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::make"
+              },
+              "markdown": "```vela\nhost::make\n```\n\n_function_: Function() -> Any; effects: unknown\n\nFresh host factory"
+            }
+          },
+          "host-returned": {
+            "result": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "remove-schema-type",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[],\"methods\":[],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Fresh host grant\"},{\"name\":\"host::make\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Fresh host factory\"},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n"
+          }
+        ],
+        "overrides": {
+          "host-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "host-field": {
+            "result": null
+          },
+          "host-method": {
+            "result": null
+          },
+          "host-callee": {
+            "result": {
+              "label": "host::grant",
+              "kind": "Function",
+              "detail": "Function(bool) -> bool; effects: unknown",
+              "docs": "Fresh host grant",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::grant"
+              },
+              "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(bool) -> bool; effects: unknown\n\nFresh host grant"
+            }
+          },
+          "host-factory": {
+            "result": {
+              "label": "host::make",
+              "kind": "Function",
+              "detail": "Function() -> Any; effects: unknown",
+              "docs": "Fresh host factory",
+              "symbol": {
+                "kind": "schema",
+                "name": "host::make"
+              },
+              "markdown": "```vela\nhost::make\n```\n\n_function_: Function() -> Any; effects: unknown\n\nFresh host factory"
+            }
+          },
+          "host-returned": {
+            "result": null
+          },
+          "host-param": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-receiver": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "remove-schema-functions",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[],\"methods\":[],\"functions\":[{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n"
+          }
+        ],
+        "overrides": {
+          "host-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "host-field": {
+            "result": null
+          },
+          "host-method": {
+            "result": null
+          },
+          "host-callee": {
+            "result": null
+          },
+          "host-factory": {
+            "result": null
+          },
+          "host-returned": {
+            "result": null
+          },
+          "host-param": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-receiver": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-label": {
+            "result": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "invalid-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{ invalid\n"
+          }
+        ],
+        "overrides": {
+          "host-param": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "host-callee": {
+            "result": null
+          },
+          "host-label": {
+            "result": null
+          },
+          "host-receiver": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-field": {
+            "result": null
+          },
+          "host-method": {
+            "result": null
+          },
+          "host-factory": {
+            "result": null
+          },
+          "host-returned": {
+            "result": null
+          },
+          "host-opaque": {
+            "result": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": true,
+        "callerPublication": true,
+        "schemaInvalid": true
+      },
+      {
+        "id": "delete-schema",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "schema.json"
+          }
+        ],
+        "overrides": {
+          "host-param": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "host-callee": {
+            "result": null
+          },
+          "host-label": {
+            "result": null
+          },
+          "host-receiver": {
+            "result": {
+              "label": "hosted",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "hosted",
+                "file": "scripts/main.vela",
+                "marker": "host-param"
+              },
+              "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+            }
+          },
+          "host-field": {
+            "result": null
+          },
+          "host-method": {
+            "result": null
+          },
+          "host-factory": {
+            "result": null
+          },
+          "host-returned": {
+            "result": null
+          },
+          "host-opaque": {
+            "result": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": true,
+        "callerPublication": true,
+        "absentFiles": [
+          "schema.json"
+        ]
+      },
+      {
+        "id": "restore-schema",
+        "actions": [
+          {
+            "op": "write",
+            "file": "schema.json",
+            "source": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Baseline host row\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongRank\"},\"docs\":\"Wrong rank\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"WrongCount\"},\"docs\":\"Wrong count\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"docs\":\"Baseline host count\"}],\"methods\":[{\"owner\":\"host::Row\",\"name\":\"rank\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Baseline host rank\"}],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"docs\":\"Baseline host grant\"},{\"name\":\"host::make\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Baseline host factory\"},{\"name\":\"host::opaque\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"any\"}},\"docs\":\"Baseline host opaque\"},{\"name\":\"decoy::grant\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Wrong short grant\"}]}}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "malformed-neighbor",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/neighbor.vela",
+            "source": "pub struct {count:i64}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false,
+          "scripts/neighbor.vela": true
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "repair-neighbor",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/neighbor.vela",
+            "source": "pub fn harmless(){return;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      },
+      {
+        "id": "close-caller",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/main.vela": false
+        },
+        "schemaUnavailable": false,
+        "callerPublication": true
+      }
+    ]
+  }
+}
