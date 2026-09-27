@@ -13,6 +13,8 @@ use crate::registry::RegistryFacts;
 use crate::semantic_facts::{HirSemanticFacts, ScriptTypeTargetFact};
 use crate::type_fact::TypeFact;
 
+mod implicit_receivers;
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ExecutableReceiverSeed<'a> {
     pub(crate) local: HirLocalId,
@@ -116,6 +118,13 @@ impl AnalysisFacts {
                 let fact = type_fact_from_hint_with_schema(graph, owner.module, hint, schema);
                 facts.locals.insert(local.id, fact);
             }
+        }
+
+        // Whole-module tooling has no concrete executable receiver. Source
+        // method ownership still provides its implicit self contract. Scoped
+        // compilation keeps the existing explicit ExecutableReceiverSeed path.
+        if bodies.is_none() {
+            implicit_receivers::seed(graph, schema, &mut facts);
         }
 
         if let Some(receiver) = receiver {

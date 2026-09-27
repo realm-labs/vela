@@ -148,21 +148,25 @@ impl LanguageServiceDatabases {
         }
         let facts = self.graph_analysis_facts();
 
+        // Callback parameter contexts also carry their collection receiver for
+        // completion inference. The declaration token owns its local metadata.
+        if let Some(bindings) = query.bindings()
+            && let Some(hover) = hover_from_local_declaration(self, bindings, &target, range)
+        {
+            return Some(hover);
+        }
+
         if query.member_receiver_range().is_some() {
             return target
                 .member_receiver_fact()
                 .and_then(|fact| self.member_hover(fact, &target, range));
         }
 
-        if let Some(bindings) = query.bindings() {
-            if let Some(resolution) =
+        if let Some(bindings) = query.bindings()
+            && let Some(resolution) =
                 binding_resolution_for_source_range(graph, bindings, target.range())
-            {
-                return hover_from_resolution(bindings, facts, &target, range, self, resolution);
-            }
-            if let Some(hover) = hover_from_local_declaration(self, bindings, &target, range) {
-                return Some(hover);
-            }
+        {
+            return hover_from_resolution(bindings, facts, &target, range, self, resolution);
         }
         if let Some(hover) = parameters::interface_hover(self, &query, &target, range) {
             return Some(hover);
@@ -1096,6 +1100,8 @@ mod coordinate_tests;
 #[cfg(test)]
 mod type_matrix_tests;
 
+#[cfg(test)]
+mod body_matrix_tests;
 #[cfg(test)]
 mod declaration_matrix_tests;
 #[cfg(test)]

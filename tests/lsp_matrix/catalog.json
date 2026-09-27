@@ -14453,6 +14453,46 @@
           "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
         }
       ]
+    },
+    {
+      "requirement": "hover/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/hover-s2.md. Independent 183 queries (157 complete hovers and 26 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1358 positions per layer. Complete metadata, Markdown, ranges and canonical source/local identities cover typed declaration/use parameters, primitive inferred/annotated locals, aliasing, tuple destructuring, array/tuple and if/match results, plain and five compound writes; block/lambda shadows and initializer ownership, captures, nested typed/untyped lambdas; numeric/tuple loops, tuple guards and source enum tuple/record patterns; Array map/filter, Iterator fold and Map key/value callback parameters/results; erased Function and dynamic Any callback unknown boundaries; trait default, inherent and trait-impl receivers, source fields/methods, captures and inferred locals; schema host callbacks/copies/fields with unknown/null absent-schema outcomes. Missing names, unknown/dynamic members and out-of-scope callback/pattern/block locals are explicit null despite unrelated source declarations. Existing container/function fact display is preserved. Service asserts whole metadata and identities; protocol uses real initialize/open/request dispatch and asserts complete Markdown/ranges or JSON null, immutable physical inputs, encoded roots and physically absent schema. Two analysis tests preserve aliased source owner over source/registry decoys, host/source boundaries, explicit Any, external local contracts and separate executable receiver seeds. Accepted coordinates own same-line non-BMP proof. No other hover syntax/state or full UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::body_matrix_tests::hover_body_matrix_preserves_scoped_facts_captures_and_callbacks"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/hover-s2.md. Independent 183 queries (157 complete hovers and 26 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1358 positions per layer. Complete metadata, Markdown, ranges and canonical source/local identities cover typed declaration/use parameters, primitive inferred/annotated locals, aliasing, tuple destructuring, array/tuple and if/match results, plain and five compound writes; block/lambda shadows and initializer ownership, captures, nested typed/untyped lambdas; numeric/tuple loops, tuple guards and source enum tuple/record patterns; Array map/filter, Iterator fold and Map key/value callback parameters/results; erased Function and dynamic Any callback unknown boundaries; trait default, inherent and trait-impl receivers, source fields/methods, captures and inferred locals; schema host callbacks/copies/fields with unknown/null absent-schema outcomes. Missing names, unknown/dynamic members and out-of-scope callback/pattern/block locals are explicit null despite unrelated source declarations. Existing container/function fact display is preserved. Service asserts whole metadata and identities; protocol uses real initialize/open/request dispatch and asserts complete Markdown/ranges or JSON null, immutable physical inputs, encoded roots and physically absent schema. Two analysis tests preserve aliased source owner over source/registry decoys, host/source boundaries, explicit Any, external local contracts and separate executable receiver seeds. Accepted coordinates own same-line non-BMP proof. No other hover syntax/state or full UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::bodies::hover_body_matrix_preserves_scoped_facts_captures_and_callbacks"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/hover-s2.md. Independent 183 queries (157 complete hovers and 26 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1358 positions per layer. Complete metadata, Markdown, ranges and canonical source/local identities cover typed declaration/use parameters, primitive inferred/annotated locals, aliasing, tuple destructuring, array/tuple and if/match results, plain and five compound writes; block/lambda shadows and initializer ownership, captures, nested typed/untyped lambdas; numeric/tuple loops, tuple guards and source enum tuple/record patterns; Array map/filter, Iterator fold and Map key/value callback parameters/results; erased Function and dynamic Any callback unknown boundaries; trait default, inherent and trait-impl receivers, source fields/methods, captures and inferred locals; schema host callbacks/copies/fields with unknown/null absent-schema outcomes. Missing names, unknown/dynamic members and out-of-scope callback/pattern/block locals are explicit null despite unrelated source declarations. Existing container/function fact display is preserved. Service asserts whole metadata and identities; protocol uses real initialize/open/request dispatch and asserts complete Markdown/ranges or JSON null, immutable physical inputs, encoded roots and physically absent schema. Two analysis tests preserve aliased source owner over source/registry decoys, host/source boundaries, explicit Any, external local contracts and separate executable receiver seeds. Accepted coordinates own same-line non-BMP proof. No other hover syntax/state or full UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::body_matrix_tests::hover_body_matrix_preserves_scoped_facts_captures_and_callbacks"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/hover-s2.md. Independent 183 queries (157 complete hovers and 26 explicit null with schema present) run LF/CRLF and present/physically absent schema, positive start/interior positions and repeats: 1358 positions per layer. Complete metadata, Markdown, ranges and canonical source/local identities cover typed declaration/use parameters, primitive inferred/annotated locals, aliasing, tuple destructuring, array/tuple and if/match results, plain and five compound writes; block/lambda shadows and initializer ownership, captures, nested typed/untyped lambdas; numeric/tuple loops, tuple guards and source enum tuple/record patterns; Array map/filter, Iterator fold and Map key/value callback parameters/results; erased Function and dynamic Any callback unknown boundaries; trait default, inherent and trait-impl receivers, source fields/methods, captures and inferred locals; schema host callbacks/copies/fields with unknown/null absent-schema outcomes. Missing names, unknown/dynamic members and out-of-scope callback/pattern/block locals are explicit null despite unrelated source declarations. Existing container/function fact display is preserved. Service asserts whole metadata and identities; protocol uses real initialize/open/request dispatch and asserts complete Markdown/ranges or JSON null, immutable physical inputs, encoded roots and physically absent schema. Two analysis tests preserve aliased source owner over source/registry decoys, host/source boundaries, explicit Any, external local contracts and separate executable receiver seeds. Accepted coordinates own same-line non-BMP proof. No other hover syntax/state or full UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::bodies::hover_body_matrix_preserves_scoped_facts_captures_and_callbacks"
+        }
+      ]
     }
   ],
   "featureFiles": [

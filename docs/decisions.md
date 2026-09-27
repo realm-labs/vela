@@ -3869,6 +3869,16 @@ through `graph_analysis_facts` / `schema_analysis_facts` and never call
 facts take them as a parameter. The two variants stay separate because callers
 choose deliberately between script-only and schema-backed answers.
 
+Whole-module tooling seeds implicit `self` from its trait/default-method or
+impl owner through scoped source and schema resolution, retaining the source
+declaration identity for members and captures. Explicit receiver annotations
+and externally supplied local contracts take precedence, including `Any` and
+unknown. Executable-scope analysis continues to receive its concrete receiver
+through `ExecutableReceiverSeed`; tooling does not manufacture that seed or
+executable bodies for interface methods. A callback parameter declaration owns
+its exact token even when cursor context carries a collection receiver for
+completion inference.
+
 Inference that walks bodies must be scoped to the body it is walking. Seeding a
 per-body walk from a workspace-wide map, or scanning every declaration in the
 graph to answer a per-module question, makes editor latency grow with the square

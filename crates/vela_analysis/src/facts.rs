@@ -215,6 +215,8 @@ impl AnalysisFacts {
 
 #[cfg(test)]
 mod body_binding_tests;
+#[cfg(test)]
+mod implicit_receiver_tests;
 
 #[cfg(test)]
 mod tests {
