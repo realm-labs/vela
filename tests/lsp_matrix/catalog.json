@@ -14281,6 +14281,98 @@
           "name": "tests::signature::imports::signature_recovery_matrix_preserves_known_facts_and_clears_unavailable_schema"
         }
       ]
+    },
+    {
+      "requirement": "signature-help/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/signature-s10.md. Independent 17 complete templates and 75 positions (35 positive, 40 explicit null) run LF/CRLF with repeated full signatures, active indexes and physical disk preservation. Service asserts parameter names/types/default labels, canonical owners, named policy and all eight callable origins. Source direct/qualified/individual/namespace aliases and current-module precedence reject same-name registry/unrelated-source decoys. Lexical before-declaration, initializer, after-inner-scope and capture visibility remain exact; Let/parameter/lambda/for/pattern bindings and callable-value aliases/closures cannot borrow global signatures. Sixteen HIR role assertions establish real local owners including captures; five noncallable const/state/struct/trait/enum paths resolve as available declarations of their expected kinds. Private/source noncallables, fields/modules, unit/record variants, primitive calls, Any/unknown receivers/returns and unavailable names/members are null. Source inherent/default/direct-trait/factory and tuple variants retain canonical owners and positional policies. Same-short-name source and host types/members/variants have distinct exact parameters/returns. Explicit async schema functions, host/trait methods, schema tuple variants and type-only functions preserve Schema/SchemaMethod/SchemaVariant origins and no invented named authority. Standard math outranks registry decoys; String/Array methods preserve specialized facts and builtin ownership. Accepted S5 supplies static Service/base/pinned/async/trait override and Option/Result/Map boundaries (161 per layer/ending); accepted S8 supplies exact root/dependency source ownership and definitions through lifecycle phases (544 per layer/ending). Protocol uses real dispatch, explicit null, isolated encoded roots and independent UTF-16 points. Literal task spawn/then paths retain positional-only builtin facts despite same-name source/schema/local/namespace decoys. An alias of a real source task declaration retains ordinary source signature identity and can be parameter-shadowed; an alias without a source declaration cannot acquire a task capability. Unknown literal task paths reject registry decoys.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing"
+        },
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "signature::import_tests::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/signature-s10.md. Independent 17 complete templates and 75 positions (35 positive, 40 explicit null) run LF/CRLF with repeated full signatures, active indexes and physical disk preservation. Service asserts parameter names/types/default labels, canonical owners, named policy and all eight callable origins. Source direct/qualified/individual/namespace aliases and current-module precedence reject same-name registry/unrelated-source decoys. Lexical before-declaration, initializer, after-inner-scope and capture visibility remain exact; Let/parameter/lambda/for/pattern bindings and callable-value aliases/closures cannot borrow global signatures. Sixteen HIR role assertions establish real local owners including captures; five noncallable const/state/struct/trait/enum paths resolve as available declarations of their expected kinds. Private/source noncallables, fields/modules, unit/record variants, primitive calls, Any/unknown receivers/returns and unavailable names/members are null. Source inherent/default/direct-trait/factory and tuple variants retain canonical owners and positional policies. Same-short-name source and host types/members/variants have distinct exact parameters/returns. Explicit async schema functions, host/trait methods, schema tuple variants and type-only functions preserve Schema/SchemaMethod/SchemaVariant origins and no invented named authority. Standard math outranks registry decoys; String/Array methods preserve specialized facts and builtin ownership. Accepted S5 supplies static Service/base/pinned/async/trait override and Option/Result/Map boundaries (161 per layer/ending); accepted S8 supplies exact root/dependency source ownership and definitions through lifecycle phases (544 per layer/ending). Protocol uses real dispatch, explicit null, isolated encoded roots and independent UTF-16 points. Literal task spawn/then paths retain positional-only builtin facts despite same-name source/schema/local/namespace decoys. An alias of a real source task declaration retains ordinary source signature identity and can be parameter-shadowed; an alias without a source declaration cannot acquire a task capability. Unknown literal task paths reject registry decoys.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/signature-s10.md. Independent 17 complete templates and 75 positions (35 positive, 40 explicit null) run LF/CRLF with repeated full signatures, active indexes and physical disk preservation. Service asserts parameter names/types/default labels, canonical owners, named policy and all eight callable origins. Source direct/qualified/individual/namespace aliases and current-module precedence reject same-name registry/unrelated-source decoys. Lexical before-declaration, initializer, after-inner-scope and capture visibility remain exact; Let/parameter/lambda/for/pattern bindings and callable-value aliases/closures cannot borrow global signatures. Sixteen HIR role assertions establish real local owners including captures; five noncallable const/state/struct/trait/enum paths resolve as available declarations of their expected kinds. Private/source noncallables, fields/modules, unit/record variants, primitive calls, Any/unknown receivers/returns and unavailable names/members are null. Source inherent/default/direct-trait/factory and tuple variants retain canonical owners and positional policies. Same-short-name source and host types/members/variants have distinct exact parameters/returns. Explicit async schema functions, host/trait methods, schema tuple variants and type-only functions preserve Schema/SchemaMethod/SchemaVariant origins and no invented named authority. Standard math outranks registry decoys; String/Array methods preserve specialized facts and builtin ownership. Accepted S5 supplies static Service/base/pinned/async/trait override and Option/Result/Map boundaries (161 per layer/ending); accepted S8 supplies exact root/dependency source ownership and definitions through lifecycle phases (544 per layer/ending). Protocol uses real dispatch, explicit null, isolated encoded roots and independent UTF-16 points. Literal task spawn/then paths retain positional-only builtin facts despite same-name source/schema/local/namespace decoys. An alias of a real source task declaration retains ordinary source signature identity and can be parameter-shadowed; an alias without a source declaration cannot acquire a task capability. Unknown literal task paths reject registry decoys.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing"
+        },
+        {
+          "layer": "service",
+          "name": "signature::call_matrix_tests::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        },
+        {
+          "layer": "service",
+          "name": "signature::import_tests::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/signature-s10.md. Independent 17 complete templates and 75 positions (35 positive, 40 explicit null) run LF/CRLF with repeated full signatures, active indexes and physical disk preservation. Service asserts parameter names/types/default labels, canonical owners, named policy and all eight callable origins. Source direct/qualified/individual/namespace aliases and current-module precedence reject same-name registry/unrelated-source decoys. Lexical before-declaration, initializer, after-inner-scope and capture visibility remain exact; Let/parameter/lambda/for/pattern bindings and callable-value aliases/closures cannot borrow global signatures. Sixteen HIR role assertions establish real local owners including captures; five noncallable const/state/struct/trait/enum paths resolve as available declarations of their expected kinds. Private/source noncallables, fields/modules, unit/record variants, primitive calls, Any/unknown receivers/returns and unavailable names/members are null. Source inherent/default/direct-trait/factory and tuple variants retain canonical owners and positional policies. Same-short-name source and host types/members/variants have distinct exact parameters/returns. Explicit async schema functions, host/trait methods, schema tuple variants and type-only functions preserve Schema/SchemaMethod/SchemaVariant origins and no invented named authority. Standard math outranks registry decoys; String/Array methods preserve specialized facts and builtin ownership. Accepted S5 supplies static Service/base/pinned/async/trait override and Option/Result/Map boundaries (161 per layer/ending); accepted S8 supplies exact root/dependency source ownership and definitions through lifecycle phases (544 per layer/ending). Protocol uses real dispatch, explicit null, isolated encoded roots and independent UTF-16 points. Literal task spawn/then paths retain positional-only builtin facts despite same-name source/schema/local/namespace decoys. An alias of a real source task declaration retains ordinary source signature identity and can be parameter-shadowed; an alias without a source declaration cannot acquire a task capability. Unknown literal task paths reject registry decoys.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::signature::imports::signature_package_matrix_preserves_import_ownership_and_lifecycle_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/signature-s10.md. All 75 independently authored ownership positions run LF/CRLF under five minimal/editor/legacy/mixed offset-active capability profiles and five omitted/invoked/open/comma-retrigger/content-change contexts: 3750 full positions plus repeats. Documentation formats, context support, dynamic registration, labelOffsetSupport and activeParameterSupport vary. Exact initialization triggerCharacters [\"(\",\",\"] and retriggerCharacters [\",\"] are asserted. Complete current simple-label parameter lists and both root active indexes remain exact in every profile; simple labels are valid even when offsets are supported. Retriggers carry a stale authored previous help which cannot replace current targets or make null calls callable. Explicit JSON null is required. No documentation or per-signature active fields are invented; real initialization/document/request dispatch and independent UTF-16 points preserve disk bytes.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::signature::call_matrix::signature_client_capability_matrix_preserves_triggers_labels_and_current_targets"
+        }
+      ]
+    },
+    {
+      "requirement": "signature-help/editor/smoke",
+      "assertion": "Reviewed in reviews/signature-s10.md. Fresh installed VSIX/bundled native server and real language client execute signature-editor: six independent templates, 21 baseline queries through initial, Unicode multiline dirty prefix shift, incomplete factory-call recovery and close-to-disk restoration at LF/CRLF, 85 positions per ending (170 plus repeats). Full provider signature labels/parameter lists/active indexes or explicit null are independently authored; imports/source functions, named/default parameters, inherent/default/direct-trait/factory methods, tuple variants, standard/builtin facts and local/parameter/capture/closure/type/field/Any/unknown boundaries retain exact results. Recovery rechecks all baseline cases. Test-only markers supply independent UTF-16 positions, declaration file remains unopened, queries preserve buffer and physical file bytes, and closing restores baseline disk results. Each assertion runs once with bounded requests; this provider proof does not certify native UX10 input/render routes.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "signature help provider preserves exact Unicode signatures recovery and shadowing"
+        }
+      ]
     }
   ],
   "featureFiles": [

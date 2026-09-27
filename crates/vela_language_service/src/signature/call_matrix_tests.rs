@@ -5,6 +5,7 @@ use crate::{
 };
 use serde_json::{Value, json};
 
+mod ownership;
 mod type_oracle;
 
 fn uri(file: &str) -> DocumentId {
@@ -19,6 +20,11 @@ fn signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries(
 #[test]
 fn signature_type_matrix_preserves_complete_hints_and_unknown_boundaries() {
     verify_fixture("signature-s3", 102);
+}
+
+#[test]
+fn signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing() {
+    verify_fixture("signature-s10", 75);
 }
 
 fn verify_fixture(name: &str, expected_count: usize) {
@@ -78,6 +84,7 @@ fn verify_fixture(name: &str, expected_count: usize) {
                 );
                 assert_eq!(db.signature_help(&uri(file), position), help, "repeat");
                 let query = QueryContext::from_databases(&db, &uri(file), position).expect("query");
+                ownership::assert_target(&db, &query, case);
                 let callables = query.call_target_facts(&db);
                 let owners = callables
                     .iter()
@@ -98,6 +105,9 @@ fn verify_fixture(name: &str, expected_count: usize) {
                 };
                 assert_eq!(owners, expected, "{}/{}, CRLF={crlf}", spec.id, case["id"]);
                 if let Some(callable) = callables.first() {
+                    if let Some(origin) = case["origin"].as_str() {
+                        assert_eq!(format!("{:?}", callable.origin()), origin, "{}", case["id"]);
+                    }
                     if name == "signature-s3" {
                         let facts = case["parameterFacts"].as_array().expect("authored facts");
                         let parameters = &help.as_ref().expect("signature").signatures()[0];

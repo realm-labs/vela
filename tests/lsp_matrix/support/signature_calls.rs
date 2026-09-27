@@ -62,6 +62,7 @@ fn expand(oracle: &Value, queries: &Value) -> Value {
                 ]})
             };
             query["owner"] = signature["owner"].clone();
+            query["origin"] = signature["origin"].clone();
             query["named"] = signature["named"].clone();
             query["parameterFacts"] = signature["parameterFacts"].clone();
             query["returnsFact"] = signature["returnsFact"].clone();

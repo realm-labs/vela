@@ -42,6 +42,7 @@ async function main() {
     fs.writeFileSync(destination, parseMarkers(source).text);
   }
   require("./completion-fixture").materializeCompletion(workspace);
+  require("./signature-provider").materializeSignature(workspace);
   const tokenModel = require("../../../scripts/lsp-matrix/semantic-token-oracle").tokenModel();
   fs.writeFileSync(path.join(workspace, tokenModel.file), tokenModel.states[0].document.text);
   fs.mkdirSync(path.join(workspace, ".vscode"));

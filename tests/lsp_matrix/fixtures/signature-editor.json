@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "id": "signature-editor",
+  "files": {
+    "scripts/signature_api.vela": "/* 中😀 */\npub fn pick(source_value: i64, reason: String = \"base\") -> bool { return true; }\npub struct Row { value: i64 }\nimpl Row { pub fn pick(self, source_method: i64, reason: String = \"base\") -> bool { return true; } }\npub trait Readable { fn read(self, source_trait: i64, reason: String = \"base\") -> bool { return true; } }\nimpl Readable for Row {}\npub enum Choice { Pair(value: i64, reason: String), Empty }\npub fn current() -> Row { return Row { value: 1 }; }\n",
+    "scripts/signature_main.vela": "use signature_api::pick;\nuse signature_api::Row;\nuse signature_api::Readable;\nuse signature_api::Choice;\n/* 中😀 */ fn main() { pick([[source-first]]1,\"x\"); }\n/* 中😀 */ fn second() { pick(1,[[source-second]]\"x\"); }\n/* 中😀 */ fn named() { pick(reason=\"x\",source_value=[[named-reordered]]1); }\n/* 中😀 */ fn qualified() { signature_api::pick(1,[[qualified]]\"x\"); }\n/* 中😀 */ fn method(value: Row) { value.pick(1,[[source-method]]\"x\"); }\n/* 中😀 */ fn defaults(value: Row) { value.read(1,[[source-default]]\"x\"); }\n/* 中😀 */ fn traits(value: Readable) { value.read([[source-trait]]1,\"x\"); }\n/* 中😀 */ fn factory() { signature_api::current().pick(1,[[factory]]\"x\"); }\n/* 中😀 */ fn variant() { Choice::Pair(1,[[variant]]\"x\"); }\n/* 中😀 */ fn standard() { math::max(1,[[stdlib]]2); }\n/* 中😀 */ fn builtin(value: String) { value.split_once([[builtin]]\"x\"); }\n/* 中😀 */ fn local() { let pick=1; pick([[local-shadow]]1); }\n/* 中😀 */ fn parameter(pick: i64) { pick([[parameter-shadow]]1); }\n/* 中😀 */ fn captured() { let pick=1; let callback=|value| pick([[captured-shadow]]value); }\n/* 中😀 */ fn closure() { let callback=|value| value; callback([[closure-value]]1); }\n/* 中😀 */ fn unknown() { missing([[unknown-call]]1); }\n/* 中😀 */ fn member(value: Row) { value.missing([[unknown-member]]1); }\n/* 中😀 */ fn dynamic(value: Any) { value.pick([[dynamic]]1); }\n/* 中😀 */ fn receiver(value) { value.pick([[unknown-receiver]]1); }\n/* 中😀 */ fn type_value() { Row([[noncallable-type]]1); }\n/* 中😀 */ fn field(value: Row) { value.value([[field]]1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/signature_main.vela",
+    "queries": [
+      {"id":"source-first","marker":"source-first","expected":{"activeSignature":0,"activeParameter":0,"signatures":[{"label":"pick(source_value: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_value: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"source-second","marker":"source-second","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"pick(source_value: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_value: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"named-reordered","marker":"named-reordered","expected":{"activeSignature":0,"activeParameter":0,"signatures":[{"label":"pick(source_value: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_value: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"qualified","marker":"qualified","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"pick(source_value: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_value: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"source-method","marker":"source-method","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"Row.pick(source_method: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_method: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"source-default","marker":"source-default","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"signature_api::Readable.read(source_trait: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_trait: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"source-trait","marker":"source-trait","expected":{"activeSignature":0,"activeParameter":0,"signatures":[{"label":"signature_api::Readable.read(source_trait: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_trait: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"factory","marker":"factory","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"Row.pick(source_method: i64, reason: String (defaulted)) -> bool","parameters":[{"label":"source_method: i64"},{"label":"reason: String (defaulted)"}]}]}},
+      {"id":"variant","marker":"variant","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"signature_api::Choice::Pair(value: i64, reason: String) -> signature_api::Choice::Pair","parameters":[{"label":"value: i64"},{"label":"reason: String"}]}]}},
+      {"id":"stdlib","marker":"stdlib","expected":{"activeSignature":0,"activeParameter":1,"signatures":[{"label":"math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64","parameters":[{"label":"left: i64 | f64"},{"label":"right: i64 | f64"}]}]}},
+      {"id":"builtin","marker":"builtin","expected":{"activeSignature":0,"activeParameter":0,"signatures":[{"label":"String.split_once(separator: String) -> Option((String, String))","parameters":[{"label":"separator: String"}]}]}},
+      {"id":"local-shadow","marker":"local-shadow","expected":null},
+      {"id":"parameter-shadow","marker":"parameter-shadow","expected":null},
+      {"id":"captured-shadow","marker":"captured-shadow","expected":null},
+      {"id":"closure-value","marker":"closure-value","expected":null},
+      {"id":"unknown-call","marker":"unknown-call","expected":null},
+      {"id":"unknown-member","marker":"unknown-member","expected":null},
+      {"id":"dynamic","marker":"dynamic","expected":null},
+      {"id":"unknown-receiver","marker":"unknown-receiver","expected":null},
+      {"id":"noncallable-type","marker":"noncallable-type","expected":null},
+      {"id":"field","marker":"field","expected":null}
+    ],
+    "recovery": {
+      "source": "use signature_api::pick;\nuse signature_api::Row;\nuse signature_api::Readable;\nuse signature_api::Choice;\n/* 中😀 */ fn main() { pick([[source-first]]1,\"x\"); }\n/* 中😀 */ fn second() { pick(1,[[source-second]]\"x\"); }\n/* 中😀 */ fn named() { pick(reason=\"x\",source_value=[[named-reordered]]1); }\n/* 中😀 */ fn qualified() { signature_api::pick(1,[[qualified]]\"x\"); }\n/* 中😀 */ fn method(value: Row) { value.pick(1,[[source-method]]\"x\"); }\n/* 中😀 */ fn defaults(value: Row) { value.read(1,[[source-default]]\"x\"); }\n/* 中😀 */ fn traits(value: Readable) { value.read([[source-trait]]1,\"x\"); }\n/* 中😀 */ fn factory() { signature_api::current().pick(1,[[factory]]\"x\"); }\n/* 中😀 */ fn variant() { Choice::Pair(1,[[variant]]\"x\"); }\n/* 中😀 */ fn standard() { math::max(1,[[stdlib]]2); }\n/* 中😀 */ fn builtin(value: String) { value.split_once([[builtin]]\"x\"); }\n/* 中😀 */ fn local() { let pick=1; pick([[local-shadow]]1); }\n/* 中😀 */ fn parameter(pick: i64) { pick([[parameter-shadow]]1); }\n/* 中😀 */ fn captured() { let pick=1; let callback=|value| pick([[captured-shadow]]value); }\n/* 中😀 */ fn closure() { let callback=|value| value; callback([[closure-value]]1); }\n/* 中😀 */ fn unknown() { missing([[unknown-call]]1); }\n/* 中😀 */ fn member(value: Row) { value.missing([[unknown-member]]1); }\n/* 中😀 */ fn dynamic(value: Any) { value.pick([[dynamic]]1); }\n/* 中😀 */ fn receiver(value) { value.pick([[unknown-receiver]]1); }\n/* 中😀 */ fn type_value() { Row([[noncallable-type]]1); }\n/* 中😀 */ fn field(value: Row) { value.value([[field]]1); }\n/* 中😀 */ fn recovery() { signature_api::current().pick(1, [[recovery]]",
+      "query": {
+        "id": "recovery",
+        "marker": "recovery",
+        "expected": {
+          "activeSignature": 0,
+          "activeParameter": 1,
+          "signatures": [
+            {
+              "label": "Row.pick(source_method: i64, reason: String (defaulted)) -> bool",
+              "parameters": [
+                {
+                  "label": "source_method: i64"
+                },
+                {
+                  "label": "reason: String (defaulted)"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

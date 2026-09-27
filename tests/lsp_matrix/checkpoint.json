@@ -6922,10 +6922,23 @@
         "signature-help/states/stale_schema/protocol"
       ],
       "summary": "Close four signature-help S9 positive/negative service/protocol obligations plus protocol recovery, unresolved, dynamic, missing_schema and stale_schema under reviews/signature-s9.md. Independently authored 14 complete templates and 44 queries through 13 sequential phases yield 572 positions per layer/line ending, LF/CRLF, repeated full signatures, active parameters and service canonical owners/named policy. Known empty/second/named/multiline and nested incomplete calls survive recovery; Unicode string/comment fake delimiters cannot shift arguments. Malformed declarations before/after calls and incomplete builtin type hints retain known facts with independently authored parser diagnostic presence. Imported records/inherent/default/direct-trait and source/schema factory returns preserve signatures while outer calls remain unclosed. Known source callables retain explicit unknown hints when unavailable. Missing/partial callees/modules/members, shadowing noncallables, closures, Any/unknown receivers/returns, noncall/type/outside/empty/trivia positions are explicit null. Real Array.frist diagnostic suggests first without producing signatures; protocol opens the closed file to assert publication and closes back to disk. Unsaved caller incomplete/unresolved/repair/close and broken unrelated file/repair preserve unrelated facts and disk bytes. Schema deletion, stale hash, invalid JSON and unsupported format clear schema-dependent calls and degrade source schema hints to unknown with diagnostic categories independently checked. Valid replacement changes names/types/async metadata; restore returns all original results. Every phase also compares with a rebuilt database or independently materialized/initialized server and current overlays after full authored expectations. Final signatures/disk equal baseline and overlays close. Actual typed watched-file kinds and independent UTF-16 positions are used. Matrix exposed known factory-returned incomplete member signatures returning null when trailing cursor trivia exceeded recovery HIR bounds. Shared refinement selects the smallest call containing the actual active opening bracket within the lexical body/ancestors without requiring cursor containment; known types and nested selection remain unchanged. Accepted S8 service/protocol matrices, shared query-context 11, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 19 and native 32 routes plus driver 33 pass with matching frozen source/server identities. Strict current-source B06 regression executes service 727 with two unchanged historical ignores and protocol 728; original B00-B06 snapshots stay unchanged. Catalog 712 verified, 613 unreviewed, two N/A, zero failed; B07 31/96 verified. Continue B07.6 for remaining S10, capabilities/provider/UX10 and hover semantic partitions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-UG3I1H/results.json; input editors/vscode/test-results/input-YrUKJZ/results.json; audit target/lsp-matrix/run-zBhZQT/report.json. Find checkpoint commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.6",
+      "revision": null,
+      "requirements": [
+        "signature-help/syntax/S10/positive/service",
+        "signature-help/syntax/S10/positive/protocol",
+        "signature-help/syntax/S10/negative/service",
+        "signature-help/syntax/S10/negative/protocol",
+        "signature-help/environments/client_capabilities/protocol",
+        "signature-help/editor/smoke"
+      ],
+      "summary": "Close four signature-help S10 positive/negative service/protocol obligations, protocol client_capabilities and installed signature provider smoke under reviews/signature-s10.md. Independently authored 17 complete templates and 75 positions (35 positive, 40 null) run LF/CRLF, repeated full signatures/active indexes and physical disk preservation. Service asserts parameter names/types/default labels, canonical symbols, named policy and all eight callable origins. Direct/qualified/individual/namespace aliases and current-module source precedence reject conflicting registry and unrelated source decoys. Calls before local declaration/in its initializer/after an inner scope/in captures retain correct visible source targets. Let/parameter/lambda/for/pattern bindings, callable-value aliases and closures cannot borrow globals; sixteen HIR local-role assertions establish actual lexical owners including captures. Five available const/state/struct/trait/enum targets independently resolve as their correct noncallable declaration kinds. Fields/modules/private source/unit-record variants/primitive/Any/unknown boundaries remain null. Source inherent/default/direct-trait/factory and tuple variants preserve owners and positional policy. Same-short-name source/host type/member/variant facts retain distinct complete parameters/returns; explicit async registry functions, host/trait methods, numeric-field schema tuple variants and type-only synthetic names retain Schema/SchemaMethod/SchemaVariant origins and no invented named authority. Math beats registry decoys; String/Array builtin methods retain specialized receiver/callback facts. Literal task spawn/then paths keep positional-only builtin metadata despite source/schema/local/namespace decoys. Aliased real source task declarations remain ordinary source functions and are parameter-shadowed; aliases without source facts cannot create compiler capabilities and unknown literal task paths reject registry decoys. Accepted S5 and S8 exact matrices supplement Service/base/pinned/async/trait override/standard facts and same-name package ownership with exact cross-file definitions and lifecycles. Five capability profiles vary registration, context, documentation format, offsets and per-signature active flags; five omitted/invoked/open/comma/content-change request contexts yield 3750 positions plus repeats. Exact trigger/retrigger lists and complete current simple labels/root active indexes or explicit null survive stale supplied activeSignatureHelp. Independent signature-editor authors six templates and 21 baseline queries through initial, Unicode multiline shift, incomplete factory-call recovery and close-to-disk restoration: 85 positions per LF/CRLF ending, 170 plus repeats through the real installed VSIX language client. Full labels/parameters/active indexes and all supported/null boundaries remain exact; recovery rechecks all baseline cases. Marker-derived UTF-16 points, unopened declaration file, unchanged buffers/disk and dirty close restoration are checked with no assertion retries. No production/runtime semantics changed. Focused service signature 37, protocol signature 26, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 20 and native 32 routes plus driver 33 match frozen source/server identities. Strict current-source B06 executes service 728 with two unchanged historical ignores and protocol 730; original B00-B06 snapshots stay unchanged. Catalog 718 verified, 607 unreviewed, two N/A, zero failed; B07 37/96 verified. Signature semantic/client/provider obligations are complete; hover partitions/states and actual UX10 input/render remain open. Continue B07.7. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-Gr9WoE/results.json; input editors/vscode/test-results/input-V1U618/results.json; audit target/lsp-matrix/run-PZHQNE/report.json. Find checkpoint commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.6",
+  "nextTask": "B07.7",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9129,7 +9142,10 @@
     "editors/vscode/test-results/input-MOl3K7/results.json",
     "target/lsp-matrix/run-zBhZQT/report.json",
     "editors/vscode/test-results/run-UG3I1H/results.json",
-    "editors/vscode/test-results/input-YrUKJZ/results.json"
+    "editors/vscode/test-results/input-YrUKJZ/results.json",
+    "target/lsp-matrix/run-PZHQNE/report.json",
+    "editors/vscode/test-results/run-Gr9WoE/results.json",
+    "editors/vscode/test-results/input-V1U618/results.json"
   ],
   "openIssues": [
     {
@@ -12146,8 +12162,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "196f2b27048f5f2513b50fed287c7bba601e667e",
-          "treeSha256": "fe4767a35e49cdebe2daeb8c8d78d7d48c912dcf734e4e14ca9c1f21a77c144d"
+          "revision": "0a276daa4724065bfc40534df988bd54e4c5e17b",
+          "treeSha256": "c8a1e23bf9981495d2e7c822744e488139461678325a4df35a8ff92eb13ae59e"
         },
         "profile": {
           "platform": "win32",
@@ -12155,11 +12171,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-zBhZQT/report.json"
+          "target/lsp-matrix/run-PZHQNE/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-UG3I1H/results.json --local-results editors/vscode/test-results/input-YrUKJZ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-Gr9WoE/results.json --local-results editors/vscode/test-results/input-V1U618/results.json",
             "exitCode": 0
           }
         ]

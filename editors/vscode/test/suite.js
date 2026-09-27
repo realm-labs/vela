@@ -151,6 +151,8 @@ async function run() {
       require("./navigation-providers").runNavigationProvider(vscode, workspace, "type"));
     await check("completion resolve preserves lazy owned documentation and Unicode LF CRLF replacement edits", () =>
       require("./completion-provider").runCompletionProvider(vscode, workspace));
+    await check("signature help provider preserves exact Unicode signatures recovery and shadowing", () =>
+      require("./signature-provider").runSignatureProvider(vscode, workspace), 60000);
     const referenceRename = require("./reference-rename-providers");
     await check("references provider returns exact cross-file Unicode sites", () =>
       referenceRename.checkReferences(vscode, workspace));
