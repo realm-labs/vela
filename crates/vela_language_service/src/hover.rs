@@ -175,7 +175,7 @@ impl LanguageServiceDatabases {
             }
             return hover_from_resolution(bindings, facts, &target, range, self, resolution);
         }
-        if let Some(hover) = parameters::interface_hover(self, &query, &target, range) {
+        if let Some(hover) = parameters::header_hover(self, &query, &target, range) {
             return Some(hover);
         }
 
@@ -1141,3 +1141,7 @@ mod member_matrix_tests;
 mod module_matrix_tests;
 #[cfg(test)]
 mod pattern_matrix_tests;
+#[cfg(test)]
+mod recovery_matrix_tests;
+#[cfg(test)]
+mod recovery_states;

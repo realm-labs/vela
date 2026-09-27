@@ -1,3 +1,5 @@
+mod incomplete;
+
 use vela_analysis::{hints::type_fact_from_hint_with_schema, type_fact::TypeFact};
 use vela_hir::module_graph::DeclarationKind;
 use vela_hir::{
@@ -55,12 +57,15 @@ pub(super) fn receiver_fact(
 
 // Required trait methods have signature metadata but no executable HIR body or
 // LocalBinding. Their header parameters still own static hover information.
-pub(super) fn interface_hover(
+pub(super) fn header_hover(
     db: &LanguageServiceDatabases,
     query: &QueryContext<'_>,
     target: &SymbolTarget,
     range: DiagnosticRange,
 ) -> Option<Hover> {
+    if let Some(hover) = incomplete::hover(db, query, target, range) {
+        return Some(hover);
+    }
     let graph = db.hir_db().graph();
     let source = query.source_id()?;
     let offset = u32::try_from(target.range().start).ok()?;

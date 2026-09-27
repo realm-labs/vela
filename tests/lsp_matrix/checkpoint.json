@@ -7023,10 +7023,21 @@
         "hover/syntax/S8/negative/protocol"
       ],
       "summary": "Close four hover S8 positive/negative service/protocol obligations under reviews/hover-s8.md. Independent hover-s8 and hover-s8-package fixtures author 319 queries, 240 complete hovers and 79 explicit nulls. Start/interior, LF/CRLF and present/physically absent schema yield 2132 hover positions per layer plus repeats; 52 registered queries become null without schema, while one terminal hint retains Type Row/Any without docs or identity. Exact metadata, Markdown, ranges and identity cover source public function/async/const/VM and extern state/struct/enum/trait imports, aliases, uses, nested/foreign namespaces, enum module/type/unit and tuple variant prefixes, schema modules/types/traits/functions/variants, math namespaces/functions and type-hint alias prefixes. Private, unresolved, duplicate, shadowed and invalid descendant paths own null despite registry decoys; same-module private declarations and restored aliases retain ownership. Root/dependency api::grant and api::Row have independent signatures/docs. Direct dependency aliases select the real owner; hidden transitive dependency is unavailable to root but available to its direct importer. Thirty-one optional definition oracles (23 exact physical owners and eight null) yield 216 positions per layer plus repeats. Four schema source-location oracles yield 16 exact current document/byte-bound or absence checks. Fix qualified source hover to resolve the selected path in caller package instead of globally matching SourceSymbol labels; share import prefix module/type/variant classification and private ownership. Registered modules and known stdlib namespaces supply static module metadata; type-hint prefixes expand aliases and accept only module/type/trait facts. Existing SourceSymbol naming, terminal hint Any fallback and language/runtime semantics remain unchanged. Dependency-root aliases without a concrete root module remain null; actual api modules retain package identity. Expectations derive from primary contracts, not copied responses. Real protocol dispatch, complete Markdown/ranges or explicit null, encoded roots, immutable physical inputs, schema absence and same-line CJK/non-BMP coordinates. No other hover state or full UX10 claim. Hover service 43/protocol 35, schema cache one, Node 92, fmt and workspace Clippy pass; workspace 4739 pass with two unchanged historical ignores. Fresh gates bound RUST_TEST_THREADS=8 without changing request/assertion budgets. Fresh Windows VSIX 20/native 33 prove matching source/server identity. Strict B06 reruns service 736 with two historical ignores and protocol 738; B00-B06 original acceptance snapshots remain unchanged. Catalog 750 verified, 575 unreviewed, two N/A, zero failed; B07 69/96. Continue B07.15; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-JAL1A3/results.json; input editors/vscode/test-results/input-vLpVsk/results.json; audit target/lsp-matrix/run-44TuND/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.15",
+      "revision": null,
+      "requirements": [
+        "hover/syntax/S9/positive/service",
+        "hover/syntax/S9/positive/protocol",
+        "hover/syntax/S9/negative/service",
+        "hover/syntax/S9/negative/protocol"
+      ],
+      "summary": "Close four hover S9 positive/negative service/protocol obligations under reviews/hover-s9.md. Independent static fixture authors 377 queries (336 complete and 41 null), 56 files, LF/CRLF, schema present/physically absent, start/interior and repeats: 2848 positions per layer. Two registered queries become null, 42 parameter/use facts retain unknown and one hint retains Any without identity when schema is absent. Exact metadata, Markdown, ranges, docs and identities cover incomplete/named/nested/multiline/qualified/source/schema/builtin calls, source/factory methods, fields and constructor labels, known/unknown match variants and tuple payload binding, malformed declarations beside healthy neighbors, free-function/impl/trait/enum header parameters and hints, self ownership, empty/trivia files, unfinished comment/string words and EOF. Explicit parse/lexer diagnostic presence is authored for every static query. Array.frist has a real repair candidate first while hover remains null; protocol verifies its publication. Independent recovery fixture authors 14 queries through 15 phases (189 complete and 21 null schema-present expectations), 1536 positions on the incremental instance and the same on an independently rebuilt instance, each repeated. Optional physical definition/range or null assertions run 336 positions per instance plus repeats. Caller incomplete/unresolved/repair/close, defining signature/docs/field changes, incomplete body, function/type/field removals, repair/close and malformed neighbor lifecycle retain current known facts without stale or borrowed metadata. Selected defining/neighbor diagnostics are checked; expectations precede fresh equivalence, disk bytes remain unchanged, final results restore baseline and all overlays close. Fix an unmatched function parameter delimiter hiding its recovered body boundary and consuming a healthy neighbor; complete lists preserve the original boundary path and errors remain diagnosed. Focused syntax regression verifies lossless LF/CRLF, both functions and neighbor parameter/type. Bodyless function/impl parameters use actual direct CST signature names, concrete source owners, scoped existing hint conversion and physical local identity without executable LocalBindings; impl self uses the actual target. Nested lambda/default parameters cannot borrow a header owner. Primary contracts own instantiated builtin method identities, known container shapes with unknown leaves and raw enum-field hints; an exact registered bare type remains real metadata, so gr is intentionally unregistered. No copied provider expectations, grammar/runtime changes or host execution. Real dispatch, encoded roots, immutable inputs and independent fresh overlays. No other hover state, S10/S11 or full UX10 claim. Hover service 44/protocol 36, schema cache one, parser recovery three, Node 92, fmt and workspace Clippy pass; workspace 4742 pass with two historical ignores. Fresh gates bound RUST_TEST_THREADS=8 without changing budgets/assertions. Fresh Windows VSIX 20/native 33 prove matching source/server identity. Strict B06 reruns service 737 with two historical ignores and protocol 739; B00-B06 original snapshots remain unchanged. Catalog 754 verified, 571 unreviewed, two N/A, zero failed; B07 73/96. Continue B07.16; macOS requires independent fresh evidence; B16 remains deferred. VSIX editors/vscode/test-results/run-Hn4ZxL/results.json; input editors/vscode/test-results/input-LHdzmK/results.json; audit target/lsp-matrix/run-vrRxh3/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.15",
+  "nextTask": "B07.16",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9257,7 +9268,10 @@
     "editors/vscode/test-results/input-WkvZLZ/results.json",
     "target/lsp-matrix/run-44TuND/report.json",
     "editors/vscode/test-results/run-JAL1A3/results.json",
-    "editors/vscode/test-results/input-vLpVsk/results.json"
+    "editors/vscode/test-results/input-vLpVsk/results.json",
+    "target/lsp-matrix/run-vrRxh3/report.json",
+    "editors/vscode/test-results/run-Hn4ZxL/results.json",
+    "editors/vscode/test-results/input-LHdzmK/results.json"
   ],
   "openIssues": [
     {
@@ -12274,8 +12288,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "13d86a56df8225ad93a573a6a42b78f1c0eb96ec",
-          "treeSha256": "7174c61c6d8b173c9a0bda96302438ce71756b49a51e0097b9c384f64b4f485b"
+          "revision": "907d1a165a764d81e18b726fbe5b638f614c0b69",
+          "treeSha256": "d1aa750bef4e50ba32e3674ca3ff8100c768507416315017ce6d6984769e884c"
         },
         "profile": {
           "platform": "win32",
@@ -12283,11 +12297,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-44TuND/report.json"
+          "target/lsp-matrix/run-vrRxh3/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-JAL1A3/results.json --local-results editors/vscode/test-results/input-vLpVsk/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-Hn4ZxL/results.json --local-results editors/vscode/test-results/input-LHdzmK/results.json",
             "exitCode": 0
           }
         ]

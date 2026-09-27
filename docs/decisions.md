@@ -5145,3 +5145,15 @@ known stdlib namespace prefixes supply static module hover metadata. Type-hint
 prefixes expand namespace aliases in type scope and accept only module/type/trait
 metadata; the existing terminal Any fallback without identity remains unchanged.
 These are tooling metadata rules and do not alter runtime or declaration naming.
+
+An unclosed function parameter list must not hide the recovered body's item
+boundary and consume subsequent source declarations. Recovery uses the body brace
+already selected by function parsing only when the parameter delimiter has no
+closing match; complete lists retain the original item-boundary path and damaged
+lists retain their diagnostics. Bodyless function/impl header parameters may
+provide hover from their actual direct CST signature declaration and concrete
+source owner, using the existing scoped schema-aware hint converter. Physical
+local identity does not imply an executable LocalBinding. Nested lambda/default
+parameters cannot borrow that header owner, and missing hints/receivers acquire
+no guessed type. Impl self uses its actual target path. This preserves grammar
+and runtime semantics while retaining current static facts during editing.

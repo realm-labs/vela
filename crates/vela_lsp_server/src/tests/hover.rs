@@ -16,6 +16,8 @@ mod matrix;
 mod members;
 mod modules;
 mod patterns;
+mod recovery;
+mod recovery_states;
 mod schema_method_return_receivers;
 mod source_return_receivers;
 mod type_matrix;

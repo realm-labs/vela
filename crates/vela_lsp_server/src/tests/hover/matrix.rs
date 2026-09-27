@@ -2,9 +2,9 @@ use crate::matrix_fixture::{FixtureWorkspace, hover_signature as oracle, load};
 use crate::tests::{TestServer, notify, request, response_value, sync_diagnostics};
 use lsp_types::{notification as n, request as r};
 use serde_json::{Value, json};
-use std::{collections::BTreeSet, fs, path::Path};
+use std::{fs, path::Path};
 
-fn uri(root: &Path, file: &str) -> String {
+pub(super) fn uri(root: &Path, file: &str) -> String {
     lsp_types::Url::from_file_path(root.join(file))
         .expect("encoded URI")
         .to_string()
@@ -38,79 +38,19 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
             let parent = crate::tests::support::unique_temp_root(name);
             let root = parent.join("中文 % hover");
             fixture.materialize(&root).expect("isolated files");
-            let mut server = TestServer::new();
-            let initialize = response_value(request::<r::Initialize>(
-                &mut server,
-                1,
-                json!({"processId":null,"rootUri":uri(&root,""),"capabilities":{}}),
-            ));
-            assert!(initialize.get("error").is_none());
-            assert_eq!(initialize["result"]["capabilities"]["hoverProvider"], true);
-            notify::<n::Initialized>(&mut server, json!({}));
+            let mut server = initialize(&root, &fixture);
             let queries = spec.oracle["queries"].as_array().expect("queries");
             assert_eq!(queries.len(), expected_queries);
-            let mut opened = BTreeSet::new();
-            for authored in queries {
-                let mut case = authored.clone();
-                if missing_schema && case.get("missingResult").is_some() {
-                    case["result"] = case["missingResult"].clone();
-                }
-                let file = case["file"].as_str().expect("file");
-                let document = &fixture.disk[file];
-                let target = uri(&root, file);
-                if opened.insert(file.to_owned()) {
-                    let _ = sync_diagnostics::<n::DidOpenTextDocument>(
-                        &mut server,
-                        json!({"textDocument":{"uri":target,"languageId":"vela","version":1,"text":document.text}}),
-                    );
-                }
-                for offset in 0..if case["result"].is_null() { 1 } else { 2 } {
-                    positions += 1;
-                    let point = oracle::position(
-                        document,
-                        case["marker"].as_str().expect("marker"),
-                        true,
-                        offset,
-                    );
-                    let actual = hover(&mut server, &target, &point);
-                    assert_eq!(
-                        actual,
-                        oracle::hover_result(document, &case, true),
-                        "{}, missing={missing_schema}, CRLF={crlf}",
-                        case["id"]
-                    );
-                    assert_eq!(hover(&mut server, &target, &point), actual, "repeat hover");
-                    if let Some(owner) = case.get("definition") {
-                        let params = json!({"textDocument":{"uri":target},"position":point});
-                        let response = response_value(request::<r::GotoDefinition>(
-                            &mut server,
-                            3,
-                            params.clone(),
-                        ));
-                        assert!(response.get("error").is_none(), "{response}");
-                        let expected = if owner.is_null() {
-                            Value::Null
-                        } else {
-                            let file = owner["file"].as_str().expect("owner file");
-                            let marker = owner["marker"].as_str().expect("owner marker");
-                            json!({"uri":uri(&root,file),"range":oracle::marker_range(&fixture.disk[file],marker,true)})
-                        };
-                        assert_eq!(
-                            response.get("result"),
-                            Some(&expected),
-                            "{} physical owner",
-                            case["id"]
-                        );
-                        let repeated =
-                            response_value(request::<r::GotoDefinition>(&mut server, 3, params));
-                        assert_eq!(repeated.get("result"), Some(&expected), "repeat owner");
-                    }
-                }
-                assert_eq!(
-                    fs::read_to_string(root.join(file)).expect("disk bytes"),
-                    document.text
-                );
-            }
+            positions += verify_queries(
+                &mut server,
+                &fixture,
+                &root,
+                queries,
+                missing_schema,
+                crlf,
+                true,
+            )
+            .0;
             for (file, document) in &fixture.disk {
                 assert_eq!(
                     fs::read_to_string(root.join(file)).expect("all physical inputs"),
@@ -124,4 +64,129 @@ pub(super) fn verify_fixture(name: &str, expected_queries: usize, expected_posit
         positions, expected_positions,
         "every authored token position and schema variant"
     );
+}
+
+pub(super) fn initialize(root: &Path, fixture: &FixtureWorkspace) -> TestServer {
+    let mut server = TestServer::new();
+    let response = response_value(request::<r::Initialize>(
+        &mut server,
+        1,
+        json!({"processId":null,"rootUri":uri(root,""),"capabilities":{}}),
+    ));
+    assert!(response.get("error").is_none());
+    assert_eq!(response["result"]["capabilities"]["hoverProvider"], true);
+    notify::<n::Initialized>(&mut server, json!({}));
+    for (file, source) in &fixture.open {
+        let _ = sync_diagnostics::<n::DidOpenTextDocument>(
+            &mut server,
+            json!({"textDocument":{"uri":uri(root,file),"languageId":"vela","version":1,"text":source.text}}),
+        );
+    }
+    server
+}
+
+pub(super) fn verify_queries(
+    server: &mut TestServer,
+    fixture: &FixtureWorkspace,
+    root: &Path,
+    queries: &[Value],
+    missing_schema: bool,
+    crlf: bool,
+    open_queries: bool,
+) -> (usize, Vec<Value>) {
+    let mut positions = 0;
+    let mut results = Vec::new();
+    let mut opened = std::collections::BTreeMap::new();
+    for authored in queries {
+        let mut case = authored.clone();
+        if missing_schema && case.get("missingResult").is_some() {
+            case["result"] = case["missingResult"].clone();
+        }
+        let file = case["file"].as_str().expect("file");
+        let document = fixture.document(file).expect("current query document");
+        let target = uri(root, file);
+        if open_queries && !opened.contains_key(file) {
+            let publication = sync_diagnostics::<n::DidOpenTextDocument>(
+                server,
+                json!({"textDocument":{"uri":target,"languageId":"vela","version":1,"text":document.text}}),
+            );
+            opened.insert(file.to_owned(), publication);
+        }
+        assert_recovery(server, &target, &case, opened.get(file));
+        for offset in 0..if case["result"].is_null() { 1 } else { 2 } {
+            positions += 1;
+            let point = oracle::position(
+                document,
+                case["marker"].as_str().expect("marker"),
+                true,
+                offset,
+            );
+            let actual = hover(server, &target, &point);
+            assert_eq!(
+                actual,
+                oracle::hover_result(document, &case, true),
+                "{}, missing={missing_schema}, CRLF={crlf}",
+                case["id"]
+            );
+            assert_eq!(hover(server, &target, &point), actual, "repeat hover");
+            if let Some(owner) = case.get("definition") {
+                let params = json!({"textDocument":{"uri":target},"position":point});
+                let response =
+                    response_value(request::<r::GotoDefinition>(server, 3, params.clone()));
+                assert!(response.get("error").is_none(), "{response}");
+                let expected = if owner.is_null() {
+                    Value::Null
+                } else {
+                    let file = owner["file"].as_str().expect("owner file");
+                    let marker = owner["marker"].as_str().expect("owner marker");
+                    json!({"uri":uri(root,file),"range":oracle::marker_range(fixture.document(file).expect("current definition"),marker,true)})
+                };
+                assert_eq!(
+                    response.get("result"),
+                    Some(&expected),
+                    "{} physical owner",
+                    case["id"]
+                );
+                let repeated = response_value(request::<r::GotoDefinition>(server, 3, params));
+                assert_eq!(repeated.get("result"), Some(&expected), "repeat owner");
+            }
+            results.push(actual);
+        }
+    }
+    (positions, results)
+}
+
+fn assert_recovery(server: &TestServer, target: &str, case: &Value, publication: Option<&Value>) {
+    if let Some(expected) = case["parseErrors"].as_bool() {
+        let snapshot = server.snapshot();
+        let id = vela_language_service::DocumentId::from(target);
+        assert_eq!(
+            !snapshot
+                .databases()
+                .parse_db()
+                .parse_diagnostics(&id)
+                .expect("parsed query")
+                .is_empty(),
+            expected,
+            "{} parser recovery",
+            case["id"]
+        );
+    }
+    if let Some(candidate) = case["diagnosticCandidate"].as_object() {
+        let publication = publication.expect("real diagnostic publication");
+        assert!(
+            publication["params"]["diagnostics"]
+                .as_array()
+                .expect("diagnostics")
+                .iter()
+                .any(|d| d["code"] == candidate["code"]
+                    && d["data"]["candidates"]
+                        .as_array()
+                        .expect("candidates")
+                        .iter()
+                        .any(|c| c["replacement"] == candidate["replacement"])),
+            "{} real repair candidate: {publication}",
+            case["id"]
+        );
+    }
 }

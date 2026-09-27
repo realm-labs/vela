@@ -617,8 +617,8 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             SyntaxKind::UseItem | SyntaxKind::StateItem | SyntaxKind::ConstItem => {
                 self.find_semicolon_item_end(keyword_pos)
             }
-            SyntaxKind::FunctionItem
-            | SyntaxKind::StructItem
+            SyntaxKind::FunctionItem => self.find_function_item_end(keyword_pos),
+            SyntaxKind::StructItem
             | SyntaxKind::EnumItem
             | SyntaxKind::TraitItem
             | SyntaxKind::ImplItem => self.find_braced_item_end(keyword_pos),
@@ -664,6 +664,22 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
             cursor += 1;
         }
         self.tokens.len()
+    }
+
+    fn find_function_item_end(&self, start: usize) -> usize {
+        let parameters = self.find_first_kind_before(SyntaxKind::LParen, start, self.tokens.len());
+        if parameters.is_some_and(|open| {
+            self.find_matching_delimiter_end(open, SyntaxKind::LParen, SyntaxKind::RParen)
+                .is_none()
+        }) && let Some(body) =
+            self.find_first_kind_before(SyntaxKind::LBrace, start, self.tokens.len())
+        {
+            // function_item already uses this brace as the recovered body when
+            // parameters have no closing delimiter. Its unclosed paren must not
+            // hide that body boundary and consume later source declarations.
+            return self.find_matching_brace_end(body);
+        }
+        self.find_braced_item_end(start)
     }
 
     fn find_matching_brace_end(&self, open_brace: usize) -> usize {

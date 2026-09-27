@@ -64,3 +64,38 @@ fn incomplete_parameter_lists_keep_names_and_partial_types_inside_their_owner() 
         );
     }
 }
+
+#[test]
+fn unclosed_function_parameters_do_not_consume_a_healthy_neighbor() {
+    for newline in ["\n", "\r\n"] {
+        let text = format!("/* 文😀 */ fn broken( {{ }}{newline}pub fn intact(value: i64) {{}}");
+        let parsed = parse_source(&text);
+        assert_eq!(parsed.tree().syntax().text().to_string(), text);
+        assert!(
+            parsed
+                .diagnostics()
+                .iter()
+                .any(|d| d.message == "expected `)`")
+        );
+        let functions = parsed
+            .tree()
+            .syntax()
+            .descendants()
+            .filter_map(SyntaxFunctionItem::cast)
+            .collect::<Vec<_>>();
+        assert_eq!(functions.len(), 2, "both declarations retained");
+        assert_eq!(functions[0].name_text().as_deref(), Some("broken"));
+        assert_eq!(functions[1].name_text().as_deref(), Some("intact"));
+        let parameters = functions[1].param_list().expect("neighbor parameters");
+        let parameter = parameters.params().next().expect("neighbor value");
+        assert_eq!(parameter.name_text().as_deref(), Some("value"));
+        assert_eq!(
+            parameter
+                .type_hint()
+                .expect("neighbor type")
+                .syntax()
+                .text(),
+            "i64"
+        );
+    }
+}

@@ -1,0 +1,675 @@
+{
+  "version": 1,
+  "id": "hover-s9-recovery",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.hover_s9\"\nname=\"hover_s9\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"},\"docs\":\"Host row\"},{\"name\":\"grant\",\"fact\":{\"kind\":\"host\",\"name\":\"grant\"},\"docs\":\"Wrong grant\"},{\"name\":\"count\",\"fact\":{\"kind\":\"host\",\"name\":\"count\"},\"docs\":\"Wrong count\"},{\"name\":\"rank\",\"fact\":{\"kind\":\"host\",\"name\":\"rank\"},\"docs\":\"Wrong rank\"},{\"name\":\"value\",\"fact\":{\"kind\":\"host\",\"name\":\"value\"},\"docs\":\"Wrong value\"},{\"name\":\"amount\",\"fact\":{\"kind\":\"host\",\"name\":\"amount\"},\"docs\":\"Wrong amount\"},{\"name\":\"Lost\",\"fact\":{\"kind\":\"host\",\"name\":\"Lost\"},\"docs\":\"Wrong Lost\"},{\"name\":\"coun\",\"fact\":{\"kind\":\"host\",\"name\":\"coun\"},\"docs\":\"Wrong coun\"},{\"name\":\"frist\",\"fact\":{\"kind\":\"host\",\"name\":\"frist\"},\"docs\":\"Wrong frist\"},{\"name\":\"First\",\"fact\":{\"kind\":\"host\",\"name\":\"First\"},\"docs\":\"Wrong First\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Host count\"}],\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"i64\"}},\"docs\":\"Host grant\"}],\"variants\":[{\"owner\":\"api::Choice\",\"name\":\"Missing\",\"fact\":{\"kind\":\"enum\",\"name\":\"api::Choice\",\"variant\":\"Missing\"},\"docs\":\"Wrong variant\"}]}}\n",
+    "scripts/api.vela": "#[doc(\"Row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Count\")] [[api-count:start]]count[[api-count:end]]:i64 }\n#[doc(\"Grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64{return value;}\n",
+    "scripts/neighbor.vela": "pub fn untouched(){}\n",
+    "scripts/main.vela": "use api::grant; use api::Row;\n/* 中😀 */fn run([[input:start]]input[[input:end]]:i64,[[row-param:start]]row[[row-param:end]]:[[row-hint:start]]Row[[row-hint:end]],[[host-param:start]]hosted[[host-param:end]]:host::Row){\n/* 中😀 */[[row-use:start]]row[[row-use:end]].[[source-field:start]]count[[source-field:end]]; host::[[host-call:start]]grant[[host-call:end]]([[host-argument:start]]input[[host-argument:end]]); [[host-use:start]]hosted[[host-use:end]].[[host-field:start]]count[[host-field:end]]; [[unknown-use:start]]missing[[unknown-use:end]];\n/* 中😀 */[[source-call:start]]grant[[source-call:end]]([[source-label:start]]value[[source-label:end]]=[[source-argument:start]]input[[source-argument:end]]); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "queries": [
+      {
+        "id": "input",
+        "file": "scripts/main.vela",
+        "marker": "input",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "row-param",
+        "file": "scripts/main.vela",
+        "marker": "row-param",
+        "result": {
+          "label": "row",
+          "kind": "Parameter",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "row",
+            "file": "scripts/main.vela",
+            "marker": "row-param"
+          },
+          "markdown": "```vela\nrow\n```\n\n_parameter_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "row-hint",
+        "file": "scripts/main.vela",
+        "marker": "row-hint",
+        "result": {
+          "label": "api::Row",
+          "kind": "Type",
+          "detail": "api::Row",
+          "docs": "Row",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row"
+          },
+          "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nRow"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "host-param",
+        "file": "scripts/main.vela",
+        "marker": "host-param",
+        "result": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "row-use",
+        "file": "scripts/main.vela",
+        "marker": "row-use",
+        "result": {
+          "label": "row",
+          "kind": "Parameter",
+          "detail": "api::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "row",
+            "file": "scripts/main.vela",
+            "marker": "row-param"
+          },
+          "markdown": "```vela\nrow\n```\n\n_parameter_: api::Row"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "source-field",
+        "file": "scripts/main.vela",
+        "marker": "source-field",
+        "result": {
+          "label": "api::Row.count",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": "Count",
+          "symbol": {
+            "kind": "source",
+            "name": "api::Row.count"
+          },
+          "markdown": "```vela\napi::Row.count\n```\n\n_field_: i64\n\nCount"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-count"
+        }
+      },
+      {
+        "id": "host-call",
+        "file": "scripts/main.vela",
+        "marker": "host-call",
+        "result": {
+          "label": "host::grant",
+          "kind": "Function",
+          "detail": "Function(i64) -> i64; effects: unknown",
+          "docs": "Host grant",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::grant"
+          },
+          "markdown": "```vela\nhost::grant\n```\n\n_function_: Function(i64) -> i64; effects: unknown\n\nHost grant"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "host-argument",
+        "file": "scripts/main.vela",
+        "marker": "host-argument",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      },
+      {
+        "id": "host-use",
+        "file": "scripts/main.vela",
+        "marker": "host-use",
+        "result": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "host::Row",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: host::Row"
+        },
+        "parseErrors": false,
+        "missingResult": {
+          "label": "hosted",
+          "kind": "Parameter",
+          "detail": "unknown",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "hosted",
+            "file": "scripts/main.vela",
+            "marker": "host-param"
+          },
+          "markdown": "```vela\nhosted\n```\n\n_parameter_: unknown"
+        }
+      },
+      {
+        "id": "host-field",
+        "file": "scripts/main.vela",
+        "marker": "host-field",
+        "result": {
+          "label": "host::Row.count",
+          "kind": "Field",
+          "detail": "i64",
+          "docs": "Host count",
+          "symbol": {
+            "kind": "schema",
+            "name": "host::Row.count"
+          },
+          "markdown": "```vela\nhost::Row.count\n```\n\n_field_: i64\n\nHost count"
+        },
+        "parseErrors": false,
+        "missingResult": null
+      },
+      {
+        "id": "unknown-use",
+        "file": "scripts/main.vela",
+        "marker": "unknown-use",
+        "result": null,
+        "parseErrors": false
+      },
+      {
+        "id": "source-call",
+        "file": "scripts/main.vela",
+        "marker": "source-call",
+        "result": {
+          "label": "api::grant",
+          "kind": "Function",
+          "detail": "(value: i64) -> i64",
+          "docs": "Grant",
+          "symbol": {
+            "kind": "source",
+            "name": "api::grant"
+          },
+          "markdown": "```vela\napi::grant\n```\n\n_function_: (value: i64) -> i64\n\nGrant"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-grant"
+        }
+      },
+      {
+        "id": "source-label",
+        "file": "scripts/main.vela",
+        "marker": "source-label",
+        "result": {
+          "label": "value",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "value",
+            "file": "scripts/api.vela",
+            "marker": "api-value"
+          },
+          "markdown": "```vela\nvalue\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false,
+        "definition": {
+          "file": "scripts/api.vela",
+          "marker": "api-value"
+        }
+      },
+      {
+        "id": "source-argument",
+        "file": "scripts/main.vela",
+        "marker": "source-argument",
+        "result": {
+          "label": "input",
+          "kind": "Parameter",
+          "detail": "i64",
+          "docs": null,
+          "symbol": {
+            "kind": "local",
+            "name": "input",
+            "file": "scripts/main.vela",
+            "marker": "input"
+          },
+          "markdown": "```vela\ninput\n```\n\n_parameter_: i64"
+        },
+        "parseErrors": false
+      }
+    ],
+    "phases": [
+      {
+        "id": "disk",
+        "actions": [],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/api.vela": false,
+          "scripts/main.vela": false,
+          "scripts/neighbor.vela": false
+        }
+      },
+      {
+        "id": "caller-incomplete",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          },
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::grant; use api::Row;\n/* 中😀 */fn run([[input:start]]input[[input:end]]:i64,[[row-param:start]]row[[row-param:end]]:[[row-hint:start]]Row[[row-hint:end]],[[host-param:start]]hosted[[host-param:end]]:host::Row){\n/* 中😀 */[[row-use:start]]row[[row-use:end]].[[source-field:start]]count[[source-field:end]]; host::[[host-call:start]]grant[[host-call:end]]([[host-argument:start]]input[[host-argument:end]]); [[host-use:start]]hosted[[host-use:end]].[[host-field:start]]count[[host-field:end]]; [[unknown-use:start]]missing[[unknown-use:end]];\n/* 中😀 */[[source-call:start]]grant[[source-call:end]]([[source-label:start]]value[[source-label:end]]=[[source-argument:start]]input[[source-argument:end]],\n"
+          }
+        ],
+        "overrides": {
+          "input": {
+            "parseErrors": true
+          },
+          "row-param": {
+            "parseErrors": true
+          },
+          "row-hint": {
+            "parseErrors": true
+          },
+          "host-param": {
+            "parseErrors": true
+          },
+          "row-use": {
+            "parseErrors": true
+          },
+          "source-field": {
+            "parseErrors": true
+          },
+          "host-call": {
+            "parseErrors": true
+          },
+          "host-argument": {
+            "parseErrors": true
+          },
+          "host-use": {
+            "parseErrors": true
+          },
+          "host-field": {
+            "parseErrors": true
+          },
+          "unknown-use": {
+            "parseErrors": true
+          },
+          "source-call": {
+            "parseErrors": true
+          },
+          "source-label": {
+            "parseErrors": true
+          },
+          "source-argument": {
+            "parseErrors": true
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": true
+        }
+      },
+      {
+        "id": "caller-unresolved",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::grant; use api::Row;\n/* 中😀 */fn run([[input:start]]input[[input:end]]:i64,[[row-param:start]]row[[row-param:end]]:[[row-hint:start]]Row[[row-hint:end]],[[host-param:start]]hosted[[host-param:end]]:host::Row){\n/* 中😀 */[[row-use:start]]row[[row-use:end]].[[source-field:start]]count[[source-field:end]]; host::[[host-call:start]]grant[[host-call:end]]([[host-argument:start]]input[[host-argument:end]]); [[host-use:start]]hosted[[host-use:end]].[[host-field:start]]count[[host-field:end]]; [[unknown-use:start]]missing[[unknown-use:end]];\n/* 中😀 */[[source-call:start]]gr[[source-call:end]]([[source-label:start]]value[[source-label:end]]=[[source-argument:start]]input[[source-argument:end]]); }\n"
+          }
+        ],
+        "overrides": {
+          "source-call": {
+            "result": null,
+            "definition": null
+          },
+          "source-label": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/main.vela": false
+        }
+      },
+      {
+        "id": "caller-repaired",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "source": "use api::grant; use api::Row;\n/* 中😀 */fn run([[input:start]]input[[input:end]]:i64,[[row-param:start]]row[[row-param:end]]:[[row-hint:start]]Row[[row-hint:end]],[[host-param:start]]hosted[[host-param:end]]:host::Row){\n/* 中😀 */[[row-use:start]]row[[row-use:end]].[[source-field:start]]count[[source-field:end]]; host::[[host-call:start]]grant[[host-call:end]]([[host-argument:start]]input[[host-argument:end]]); [[host-use:start]]hosted[[host-use:end]].[[host-field:start]]count[[host-field:end]]; [[unknown-use:start]]missing[[unknown-use:end]];\n/* 中😀 */[[source-call:start]]grant[[source-call:end]]([[source-label:start]]value[[source-label:end]]=[[source-argument:start]]input[[source-argument:end]]); }\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {}
+      },
+      {
+        "id": "caller-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {}
+      },
+      {
+        "id": "owner-replaced",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/api.vela"
+          },
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Changed row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Changed count\")] [[api-count:start]]count[[api-count:end]]:String }\n#[doc(\"Changed grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:String)->String{return value;}\n"
+          }
+        ],
+        "overrides": {
+          "source-call": {
+            "result": {
+              "label": "api::grant",
+              "kind": "Function",
+              "detail": "(value: String) -> String",
+              "docs": "Changed grant",
+              "symbol": {
+                "kind": "source",
+                "name": "api::grant"
+              },
+              "markdown": "```vela\napi::grant\n```\n\n_function_: (value: String) -> String\n\nChanged grant"
+            }
+          },
+          "source-label": {
+            "result": {
+              "label": "value",
+              "kind": "Parameter",
+              "detail": "String",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "value",
+                "file": "scripts/api.vela",
+                "marker": "api-value"
+              },
+              "markdown": "```vela\nvalue\n```\n\n_parameter_: String"
+            }
+          },
+          "source-field": {
+            "result": {
+              "label": "api::Row.count",
+              "kind": "Field",
+              "detail": "String",
+              "docs": "Changed count",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row.count"
+              },
+              "markdown": "```vela\napi::Row.count\n```\n\n_field_: String\n\nChanged count"
+            }
+          },
+          "row-hint": {
+            "result": {
+              "label": "api::Row",
+              "kind": "Type",
+              "detail": "api::Row",
+              "docs": "Changed row",
+              "symbol": {
+                "kind": "source",
+                "name": "api::Row"
+              },
+              "markdown": "```vela\napi::Row\n```\n\n_type_: api::Row\n\nChanged row"
+            }
+          }
+        },
+        "parseFiles": {
+          "scripts/api.vela": false
+        }
+      },
+      {
+        "id": "owner-incomplete-body",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Count\")] [[api-count:start]]count[[api-count:end]]:i64 }\n#[doc(\"Grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64{return value;\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/api.vela": true
+        }
+      },
+      {
+        "id": "owner-function-removed",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Count\")] [[api-count:start]]count[[api-count:end]]:i64 }\n"
+          }
+        ],
+        "overrides": {
+          "source-call": {
+            "result": null,
+            "definition": null
+          },
+          "source-label": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/api.vela": false
+        }
+      },
+      {
+        "id": "owner-type-removed",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64{return value;}\n"
+          }
+        ],
+        "overrides": {
+          "row-param": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "row-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          },
+          "row-use": {
+            "result": {
+              "label": "row",
+              "kind": "Parameter",
+              "detail": "unknown",
+              "docs": null,
+              "symbol": {
+                "kind": "local",
+                "name": "row",
+                "file": "scripts/main.vela",
+                "marker": "row-param"
+              },
+              "markdown": "```vela\nrow\n```\n\n_parameter_: unknown"
+            }
+          },
+          "row-hint": {
+            "result": {
+              "label": "Row",
+              "kind": "Type",
+              "detail": "Any",
+              "docs": null,
+              "symbol": null,
+              "markdown": "```vela\nRow\n```\n\n_type_: Any"
+            }
+          },
+          "source-field": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/api.vela": false
+        }
+      },
+      {
+        "id": "owner-field-removed",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Row\")] pub struct [[api-row:start]]Row[[api-row:end]] { text:String }\n#[doc(\"Grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64{return value;}\n"
+          }
+        ],
+        "overrides": {
+          "source-field": {
+            "result": null,
+            "definition": null
+          }
+        },
+        "parseFiles": {
+          "scripts/api.vela": false
+        }
+      },
+      {
+        "id": "owner-repaired",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/api.vela",
+            "source": "#[doc(\"Row\")] pub struct [[api-row:start]]Row[[api-row:end]] { #[doc(\"Count\")] [[api-count:start]]count[[api-count:end]]:i64 }\n#[doc(\"Grant\")] pub fn [[api-grant:start]]grant[[api-grant:end]]([[api-value:start]]value[[api-value:end]]:i64)->i64{return value;}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/api.vela": false
+        }
+      },
+      {
+        "id": "owner-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {}
+      },
+      {
+        "id": "neighbor-broken",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/neighbor.vela"
+          },
+          {
+            "op": "change",
+            "file": "scripts/neighbor.vela",
+            "source": "/* 中😀 */pub struct {field:i64}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/neighbor.vela": true
+        }
+      },
+      {
+        "id": "neighbor-repaired",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/neighbor.vela",
+            "source": "pub fn untouched(){}\n"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {
+          "scripts/neighbor.vela": false
+        }
+      },
+      {
+        "id": "neighbor-close",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/neighbor.vela"
+          }
+        ],
+        "overrides": {},
+        "parseFiles": {}
+      }
+    ]
+  }
+}
