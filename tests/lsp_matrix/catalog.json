@@ -14413,6 +14413,46 @@
           "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
         }
       ]
+    },
+    {
+      "requirement": "hover/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/hover-s1.md. Independent 90 queries (70 complete hovers, 20 explicit null) run LF/CRLF and present/physically absent schema, with start/interior positive positions and repeated requests: 640 positions per layer. Complete labels/kinds/details/docs/ranges and canonical source/local identities cover public/private/async/untyped/zero-parameter functions; typed/defaulted/untyped declaration/use parameters; public/private const, VM state and extern state with exact ownership text; structs with typed/Any fields; documented unit/tuple/record enum variants and tuple/record field declarations; trait interface/default methods, inherent/async/trait impl methods and trait/target headers; static interface and receiver parameters, method-scope uses; individual/namespace alias declarations/uses, qualified paths and package-qualified module identities. Imported state/const/functions and cross-file member/variant uses retain the defining identity. Existing hint-based hover signatures are unchanged; signature-help owns default markers. Keywords/literals, Any members, missing names, inaccessible private source expressions and private direct/aliased import declarations and their uses are null; conflicting registry facts cannot supply private source metadata, while same-module private uses remain available. Service asserts whole metadata and identities; real protocol initialize/open/request dispatch asserts hoverProvider, complete Markdown/ranges and explicit JSON null. Encoded Chinese/space/percent roots, immutable physical inputs, absent schema and repeats preserve source-only semantics. Existing coordinate evidence owns same-line non-BMP cases. No other hover syntax/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/hover-s1.md. Independent 90 queries (70 complete hovers, 20 explicit null) run LF/CRLF and present/physically absent schema, with start/interior positive positions and repeated requests: 640 positions per layer. Complete labels/kinds/details/docs/ranges and canonical source/local identities cover public/private/async/untyped/zero-parameter functions; typed/defaulted/untyped declaration/use parameters; public/private const, VM state and extern state with exact ownership text; structs with typed/Any fields; documented unit/tuple/record enum variants and tuple/record field declarations; trait interface/default methods, inherent/async/trait impl methods and trait/target headers; static interface and receiver parameters, method-scope uses; individual/namespace alias declarations/uses, qualified paths and package-qualified module identities. Imported state/const/functions and cross-file member/variant uses retain the defining identity. Existing hint-based hover signatures are unchanged; signature-help owns default markers. Keywords/literals, Any members, missing names, inaccessible private source expressions and private direct/aliased import declarations and their uses are null; conflicting registry facts cannot supply private source metadata, while same-module private uses remain available. Service asserts whole metadata and identities; real protocol initialize/open/request dispatch asserts hoverProvider, complete Markdown/ranges and explicit JSON null. Encoded Chinese/space/percent roots, immutable physical inputs, absent schema and repeats preserve source-only semantics. Existing coordinate evidence owns same-line non-BMP cases. No other hover syntax/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/hover-s1.md. Independent 90 queries (70 complete hovers, 20 explicit null) run LF/CRLF and present/physically absent schema, with start/interior positive positions and repeated requests: 640 positions per layer. Complete labels/kinds/details/docs/ranges and canonical source/local identities cover public/private/async/untyped/zero-parameter functions; typed/defaulted/untyped declaration/use parameters; public/private const, VM state and extern state with exact ownership text; structs with typed/Any fields; documented unit/tuple/record enum variants and tuple/record field declarations; trait interface/default methods, inherent/async/trait impl methods and trait/target headers; static interface and receiver parameters, method-scope uses; individual/namespace alias declarations/uses, qualified paths and package-qualified module identities. Imported state/const/functions and cross-file member/variant uses retain the defining identity. Existing hint-based hover signatures are unchanged; signature-help owns default markers. Keywords/literals, Any members, missing names, inaccessible private source expressions and private direct/aliased import declarations and their uses are null; conflicting registry facts cannot supply private source metadata, while same-module private uses remain available. Service asserts whole metadata and identities; real protocol initialize/open/request dispatch asserts hoverProvider, complete Markdown/ranges and explicit JSON null. Encoded Chinese/space/percent roots, immutable physical inputs, absent schema and repeats preserve source-only semantics. Existing coordinate evidence owns same-line non-BMP cases. No other hover syntax/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        }
+      ]
+    },
+    {
+      "requirement": "hover/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/hover-s1.md. Independent 90 queries (70 complete hovers, 20 explicit null) run LF/CRLF and present/physically absent schema, with start/interior positive positions and repeated requests: 640 positions per layer. Complete labels/kinds/details/docs/ranges and canonical source/local identities cover public/private/async/untyped/zero-parameter functions; typed/defaulted/untyped declaration/use parameters; public/private const, VM state and extern state with exact ownership text; structs with typed/Any fields; documented unit/tuple/record enum variants and tuple/record field declarations; trait interface/default methods, inherent/async/trait impl methods and trait/target headers; static interface and receiver parameters, method-scope uses; individual/namespace alias declarations/uses, qualified paths and package-qualified module identities. Imported state/const/functions and cross-file member/variant uses retain the defining identity. Existing hint-based hover signatures are unchanged; signature-help owns default markers. Keywords/literals, Any members, missing names, inaccessible private source expressions and private direct/aliased import declarations and their uses are null; conflicting registry facts cannot supply private source metadata, while same-module private uses remain available. Service asserts whole metadata and identities; real protocol initialize/open/request dispatch asserts hoverProvider, complete Markdown/ranges and explicit JSON null. Encoded Chinese/space/percent roots, immutable physical inputs, absent schema and repeats preserve source-only semantics. Existing coordinate evidence owns same-line non-BMP cases. No other hover syntax/state or UX10 input/render claim.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
+        }
+      ]
     }
   ],
   "featureFiles": [

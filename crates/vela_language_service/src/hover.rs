@@ -1,4 +1,9 @@
 use vela_analysis::facts::AnalysisFacts;
+mod enum_fields;
+mod impl_headers;
+mod imports;
+mod parameters;
+mod paths;
 mod schema;
 mod type_hints;
 
@@ -9,15 +14,15 @@ use vela_analysis::type_fact::TypeFact;
 use vela_common::Span;
 use vela_hir::attributes::HirAttribute;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding, LocalBindingKind};
-use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ImportResolution, ModuleGraph};
+use vela_hir::module_graph::{Declaration, DeclarationKind, Import, ModuleGraph};
 use vela_hir::type_hint::{
     EnumVariantFieldsHint, EnumVariantHint, FunctionSignature, ImplMetadataKind,
     ImplMethodMetadata, StructFieldHint, TraitMethodMetadata,
 };
 
 use crate::{
-    DiagnosticRange, DisplayPartKind, DisplayParts, DocumentId, LanguageServiceDatabases,
-    LineIndex, Position, QueryContext, SymbolRef, TextRange,
+    DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, Position,
+    QueryContext, SymbolRef, TextRange,
     query_context::binding_resolution_for_source_range,
     symbol_ref::{
         builtin_member_symbol, builtin_symbol, qualified_source_declaration_name,
@@ -135,6 +140,12 @@ impl LanguageServiceDatabases {
         if let Some(hover) = type_hints::hover(self, &query, &target, range) {
             return hover;
         }
+        if let Some(hover) = impl_headers::hover(self, &query, &target, range) {
+            return hover;
+        }
+        if let Some(hover) = paths::hover(self, &query, &target, range) {
+            return hover;
+        }
         let facts = self.graph_analysis_facts();
 
         if query.member_receiver_range().is_some() {
@@ -143,25 +154,25 @@ impl LanguageServiceDatabases {
                 .and_then(|fact| self.member_hover(fact, &target, range));
         }
 
-        for declaration in graph.declarations() {
-            if declaration.span.source != source_id || !declaration.span.contains(offset) {
-                continue;
+        if let Some(bindings) = query.bindings() {
+            if let Some(resolution) =
+                binding_resolution_for_source_range(graph, bindings, target.range())
+            {
+                return hover_from_resolution(bindings, facts, &target, range, self, resolution);
             }
-            if let Some(bindings) = graph.bindings(declaration.id) {
-                if let Some(hover) =
-                    hover_from_resolution_at_target(bindings, facts, &target, range, self)
-                {
-                    return Some(hover);
-                }
-                if let Some(hover) = hover_from_local_declaration(self, bindings, &target, range) {
-                    return Some(hover);
-                }
+            if let Some(hover) = hover_from_local_declaration(self, bindings, &target, range) {
+                return Some(hover);
             }
         }
+        if let Some(hover) = parameters::interface_hover(self, &query, &target, range) {
+            return Some(hover);
+        }
 
-        if let Some(hover) =
-            self.import_hover(document_id, query.text(), source_id, facts, &target, range)
-        {
+        if let Some(hover) = imports::hover(self, &query, &target, range) {
+            return hover;
+        }
+
+        if let Some(hover) = enum_fields::hover(graph, &query, &target, range) {
             return Some(hover);
         }
 
@@ -236,38 +247,6 @@ impl LanguageServiceDatabases {
         }
         stdlib_method_hover(receiver_fact, target.text(), range)
     }
-
-    fn import_hover(
-        &self,
-        document_id: &DocumentId,
-        _text: &str,
-        source_id: vela_common::SourceId,
-        facts: &AnalysisFacts,
-        target: &SymbolTarget,
-        range: DiagnosticRange,
-    ) -> Option<Hover> {
-        let graph = self.hir_db().graph();
-        let module_path = self.project_db().module_by_document().get(document_id)?;
-        let module = graph.module_id(module_path)?;
-        graph.imports(module)?.iter().find_map(|import| {
-            if import.span.source != source_id {
-                return None;
-            }
-            let segment = import_path_segment_at(import, target)?;
-            if segment + 1 == import.path.len() {
-                let ImportResolution::Declaration(declaration) = import.resolution?;
-                let declaration = graph.declaration(declaration)?;
-                return Some(hover_from_declaration(graph, facts, declaration, range));
-            }
-            module_hover(
-                graph,
-                graph.module_key(module)?,
-                &import.path[..=segment],
-                range,
-                target.symbol().cloned(),
-            )
-        })
-    }
 }
 
 fn provider_hover(
@@ -316,7 +295,7 @@ fn module_hover(
         HoverKind::Module,
         DisplayParts::keyword_symbol("module", &label),
         None,
-        symbol,
+        Some(symbol.unwrap_or_else(|| crate::symbol_ref::source_module_symbol(&module_key))),
     ))
 }
 
@@ -364,15 +343,15 @@ fn stdlib_method_hover(receiver: &TypeFact, method: &str, range: DiagnosticRange
     })
 }
 
-fn hover_from_resolution_at_target(
+fn hover_from_resolution(
     bindings: &BindingMap,
     facts: &AnalysisFacts,
     target: &SymbolTarget,
     range: DiagnosticRange,
     databases: &LanguageServiceDatabases,
+    resolution: &BindingResolution,
 ) -> Option<Hover> {
     let graph = databases.hir_db().graph();
-    let resolution = binding_resolution_for_source_range(graph, bindings, target.range())?;
     match resolution {
         BindingResolution::Local(local) => {
             let binding = bindings.local(*local)?;
@@ -400,38 +379,13 @@ fn hover_from_resolution_at_target(
                     .unwrap_or_else(|| hover_from_declaration(graph, facts, declaration, range))
             })
         }
-        BindingResolution::Import(name) => Some(Hover::new(
-            range,
-            name.clone(),
-            HoverKind::Unknown,
-            unresolved_detail_parts("import"),
-            None,
-            None,
-        )),
+        BindingResolution::Import(_) => None,
         BindingResolution::QualifiedPath(path) => {
             let qualified = path.join("::");
             schema::symbol_hover(databases.schema_db().facts(), &qualified, range)
                 .or_else(|| stdlib_function_hover(&qualified, range))
-                .or_else(|| {
-                    Some(Hover::new(
-                        range,
-                        qualified,
-                        HoverKind::Unknown,
-                        unresolved_detail_parts("qualified path"),
-                        None,
-                        None,
-                    ))
-                })
         }
     }
-}
-
-fn unresolved_detail_parts(target: &str) -> DisplayParts {
-    let mut parts = DisplayParts::new();
-    parts.push(DisplayPartKind::Text, "unresolved");
-    parts.push(DisplayPartKind::Text, " ");
-    parts.push(DisplayPartKind::Symbol, target);
-    parts
 }
 
 fn enum_variant_hover_at_target(
@@ -676,7 +630,7 @@ fn impl_method_hover(
         DisplayParts::member(&owner, &method.name).render(),
         HoverKind::Method,
         signature_detail_parts(&method.signature),
-        None,
+        attr_docs(&method.attrs),
         source_impl_method_symbol(graph, declaration.id, &method.name),
     )
 }
@@ -871,6 +825,11 @@ fn local_hover(
     range: DiagnosticRange,
     symbol: Option<SymbolRef>,
 ) -> Hover {
+    let fact = if matches!(fact, TypeFact::Unknown) {
+        parameters::receiver_fact(databases, binding).unwrap_or(fact)
+    } else {
+        fact
+    };
     let kind = match binding.kind {
         LocalBindingKind::Parameter | LocalBindingKind::LambdaParameter => HoverKind::Parameter,
         LocalBindingKind::Let | LocalBindingKind::For | LocalBindingKind::Pattern => {
@@ -1136,3 +1095,8 @@ mod coordinate_tests;
 
 #[cfg(test)]
 mod type_matrix_tests;
+
+#[cfg(test)]
+mod declaration_matrix_tests;
+#[cfg(test)]
+mod matrix_tests;

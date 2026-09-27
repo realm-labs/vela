@@ -64,7 +64,7 @@ pub(super) fn path_symbol_ref(
             DeclarationKind::Enum,
             DeclarationKind::Trait,
         ] {
-            if let Some(declaration) = graph.resolve_visible_declaration_path(module, &path, kind) {
+            if let Some(declaration) = graph.declaration_by_type_path(&path, key, kind) {
                 return Some(
                     ((!is_type
                         || matches!(
@@ -80,6 +80,31 @@ pub(super) fn path_symbol_ref(
                         }),
                 );
             }
+        }
+        if let Some((variant, owner)) = path.split_last()
+            && let Some(declaration) =
+                graph.declaration_by_type_path(owner, key, DeclarationKind::Enum)
+        {
+            return Some(
+                (!is_type
+                    && (declaration.module == module
+                        || declaration.visibility == Visibility::Public))
+                    .then(|| {
+                        graph
+                            .enum_shape(declaration.id)?
+                            .variants
+                            .iter()
+                            .find(|entry| entry.name == *variant)
+                            .and_then(|entry| {
+                                crate::symbol_ref::source_enum_variant_symbol(
+                                    graph,
+                                    declaration.id,
+                                    &entry.name,
+                                )
+                            })
+                    })
+                    .flatten(),
+            );
         }
         let qualified = path.join("::");
         if let Some(symbol) = super::schema_symbol_ref(databases.schema_db().facts(), &qualified) {
