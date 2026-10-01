@@ -1,4 +1,4 @@
 mod metadata;
 mod source;
-mod support;
+pub(super) mod support;
 mod tasks;

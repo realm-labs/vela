@@ -32,6 +32,8 @@ pub(super) struct ProjectState {
     pub(super) config_diagnostics: Vec<vela_language_service::ProjectDiagnostic>,
     pub(super) analysis_diagnostics: Vec<ProjectDiagnostic>,
     pub(super) config_documents: BTreeSet<DocumentId>,
+    pub(super) source_diagnostics: Vec<ProjectDiagnostic>,
+    pub(super) source_documents: BTreeSet<DocumentId>,
     pub(super) schema_documents: BTreeSet<DocumentId>,
     pub(super) workspace_roots: BTreeSet<String>,
     pub(super) editor_config: Option<EditorConfiguration>,
@@ -64,6 +66,58 @@ impl ProjectState {
                 self.apply_config_change(change);
             }
         }
+    }
+
+    pub(super) fn reload_workspace_sources(&mut self) {
+        self.source_diagnostics.clear();
+        if self.package_graph.is_some() {
+            return;
+        }
+        let roots = self.config.as_ref().map_or_else(Vec::new, |config| {
+            config
+                .roots()
+                .iter()
+                .map(|root| document_uri_path(root.path()))
+                .collect()
+        });
+        match vela_package::load_workspace_sources(&roots) {
+            Ok(sources) => {
+                self.disk_sources = sources
+                    .sources()
+                    .iter()
+                    .map(|source| {
+                        let document = DocumentId::from(workspace_document_uri(
+                            &source.path,
+                            &self.workspace_roots,
+                        ));
+                        (
+                            document.clone(),
+                            SourceFileSnapshot::new(document, source.text.as_str()),
+                        )
+                    })
+                    .collect();
+                self.watched_project_changed = true;
+            }
+            Err(vela_package::PackageGraphError::Io { path, message }) => {
+                let document =
+                    DocumentId::from(workspace_document_uri(&path, &self.workspace_roots));
+                self.source_documents.insert(document.clone());
+                self.source_diagnostics.push(ProjectDiagnostic::new(
+                    Some(document),
+                    format!("{}: {message}", path.display()),
+                ));
+            }
+            Err(error) => unreachable!("source discovery only produces I/O errors: {error}"),
+        }
+    }
+
+    pub(super) fn reindex_workspace_roots(&mut self, roots: BTreeSet<String>) {
+        self.package_graph = None;
+        self.root_manifest = None;
+        self.has_config_file = false;
+        self.config_diagnostics.clear();
+        self.apply_config_change(ConfigChange::from_workspace_roots(roots));
+        self.load_initial_project();
     }
 
     #[cfg(test)]
@@ -295,6 +349,9 @@ impl ProjectState {
     }
 
     fn refresh_databases_with_config(&mut self, config: &WorkspaceConfig) {
+        if self.project_config_update_pending {
+            self.reload_workspace_sources();
+        }
         let files = self.disk_sources.values().cloned().collect::<Vec<_>>();
         let snapshot = self.workspace.snapshot();
         let project = self.package_graph.as_ref().map_or_else(

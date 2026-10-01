@@ -348,35 +348,10 @@ impl GraphBuilder {
         package: &PackageId,
         roots: &[PathBuf],
     ) -> Result<(), PackageGraphError> {
-        let mut paths = Vec::new();
-        for root in roots {
-            collect_vela_files(root, &mut paths)?;
-        }
-        paths.sort();
-        for path in paths {
-            let root = roots
-                .iter()
-                .filter(|root| path.starts_with(root))
-                .max_by_key(|root| root.components().count())
-                .expect("source has an owning root");
-            let relative = path
-                .strip_prefix(root)
-                .expect("authorized source is beneath root");
-            let module = module_path(relative).ok_or_else(|| PackageGraphError::Io {
-                path: path.clone(),
-                message: "invalid UTF-8 Vela source path".to_owned(),
-            })?;
-            let text = fs::read_to_string(&path).map_err(|error| PackageGraphError::Io {
-                path: path.clone(),
-                message: error.to_string(),
-            })?;
-            self.graph.sources.sources.push(PackageSource {
-                package: package.clone(),
-                module,
-                path,
-                text,
-            });
-        }
+        self.graph
+            .sources
+            .sources
+            .extend(read_sources(package, roots)?);
         self.graph.sources.sources.sort_by(|left, right| {
             (&left.package, &left.module, &left.path).cmp(&(
                 &right.package,
@@ -452,6 +427,53 @@ fn collect_vela_files(root: &Path, output: &mut Vec<PathBuf>) -> Result<(), Pack
     Ok(())
 }
 
+/// Read manifest-free workspace sources through the same filesystem discovery
+/// boundary as package projects. Directory symlinks are not traversed.
+pub fn load_workspace_sources(roots: &[PathBuf]) -> Result<SourceTable, PackageGraphError> {
+    Ok(SourceTable {
+        manifests: BTreeMap::new(),
+        sources: read_sources(&PackageId::anonymous(), roots)?,
+    })
+}
+
+fn read_sources(
+    package: &PackageId,
+    roots: &[PathBuf],
+) -> Result<Vec<PackageSource>, PackageGraphError> {
+    let mut paths = Vec::new();
+    for root in roots {
+        collect_vela_files(root, &mut paths)?;
+    }
+    paths.sort();
+    paths.dedup();
+    let mut sources = Vec::with_capacity(paths.len());
+    for path in paths {
+        let root = roots
+            .iter()
+            .filter(|root| path.starts_with(root))
+            .max_by_key(|root| root.components().count())
+            .expect("discovered source belongs to a source root");
+        let module =
+            module_path(path.strip_prefix(root).expect("owning root")).ok_or_else(|| {
+                PackageGraphError::Io {
+                    path: path.clone(),
+                    message: "invalid UTF-8 Vela source path".to_owned(),
+                }
+            })?;
+        let text = fs::read_to_string(&path).map_err(|error| PackageGraphError::Io {
+            path: path.clone(),
+            message: error.to_string(),
+        })?;
+        sources.push(PackageSource {
+            package: package.clone(),
+            module,
+            path,
+            text,
+        });
+    }
+    Ok(sources)
+}
+
 fn module_path(relative: &Path) -> Option<ModulePath> {
     let mut segments = relative
         .parent()
@@ -486,6 +508,82 @@ mod tests {
             fs::create_dir_all(parent).expect("create parent");
         }
         fs::write(path, text).expect("write fixture");
+    }
+
+    #[test]
+    fn workspace_discovery_deduplicates_overlapping_roots_and_reports_io_owners() {
+        let root = fixture("workspace_中");
+        write(&root.join("left/a.vela"), "pub fn a() {}\n");
+        write(&root.join("left/nested/b.vela"), "pub fn b() {}\n");
+        write(&root.join("right/c.vela"), "pub fn c() {}\n");
+        write(&root.join("left/ignored.txt"), "ignored");
+        let roots = [
+            root.join("right"),
+            root.join("left"),
+            root.join("left/nested"),
+            root.join("left"),
+            root.join("absent"),
+        ];
+        let sources = load_workspace_sources(&roots).expect("workspace sources");
+        assert!(sources.manifests.is_empty());
+        assert_eq!(
+            sources
+                .sources()
+                .iter()
+                .map(|source| (
+                    source.package.clone(),
+                    source.module.join(),
+                    source.path.clone(),
+                    source.text.as_str()
+                ))
+                .collect::<Vec<_>>(),
+            vec![
+                (
+                    PackageId::anonymous(),
+                    "a".to_owned(),
+                    root.join("left/a.vela"),
+                    "pub fn a() {}\n"
+                ),
+                (
+                    PackageId::anonymous(),
+                    "b".to_owned(),
+                    root.join("left/nested/b.vela"),
+                    "pub fn b() {}\n"
+                ),
+                (
+                    PackageId::anonymous(),
+                    "c".to_owned(),
+                    root.join("right/c.vela"),
+                    "pub fn c() {}\n"
+                )
+            ]
+        );
+        let path = root.join("left/a.vela");
+        let message = fs::read_dir(&path)
+            .expect_err("file is not directory")
+            .to_string();
+        assert_eq!(
+            load_workspace_sources(&[root.join("right"), path.clone()])
+                .expect_err("atomic discovery failure"),
+            PackageGraphError::Io { path, message }
+        );
+        let canonical = fs::canonicalize(&root).expect("owned root");
+        assert_eq!(
+            canonical.parent(),
+            Some(
+                fs::canonicalize(std::env::temp_dir())
+                    .expect("temporary parent")
+                    .as_path()
+            )
+        );
+        assert!(
+            canonical
+                .file_name()
+                .expect("fixture name")
+                .to_string_lossy()
+                .starts_with("vela_package_workspace_")
+        );
+        fs::remove_dir_all(canonical).expect("remove owned fixture");
     }
 
     #[test]

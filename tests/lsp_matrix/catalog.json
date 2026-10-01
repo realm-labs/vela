@@ -16539,6 +16539,292 @@
           "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
         }
       ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_root_forms_reindex_exact_disk_modules_keep_overlays_and_match_fresh"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_manifest_authority_persists_until_delete_then_editor_roots_and_schema_apply"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_invalid_settings_report_complete_error_and_preserve_current_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_source_io_errors_have_real_owners_clear_on_repair_and_keep_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_schema_switch_invalid_missing_disable_and_restore_pin_complete_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_manifest_authority_persists_until_delete_then_editor_roots_and_schema_apply"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_schema_switch_invalid_missing_disable_and_restore_pin_complete_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_invalid_settings_report_complete_error_and_preserve_current_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_root_forms_reindex_exact_disk_modules_keep_overlays_and_match_fresh"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_manifest_authority_persists_until_delete_then_editor_roots_and_schema_apply"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_root_forms_reindex_exact_disk_modules_keep_overlays_and_match_fresh"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_invalid_settings_report_complete_error_and_preserve_current_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_source_io_errors_have_real_owners_clear_on_repair_and_keep_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-change/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_root_forms_reindex_exact_disk_modules_keep_overlays_and_match_fresh"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::configuration::configuration_invalid_settings_report_complete_error_and_preserve_current_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_addition_discovers_existing_disk_sources_without_synthetic_watch_events"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_malformed_and_membership_noop_batches_preserve_exact_current_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_package_removal_drops_old_graph_and_schema_then_readd_restores_them"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_package_removal_drops_old_graph_and_schema_then_readd_restores_them"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_malformed_and_membership_noop_batches_preserve_exact_current_state"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_package_removal_drops_old_graph_and_schema_then_readd_restores_them"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_malformed_and_membership_noop_batches_preserve_exact_current_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::tasks::workspace_mutations_reject_old_workers_before_and_after_completion"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::tasks::workspace_membership_noop_preserves_held_reference_results"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::tasks::workspace_mutations_preserve_typed_cancellation_priority_and_new_queries"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-folders/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::folders::workspace_folder_remove_readd_preserves_dirty_sources_and_pins_cross_root_binding_loss"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-request/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::conditional_configuration_absence_and_unsolicited_responses_preserve_defaults"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-request/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::conditional_configuration_absence_and_unsolicited_responses_preserve_defaults"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::configuration_notifications_and_responses_obey_session_boundaries"
+        }
+      ]
+    },
+    {
+      "requirement": "configuration-request/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/workspace-configuration.md. Independent LF/CRLF Unicode marked disk and dirty overlay sources, literal UTF-16 goldens and schema facts. Entire diagnostic URI sets and complete diagnostic/error/hover/location responses; root precedence, add/remove/readd, manifest ownership and schema switch/invalid/missing/disable/restore. Immutable snapshots, overlay text/version and fresh-server equivalence. Atomic malformed settings/folders, no-op membership and session boundaries preserve current facts. Source I/O errors use real owners, merge once and clear after repair. Held real references workers enforce stale results and typed cancellation priority; no-op roots preserve complete reference results. Three capability profiles plus exact initialization proof. No workspace/configuration pull is implemented: absent/unexpected/error responses cannot change defaults; unsupported requests return MethodNotFound. Existing two positive conditional N/A entries remain unchanged. Installed UX17/UX21 remain open; each platform needs separate fresh captures.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_configuration_matrix::conditional::conditional_configuration_absence_and_unsolicited_responses_preserve_defaults"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        }
+      ]
     }
   ],
   "featureFiles": [

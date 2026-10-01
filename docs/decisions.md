@@ -5189,3 +5189,23 @@ names still take precedence over short stdlib fallback, and actual source
 declarations/modules, local shadows and private source owners remain authoritative.
 The hover S10 matrix checks conflicting source-backed registry facts, aliases,
 lexical scopes and physical definitions with and without schema.
+
+## Explicit LSP root refreshes discover disk sources and retain diagnostic owners
+
+Editor configuration and workspace-folder changes refresh disk sources at the
+project configuration commit boundary through vela_package's existing walker.
+A valid manifest owns roots and schema until its removal. Removing a folder
+reindexes package ownership; open overlays retain exact text/version, and old
+snapshots remain immutable. Manifest-free roots deduplicate discovery and choose
+the most specific root. Directory symlinks are not traversed. Ordinary document
+edits do not rescan the filesystem after pending configuration work is consumed.
+
+Invalid didChangeConfiguration settings have no document identity and report
+through standard window/logMessage with ERROR type while retaining valid state.
+Source I/O errors have the actual encoded file/directory URI, tracked for later
+clearing. Open source and metadata diagnostics share one publication per URI;
+closed metadata owners receive only metadata diagnostics, including empty clears.
+This preserves schema-warning ownership and prevents an error clear overwriting
+valid source diagnostics. No workspace/configuration pull is added: unsolicited
+responses cannot change defaults, and its two positive conditional exemptions
+remain unchanged. Net-no-op folder membership preserves held worker generations.

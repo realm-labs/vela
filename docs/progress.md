@@ -31,14 +31,21 @@ Server-stop/reload and invalid-path lifecycle routes now check bounded real
 request failure, visible errors, no automatic restart and exact unsaved-source
 recovery in an ordinary installed workbench; see the
 [lifecycle review](../tests/lsp_matrix/reviews/lifecycle-workbench.md).
-The execution checkpoint records B08 acceptance and B09.1 watched-file
+The execution checkpoint records B08 acceptance and B09 watched-file
 coverage. Independent source/schema/manifest fixtures now check exact current
 locations, complete diagnostic publications, dirty overlay ownership, immutable
 snapshots, fresh-server equivalence and stale/cancelled worker results. Invalid
 event types are rejected before any batch mutation; completed refreshes consume
 pending reload flags so no-op notifications preserve the current generation.
-Configuration, workspace-folder and installed workspace/trust B09 proofs remain
-open; see the [watch review](../tests/lsp_matrix/reviews/watched-files.md).
+Configuration/workspace-folder protocol coverage now pins root discovery and
+precedence, exact dirty overlays, manifest ownership, schema switches and clears,
+real stale/cancelled workers and conditional configuration fallback. Invalid
+settings emit standard error logs; discovery errors use real URI owners and
+merge into one diagnostic publication. See the
+[watch review](../tests/lsp_matrix/reviews/watched-files.md) and
+[configuration review](../tests/lsp_matrix/reviews/workspace-configuration.md).
+Installed workspace/trust B09 proofs remain open; the checkpoint records the
+current verified child and next task.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

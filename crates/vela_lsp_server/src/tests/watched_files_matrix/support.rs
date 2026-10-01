@@ -24,7 +24,7 @@ pub(super) fn variant(spec: &Spec, name: &str) -> Document {
         spec.files["vela.toml"].contains("\r\n"),
     )
 }
-pub(super) fn watch(
+pub(crate) fn watch(
     server: &mut TestServer,
     layout: &Layout,
     events: &[(&str, i32)],
@@ -68,14 +68,14 @@ pub(super) fn source_error(spec: &Spec, document: &Document, uri: &str, kind: &s
         "data":{"labels":[{"uri":uri,"range":range,"message":oracle["label"]}],"candidates":[],"repairHints":[]}}),
     ]
 }
-pub(super) fn metadata_error(code: &str, message: &str) -> Vec<Value> {
+pub(crate) fn metadata_error(code: &str, message: &str) -> Vec<Value> {
     vec![
         json!({"code":code,"message":message,"severity":1,"source":"vela",
         "range":{"start":{"line":0,"character":0},"end":{"line":0,"character":0}},
         "data":{"labels":[],"candidates":[],"repairHints":[]}}),
     ]
 }
-pub(super) fn publications(
+pub(crate) fn publications(
     messages: &[Value],
     expected: Vec<(String, Vec<Value>)>,
     progress: bool,
@@ -115,7 +115,7 @@ pub(super) fn publications(
     };
     assert_eq!(extras, expected_progress);
 }
-pub(super) fn has_progress(profile: &Value) -> bool {
+pub(crate) fn has_progress(profile: &Value) -> bool {
     profile["window"]["workDoneProgress"] == true
 }
 pub(super) fn close(server: &mut TestServer, uri: &str) -> Vec<Value> {

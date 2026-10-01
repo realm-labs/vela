@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
+mod configuration;
 mod diagnostics;
 mod documents;
 mod project_state;
@@ -14,21 +15,20 @@ use crossbeam_channel::Sender;
 use lsp_server::{Message, RequestId};
 use lsp_types::{
     CallHierarchyIncomingCallsParams, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
-    CodeActionParams, CompletionParams, DidChangeConfigurationParams, DidChangeTextDocumentParams,
-    DidChangeWorkspaceFoldersParams, DidCloseTextDocumentParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, DocumentHighlightParams, DocumentOnTypeFormattingParams,
-    DocumentRangeFormattingParams, DocumentSymbolParams, FoldingRangeParams, HoverParams,
-    InlayHintParams, ReferenceParams, SelectionRangeParams, SemanticTokensDeltaParams,
-    SemanticTokensParams, SemanticTokensRangeParams, SignatureHelpParams,
-    TextDocumentPositionParams, WorkspaceSymbolParams,
+    CodeActionParams, CompletionParams, DidChangeTextDocumentParams, DidCloseTextDocumentParams,
+    DidOpenTextDocumentParams, DocumentFormattingParams, DocumentHighlightParams,
+    DocumentOnTypeFormattingParams, DocumentRangeFormattingParams, DocumentSymbolParams,
+    FoldingRangeParams, HoverParams, InlayHintParams, ReferenceParams, SelectionRangeParams,
+    SemanticTokensDeltaParams, SemanticTokensParams, SemanticTokensRangeParams,
+    SignatureHelpParams, TextDocumentPositionParams, WorkspaceSymbolParams,
 };
 use vela_language_service::{
     DocumentId, GenerationToken, LanguageServiceDatabases, WorkspaceConfig, WorkspaceGeneration,
-    WorkspaceRoot, WorkspaceSnapshot,
+    WorkspaceSnapshot,
 };
 
 use self::{
-    diagnostics::{publish_diagnostics_notification, with_work_done_progress},
+    diagnostics::with_work_done_progress,
     documents::{apply_document_changes, snapshot_document_text},
     project_state::ProjectState,
     request_queue::RequestQueue,
@@ -1004,48 +1004,6 @@ impl GlobalState {
         Vec::new()
     }
 
-    pub(crate) fn did_change_configuration(
-        &mut self,
-        params: DidChangeConfigurationParams,
-    ) -> Vec<Message> {
-        let editor_config = match EditorConfiguration::from_settings(params.settings) {
-            Ok(config) => config,
-            Err(error) => {
-                return vec![publish_diagnostics_notification(
-                    "",
-                    Vec::new(),
-                    Some(format!("invalid didChangeConfiguration settings: {error}")),
-                )];
-            }
-        };
-
-        self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
-        self.project.refresh_databases();
-        self.project.publish_open_diagnostics()
-    }
-
-    pub(crate) fn did_change_workspace_folders(
-        &mut self,
-        params: DidChangeWorkspaceFoldersParams,
-    ) -> Vec<Message> {
-        let mut workspace_roots = self.project.workspace_roots.clone();
-        for folder in params.event.removed {
-            let root = WorkspaceRoot::from(folder.uri.to_string());
-            workspace_roots.remove(root.path());
-        }
-        for folder in params.event.added {
-            let root = WorkspaceRoot::from(folder.uri.to_string());
-            workspace_roots.insert(root.path().to_owned());
-        }
-        self.reload_scheduler
-            .schedule_workspace_roots(workspace_roots);
-        for work in self.reload_scheduler.drain() {
-            self.apply_reload_work(work);
-        }
-        self.project.refresh_databases();
-        self.publish_workspace_diagnostics()
-    }
-
     pub(crate) fn did_open(&mut self, params: DidOpenTextDocumentParams) -> Vec<Message> {
         let uri = params.text_document.uri.to_string();
         let document_id = DocumentId::from(uri.clone());
@@ -1156,7 +1114,7 @@ impl GlobalState {
                 }
             }
             ReloadWork::WorkspaceRoots { roots, .. } => {
-                self.apply_config_change(ConfigChange::from_workspace_roots(roots));
+                self.project.reindex_workspace_roots(roots);
             }
         }
     }

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "workspace-configuration",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.workspace_matrix\"\nname=\"workspace_matrix\"\nversion=\"0.1.0\"\n[source]\nroots=[\"roots/left\"]\n[host]\nschema=\"schema-one.json\"\n",
+    "roots/left/alpha.vela": "/* 中😀 */ pub fn [[decl:start]]alpha[[decl:end]]() -> i64 { return 1; }\n",
+    "roots/left/caller.vela": "[[import:start]]use alpha::alpha;[[import:end]]\nfn left_main() { /* 中😀 */ [[call:start]]alpha[[call:end]](); }\n",
+    "roots/left/cross.vela": "[[import-alpha:start]]use alpha::alpha;[[import-alpha:end]]\n[[import-beta:start]]use beta::beta;[[import-beta:end]]\nfn cross_main() { /* 中😀 */ [[alpha:start]]alpha[[alpha:end]](); [[beta:start]]beta[[beta:end]](); }\n",
+    "roots/left/schema_caller.vela": "fn schema_main(host: HostCell) {\n  /* 中😀 */ host.[[value:start]]value[[value:end]]; host.[[gone:start]]gone[[gone:end]]; host.[[rank:start]]rank[[rank:end]];\n}\n",
+    "roots/right/beta.vela": "// independent root\n// independent location\npub fn [[decl:start]]beta[[decl:end]]() -> i64 { return 2; }\n",
+    "roots/right/other_caller.vela": "[[import:start]]use beta::beta;[[import:end]]\nfn right_main() { /* 中😀 */ [[call:start]]beta[[call:end]](); }\n",
+    "schema-one.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "schema-two.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "schema-invalid.json": "{\"formatVersion\":99,\"facts\":{}}",
+    "schema-missing.json": "{}"
+  },
+  "actions": [],
+  "oracle": {
+    "missingDisk": ["schema-missing.json"],
+    "importNameRange": {"start":{"line":0,"character":11},"end":{"line":0,"character":16}},
+    "overlay": "// unsaved authority\n/* 中😀 */ pub fn [[decl:start]]alpha[[decl:end]]() -> i64 { return 33; }\n",
+    "missingModule": {"code":"hir::unresolved_module","message":"unresolved module `{MODULE}`","label":"no similar modules found"},
+    "fallbackModuleLabel": "did you mean module `roots::left::alpha`?",
+    "fieldErrors": {
+      "schema-one.json": {"field":"rank","candidates":["gone","value"]},
+      "schema-two.json": {"field":"gone","candidates":["rank","value"]}
+    },
+    "invalidSettings": [
+      {"settings":null,"error":"invalid type: null, expected struct EditorConfiguration"},
+      {"settings":[],"error":"invalid length 0, expected struct EditorConfiguration with 4 elements"},
+      {"settings":{"workspace":{"roots":7}},"error":"invalid type: integer `7`, expected a sequence"},
+      {"settings":{"workspaceRoots":[7]},"error":"invalid type: integer `7`, expected a string"},
+      {"settings":{"host":{"schema":false}},"error":"invalid type: boolean `false`, expected a string"},
+      {"settings":{"vela":{"hostSchema":7}},"error":"invalid type: integer `7`, expected a string"}
+    ],
+    "schemaStates": [
+      {"path":"schema-one.json","fields":{"value":"i64","gone":"bool","rank":null},"error":null},
+      {"path":"schema-two.json","fields":{"value":"String","gone":null,"rank":"bool"},"error":null},
+      {"path":"schema-invalid.json","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 1; host facts degrade to Any"},
+      {"path":"schema-missing.json","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is unavailable; host facts degrade to Any"},
+      {"path":"","fields":{"value":null,"gone":null,"rank":null},"error":null},
+      {"path":"schema-one.json","fields":{"value":"i64","gone":"bool","rank":null},"error":null}
+    ]
+  }
+}

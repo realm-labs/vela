@@ -7994,10 +7994,36 @@
         "watched-files/environments/client_capabilities/protocol"
       ],
       "summary": "Close all eleven watched-files protocol obligations under reviews/watched-files.md. Independent LF/CRLF Unicode marked disk/overlay/dependency and alternate-root/schema fixtures, literal UTF-16/config-byte goldens, entire diagnostic URI sets and complete wire facts. Create/change/delete/rename/coalesced batches, missing-import repair, dirty overlay authority through disk deletion/replacement and close, immutable snapshots and fresh-server equivalence. Manifest switches roots, invalid preserves last valid graph, repair/delete/recreate; seven schema states pin exact metadata diagnostics and hover/null locations. Real held references workers before/after completion reject stale publication; typed cancellation takes priority without poisoning current queries. Three capability profiles plus exact reused initialization/watcher registration. Independent failures expose unknown numeric event types treated as updates and an initial reload flag surviving refresh. Validate all types before scheduling any mixed batch; consume pending flags after every completed refresh; invalid/no-op events preserve exact source/version/generation and current navigation. Retain failure artifacts and expectations. Baseline 11, focused 9, existing watches 11 and capability 1, Node 111, fmt, workspace Clippy, workspace 4791+2 historical ignores. Fresh Windows VSIX 20/native 42 share frozen source/server; strict B08 service 746+2 ignores/protocol 770/stdio ten. Preserve nine accepted B00-B08 snapshots and prior children. Catalog 851 verified/474 unreviewed/2 N/A/zero failed; B09 eleven verified/two N/A/35 open. Next B09.2 configuration-change, workspace-folders and conditional configuration-request before installed UX17/UX21. macOS fresh proofs separate; B16 deferred. VSIX editors/vscode/test-results/run-GQi7Cf/results.json; input editors/vscode/test-results/input-2U1eLp/results.json; audit target/lsp-matrix/run-VXTV8d/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B09.2",
+      "revision": null,
+      "requirements": [
+        "configuration-change/syntax/S0/positive/protocol",
+        "configuration-change/syntax/S0/negative/protocol",
+        "configuration-change/syntax/S9/positive/protocol",
+        "configuration-change/syntax/S9/negative/protocol",
+        "configuration-change/syntax/S11/positive/protocol",
+        "configuration-change/syntax/S11/negative/protocol",
+        "configuration-change/environments/client_capabilities/protocol",
+        "workspace-folders/syntax/S0/positive/protocol",
+        "workspace-folders/syntax/S0/negative/protocol",
+        "workspace-folders/syntax/S8/positive/protocol",
+        "workspace-folders/syntax/S8/negative/protocol",
+        "workspace-folders/syntax/S11/positive/protocol",
+        "workspace-folders/syntax/S11/negative/protocol",
+        "workspace-folders/states/stale_version/protocol",
+        "workspace-folders/states/cancellation/protocol",
+        "workspace-folders/environments/client_capabilities/protocol",
+        "configuration-request/syntax/S0/negative/protocol",
+        "configuration-request/syntax/S11/negative/protocol",
+        "configuration-request/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close nineteen configuration-change/workspace-folders/conditional configuration-request protocol obligations under reviews/workspace-configuration.md. Independent LF/CRLF Unicode disk and dirty overlay markers, literal UTF-16/import and schema goldens; entire diagnostic URI sets and complete error/diagnostic/hover/location responses. Root discovery and precedence, cross-root add/remove/readd, package graph/schema ownership, manifest authority until deletion, schema switch/invalid/missing/disable/restore, exact overlay text/version, immutable snapshots and fresh-server equivalence. Real references workers before/after completion reject stale publication; typed cancellation takes priority and no-op membership preserves the complete authored reference set. Three capability profiles, session boundaries and absent/unsolicited/error configuration responses retain exact defaults; two positive conditional N/A entries unchanged. Independent failures expose empty diagnostic URI for invalid settings and missing disk discovery. Invalid settings now use standard ERROR window/logMessage; explicit root/config refreshes reuse package source discovery without per-edit scans. A further authored I/O case exposes unowned errors; real owners merge once and clear after repair. Retain pre-fix and fixture-authoring logs. Baselines lifecycle26/folders1/schema4; focused14; watched9/existing watch11/schema4/lifecycle26/folder1/capability1; package16; Node112; fmt; workspace Clippy; workspace4806+2 historical ignores. Fresh Windows VSIX20/native42 share frozen source/server; strict B08 service746+2 ignores/protocol784/stdio10. Preserve nine accepted B00-B08 snapshots and prior children. Catalog870 verified/455 unreviewed/2 N/A/zero failed; B09 thirty verified/two N/A/16 open. Next B09.3 installed UX17 workspace before UX21 trust. macOS fresh proof separate; B16 deferred. VSIX editors/vscode/test-results/run-hmik0s/results.json; input editors/vscode/test-results/input-IObtKT/results.json; audit target/lsp-matrix/run-DeFN1M/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B09.2",
+  "nextTask": "B09.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10085,7 +10111,10 @@
     "editors/vscode/test-results/input-pxTU7o/results.json",
     "editors/vscode/test-results/run-GQi7Cf/results.json",
     "editors/vscode/test-results/input-2U1eLp/results.json",
-    "target/lsp-matrix/run-VXTV8d/report.json"
+    "target/lsp-matrix/run-VXTV8d/report.json",
+    "editors/vscode/test-results/run-hmik0s/results.json",
+    "editors/vscode/test-results/input-IObtKT/results.json",
+    "target/lsp-matrix/run-DeFN1M/report.json"
   ],
   "openIssues": [
     {

@@ -240,4 +240,5 @@ mod shared_fixture;
 mod signature;
 mod symbols;
 mod watched_files_matrix;
+mod workspace_configuration_matrix;
 mod workspace_folders;

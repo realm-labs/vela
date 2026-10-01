@@ -40,8 +40,22 @@ impl ProjectState {
             }));
         }
 
-        notifications.extend(self.config_diagnostic_notifications());
-        notifications.extend(self.schema_diagnostic_notifications());
+        // Metadata errors may belong to an open source or share an owner.
+        // Publish each URI once with all its current facts, including clears.
+        let metadata_documents = self
+            .config_documents
+            .iter()
+            .chain(&self.schema_documents)
+            .chain(&self.source_documents)
+            .filter(|document| !self.open_documents.contains(*document))
+            .collect::<std::collections::BTreeSet<_>>();
+        notifications.extend(metadata_documents.into_iter().map(|document| {
+            publish_diagnostics_notification(
+                document.as_str(),
+                self.metadata_diagnostics(document),
+                None,
+            )
+        }));
         notifications
     }
 
@@ -59,7 +73,22 @@ impl ProjectState {
             &self.analysis_diagnostics,
             document_id,
         ));
+        diagnostics.extend(self.metadata_diagnostics(document_id));
         publish_diagnostics_notification(uri, diagnostics, None)
+    }
+
+    fn metadata_diagnostics(&self, document_id: &DocumentId) -> Vec<lsp_types::Diagnostic> {
+        let mut diagnostics = to_proto::project_diagnostics(&self.config_diagnostics, document_id);
+        diagnostics.extend(to_proto::project_diagnostics(
+            &self.source_diagnostics,
+            document_id,
+        ));
+        if self.schema_path().map(document_path_uri).as_deref() == Some(document_id.as_str()) {
+            diagnostics.extend(to_proto::schema_diagnostics(
+                self.databases.schema_db().diagnostics(),
+            ));
+        }
+        diagnostics
     }
 
     pub(super) fn publish_document_sync_error(
@@ -79,38 +108,6 @@ impl ProjectState {
             .expect("typed diagnostic params")
             .insert("error".to_owned(), JsonValue::String(error));
         message
-    }
-
-    fn config_diagnostic_notifications(&self) -> Vec<Message> {
-        self.config_documents
-            .iter()
-            .map(|document_id| {
-                publish_diagnostics_notification(
-                    document_id.as_str(),
-                    to_proto::project_diagnostics(&self.config_diagnostics, document_id),
-                    None,
-                )
-            })
-            .collect()
-    }
-
-    fn schema_diagnostic_notifications(&self) -> Vec<Message> {
-        let diagnostics = to_proto::schema_diagnostics(self.databases.schema_db().diagnostics());
-        let active_document = self
-            .schema_path()
-            .map(document_path_uri)
-            .map(DocumentId::from);
-        self.schema_documents
-            .iter()
-            .map(|document_id| {
-                let diagnostics = if active_document.as_ref() == Some(document_id) {
-                    diagnostics.clone()
-                } else {
-                    Vec::new()
-                };
-                publish_diagnostics_notification(document_id.as_str(), diagnostics, None)
-            })
-            .collect()
     }
 }
 
