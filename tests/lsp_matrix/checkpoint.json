@@ -7507,10 +7507,34 @@
         "shutdown-exit/environments/client_capabilities/protocol"
       ],
       "summary": "Close thirteen initialize/initialized/shutdown-exit protocol obligations under reviews/session-initialization.md. Independent session-init authors complete capability/result options, 42 custom token types, 16 modifiers and five client/launch profiles: omitted, standard, explicit empty, custom reordered/duplicate/unsupported names and watching disabled. Exact registration request and at-most-once supported/enabled policy; repeated/invalid initialized cannot unlock or register. Duplicate rootUri/workspace folders select the original owned package. Each fresh encoded Chinese/space/percent root loads both unopened modules and returns exact marked cross-module Markdown/range; repeated initialize cannot replace source facts, roots or generation. Eight malformed initialization shapes preserve lifecycle flags, SourceDb and generation and recover after valid initialization; exact response fields/codes and controlled serde error prefixes. Two shutdown branches reject malformed request params, ignore shutdown notifications, return null for proper request, reject later requests before dispatch, ignore malformed exit, and enforce existing silent-exit/invalid-exit-request terminal policy. Two real production main loops enqueue all seven messages before startup, end within five seconds and match complete outputs; queued post-exit requests and invalid-source notifications do not run. Immutable full fixture bytes and guarded owned cleanup. Exposed and fixed canonical Windows drive/UNC verbatim prefixes entering malformed watcher file URIs and losing percent encoding. Normalize these prefixes only for standard URI output; preserve ordinary Unix path bytes and literal backslash filenames. Independent ordinary/verbatim drive/UNC, Unicode/space/percent, URL/no-query/no-fragment and filesystem conversion cases. Native readiness observes completed mutations and a 750ms quiet window before the one references shortcut; actual response output is required for unknown hover/signature absence. Five independent Node regressions cover pending/late mutations, wrong acknowledgements, trace writes and stale/empty responses. No sync/cancellation/framed-process/UX01/UX18 closure. Focused session four, URI one plus supplementary path regression five; Node 99, fmt, workspace Clippy and workspace 4751 pass with two historical ignores. Fresh Windows VSIX 20/native 38 share current frozen source/server identity. Strict B07 service 739 with two historical ignores/protocol 746; original B00-B07 acceptance snapshots unchanged. Catalog 780 verified, 545 unreviewed, two N/A, zero failed; B08 13/83. Continue B08.2; macOS requires independent fresh proof; B16 deferred. VSIX editors/vscode/test-results/run-gex2X1/results.json; input editors/vscode/test-results/input-PrY3AZ/results.json; audit target/lsp-matrix/run-beyC7R/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.2",
+      "revision": null,
+      "requirements": [
+        "did-open/syntax/S0/positive/service",
+        "did-open/syntax/S0/positive/protocol",
+        "did-open/syntax/S0/negative/service",
+        "did-open/syntax/S0/negative/protocol",
+        "did-open/syntax/S1/positive/service",
+        "did-open/syntax/S1/positive/protocol",
+        "did-open/syntax/S1/negative/service",
+        "did-open/syntax/S1/negative/protocol",
+        "did-open/syntax/S9/positive/service",
+        "did-open/syntax/S9/positive/protocol",
+        "did-open/syntax/S9/negative/service",
+        "did-open/syntax/S9/negative/protocol",
+        "did-open/syntax/S11/positive/service",
+        "did-open/syntax/S11/positive/protocol",
+        "did-open/syntax/S11/negative/service",
+        "did-open/syntax/S11/negative/protocol",
+        "did-open/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close seventeen did-open obligations under reviews/document-open.md. Fifteen independently marked documents cover every S1 declaration family, duplicates and state/removed-global errors, empty/comment-only source, absent scratch, unrelated non-source input, incomplete member/call/type/declaration and an imported API. Both layers run LF/CRLF, original/prefixed complete source and signed versions 0/-1/i32::MAX/i32::MIN. Exact buffer/SourceDb text and opaque version ownership, generations, diagnostic code/severity/message/full UTF-16 range/labels/ordered candidates/repair count; immutable old snapshots, repeated current facts and fresh equivalence. Non-Vela buffers retain workspace text without analysis input; all guarded owned disk bytes remain unchanged and scratch/text stay absent. Defining-module disk/body/parameter-doc opening phases preserve or replace importer Markdown/range; signature change republishes current importer diagnostics. Service rejects stale diagnostic generation; real scheduler holds completed references tasks across didOpen and publishes only exact ContentModified, followed by valid repeated current hover. Three client capability profiles, full sync options and seven malformed payloads preserve current ownership. Exposed and fixed ordinary notifications mutating/publishing before initialize and after shutdown. Enforce existing pre-init method policy and permit exit/cancel after shutdown; source/change/close/save/config/root/watch invalid-session notifications remain silent and cannot mutate. Focused service two/protocol three; Node 99, fmt, workspace Clippy and workspace 4756 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server identity. Strict B07 service 741 with two historical ignores/protocol 749; original accepted B00-B07 and prior children unchanged. Catalog 797 verified, 528 unreviewed, two N/A, zero failed; B08 30/83. Next B08.3; remaining change/close/save/cancellation/process/editor lifecycle, independent macOS proof and deferred B16. VSIX editors/vscode/test-results/run-oVXVb6/results.json; input editors/vscode/test-results/input-EmD2zR/results.json; audit target/lsp-matrix/run-145pd4/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08.2",
+  "nextTask": "B08.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9660,7 +9684,10 @@
     "editors/vscode/test-results/input-5th3fM/results.json",
     "target/lsp-matrix/run-beyC7R/report.json",
     "editors/vscode/test-results/run-gex2X1/results.json",
-    "editors/vscode/test-results/input-PrY3AZ/results.json"
+    "editors/vscode/test-results/input-PrY3AZ/results.json",
+    "target/lsp-matrix/run-145pd4/report.json",
+    "editors/vscode/test-results/run-oVXVb6/results.json",
+    "editors/vscode/test-results/input-EmD2zR/results.json"
   ],
   "openIssues": [
     {
@@ -13062,8 +13089,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9d62d3ed75106748a0962f7b090a9addcfcd26ae",
-          "treeSha256": "1156932a028b5122c2f6261ca003532adcc6990b85da79f310df0f89f0e329c3"
+          "revision": "7df884399445c76ec09146baf6e9d96cabf1d968",
+          "treeSha256": "331b0631e341ed56db0d554210c87c14c2f794e971b1f0b5246ce7133a42b5b4"
         },
         "profile": {
           "platform": "win32",
@@ -13071,11 +13098,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-beyC7R/report.json"
+          "target/lsp-matrix/run-145pd4/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-gex2X1/results.json --local-results editors/vscode/test-results/input-PrY3AZ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-oVXVb6/results.json --local-results editors/vscode/test-results/input-EmD2zR/results.json",
             "exitCode": 0
           }
         ]

@@ -25,6 +25,10 @@ Initialization coverage now checks complete capability projection, conditional
 registration, invalid/repeated requests and bounded real main-loop termination;
 canonical Windows roots produce properly encoded watcher URIs. Source-sync,
 cancellation and process/editor lifecycle coverage remain open in B08.
+Open-document coverage now checks complete source/version ownership, marked
+diagnostic facts, recovery, immutable snapshots and stale worker publication.
+Ordinary notifications cannot mutate workspace state before initialization or
+after shutdown; change/close/save and cancellation coverage remain open.
 Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)

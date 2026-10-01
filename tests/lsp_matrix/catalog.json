@@ -15297,6 +15297,280 @@
           "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
         }
       ]
+    },
+    {
+      "requirement": "did-open/syntax/S0/positive/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S0/negative/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_matrix_preserves_exact_sources_versions_diagnostics_and_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
+    },
+    {
+      "requirement": "did-open/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/document-open.md. Fifteen independently authored documents cover every S1 declaration family, duplicate/state/legacy errors, empty/comment-only source, absent scratch and non-source input, four recovery contexts and imported API. LF/CRLF, original/prefixed complete source and signed version bit patterns yield exact current buffer/SourceDb ownership, generations, full marked diagnostic code/severity/message/range/labels/ordered candidates/repair count, immutable old snapshots and fresh equivalence. Body/signature/doc opening phases preserve or replace importer facts; stale service diagnostics are rejected, and the real scheduler cannot publish held old references tasks after an opening. Three client profiles, invalid notification shapes, initialization/shutdown source/config/root/watch boundaries and unchanged guarded physical inputs. No change/close/save/cancellation/process/editor lifecycle closure.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_matrix_preserves_complete_source_and_diagnostics_across_client_profiles"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_dependency_changes_republish_current_importer_and_preserve_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -135,6 +135,12 @@ fn dispatch_notification(
     global_state: &mut GlobalState,
     notification: Notification,
 ) -> Vec<Message> {
+    if (!global_state.is_initialized() && !is_pre_initialize_method(&notification.method))
+        || (global_state.is_shutdown_requested()
+            && !matches!(notification.method.as_str(), "exit" | "$/cancelRequest"))
+    {
+        return Vec::new();
+    }
     let mut dispatcher = NotificationDispatcher::new(global_state, notification);
     dispatcher
         .on_sync_mut_typed::<Initialized>(GlobalState::initialized)

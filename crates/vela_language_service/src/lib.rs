@@ -122,3 +122,6 @@ mod matrix_fixture;
 
 #[cfg(test)]
 mod shared_fixture_tests;
+
+#[cfg(test)]
+mod document_open_tests;

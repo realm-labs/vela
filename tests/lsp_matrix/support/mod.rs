@@ -5,6 +5,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod document_open;
 mod schema;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
 pub(crate) mod hover_recovery;
