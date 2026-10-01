@@ -14,6 +14,7 @@ const { sourceIdentity } = require("./source-identity");
 const { runInfrastructure, assessInfrastructure } = require("./infrastructure");
 const { capabilities } = require("./stdio");
 const { provenance } = require("./provenance");
+const { suites, appendSuite } = require("./rust-suites");
 const { createAuditDirectory, writeReports } = require("./audit-files");
 
 const root = path.resolve(__dirname, "../..");
@@ -114,16 +115,16 @@ async function main() {
   const available = {};
   const results = {};
   let failed = infrastructure.failed;
-  for (const [layer, crate] of Object.entries({ service: "vela_language_service", protocol: "vela_lsp_server" })) {
-    const listed = cargo(["test", "-p", crate, "--lib", "--", "--list"], `${layer}-list.log`);
-    if (listed.status !== 0) throw new Error(`${crate} test discovery failed; see ${output}`);
-    available[layer] = model.testNames(listed.stdout);
-    if (!available[layer].length) throw new Error(`${crate}: no tests discovered`);
+  for (const suite of suites) {
+    const { crate, log, target } = suite;
+    const listed = cargo(["test", "-p", crate, ...target, "--", "--list"], `${log}-list.log`);
+    if (listed.status !== 0) throw new Error(`${crate} ${log} test discovery failed; see ${output}`);
+    let executed;
     if (args.includes("--run")) {
-      const executed = cargo(["test", "-p", crate, "--lib", "--", "--color", "never"], `${layer}-run.log`);
-      results[layer] = model.testResults(executed.stdout);
+      executed = cargo(["test", "-p", crate, ...target, "--", "--color", "never"], `${log}-run.log`);
       failed ||= executed.status !== 0;
     }
+    appendSuite(suite, listed.stdout, executed?.stdout, available, results);
   }
   available.editor = [...read("editors/vscode/test/suite.js").matchAll(/await check\("([^"]+)"/g)].map((match) => match[1]);
   const built = cargo(["build", "-p", "vela_lsp_server"], "build.log");

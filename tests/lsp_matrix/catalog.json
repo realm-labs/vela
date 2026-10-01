@@ -16241,6 +16241,162 @@
           "name": "tests::document_close_matrix::document_save_ignores_optional_poison_text_and_keeps_open_closed_and_unknown_document_facts"
         }
       ]
+    },
+    {
+      "requirement": "cancel/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted source in LF/CRLF and three client profiles. Integer extremes/zero, Unicode/numeric-looking/empty string IDs cancel real queued and completed held tasks with exactly one RequestCancelled and no locations; exact text/version/SourceDb/parse count/generation survive. Repeated later queries and same ID reuse return authored complete reference sets. Unknown/late/malformed cancellation cannot poison requests. Integer 20 and string 20 remain distinct; incorrect target permits exact completion. Across new generations, targeted cancellation takes priority while untargeted stale work yields only ContentModified; current requests return new marked ranges. Original physical fixture bytes unchanged. Editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_discards_real_queued_and_completed_tasks_preserves_facts_and_allows_id_reuse"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_ignores_unknown_late_malformed_and_different_typed_ids_without_poisoning_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_keeps_typed_target_isolation_and_cancel_priority_across_stale_generations"
+        }
+      ]
+    },
+    {
+      "requirement": "cancel/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted source in LF/CRLF and three client profiles. Integer extremes/zero, Unicode/numeric-looking/empty string IDs cancel real queued and completed held tasks with exactly one RequestCancelled and no locations; exact text/version/SourceDb/parse count/generation survive. Repeated later queries and same ID reuse return authored complete reference sets. Unknown/late/malformed cancellation cannot poison requests. Integer 20 and string 20 remain distinct; incorrect target permits exact completion. Across new generations, targeted cancellation takes priority while untargeted stale work yields only ContentModified; current requests return new marked ranges. Original physical fixture bytes unchanged. Editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_discards_real_queued_and_completed_tasks_preserves_facts_and_allows_id_reuse"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_ignores_unknown_late_malformed_and_different_typed_ids_without_poisoning_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_keeps_typed_target_isolation_and_cancel_priority_across_stale_generations"
+        }
+      ]
+    },
+    {
+      "requirement": "cancel/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted source in LF/CRLF and three client profiles. Integer extremes/zero, Unicode/numeric-looking/empty string IDs cancel real queued and completed held tasks with exactly one RequestCancelled and no locations; exact text/version/SourceDb/parse count/generation survive. Repeated later queries and same ID reuse return authored complete reference sets. Unknown/late/malformed cancellation cannot poison requests. Integer 20 and string 20 remain distinct; incorrect target permits exact completion. Across new generations, targeted cancellation takes priority while untargeted stale work yields only ContentModified; current requests return new marked ranges. Original physical fixture bytes unchanged. Editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_discards_real_queued_and_completed_tasks_preserves_facts_and_allows_id_reuse"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_ignores_unknown_late_malformed_and_different_typed_ids_without_poisoning_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_keeps_typed_target_isolation_and_cancel_priority_across_stale_generations"
+        }
+      ]
+    },
+    {
+      "requirement": "cancel/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted source in LF/CRLF and three client profiles. Integer extremes/zero, Unicode/numeric-looking/empty string IDs cancel real queued and completed held tasks with exactly one RequestCancelled and no locations; exact text/version/SourceDb/parse count/generation survive. Repeated later queries and same ID reuse return authored complete reference sets. Unknown/late/malformed cancellation cannot poison requests. Integer 20 and string 20 remain distinct; incorrect target permits exact completion. Across new generations, targeted cancellation takes priority while untargeted stale work yields only ContentModified; current requests return new marked ranges. Original physical fixture bytes unchanged. Editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_discards_real_queued_and_completed_tasks_preserves_facts_and_allows_id_reuse"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_ignores_unknown_late_malformed_and_different_typed_ids_without_poisoning_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_keeps_typed_target_isolation_and_cancel_priority_across_stale_generations"
+        }
+      ]
+    },
+    {
+      "requirement": "cancel/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted source in LF/CRLF and three client profiles. Integer extremes/zero, Unicode/numeric-looking/empty string IDs cancel real queued and completed held tasks with exactly one RequestCancelled and no locations; exact text/version/SourceDb/parse count/generation survive. Repeated later queries and same ID reuse return authored complete reference sets. Unknown/late/malformed cancellation cannot poison requests. Integer 20 and string 20 remain distinct; incorrect target permits exact completion. Across new generations, targeted cancellation takes priority while untargeted stale work yields only ContentModified; current requests return new marked ranges. Original physical fixture bytes unchanged. Editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_discards_real_queued_and_completed_tasks_preserves_facts_and_allows_id_reuse"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_ignores_unknown_late_malformed_and_different_typed_ids_without_poisoning_requests"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::cancellation_matrix::cancellation_matrix_keeps_typed_target_isolation_and_cancel_priority_across_stale_generations"
+        }
+      ]
+    },
+    {
+      "requirement": "stdio/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Audit actually discovers and executes stdio_transport in addition to both libraries; failure/ignore/discovery-only/library-only cannot masquerade as process proof. Owned real binary with bounded writer/output drains, ten-second termination deadline, one-MiB output cap and kill/reap cleanup; old process assertions preserved. Typed frame decoding then original wire JSON verifies jsonrpc without synthesis. Seven-byte writes and concatenated Unicode LF/CRLF messages preserve exact seven authored declaration diagnostic facts and labels/candidates/repair counts under three client profiles, explicit scratch main owner, repair/old-version/close behavior and Unicode shutdown ID. Unknown/uninitialized/notification-only errors stay framed; malformed notifications stay silent; queued post-exit messages cannot respond. EOF succeeds; invalid/missing lengths, truncated bodies and invalid JSON fail with stderr and no stdout junk. Four process tests plus six reused fixture self-tests execute in an isolated target directory that cannot overwrite the dev binary used by editor proofs. Strict server hashing exposed the normal-target overwrite and remains enforced; editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "stdio_binary_uses_typed_transport_for_initialize_and_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_round_trips_fragmented_utf8_sources_and_exact_repair_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_keeps_protocol_errors_framed_and_ignores_queued_messages_after_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_terminates_on_eof_invalid_headers_and_truncated_or_invalid_json_frames"
+        }
+      ]
+    },
+    {
+      "requirement": "stdio/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Audit actually discovers and executes stdio_transport in addition to both libraries; failure/ignore/discovery-only/library-only cannot masquerade as process proof. Owned real binary with bounded writer/output drains, ten-second termination deadline, one-MiB output cap and kill/reap cleanup; old process assertions preserved. Typed frame decoding then original wire JSON verifies jsonrpc without synthesis. Seven-byte writes and concatenated Unicode LF/CRLF messages preserve exact seven authored declaration diagnostic facts and labels/candidates/repair counts under three client profiles, explicit scratch main owner, repair/old-version/close behavior and Unicode shutdown ID. Unknown/uninitialized/notification-only errors stay framed; malformed notifications stay silent; queued post-exit messages cannot respond. EOF succeeds; invalid/missing lengths, truncated bodies and invalid JSON fail with stderr and no stdout junk. Four process tests plus six reused fixture self-tests execute in an isolated target directory that cannot overwrite the dev binary used by editor proofs. Strict server hashing exposed the normal-target overwrite and remains enforced; editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "stdio_binary_uses_typed_transport_for_initialize_and_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_round_trips_fragmented_utf8_sources_and_exact_repair_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_keeps_protocol_errors_framed_and_ignores_queued_messages_after_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_terminates_on_eof_invalid_headers_and_truncated_or_invalid_json_frames"
+        }
+      ]
+    },
+    {
+      "requirement": "stdio/environments/process_transport/protocol",
+      "assertion": "Reviewed in reviews/cancellation-stdio.md. Audit actually discovers and executes stdio_transport in addition to both libraries; failure/ignore/discovery-only/library-only cannot masquerade as process proof. Owned real binary with bounded writer/output drains, ten-second termination deadline, one-MiB output cap and kill/reap cleanup; old process assertions preserved. Typed frame decoding then original wire JSON verifies jsonrpc without synthesis. Seven-byte writes and concatenated Unicode LF/CRLF messages preserve exact seven authored declaration diagnostic facts and labels/candidates/repair counts under three client profiles, explicit scratch main owner, repair/old-version/close behavior and Unicode shutdown ID. Unknown/uninitialized/notification-only errors stay framed; malformed notifications stay silent; queued post-exit messages cannot respond. EOF succeeds; invalid/missing lengths, truncated bodies and invalid JSON fail with stderr and no stdout junk. Four process tests plus six reused fixture self-tests execute in an isolated target directory that cannot overwrite the dev binary used by editor proofs. Strict server hashing exposed the normal-target overwrite and remains enforced; editor lifecycle remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "stdio_binary_uses_typed_transport_for_initialize_and_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_round_trips_fragmented_utf8_sources_and_exact_repair_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_keeps_protocol_errors_framed_and_ignores_queued_messages_after_exit"
+        },
+        {
+          "layer": "protocol",
+          "name": "stdio_process_matrix_terminates_on_eof_invalid_headers_and_truncated_or_invalid_json_frames"
+        }
+      ]
     }
   ],
   "featureFiles": [

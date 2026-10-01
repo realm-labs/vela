@@ -195,6 +195,7 @@ mod diagnostic_recovery;
 mod diagnostic_source_state;
 mod diagnostic_type_positions;
 
+mod cancellation_matrix;
 mod diagnostic_top_level;
 mod document_change_matrix;
 mod document_close_matrix;

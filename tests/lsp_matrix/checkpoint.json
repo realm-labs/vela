@@ -7580,10 +7580,25 @@
         "did-save/environments/client_capabilities/protocol"
       ],
       "summary": "Close twelve did-close/did-save obligations under reviews/document-close-save.md. Reuse seventeen independently marked declaration/body/recovery/source-state inputs; no duplicate fixture corpus. LF/CRLF repaired/restored overlays close to exact current disk bytes, initial source version and complete diagnostic code/severity/message/UTF-16 primary/label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable workspace/database snapshots, repeats and fresh equivalence. Service receives current disk inputs explicitly; protocol validates real guarded file updates/deletion/recreation/scratch creation without watchers and restores all fixture bytes. Unknown/repeated/malformed close cannot poison other overlays; close resets version ownership and reopen i32::MIN after i32::MAX succeeds. Defining-module close rebinds importer to authored disk parameter/docs hover and republishes current facts. A held real references task publishes only exact ContentModified; old locations do not leak and subsequent repeated hover succeeds. Assert save:false; unsolicited saves with omitted/null/poisoned optional text and malformed payloads preserve exact open/closed/unknown/non-source facts, text/version, SourceDb, parse count and generation under three client profiles. Physical disk repair while overlay remains open cannot make save consume text or clear diagnostics; close adopts authored repaired bytes. No product correction needed. Focused service three/protocol four, close baseline one; Node 99, fmt, workspace Clippy, workspace 4770 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 746 with two historical ignores/protocol 758; accepted B00-B07 and prior children unchanged. Catalog 832 verified, 493 unreviewed, two N/A, zero failed; B08 65/83. Next B08.5; standalone cancellation five, stdio three and editor lifecycle ten remain. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-luRThl/results.json; input editors/vscode/test-results/input-Oa4DeV/results.json; audit target/lsp-matrix/run-RlXkYS/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.5",
+      "revision": null,
+      "requirements": [
+        "cancel/syntax/S11/positive/protocol",
+        "cancel/syntax/S11/negative/protocol",
+        "cancel/states/stale_version/protocol",
+        "cancel/states/cancellation/protocol",
+        "cancel/environments/client_capabilities/protocol",
+        "stdio/syntax/S0/positive/protocol",
+        "stdio/syntax/S0/negative/protocol",
+        "stdio/environments/process_transport/protocol"
+      ],
+      "summary": "Close eight cancel/stdio obligations under reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted sources, LF/CRLF, three client profiles and integer extremes/zero, Unicode/numeric-looking/empty string request IDs. Real queued/completed held tasks cancel with exactly one RequestCancelled and no location leakage; exact text/version/SourceDb/parse count/generation unchanged, same-ID reuse and repeated current reference sets succeed. Unknown/late/duplicate/malformed cancellation cannot poison later requests. Integer 20/string 20 isolation and targeted cancellation priority across new generations yield only exact Cancelled/ContentModified for the correct owner; current marked positions and guarded disk bytes survive. Preserve integer helper call sites and add typed-ID scheduling. Audit now discovers and executes real stdio_transport separately from libraries; merging preserves results and rejects duplicate/unknown identities. Four negative Node self-tests prevent library-only/listed-only/failed/ignored process false acceptance. Bounded real binary helper drains outputs, caps one MiB, imposes ten-second exit deadline and kills/reaps on failure; original process assertions preserved. Typed frames then original raw wire JSON check version without synthesized fields. Seven-byte writes and concatenated Unicode LF/CRLF messages reproduce seven exact declaration diagnostic facts and repaired clear state with explicit scratch main owner, older-version rejection, close, Unicode shutdown and post-exit silence. Exact framing of lifecycle/unknown/notification-only errors and silent invalid notifications. EOF succeeds; bad/missing lengths/truncated body/invalid JSON fail with stderr and no stdout junk. Integration target four process tests plus six namespaced reused fixture self-tests. Fix audit artifact ownership: normal-target integration builds overwrote the dev server and exposed strict stale-evidence rejection. Isolate the stdio target and derive the enclosing editor deadline from suite count, retaining per-suite/child bounds. Initial captures are superseded by fresh matching artifacts; product semantics unchanged. Focused cancellation three/stdio ten; baseline one; Node 103, fmt, workspace Clippy and workspace 4782 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 746 with two historical ignores/protocol 761/stdio ten; accepted B00-B07 and prior children unchanged. Catalog 840 verified, 485 unreviewed, two N/A, zero failed; B08 73/83. Next B08.6; ten editor lifecycle obligations remain. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-gJCxYs/results.json; input editors/vscode/test-results/input-Uy5rlZ/results.json; audit target/lsp-matrix/run-L3KnOa/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08.5",
+  "nextTask": "B08.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9742,7 +9757,10 @@
     "editors/vscode/test-results/input-dZNhxZ/results.json",
     "target/lsp-matrix/run-RlXkYS/report.json",
     "editors/vscode/test-results/run-luRThl/results.json",
-    "editors/vscode/test-results/input-Oa4DeV/results.json"
+    "editors/vscode/test-results/input-Oa4DeV/results.json",
+    "target/lsp-matrix/run-L3KnOa/report.json",
+    "editors/vscode/test-results/run-gJCxYs/results.json",
+    "editors/vscode/test-results/input-Uy5rlZ/results.json"
   ],
   "openIssues": [
     {
@@ -13144,8 +13162,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b45ea20b7b69bcc0259299d181b17935f307c5d5",
-          "treeSha256": "01169f3d542f7d6b75dbac86c598515dce37e05715ee0e73e61893c788c12912"
+          "revision": "892dea351deec8a09b26640d516a88663974275e",
+          "treeSha256": "17efbcfba977d4b6182fcd23c56ec6959874d01f428ce9352730ef9ab0529347"
         },
         "profile": {
           "platform": "win32",
@@ -13153,11 +13171,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-RlXkYS/report.json"
+          "target/lsp-matrix/run-L3KnOa/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-luRThl/results.json --local-results editors/vscode/test-results/input-Oa4DeV/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-gJCxYs/results.json --local-results editors/vscode/test-results/input-Uy5rlZ/results.json",
             "exitCode": 0
           }
         ]

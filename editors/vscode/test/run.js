@@ -95,9 +95,11 @@ async function main() {
   const resultFile = path.join(resultRoot, "results.json");
   const audit = spawnSync(process.execPath, [path.join(extensionRoot, "../../scripts/lsp-matrix/run.js"),
     "--run", ...(fs.existsSync(resultFile) ? ["--editor-results", resultFile] : [])], {
-    // Two full Rust suites each have a ten-minute budget; allow bounded
+    // Each Rust suite retains its ten-minute budget; allow bounded
     // discovery, build and report overhead in the enclosing audit.
-    cwd: extensionRoot, stdio: "inherit", timeout: 1500000, windowsHide: true
+    cwd: extensionRoot, stdio: "inherit",
+    timeout: require("../../../scripts/lsp-matrix/rust-suites").suites.length * 600000 + 300000,
+    windowsHide: true
   });
   if (editorFailure) throw editorFailure;
   if (audit.error) throw audit.error;

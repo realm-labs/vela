@@ -132,9 +132,18 @@ impl TestServer {
     // Separate scheduling from publication so lifecycle tests can interleave
     // real notifications deterministically, without timing-dependent sleeps.
     pub(crate) fn queue_request(&mut self, id: i32, method: &str, params: serde_json::Value) {
+        self.queue_request_with_id(RequestId::from(id), method, params);
+    }
+
+    pub(crate) fn queue_request_with_id(
+        &mut self,
+        id: RequestId,
+        method: &str,
+        params: serde_json::Value,
+    ) {
         let messages = self.process(
             Message::Request(ServerRequest {
-                id: RequestId::from(id),
+                id,
                 method: method.to_owned(),
                 params,
             }),

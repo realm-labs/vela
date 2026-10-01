@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "request-cancellation",
+  "files": {
+    "vela.toml": "[package]\nid = \"dev.vela.cancellation\"\nname = \"cancellation\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
+    "scripts/main.vela": "fn [[decl:start]]total[[decl:end]](value: i64) -> i64 { return value; }\npub fn main() { /* 中😀 */ [[call:start]]total[[call:end]](1); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "missingDisk": [],
+    "negative": "pub fn main() { /* 中😀 */ [[unknown:start]]missing[[unknown:end]](1); }\n",
+    "shifted": "// newer 中😀\nfn [[decl:start]]total[[decl:end]](value: i64) -> i64 { return value; }\npub fn main() { /* 中😀 */ [[call:start]]total[[call:end]](1); }\n"
+  }
+}
