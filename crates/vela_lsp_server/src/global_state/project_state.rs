@@ -1,11 +1,13 @@
+mod packages;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use vela_language_service::{
     DocumentId, LanguageServiceDatabases, ProjectDiagnostic, SourceFileSnapshot, Workspace,
-    WorkspaceConfig, WorkspaceSnapshot, assemble_package_project_sources, assemble_project_sources,
-    load_package_project,
+    WorkspaceConfig, WorkspaceSnapshot, assemble_package_project_sources_with_config,
+    assemble_project_sources,
 };
 use vela_package::PackageGraph;
 
@@ -52,37 +54,22 @@ impl ProjectState {
         self.workspace.snapshot()
     }
 
-    pub(super) fn load_initial_project(&mut self) {
-        let manifests = self
-            .workspace_roots
-            .iter()
-            .map(|root| document_uri_path(root).join(CONFIG_FILE))
-            .filter(|path| path.is_file())
-            .collect::<Vec<_>>();
-        for manifest in manifests {
-            if let Some(change) =
-                self.reload_package_project(&document_path_uri(&manifest.display().to_string()))
-            {
-                self.apply_config_change(change);
-            }
-        }
-    }
-
     pub(super) fn reload_workspace_sources(&mut self) {
         self.source_diagnostics.clear();
-        if self.package_graph.is_some() {
-            return;
-        }
         let roots = self.config.as_ref().map_or_else(Vec::new, |config| {
             config
                 .roots()
                 .iter()
+                .filter(|root| {
+                    self.package_graph.is_none()
+                        || root.package() == &vela_package::PackageId::anonymous()
+                })
                 .map(|root| document_uri_path(root.path()))
                 .collect()
         });
         match vela_package::load_workspace_sources(&roots) {
             Ok(sources) => {
-                self.disk_sources = sources
+                let discovered = sources
                     .sources()
                     .iter()
                     .map(|source| {
@@ -95,7 +82,25 @@ impl ProjectState {
                             SourceFileSnapshot::new(document, source.text.as_str()),
                         )
                     })
-                    .collect();
+                    .collect::<BTreeMap<_, _>>();
+                if let Some(graph) = &self.package_graph {
+                    let package_documents = graph
+                        .sources()
+                        .sources()
+                        .iter()
+                        .map(|source| {
+                            DocumentId::from(workspace_document_uri(
+                                &source.path,
+                                &self.workspace_roots,
+                            ))
+                        })
+                        .collect::<BTreeSet<_>>();
+                    self.disk_sources
+                        .retain(|document, _| package_documents.contains(document));
+                    self.disk_sources.extend(discovered);
+                } else {
+                    self.disk_sources = discovered;
+                }
                 self.watched_project_changed = true;
             }
             Err(vela_package::PackageGraphError::Io { path, message }) => {
@@ -189,81 +194,20 @@ impl ProjectState {
         }
     }
 
-    fn reload_package_project(&mut self, changed_uri: &str) -> Option<ConfigChange> {
-        let changed_path = document_uri_path(changed_uri);
-        let root_manifest = self.root_manifest_for_change(&changed_path);
-        let root_uri = document_path_uri(&root_manifest.display().to_string());
-        let text = read_document_uri(&root_uri);
-        let mut result = text.as_deref().map_or_else(
-            || vela_language_service::ConfigParseResult {
-                config: self
-                    .config
-                    .clone()
-                    .unwrap_or_else(|| WorkspaceConfig::workspace([])),
-                diagnostics: vec![ProjectDiagnostic::new(
-                    Some(DocumentId::from(changed_uri.to_owned())),
-                    format!("manifest `{}` cannot be read", root_manifest.display()),
-                )],
-            },
-            |text| WorkspaceConfig::from_vela_toml(&root_uri, text),
-        );
-        let authorized_roots = self.authorized_package_roots(&root_uri);
-        let had_valid_graph = self.package_graph.is_some();
-        let loaded = match load_package_project(&root_manifest, &authorized_roots) {
-            Ok(graph) => {
-                self.disk_sources = graph
-                    .sources()
-                    .sources()
-                    .iter()
-                    .map(|source| {
-                        let document = DocumentId::from(workspace_document_uri(
-                            &source.path,
-                            &self.workspace_roots,
-                        ));
-                        (
-                            document.clone(),
-                            SourceFileSnapshot::new(document, source.text.as_str()),
-                        )
-                    })
-                    .collect();
-                result.config =
-                    WorkspaceConfig::from_package_graph(&graph, result.config.schema().clone());
-                self.package_graph = Some(graph);
-                self.root_manifest = Some(root_manifest.clone());
-                self.watched_project_changed = true;
-                true
-            }
-            Err(error) => {
-                if result.diagnostics.is_empty() {
-                    result.diagnostics.push(ProjectDiagnostic::new(
-                        Some(DocumentId::from(changed_uri.to_owned())),
-                        error.to_string(),
-                    ));
-                }
-                false
-            }
-        };
-        for document in result
-            .diagnostics
-            .iter()
-            .filter_map(ProjectDiagnostic::document_id)
-        {
-            self.config_documents.insert(document.clone());
-        }
-        self.config_diagnostics = result.diagnostics;
-        if !loaded && had_valid_graph {
-            return None;
-        }
-        if !loaded {
-            self.root_manifest = Some(root_manifest);
-            self.watched_project_changed = true;
-        }
-        Some(ConfigChange::from_workspace_file(result.config))
-    }
-
     pub(super) fn remove_watched_file(&mut self, uri: &str) -> Option<ConfigChange> {
         if is_config_uri(uri) {
             let path = document_uri_path(uri);
+            if self
+                .workspace_manifests()
+                .iter()
+                .any(|manifest| !same_path(manifest, &path))
+            {
+                self.root_manifest = self
+                    .workspace_manifests()
+                    .into_iter()
+                    .find(|manifest| !same_path(manifest, &path));
+                return self.reload_package_project(uri);
+            }
             if self
                 .root_manifest
                 .as_ref()
@@ -356,7 +300,7 @@ impl ProjectState {
         let snapshot = self.workspace.snapshot();
         let project = self.package_graph.as_ref().map_or_else(
             || assemble_project_sources(config, &files, &snapshot),
-            |graph| assemble_package_project_sources(graph, &files, &snapshot),
+            |graph| assemble_package_project_sources_with_config(graph, config, &files, &snapshot),
         );
         let Self {
             databases,
@@ -417,36 +361,6 @@ impl ProjectState {
     fn is_schema_uri(&self, uri: &str) -> bool {
         self.schema_path()
             .is_some_and(|schema_path| same_file_path(document_uri_path(uri), schema_path))
-    }
-
-    fn authorized_package_roots(&self, config_uri: &str) -> Vec<PathBuf> {
-        let roots = self
-            .workspace_roots
-            .iter()
-            .map(|root| document_uri_path(root))
-            .collect::<Vec<_>>();
-        if roots.is_empty() {
-            document_uri_path(config_uri)
-                .parent()
-                .map(|parent| vec![parent.to_owned()])
-                .unwrap_or_default()
-        } else {
-            roots
-        }
-    }
-
-    fn root_manifest_for_change(&self, changed: &std::path::Path) -> PathBuf {
-        if let Some(root) = &self.root_manifest {
-            return root.clone();
-        }
-        self.workspace_roots
-            .iter()
-            .map(|root| document_uri_path(root))
-            .filter(|root| changed.starts_with(root))
-            .map(|root| root.join(CONFIG_FILE))
-            .filter(|manifest| manifest.is_file())
-            .max_by_key(|manifest| manifest.components().count())
-            .unwrap_or_else(|| changed.to_owned())
     }
 
     pub(super) fn take_watched_project_changed(&mut self) -> bool {

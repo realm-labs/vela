@@ -71,7 +71,8 @@ pub use inlay::{InlayHint, InlayHintKind};
 pub use project::{
     ConfigParseResult, ProjectDiagnostic, ProjectMode, ProjectSources, SchemaConfig,
     SourceFileSnapshot, WorkspaceConfig, WorkspaceRoot, assemble_package_project_sources,
-    assemble_project_sources, load_package_project, missing_import_diagnostics,
+    assemble_package_project_sources_with_config, assemble_project_sources, load_package_project,
+    missing_import_diagnostics,
 };
 pub use query_context::{CallArgumentFacts, QueryContext};
 pub use references::{

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "workspace-packages",
+  "files": {
+    "first/vela.toml": "[package]\nid=\"dev.vela.first\"\nname=\"first\"\nversion=\"0.1.0\"\n[source]\nroots=[\".\"]\n",
+    "first/shared_defs.vela": "pub fn [[decl:start]]spark[[decl:end]]() -> i64 { return 1; }\n",
+    "first/first_probe.vela": "use shared_defs::spark;\nfn first_probe() { /* 中😀 */ [[call:start]]spark[[call:end]](); }\n",
+    "second/vela.toml": "[package]\nid=\"dev.vela.second\"\nname=\"second\"\nversion=\"0.1.0\"\n[source]\nroots=[\"calls\",\"original\"]\n",
+    "second/original/shared_defs.vela": "// independent owner\n// independent location\npub fn [[decl:start]]spark[[decl:end]]() -> String { return \"second\"; }\n",
+    "second/replacement/shared_defs.vela": "// independently relocated\n// still owned by second\n// distinct source range\npub fn [[decl:start]]spark[[decl:end]]() -> bool { return true; }\n",
+    "second/calls/second_probe.vela": "use shared_defs::spark;\nfn second_probe() { /* 中😀 */ [[call:start]]spark[[call:end]](); }\n",
+    "plain/sprout.vela": "pub fn [[decl:start]]sprout[[decl:end]]() -> bool { return true; }\n",
+    "plain/plain_probe.vela": "use sprout::sprout;\nfn plain_probe() { /* 中😀 */ [[call:start]]sprout[[call:end]](); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "missingDisk": [],
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "packages": {
+      "first": {"caller":"first/first_probe.vela","target":"first/shared_defs.vela"},
+      "second": {"caller":"second/calls/second_probe.vela","target":"second/original/shared_defs.vela"}
+    },
+    "manifestReplacement": "[package]\nid=\"dev.vela.second\"\nname=\"second\"\nversion=\"0.2.0\"\n[source]\nroots=[\"calls\",\"replacement\"]\n",
+    "invalidManifest": "# 中😀\n[package]\nid=\"dev.vela.second\"\nname=\"second\"\nversion=\"0.2.0\"\n[source]\nroots=[[bad:start]]7[[bad:end]]\n",
+    "invalidMessage": "source.roots must be an array of strings at bytes {START}..{END}"
+  }
+}

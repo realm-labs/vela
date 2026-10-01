@@ -7,6 +7,29 @@ S0/S11 negative plus capabilities. Existing positive conditional exemptions
 remain unchanged because the server does not issue workspace/configuration
 requests. Installed UX17 workspace and UX21 trust obligations remain open.
 
+B09.5 adds backend prerequisites without accepting its four installed UX17
+requirements. The separate workspace-packages fixture pins two independent
+manifest roots with the same module/function names but different target files,
+ranges and return types, plus a manifest-free folder. LF/CRLF and existing client
+profiles check complete definitions, dirty caller text/version, remove/readd,
+second-manifest source-root replacement, byte-owned invalid-manifest errors,
+last-valid-graph retention, repair clears, frozen snapshots and fresh-server
+equivalence. Package-loader tests separately check shared dependency deduplication,
+stable ordering, duplicate IDs and the host configuration dependency boundary.
+An additional independent metadata-owner regression uses owned Windows junctions
+with lowercase, encoded client drive URIs, or Unix directory aliases for both projects. Exact
+publication sets preserve the client-root owner, dirty source versions, current
+targets and immutable snapshots through invalid second-manifest updates and
+repair. The Windows reproduction failed with an unaliased physical owner before
+the projection fix; Unix execution still needs its own recorded platform run.
+
+Dynamic-registration regressions independently specify every watcher pattern,
+base URI, watch-kind mask, registration ID and unregister request. Settings and
+folder switches, manifest roots/schema replacement, invalid settings, no-op
+updates, an empty scope and restoration pin disposal and current registration.
+These tests do not substitute for real workbench root/settings and invalid-file
+input; those routes and macOS evidence remain pending.
+
 The independently authored workspace-configuration fixture supplies two source
 roots, Unicode declaration/call/import markers, a shifted unsaved definition,
 manifest-owned roots and two incompatible static host schemas. A Node golden

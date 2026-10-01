@@ -6,7 +6,7 @@ mod manifest;
 
 pub use graph::{
     PackageDescriptor, PackageGraph, PackageGraphError, PackageSource, SourceTable,
-    load_package_graph, load_workspace_sources,
+    load_package_graph, load_package_graphs, load_workspace_sources,
 };
 pub use identity::{
     IdentityError, ModuleKey, ModulePath, PackageAlias, PackageId, PackageName, PackageVersion,

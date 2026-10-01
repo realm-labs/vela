@@ -77,6 +77,8 @@ impl GlobalState {
                 ));
             }
         }
-        self.wrap_workspace_diagnostics(messages)
+        let mut messages = self.wrap_workspace_diagnostics(messages);
+        messages.extend(self.refresh_watched_files());
+        messages
     }
 }

@@ -45,6 +45,26 @@ type rejects the whole notification without publication or partial state changes
 Completed database refreshes consume pending watched-project changes, including
 initial package loading, so later no-op events cannot spuriously invalidate work.
 
+Independent workspace-folder manifests load atomically through one package graph
+builder. Canonical manifest ordering deduplicates shared dependencies; package
+IDs remain distinct and duplicate IDs at different manifest paths are errors.
+Manifest-free folders join the same source assembly with anonymous ownership,
+while manifest-defined source roots retain precedence over editor root settings.
+Invalid manifest updates retain the last valid graph and project the failing
+manifest's physical path through client workspace roots for its diagnostic URI.
+Drive/directory aliases keep one owner through invalid updates and repair.
+Package loading lives in a separate project-state
+module. Schema facts remain workspace scoped: the primary manifest selected
+when roots are indexed owns schema configuration until deletion or reindexing.
+This change does not introduce independent per-folder schema databases.
+
+Dynamic file watchers retain their registered patterns and compare them after
+settings, folder and watched-file updates. A changed scope unregisters its
+previous capability and registers the current patterns with a distinct ID;
+an empty scope only unregisters. Registration starts after the client's
+initialized notification and requires the existing dynamic-registration
+capability and enabled launch setting. Repeated updates keep the registration.
+
 Proactive LSP coverage is requirement-driven under the
 [test strategy](lsp-test-strategy.md). The machine-readable catalog pins current
 syntax/protocol contracts, expands applicable layers and states, and binds

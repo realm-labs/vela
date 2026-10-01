@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use lsp_types::{
     DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern, OneOf, Registration,
-    RegistrationParams, RelativePattern, Url, WatchKind,
-    request::{RegisterCapability, Request as LspRequest},
+    RegistrationParams, RelativePattern, Unregistration, UnregistrationParams, Url, WatchKind,
+    request::{RegisterCapability, Request as LspRequest, UnregisterCapability},
 };
 use vela_language_service::WorkspaceConfig;
 
@@ -11,19 +11,61 @@ use crate::paths::{CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, normalized_
 
 const WATCHED_FILES_REGISTRATION_ID: &str = "vela/watched-files";
 
-pub(crate) fn registration_request(
-    config: Option<&WorkspaceConfig>,
-    workspace_roots: &BTreeSet<String>,
-) -> Option<lsp_server::Message> {
-    let watchers = watched_file_watchers(config, workspace_roots);
-    if watchers.is_empty() {
-        return None;
+#[derive(Default)]
+pub(crate) struct RegistrationState {
+    initialized: bool,
+    watchers: Vec<FileSystemWatcher>,
+    registration_id: Option<String>,
+    revision: u64,
+}
+
+impl RegistrationState {
+    pub(crate) fn mark_initialized(&mut self) {
+        self.initialized = true;
     }
 
+    pub(crate) fn registered(&self) -> bool {
+        self.registration_id.is_some()
+    }
+
+    pub(crate) fn refresh(
+        &mut self,
+        config: Option<&WorkspaceConfig>,
+        workspace_roots: &BTreeSet<String>,
+        client_supports_registration: bool,
+        enabled: bool,
+    ) -> Vec<lsp_server::Message> {
+        if !self.initialized || !client_supports_registration || !enabled {
+            return Vec::new();
+        }
+        let watchers = watched_file_watchers(config, workspace_roots);
+        if watchers == self.watchers {
+            return Vec::new();
+        }
+        let mut messages = Vec::new();
+        if let Some(previous) = self.registration_id.take() {
+            messages.push(unregistration_request(previous, self.revision));
+        }
+        if !watchers.is_empty() {
+            let id = if self.revision == 0 {
+                WATCHED_FILES_REGISTRATION_ID.to_owned()
+            } else {
+                format!("{WATCHED_FILES_REGISTRATION_ID}/{}", self.revision)
+            };
+            messages.push(registration_request(watchers.clone(), &id));
+            self.registration_id = Some(id);
+        }
+        self.watchers = watchers;
+        self.revision = self.revision.saturating_add(1);
+        messages
+    }
+}
+
+fn registration_request(watchers: Vec<FileSystemWatcher>, id: &str) -> lsp_server::Message {
     let register_options = DidChangeWatchedFilesRegistrationOptions { watchers };
     let params = RegistrationParams {
         registrations: vec![Registration {
-            id: WATCHED_FILES_REGISTRATION_ID.to_owned(),
+            id: id.to_owned(),
             method: "workspace/didChangeWatchedFiles".to_owned(),
             register_options: Some(
                 serde_json::to_value(register_options)
@@ -32,11 +74,27 @@ pub(crate) fn registration_request(
         }],
     };
     let request = lsp_server::Request {
-        id: lsp_server::RequestId::from(WATCHED_FILES_REGISTRATION_ID.to_owned()),
+        id: lsp_server::RequestId::from(id.to_owned()),
         method: RegisterCapability::METHOD.to_owned(),
         params: serde_json::to_value(params).expect("registration params should serialize"),
     };
-    Some(lsp_server::Message::Request(request))
+    lsp_server::Message::Request(request)
+}
+
+fn unregistration_request(previous: String, revision: u64) -> lsp_server::Message {
+    let params = UnregistrationParams {
+        unregisterations: vec![Unregistration {
+            id: previous,
+            method: "workspace/didChangeWatchedFiles".to_owned(),
+        }],
+    };
+    lsp_server::Message::Request(lsp_server::Request {
+        id: lsp_server::RequestId::from(format!(
+            "{WATCHED_FILES_REGISTRATION_ID}/unregister/{revision}"
+        )),
+        method: UnregisterCapability::METHOD.to_owned(),
+        params: serde_json::to_value(params).expect("unregistration params should serialize"),
+    })
 }
 
 fn watched_file_watchers(

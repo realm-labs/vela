@@ -57,6 +57,19 @@ Windows schema events compare drive/verbatim-prefix aliases and preserve the
 configured metadata owner instead of retaining stale facts or duplicate owners.
 Roots/settings, invalid configuration/schema and UX21 trust B09 proofs remain
 open; the checkpoint records the current verified child and next task.
+B09.5 backend work now loads independent workspace manifests into one
+package-aware graph and retains manifest-free folder discovery. New independent
+LF/CRLF regressions pin same-named module ownership, root removal/readdition,
+second-project source-root switches, invalid manifest retention and repair,
+dirty caller versions and immutable snapshots.
+Manifest errors project physical paths through the client's workspace roots,
+retaining directory aliases and one diagnostic owner through repair.
+Dynamic watcher registrations now follow current source roots, configuration
+folders and schema paths, dispose
+their previous registration, and avoid duplicate registrations on no-op updates.
+These backend regressions do not close the four pending B09.5 installed-editor
+requirements; fresh root/settings and invalid configuration/schema input proofs
+are still required on each recorded platform.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

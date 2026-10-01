@@ -29,7 +29,9 @@ impl GlobalState {
         };
         self.apply_config_change(ConfigChange::from_editor_settings(editor_config));
         self.project.refresh_databases();
-        self.project.publish_open_diagnostics()
+        let mut messages = self.project.publish_open_diagnostics();
+        messages.extend(self.refresh_watched_files());
+        messages
     }
 
     pub(crate) fn did_change_workspace_folders(
@@ -54,6 +56,8 @@ impl GlobalState {
             }
             self.project.refresh_databases();
         }
-        self.publish_workspace_diagnostics()
+        let mut messages = self.publish_workspace_diagnostics();
+        messages.extend(self.refresh_watched_files());
+        messages
     }
 }

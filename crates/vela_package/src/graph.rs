@@ -175,40 +175,55 @@ pub fn load_package_graph(
     root_manifest: impl AsRef<Path>,
     authorized_roots: &[PathBuf],
 ) -> Result<PackageGraph, PackageGraphError> {
-    let root_manifest = canonicalize(root_manifest.as_ref())?;
+    load_package_graphs(&[root_manifest.as_ref().to_owned()], authorized_roots)
+}
+
+/// Load independent workspace projects into one graph without merging package identities.
+pub fn load_package_graphs(
+    root_manifests: &[PathBuf],
+    authorized_roots: &[PathBuf],
+) -> Result<PackageGraph, PackageGraphError> {
+    let root_manifests = root_manifests
+        .iter()
+        .map(|manifest| canonicalize(manifest))
+        .collect::<Result<BTreeSet<_>, _>>()?;
     let authorized_roots = authorized_roots
         .iter()
         .map(|root| canonicalize(root))
         .collect::<Result<Vec<_>, _>>()?;
-    authorize(&root_manifest, &authorized_roots)?;
+    for manifest in &root_manifests {
+        authorize(manifest, &authorized_roots)?;
+    }
     let mut builder = GraphBuilder {
         graph: PackageGraph::default(),
         manifests_by_path: BTreeMap::new(),
         manifests_by_package: BTreeMap::new(),
         active: Vec::new(),
         authorized_roots,
-        root_manifest: root_manifest.clone(),
+        root_manifests: root_manifests.clone(),
         next_manifest_file: 1,
     };
-    let root = builder.read_manifest(&root_manifest)?;
-    let member_manifests = root
-        .manifest
-        .workspace
-        .as_ref()
-        .map_or_else(Vec::new, |workspace| {
-            workspace
-                .members
-                .iter()
-                .map(|member| root.root.join(member).join(MANIFEST_NAME))
-                .collect()
-        });
-    if root.manifest.package.is_some() {
-        let id = builder.load_package(root_manifest.clone())?;
-        builder.graph.workspace_members.insert(id);
-    }
-    for member in member_manifests {
-        let id = builder.load_package(canonicalize(&member)?)?;
-        builder.graph.workspace_members.insert(id);
+    for root_manifest in root_manifests {
+        let root = builder.read_manifest(&root_manifest)?;
+        let member_manifests =
+            root.manifest
+                .workspace
+                .as_ref()
+                .map_or_else(Vec::new, |workspace| {
+                    workspace
+                        .members
+                        .iter()
+                        .map(|member| root.root.join(member).join(MANIFEST_NAME))
+                        .collect()
+                });
+        if root.manifest.package.is_some() {
+            let id = builder.load_package(root_manifest.clone())?;
+            builder.graph.workspace_members.insert(id);
+        }
+        for member in member_manifests {
+            let id = builder.load_package(canonicalize(&member)?)?;
+            builder.graph.workspace_members.insert(id);
+        }
     }
     Ok(builder.graph)
 }
@@ -226,7 +241,7 @@ struct GraphBuilder {
     manifests_by_package: BTreeMap<PackageId, PathBuf>,
     active: Vec<PathBuf>,
     authorized_roots: Vec<PathBuf>,
-    root_manifest: PathBuf,
+    root_manifests: BTreeSet<PathBuf>,
     next_manifest_file: u32,
 }
 
@@ -269,13 +284,17 @@ impl GraphBuilder {
         }
         if let Some(loaded) = self.manifests_by_path.get(&path)
             && let Some(package) = &loaded.manifest.package
-            && self.graph.packages.contains_key(&package.id)
+            && self
+                .graph
+                .packages
+                .get(&package.id)
+                .is_some_and(|descriptor| descriptor.manifest_path == path)
         {
             return Ok(package.id.clone());
         }
         self.active.push(path.clone());
         let loaded = self.read_manifest(&path)?;
-        if path != self.root_manifest && loaded.manifest.host.is_some() {
+        if !self.root_manifests.contains(&path) && loaded.manifest.host.is_some() {
             return Err(PackageGraphError::HostConfigurationInDependency { path });
         }
         let metadata = loaded
@@ -508,6 +527,103 @@ mod tests {
             fs::create_dir_all(parent).expect("create parent");
         }
         fs::write(path, text).expect("write fixture");
+    }
+
+    #[test]
+    fn independent_roots_share_dependencies_once_and_keep_explicit_host_boundaries() {
+        let root = fixture("independent_roots_中");
+        write(
+            &root.join("first/vela.toml"),
+            "[package]\nid=\"dev.vela.first\"\nname=\"first\"\nversion=\"0.1.0\"\n[dependencies]\ncommon={path=\"../common\"}\n[host]\nschema=\"first.json\"\n",
+        );
+        write(
+            &root.join("second/vela.toml"),
+            "[package]\nid=\"dev.vela.second\"\nname=\"second\"\nversion=\"0.1.0\"\n[dependencies]\ncommon={path=\"../common\"}\n[host]\nschema=\"second.json\"\n",
+        );
+        write(
+            &root.join("common/vela.toml"),
+            "[package]\nid=\"dev.vela.common\"\nname=\"common\"\nversion=\"0.1.0\"\n",
+        );
+        for name in ["first", "second", "common"] {
+            write(
+                &root.join(name).join("src/shared.vela"),
+                "pub fn shared() {}\n",
+            );
+        }
+        let manifests = [
+            root.join("second/vela.toml"),
+            root.join("first/vela.toml"),
+            root.join("first/vela.toml"),
+        ];
+        let graph = load_package_graphs(&manifests, std::slice::from_ref(&root))
+            .expect("independent projects");
+        assert_eq!(graph.packages.len(), 3);
+        assert_eq!(graph.sources.sources.len(), 3);
+        assert_eq!(graph.sources.manifests.len(), 3);
+        assert_eq!(
+            graph.workspace_members,
+            ["dev.vela.first", "dev.vela.second"]
+                .map(|id| PackageId::new(id).expect("package ID"))
+                .into_iter()
+                .collect()
+        );
+        for name in ["dev.vela.first", "dev.vela.second"] {
+            assert_eq!(
+                graph.dependencies(&PackageId::new(name).expect("package ID")),
+                Some(
+                    &[(
+                        PackageAlias::new("common").expect("alias"),
+                        PackageId::new("dev.vela.common").expect("package ID")
+                    )]
+                    .into_iter()
+                    .collect()
+                )
+            );
+        }
+        assert_eq!(
+            load_package_graphs(
+                &[manifests[1].clone(), manifests[0].clone()],
+                std::slice::from_ref(&root)
+            )
+            .expect("reversed roots"),
+            graph
+        );
+        write(
+            &root.join("common/vela.toml"),
+            "[package]\nid=\"dev.vela.common\"\nname=\"common\"\nversion=\"0.1.0\"\n[host]\nschema=\"forbidden.json\"\n",
+        );
+        assert_eq!(
+            load_package_graphs(&manifests, std::slice::from_ref(&root)),
+            Err(PackageGraphError::HostConfigurationInDependency {
+                path: root
+                    .join("common/vela.toml")
+                    .canonicalize()
+                    .expect("manifest path")
+            })
+        );
+        fs::remove_dir_all(root).expect("remove fixture");
+    }
+
+    #[test]
+    fn independent_roots_reject_duplicate_package_ids_in_preloaded_manifests() {
+        let root = fixture("duplicate_independent_roots");
+        let manifest = "[package]\nid=\"dev.vela.same\"\nname=\"same\"\nversion=\"0.1.0\"\n";
+        let first = root.join("first/vela.toml");
+        let second = root.join("second/vela.toml");
+        write(&first, manifest);
+        write(&second, manifest);
+        assert_eq!(
+            load_package_graphs(
+                &[second.clone(), first.clone()],
+                std::slice::from_ref(&root)
+            ),
+            Err(PackageGraphError::DuplicatePackageId {
+                id: PackageId::new("dev.vela.same").expect("package ID"),
+                first: first.canonicalize().expect("first manifest"),
+                second: second.canonicalize().expect("second manifest"),
+            })
+        );
+        fs::remove_dir_all(root).expect("remove fixture");
     }
 
     #[test]

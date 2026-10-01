@@ -34,7 +34,7 @@ fn snapshot_captures_read_only_global_state() {
         Some(&["type".to_owned(), "function".to_owned()]),
         Some(&["declaration".to_owned()]),
     );
-    state.watched_files_registered = true;
+    let _registration = state.initialized(lsp_types::InitializedParams {});
     state.watch_files_enabled = false;
     state.initialized = true;
 
@@ -50,7 +50,7 @@ fn snapshot_captures_read_only_global_state() {
     state.client_supports_work_done_progress = false;
     state.client_supports_watched_file_registration = false;
     state.semantic_token_projection = SemanticTokenProjection::default();
-    state.watched_files_registered = false;
+    state.watched_files = watching::RegistrationState::default();
     state.watch_files_enabled = true;
     state.shutdown_requested = true;
 
@@ -323,7 +323,7 @@ fn typed_initialized_uses_global_watcher_capability() {
         registration["method"],
         serde_json::json!("client/registerCapability")
     );
-    assert!(state.watched_files_registered);
+    assert!(state.watched_files.registered());
     assert_no_messages(second);
 }
 
@@ -343,7 +343,7 @@ fn typed_initialized_uses_global_watch_setting() {
 
     assert_no_messages(result);
     assert!(!state.watch_files_enabled);
-    assert!(!state.watched_files_registered);
+    assert!(!state.watched_files.registered());
 }
 
 #[test]
@@ -365,7 +365,7 @@ fn typed_initialized_uses_global_workspace_config() {
     assert!(watchers.iter().any(|watcher| {
         watcher["globPattern"] == serde_json::json!("/workspace/target/vela/schema.json")
     }));
-    assert!(state.watched_files_registered);
+    assert!(state.watched_files.registered());
 }
 
 #[test]

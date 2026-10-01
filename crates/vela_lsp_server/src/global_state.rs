@@ -67,7 +67,7 @@ pub(crate) struct GlobalState {
     client_supports_work_done_progress: bool,
     client_supports_watched_file_registration: bool,
     semantic_token_projection: SemanticTokenProjection,
-    watched_files_registered: bool,
+    watched_files: watching::RegistrationState,
     watch_files_enabled: bool,
     initialized: bool,
     shutdown_requested: bool,
@@ -808,7 +808,7 @@ impl GlobalState {
             client_supports_work_done_progress: false,
             client_supports_watched_file_registration: false,
             semantic_token_projection: SemanticTokenProjection::default(),
-            watched_files_registered: false,
+            watched_files: watching::RegistrationState::default(),
             watch_files_enabled,
             initialized: false,
             shutdown_requested: false,
@@ -834,7 +834,7 @@ impl GlobalState {
             client_supports_watched_file_registration: self
                 .client_supports_watched_file_registration,
             semantic_token_projection: self.semantic_token_projection.clone(),
-            watched_files_registered: self.watched_files_registered,
+            watched_files_registered: self.watched_files.registered(),
             watch_files_enabled: self.watch_files_enabled,
             generation: self.project.databases.generation(),
             initialized: self.initialized,
@@ -1075,18 +1075,17 @@ impl GlobalState {
     }
 
     fn register_watched_files_after_initialized(&mut self) -> Vec<Message> {
-        if self.client_supports_watched_file_registration
-            && self.watch_files_enabled
-            && !self.watched_files_registered
-            && let Some(registration) = watching::registration_request(
-                self.project.config.as_ref(),
-                &self.project.workspace_roots,
-            )
-        {
-            self.watched_files_registered = true;
-            return vec![registration];
-        }
-        Vec::new()
+        self.watched_files.mark_initialized();
+        self.refresh_watched_files()
+    }
+
+    fn refresh_watched_files(&mut self) -> Vec<Message> {
+        self.watched_files.refresh(
+            self.project.config.as_ref(),
+            &self.project.workspace_roots,
+            self.client_supports_watched_file_registration,
+            self.watch_files_enabled,
+        )
     }
 
     fn publish_workspace_diagnostics(&mut self) -> Vec<Message> {

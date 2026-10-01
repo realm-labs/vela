@@ -292,7 +292,18 @@ pub fn assemble_package_project_sources(
     snapshot: &WorkspaceSnapshot,
 ) -> ProjectSources {
     let config = WorkspaceConfig::from_package_graph(graph, SchemaConfig::none());
-    let mut sources = assemble_workspace_sources(&config, files, snapshot);
+    assemble_package_project_sources_with_config(graph, &config, files, snapshot)
+}
+
+/// Assemble package-owned and manifest-free roots with one dependency map.
+#[must_use]
+pub fn assemble_package_project_sources_with_config(
+    graph: &PackageGraph,
+    config: &WorkspaceConfig,
+    files: &[SourceFileSnapshot],
+    snapshot: &WorkspaceSnapshot,
+) -> ProjectSources {
+    let mut sources = assemble_workspace_sources(config, files, snapshot);
     sources.package_dependencies = graph.dependency_map().clone();
     sources
 }
