@@ -72,6 +72,13 @@ async function run() {
   };
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
+  const workspaceFiles = require("../../../../tests/lsp_matrix/fixtures/input-workspace-files.json");
+  for (const [file, document] of new FixtureWorkspace(workspaceFiles).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "workspace fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const lifecycle = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
   for (const [file, document] of new FixtureWorkspace(lifecycle).disk) {
     const target = path.join(workspace, file);
@@ -136,11 +143,6 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, document.text);
   }
-  fs.mkdirSync(path.join(workspace, ".vscode"));
-  fs.writeFileSync(
-    path.join(workspace, ".vscode/settings.json"),
-    JSON.stringify(profile.settings, null, 2),
-  );
   const vsix = path.join(root, "vela.vsix");
   const packaged = spawnSync(
     process.execPath,
@@ -156,6 +158,7 @@ async function run() {
   });
   const extensions = path.join(root, "extensions"),
     userData = path.join(root, "user-data");
+  require("./profile-settings").writeProfileSettings(workspace, userData, profile);
   const isolated = [
     "--extensions-dir",
     extensions,
@@ -457,9 +460,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux10-or-ux18-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux10-ux17-or-ux18-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux(?:0[13456789]|10|18)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux(?:0[13456789]|10|17|18)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
@@ -502,6 +505,10 @@ async function run() {
     await require("./lifecycle").runLifecycle({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item=>requestedProofs.includes(item.id)) : contracts,
       until, pid: child.pid, platform: profile.platform, binary: path.join(root,installedServer), onProof: proof=>proofs.push(proof),
+    });
+    await require("./workspace-files").runWorkspaceFiles({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, pid: child.pid, platform: profile.platform, onProof: proof => proofs.push(proof),
     });
     restoreKeyboard();
     await bridge("finish");

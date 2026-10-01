@@ -182,6 +182,17 @@ async function run() {
           } else throw Error("unsupported installation command");
           break;
         }
+        case "workspace-file-query": {
+          const { workspaceFileModel } = require("../../../../scripts/lsp-matrix/workspace-files-contracts");
+          if (!["create", "rename", "delete"].includes(message.route)) throw Error("unsupported workspace route");
+          const m = workspaceFileModel(message.route);
+          const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, m.o.caller), p = m.call;
+          const locations = await vscode.commands.executeCommand("vscode.executeDefinitionProvider", uri, new vscode.Position(p.line, p.character));
+          value = (locations ?? []).map(location => ({ uri: fileUri((location.targetUri ?? location.uri).fsPath),
+            range: { start: { line: (location.targetSelectionRange ?? location.range).start.line, character: (location.targetSelectionRange ?? location.range).start.character },
+              end: { line: (location.targetSelectionRange ?? location.range).end.line, character: (location.targetSelectionRange ?? location.range).end.character } } }));
+          break;
+        }
         case "lifecycle-query": {
           const spec = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
           const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, spec.oracle.file), p = spec.oracle.call;

@@ -76,6 +76,7 @@ function localContracts(requirements, fixture, platform = "darwin") {
     ...require("./hover-signature-contracts").hoverSignatureContracts(requirements),
     ...require("./installation-contracts").installationContracts(requirements),
     ...require("./lifecycle-contracts").lifecycleContracts(requirements),
+    ...require("./workspace-files-contracts").workspaceFileContracts(requirements),
   ];
   if (platform === "win32") {
     const keys = { "Meta+p": "Control+p", "Meta+Shift+P": "Control+Shift+P", "Meta+Shift+M": "Control+Shift+M", "Meta+1": "Control+1", "Meta+.": "Control+.", "Meta+,": "Control+,", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", "Meta+a": "Control+a", "Meta+Shift+z": "Control+y", Meta: "Control" };
@@ -83,13 +84,15 @@ function localContracts(requirements, fixture, platform = "darwin") {
       for (const action of contract.actions) {
         if (action.key === "Meta+ArrowLeft") action.key = "Home";
         if (action.key === "Meta+ArrowRight") action.key = "End";
-        if (["Meta+k", "Meta+i", "Meta+Shift+Space"].includes(action.key)) action.key = action.key.replace("Meta", "Control");
+        if (action.key === "Meta+Shift+ArrowRight") action.key = "Shift+End";
+        if (["Meta+k", "Meta+i", "Meta+s", "Meta+Shift+Space"].includes(action.key)) action.key = action.key.replace("Meta", "Control");
         if (keys[action.key]) action.key = keys[action.key];
         if (action.id === "accept-candidate") action.selector = "suggest-widget listitem";
       }
       for (const check of contract.checks) {
         if (check.id === "native-submenu") check.expected.role = "menuitem";
         if (check.id === "visible-candidate") check.expected.role = "listitem";
+        if (check.id === "confirmation") check.expected.button = "Move to Recycle Bin";
       }
       contract.artifacts = contract.artifacts.filter((file) => file !== "native-menu");
     }

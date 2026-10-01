@@ -7,6 +7,7 @@ const { fileURLToPath } = require("node:url");
 const { quickFixModel } = require("../../../../scripts/lsp-matrix/quick-fix-contracts");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { relativeFile, fileUri } = require("./paths");
+const { readTrace, workspaceReadiness } = require("./readiness");
 
 async function runQuickFix({ page, bridge, record, root, workspace, contracts, until, onProof }) {
   const model = quickFixModel();
@@ -58,6 +59,14 @@ async function runQuickFix({ page, bridge, record, root, workspace, contracts, u
     await editor.focus();
     await source("origin");
     await diagnostics("initial-diagnostics");
+    // Undo/restored diagnostics can schedule an automatic code-action refresh
+    // after fixture setup. A manual request racing that refresh opens and then
+    // immediately loses its widget. Observe the existing mutation quiet window
+    // before issuing the one accepted shortcut/lightbulb input; never retry it.
+    const ready = await until("quick-fix workspace settled", () => workspaceReadiness(readTrace(workspace), {
+      since: started, now: Date.now(),
+    }));
+    receipt("observation", "workspace-ready", ready);
     if (contract.id === "ux08-no-fix") {
       const active = (await bridge("inspect")).active;
       check("no-fix-cursor", { position: active.selections[0].active });

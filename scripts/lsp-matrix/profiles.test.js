@@ -42,7 +42,9 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
   for (let i = 0; i < mac.length; i++) {
     assert.deepEqual(windows[i].requirements, mac[i].requirements);
     const semantic = (c) => !["native-submenu", "visible-candidate"].includes(c.id);
-    assert.deepEqual(windows[i].checks.filter(semantic), mac[i].checks.filter(semantic));
+    const semanticChecks = (checks) => checks.filter(semantic).map(c => c.id === "confirmation"
+      ? { ...c, expected: { ...c.expected, button: "<platform deletion label>" } } : c);
+    assert.deepEqual(semanticChecks(windows[i].checks), semanticChecks(mac[i].checks));
     assert.equal(windows[i].actions.length, mac[i].actions.length);
   }
   const actions = windows.flatMap((c) => c.actions);

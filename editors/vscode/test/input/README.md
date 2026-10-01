@@ -16,6 +16,14 @@ matches the inspected pinned editor; default modal behavior differs from the
 development test host. Profile fingerprints and all acceptance captures must
 be regenerated after this reviewed adjustment.
 
+Both also pin `window.dialogStyle: "custom"` and `explorer.confirmDelete: true`
+for Explorer file-operation acceptance. Delete still requires the real workbench
+confirmation. Dialog style has APPLICATION scope in the pinned VS Code; the
+runner writes it only into the isolated user-data/User/settings.json. Other
+preferences stay in workspace settings, and effective settings are verified.
+The developer's own user profile is never edited. This adjustment requires fresh
+evidence; macOS and Windows captures remain independent.
+
 `profiles/darwin-arm64.json` and `profiles/win32-x64.json` pin the local
 machine/editor configurations, selected automatically using the platform and
 architecture registered in `tests/lsp_matrix/checkpoint.json`, including locale,
@@ -56,6 +64,14 @@ pointer leave and Escape dismissal, and unknown-receiver suppression. Its marked
 Unicode source, exact rendered documentation, highlighted range, active parameter,
 caret, dirty state and unchanged disk inputs have independent fixture expectations.
 Unknown requests must actually complete before widget absence is accepted.
+
+UX17 Explorer routes create, rename, delete and recreate actual dependencies.
+They check exact current/null definitions from separate command queries and real
+F12 requests, complete diagnostic appearance/clearing, owned file membership,
+Unicode ranges and unchanged dirty caller source. Investigate a selected route
+with `--proof ux17-explorer-create`, `--proof ux17-explorer-rename` or
+`--proof ux17-explorer-delete`; a strict gate still requires every owned proof.
+Roots/settings/schema and workspace trust routes remain pending.
 Use `--proof ux10-pointer-hover` (or another registered route) for investigation;
 batch acceptance requires fresh evidence for all owned routes.
 

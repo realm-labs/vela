@@ -8020,10 +8020,23 @@
         "configuration-request/environments/client_capabilities/protocol"
       ],
       "summary": "Close nineteen configuration-change/workspace-folders/conditional configuration-request protocol obligations under reviews/workspace-configuration.md. Independent LF/CRLF Unicode disk and dirty overlay markers, literal UTF-16/import and schema goldens; entire diagnostic URI sets and complete error/diagnostic/hover/location responses. Root discovery and precedence, cross-root add/remove/readd, package graph/schema ownership, manifest authority until deletion, schema switch/invalid/missing/disable/restore, exact overlay text/version, immutable snapshots and fresh-server equivalence. Real references workers before/after completion reject stale publication; typed cancellation takes priority and no-op membership preserves the complete authored reference set. Three capability profiles, session boundaries and absent/unsolicited/error configuration responses retain exact defaults; two positive conditional N/A entries unchanged. Independent failures expose empty diagnostic URI for invalid settings and missing disk discovery. Invalid settings now use standard ERROR window/logMessage; explicit root/config refreshes reuse package source discovery without per-edit scans. A further authored I/O case exposes unowned errors; real owners merge once and clear after repair. Retain pre-fix and fixture-authoring logs. Baselines lifecycle26/folders1/schema4; focused14; watched9/existing watch11/schema4/lifecycle26/folder1/capability1; package16; Node112; fmt; workspace Clippy; workspace4806+2 historical ignores. Fresh Windows VSIX20/native42 share frozen source/server; strict B08 service746+2 ignores/protocol784/stdio10. Preserve nine accepted B00-B08 snapshots and prior children. Catalog870 verified/455 unreviewed/2 N/A/zero failed; B09 thirty verified/two N/A/16 open. Next B09.3 installed UX17 workspace before UX21 trust. macOS fresh proof separate; B16 deferred. VSIX editors/vscode/test-results/run-hmik0s/results.json; input editors/vscode/test-results/input-IObtKT/results.json; audit target/lsp-matrix/run-DeFN1M/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B09.3",
+      "revision": null,
+      "requirements": [
+        "vscode/UX17/explorer-create/command/local",
+        "vscode/UX17/explorer-create/input/local",
+        "vscode/UX17/explorer-rename/command/local",
+        "vscode/UX17/explorer-rename/input/local",
+        "vscode/UX17/explorer-delete/command/local",
+        "vscode/UX17/explorer-delete/input/local"
+      ],
+      "summary": "Close the six UX17 Explorer create/rename/delete Command and Input requirements under reviews/workspace-files-workbench.md. Independent LF/CRLF Unicode fixtures, literal UTF-16 spans and separate native visible columns. Real Explorer New File, F2 rename, context Delete and exact visible confirmation, actual typing/save, unsaved import repair and Explorer recreation. Complete authored diagnostics with labels/candidates/repair hints, command definition lists and one complete native F12 request/Location-or-null response at each stable state; exact source/caret/language/dirty/disk ownership, absent old paths, no stale target and clear/recovery. Readiness observes only; every accepted input runs once. Retain initial column, Quick Open, application-scope, menu-guard, platform-label, Quick Fix refresh and Explorer sticky-copy investigations. Home input and unique real tree rows avoid matching visual ancestor duplicates while preserving ownership. Pinned Monaco installs mouse-up handlers after100ms; observe150ms before one action-label click. Both profiles keep confirmDelete enabled and use custom workbench dialogs; APPLICATION preference is written only into test-owned private user data and effective settings are checked. Mac uses existing native context helper and must recollect its own fresh proof. No production Rust change. Node119; fmt; focused18 including Quick Fix four and Explorer three with11 prerequisites; fresh VSIX20/native45; fresh executed audit and exported scoped B08 gate service746+2 historical ignores/protocol784/stdio10; zero failures. Observe the existing workspace quiet window before Quick Fix input to avoid the reproduced manual/automatic refresh race; no old expected facts or actions change. All42 previous native contract hashes and nine accepted B00-B08 snapshots preserved. Catalog870 verified/455 unreviewed/2 N/A; B09 thirty-six verified/two N/A/ten open. Next B09.4 roots/settings/schema before UX21 trust. B16 deferred. VSIX editors/vscode/test-results/run-bYxBY3/results.json; input editors/vscode/test-results/input-tJt0Uo/results.json; audit target/lsp-matrix/run-0z7Kpw/report.json; scoped gate target/b09-3-scoped-gate.json. CLI --strict intentionally selects the complete goal and reports 517 pending obligations; the same fresh report passes the exported identical B08 gate, preserving full goal scope. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B09.3",
+  "nextTask": "B09.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10114,7 +10127,12 @@
     "target/lsp-matrix/run-VXTV8d/report.json",
     "editors/vscode/test-results/run-hmik0s/results.json",
     "editors/vscode/test-results/input-IObtKT/results.json",
-    "target/lsp-matrix/run-DeFN1M/report.json"
+    "target/lsp-matrix/run-DeFN1M/report.json",
+    "editors/vscode/test-results/run-bYxBY3/results.json",
+    "editors/vscode/test-results/input-tJt0Uo/results.json",
+    "target/lsp-matrix/run-0z7Kpw/report.json",
+    "target/b09-3-scoped-gate.json",
+    "editors/vscode/test-results/input-MYKvys/results.json"
   ],
   "openIssues": [
     {

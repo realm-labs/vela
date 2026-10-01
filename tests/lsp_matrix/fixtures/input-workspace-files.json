@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "input-workspace-files",
+  "files": {
+    "scripts/create_observer.vela": "[[import:start]]use copper_gateway::blossom;[[import:end]]\nfn create_observer() { /* 中😀 */ [[call:start]]blossom[[call:end]](); }\n",
+    "scripts/rename_observer.vela": "[[import:start]]use amber_quarry::turnwheel;[[import:end]]\nfn rename_observer() { /* 中😀 */ [[call:start]]turnwheel[[call:end]](); }\n",
+    "scripts/amber_quarry.vela": "/* 中😀 */ pub fn [[decl:start]]turnwheel[[decl:end]]() -> i64 { return 6; }",
+    "scripts/delete_observer.vela": "[[import:start]]use indigo_lighthouse::harvest;[[import:end]]\nfn delete_observer() { /* 中😀 */ [[call:start]]harvest[[call:end]](); }\n",
+    "scripts/indigo_lighthouse.vela": "/* 中😀 */ pub fn [[decl:start]]harvest[[decl:end]]() -> i64 { return 8; }"
+  },
+  "actions": [],
+  "oracle": {
+    "callInput": "3:35",
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "create": {"caller":"scripts/create_observer.vela","dependency":"scripts/copper_gateway.vela","module":"copper_gateway","symbol":"blossom","source":"/* 中😀 */ pub fn [[decl:start]]blossom[[decl:end]]() -> i64 { return 4; }"},
+    "rename": {"caller":"scripts/rename_observer.vela","dependency":"scripts/amber_quarry.vela","module":"amber_quarry","symbol":"turnwheel","renamed":"scripts/violet_archive.vela","renamedModule":"violet_archive"},
+    "delete": {"caller":"scripts/delete_observer.vela","dependency":"scripts/indigo_lighthouse.vela","module":"indigo_lighthouse","symbol":"harvest"},
+    "missingCode":"hir::unresolved_module",
+    "missingLabel":"no similar modules found"
+  }
+}

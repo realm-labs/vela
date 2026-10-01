@@ -44,8 +44,14 @@ settings emit standard error logs; discovery errors use real URI owners and
 merge into one diagnostic publication. See the
 [watch review](../tests/lsp_matrix/reviews/watched-files.md) and
 [configuration review](../tests/lsp_matrix/reviews/workspace-configuration.md).
-Installed workspace/trust B09 proofs remain open; the checkpoint records the
-current verified child and next task.
+Installed UX17 Explorer creation, rename, confirmed deletion and recreation now
+have independent full command/native navigation and diagnostic contracts, with
+exact Unicode coordinates and dirty caller ownership; see the
+[Explorer review](../tests/lsp_matrix/reviews/workspace-files-workbench.md).
+Registered profiles keep file deletion confirmation enabled and use workbench
+dialogs through private application settings. Roots/settings/schema and UX21
+trust B09 proofs remain open; the checkpoint records the current verified child
+and next task.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
