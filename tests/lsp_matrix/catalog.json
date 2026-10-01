@@ -14959,6 +14959,344 @@
           "name": "tests::hover::lifecycle_states::hover_state_matrix_preserves_current_facts_through_source_and_schema_lifecycle"
         }
       ]
+    },
+    {
+      "requirement": "initialize/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialize/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialize/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialize/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialize/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialized/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialized/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "initialized/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "shutdown-exit/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "shutdown-exit/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "shutdown-exit/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "shutdown-exit/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
+    },
+    {
+      "requirement": "shutdown-exit/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/session-initialization.md. Independent session-init authors complete capability/serverInfo objects and five client profiles: absent, standard, explicit-empty, custom reversed/duplicate/unsupported entries and launch-disabled watching. Exact capability options and token legends, conditional complete registration request, duplicate workspace root identity and at-most-once registration. Fresh physical package roots with Chinese/space/percent names load both unopened modules and return independently marked full cross-module hover Markdown/range. Early/malformed initialized and request-vs-notification rejection cannot unlock/register; repeated initialize cannot replace source roots or generation. Eight invalid initialize shapes preserve flags, empty SourceDb and generation, emit exact ID/code/object fields with controlled error prefix, and recover exact facts after valid initialize. Malformed shutdown requests and shutdown notifications preserve readiness; proper request returns null, later requests reject before typed dispatch, malformed exit does not stop, proper exit is silent, and the existing exit-request error terminates. Flags, source facts, immutable disk bytes and generations are checked. Two real production main-loop conversations enqueue all seven inputs before starting, stop within five seconds and match the complete output list without processing queued post-exit requests/notifications. Do not substitute TestServer terminal filtering for actual loop termination. Fix Windows canonical verbatim drive/UNC prefixes leaking into watcher URLs and lost percent encoding at standard file-URI projection; keep Unix literal paths. Independent URI regression, standard parsing, no query/fragment and filesystem conversion. No sync, cancellation, framed stdio/process or UX01/UX18 closure; fresh Windows/macOS proof remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_invalid_requests_preserve_lifecycle_and_source_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_shutdown_matrix_preserves_request_errors_and_terminal_state"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_real_main_loop_terminates_after_exit_without_processing_queued_messages"
+        },
+        {
+          "layer": "protocol",
+          "name": "paths::uri_tests::file_uris_encode_unicode_and_normalize_windows_verbatim_roots"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -21,6 +21,10 @@ Semantic-token coverage includes exact installed provider results
 and native editing, scrolling, setting changes and unresolved-reference styles;
 see the
 [workbench review](../tests/lsp_matrix/reviews/semantic-token-workbench.md).
+Initialization coverage now checks complete capability projection, conditional
+registration, invalid/repeated requests and bounded real main-loop termination;
+canonical Windows roots produce properly encoded watcher URIs. Source-sync,
+cancellation and process/editor lifecycle coverage remain open in B08.
 Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)

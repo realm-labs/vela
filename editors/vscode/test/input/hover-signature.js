@@ -5,6 +5,7 @@ const { hoverSignatureModel } = require("../../../../scripts/lsp-matrix/hover-si
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { fileUri } = require("./paths");
 const { tokenGeometry } = require("./token-geometry");
+const { readTrace, completedResponse } = require("./readiness");
 
 async function runHoverSignature({ page, bridge, record, root, workspace, contracts, until, onProof }) {
   const m = hoverSignatureModel();
@@ -86,16 +87,14 @@ async function runHoverSignature({ page, bridge, record, root, workspace, contra
     };
     const request = async (id, method, since) => {
       await until(`${contract.id}/${method} response`, () => {
-        const file = path.join(workspace, ".vela-lsp-trace.jsonl");
-        if (!fs.existsSync(file)) return false;
-        const rows = fs.readFileSync(file,"utf8").split(/\r?\n/).filter(Boolean).flatMap(line => { try { return [JSON.parse(line)]; } catch { return []; } });
+        const rows = readTrace(workspace);
         const sameFile = uri => {
           if (!uri) return false;
           const actual = path.resolve(fileURLToPath(uri)), expected = path.resolve(workspace,m.file);
           return process.platform === "win32" ? actual.toLowerCase() === expected.toLowerCase() : actual === expected;
         };
-        const response = rows.find(row => row.event === "response_sent" && row.method === method && row.timestampMs >= since &&
-          row.status === "completed" && sameFile(row.documentUri));
+        const response = rows.find(row => completedResponse(row) && row.method === method && row.timestampMs >= since &&
+          sameFile(row.documentUri));
         if (response) observe(id, response);
         return response;
       });

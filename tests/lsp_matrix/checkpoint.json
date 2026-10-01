@@ -7487,10 +7487,30 @@
         "vscode/UX10/unknown-receiver/render/local"
       ],
       "summary": "Close all ten native UX10 Input/Render obligations and accept full B07 (96/96). Independent ux10 fixture authors Unicode marked source, complete qualified hover label/type/docs, concrete defaulted signature labels, caret and disk expectations with same-spelled source decoy and Any receiver. External keyboard/pointer input renders exact docs at the marked glyph and checks its actual highlight range. Native keyboard hover matches pointer docs. Typing an auto-paired call selects left initially, named defaulted right in argument position zero and named left in position one; native caret moves and explicit hints verify first/last identities. Pointer leave and separate keyboard Escape clear hover and preserve source, caret and usable focus. Unknown hover and signature requests must actually complete for the owned document after native invocation before absent widgets can pass. Every route checks full buffer, dirty state, selections and all three physical files; no bridge input commands, provider expectations or script/host execution. DOM observations follow actual tokenized markdown code and active signature spans. Windows Ctrl chords/Home twice/End and macOS Cmd chords/line movement are registered independently; no platform aggregation. Five focused UX10 proofs pass; fresh complete Windows native 38 and VSIX 20 share current source/server identity. Node 94 and fmt pass. Rust sources are unchanged; full service 739 with two historical ignores and protocol 741 execute in current strict B07 gate. Original B00-B06 acceptance snapshots stay unchanged; new B07 acceptance records exact 96-row scope. Catalog 767 verified, 558 unreviewed, two N/A, zero failed. Next B08 transport/sync/cancellation scope; macOS requires its own fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-7cQcXr/results.json; input editors/vscode/test-results/input-5th3fM/results.json; audit target/lsp-matrix/run-I7tcwg/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.1",
+      "revision": null,
+      "requirements": [
+        "initialize/syntax/S0/positive/protocol",
+        "initialize/syntax/S0/negative/protocol",
+        "initialize/syntax/S11/positive/protocol",
+        "initialize/syntax/S11/negative/protocol",
+        "initialize/environments/client_capabilities/protocol",
+        "initialized/syntax/S0/positive/protocol",
+        "initialized/syntax/S0/negative/protocol",
+        "initialized/environments/client_capabilities/protocol",
+        "shutdown-exit/syntax/S0/positive/protocol",
+        "shutdown-exit/syntax/S0/negative/protocol",
+        "shutdown-exit/syntax/S11/positive/protocol",
+        "shutdown-exit/syntax/S11/negative/protocol",
+        "shutdown-exit/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close thirteen initialize/initialized/shutdown-exit protocol obligations under reviews/session-initialization.md. Independent session-init authors complete capability/result options, 42 custom token types, 16 modifiers and five client/launch profiles: omitted, standard, explicit empty, custom reordered/duplicate/unsupported names and watching disabled. Exact registration request and at-most-once supported/enabled policy; repeated/invalid initialized cannot unlock or register. Duplicate rootUri/workspace folders select the original owned package. Each fresh encoded Chinese/space/percent root loads both unopened modules and returns exact marked cross-module Markdown/range; repeated initialize cannot replace source facts, roots or generation. Eight malformed initialization shapes preserve lifecycle flags, SourceDb and generation and recover after valid initialization; exact response fields/codes and controlled serde error prefixes. Two shutdown branches reject malformed request params, ignore shutdown notifications, return null for proper request, reject later requests before dispatch, ignore malformed exit, and enforce existing silent-exit/invalid-exit-request terminal policy. Two real production main loops enqueue all seven messages before startup, end within five seconds and match complete outputs; queued post-exit requests and invalid-source notifications do not run. Immutable full fixture bytes and guarded owned cleanup. Exposed and fixed canonical Windows drive/UNC verbatim prefixes entering malformed watcher file URIs and losing percent encoding. Normalize these prefixes only for standard URI output; preserve ordinary Unix path bytes and literal backslash filenames. Independent ordinary/verbatim drive/UNC, Unicode/space/percent, URL/no-query/no-fragment and filesystem conversion cases. Native readiness observes completed mutations and a 750ms quiet window before the one references shortcut; actual response output is required for unknown hover/signature absence. Five independent Node regressions cover pending/late mutations, wrong acknowledgements, trace writes and stale/empty responses. No sync/cancellation/framed-process/UX01/UX18 closure. Focused session four, URI one plus supplementary path regression five; Node 99, fmt, workspace Clippy and workspace 4751 pass with two historical ignores. Fresh Windows VSIX 20/native 38 share current frozen source/server identity. Strict B07 service 739 with two historical ignores/protocol 746; original B00-B07 acceptance snapshots unchanged. Catalog 780 verified, 545 unreviewed, two N/A, zero failed; B08 13/83. Continue B08.2; macOS requires independent fresh proof; B16 deferred. VSIX editors/vscode/test-results/run-gex2X1/results.json; input editors/vscode/test-results/input-PrY3AZ/results.json; audit target/lsp-matrix/run-beyC7R/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08",
+  "nextTask": "B08.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9637,7 +9657,10 @@
     "editors/vscode/test-results/input-JDe8Hy/results.json",
     "target/lsp-matrix/run-I7tcwg/report.json",
     "editors/vscode/test-results/run-7cQcXr/results.json",
-    "editors/vscode/test-results/input-5th3fM/results.json"
+    "editors/vscode/test-results/input-5th3fM/results.json",
+    "target/lsp-matrix/run-beyC7R/report.json",
+    "editors/vscode/test-results/run-gex2X1/results.json",
+    "editors/vscode/test-results/input-PrY3AZ/results.json"
   ],
   "openIssues": [
     {
@@ -13039,8 +13062,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b84295ddd564598edbcf8337d2e5df95cca0c76b",
-          "treeSha256": "c24fb89e04fbfb1a8d0951418935f219a71f655068c63a8379121d5df69fc16b"
+          "revision": "9d62d3ed75106748a0962f7b090a9addcfcd26ae",
+          "treeSha256": "1156932a028b5122c2f6261ca003532adcc6990b85da79f310df0f89f0e329c3"
         },
         "profile": {
           "platform": "win32",
@@ -13048,11 +13071,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-I7tcwg/report.json"
+          "target/lsp-matrix/run-beyC7R/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-7cQcXr/results.json --local-results editors/vscode/test-results/input-5th3fM/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-gex2X1/results.json --local-results editors/vscode/test-results/input-PrY3AZ/results.json",
             "exitCode": 0
           }
         ]

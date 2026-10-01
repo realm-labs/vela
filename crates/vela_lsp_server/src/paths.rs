@@ -5,7 +5,19 @@ pub(crate) const CONFIG_FILE: &str = "vela.toml";
 pub(crate) const SOURCE_EXTENSION: &str = ".vela";
 
 pub(crate) fn document_path_uri(path: &str) -> String {
-    if let Ok(uri) = lsp_types::Url::from_file_path(path) {
+    // Canonical package roots may use Windows verbatim spelling. It is a
+    // filesystem prefix, not part of the standard file URI presented to clients.
+    let path = if cfg!(windows) {
+        let path = normalized_path(path);
+        if let Some(unc) = path.strip_prefix("//?/UNC/") {
+            format!("//{unc}")
+        } else {
+            path.strip_prefix("//?/").unwrap_or(&path).to_owned()
+        }
+    } else {
+        path.to_owned()
+    };
+    if let Ok(uri) = lsp_types::Url::from_file_path(&path) {
         return uri.to_string();
     }
     let path = normalized_path(path);
@@ -68,4 +80,63 @@ fn canonicalize_existing_ancestor(path: &Path) -> Option<PathBuf> {
         }
     }
     None
+}
+
+#[cfg(test)]
+mod uri_tests {
+    #[test]
+    fn file_uris_encode_unicode_and_normalize_windows_verbatim_roots() {
+        let encoded = "%E4%B8%AD%E6%96%87%20%25%20source";
+        #[cfg(windows)]
+        let cases = [
+            (
+                r"C:\workspace\中文 % source",
+                format!("file:///C:/workspace/{encoded}"),
+            ),
+            (
+                r"\\?\C:\workspace\中文 % source",
+                format!("file:///C:/workspace/{encoded}"),
+            ),
+            (
+                "//?/C:/workspace/中文 % source",
+                format!("file:///C:/workspace/{encoded}"),
+            ),
+            (
+                r"\\?\UNC\server\share\中文 % source",
+                format!("file://server/share/{encoded}"),
+            ),
+            (
+                "//?/UNC/server/share/中文 % source",
+                format!("file://server/share/{encoded}"),
+            ),
+        ];
+        #[cfg(not(windows))]
+        let cases = [
+            (
+                "/workspace/中文 % source",
+                format!("file:///workspace/{encoded}"),
+            ),
+            (
+                r"/workspace/中文 % source\literal",
+                format!("file:///workspace/{encoded}%5Cliteral"),
+            ),
+        ];
+        for (path, expected) in cases {
+            let actual = super::document_path_uri(path);
+            assert_eq!(actual, expected);
+            let uri = lsp_types::Url::parse(&actual).expect("standard file URI");
+            assert!(uri.query().is_none());
+            assert!(uri.fragment().is_none());
+            let physical = uri.to_file_path().expect("usable filesystem path");
+            let name = if path.ends_with(r"\literal") {
+                r"中文 % source\literal"
+            } else {
+                "中文 % source"
+            };
+            assert_eq!(
+                physical.file_name().and_then(|name| name.to_str()),
+                Some(name)
+            );
+        }
+    }
 }

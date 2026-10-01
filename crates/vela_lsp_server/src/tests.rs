@@ -205,6 +205,7 @@ mod inlay;
 mod inlay_suppression;
 mod lifecycle;
 mod rename_source_return;
+mod session_init;
 mod support;
 
 mod call_hierarchy;

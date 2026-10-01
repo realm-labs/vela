@@ -6,6 +6,7 @@ const { fileURLToPath } = require("node:url");
 const { referencesModel } = require("../../../../scripts/lsp-matrix/references-contracts");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { relativeFile, fileUri } = require("./paths");
+const { readTrace, workspaceReadiness } = require("./readiness");
 
 async function runReferences({ page, bridge, record, root, workspace, contracts, until, onProof }) {
   const contract = contracts.find((item) => item.id === "ux06-references-select");
@@ -47,6 +48,10 @@ async function runReferences({ page, bridge, record, root, workspace, contracts,
         closed: !documents.some((item) => item.uri === fileUri(path.join(workspace, "scripts/refs_closed.vela"))),
       });
     }
+    const since = Date.now();
+    const ready = await until(`references ${index} workspace notifications settled`, () =>
+      workspaceReadiness(readTrace(workspace), { since, now: Date.now() }));
+    receipt("observation", `workspace-ready-${index}`, ready);
     await action(`open-references-${index}`);
     await panel.waitFor({ state: "visible" });
     const tree = panel.getByRole("tree", { name: "References" });
