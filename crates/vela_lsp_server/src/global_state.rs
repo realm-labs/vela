@@ -1074,14 +1074,12 @@ impl GlobalState {
             return Vec::new();
         }
         if params.content_changes.is_empty() {
-            return vec![publish_diagnostics_notification(
-                params.text_document.uri.as_str(),
-                Vec::new(),
-                Some("didChange requires at least one content change".to_owned()),
+            return vec![self.project.publish_document_sync_error(
+                &document_id,
+                "didChange requires at least one content change".to_owned(),
             )];
         }
 
-        let uri = params.text_document.uri.to_string();
         let version = document_version::from_lsp(params.text_document.version);
         let current_text = self
             .project
@@ -1092,11 +1090,10 @@ impl GlobalState {
         let text = match apply_document_changes(current_text.as_deref(), changes) {
             Ok(text) => text,
             Err(error) => {
-                return vec![publish_diagnostics_notification(
-                    &uri,
-                    Vec::new(),
-                    Some(error),
-                )];
+                return vec![
+                    self.project
+                        .publish_document_sync_error(&document_id, error),
+                ];
             }
         };
 

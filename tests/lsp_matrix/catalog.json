@@ -15571,6 +15571,484 @@
           "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
         }
       ]
+    },
+    {
+      "requirement": "did-change/syntax/S0/positive/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S0/negative/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S2/positive/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S2/positive/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S2/negative/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S2/negative/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_matrix_preserves_complete_sources_repairs_restoration_and_stale_generations"
+        },
+        {
+          "layer": "service",
+          "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "did-change/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo complete shifted/repaired/restored changes in LF/CRLF, signed version bit preservation and three client profiles. Exact current buffers/SourceDb, full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count; immutable snapshots, repeats and fresh equivalence. Sequential ranges use authored intermediate positions; mixed replacement/range, EOF insertion and deprecated rangeLength handling preserve exact bytes. Invalid ranges and mixed packets roll back atomically, retain current diagnostics with controlled errors, consume no version/generation, and recover with the same next version. Equal/older versions, seven malformed payloads and unopened ranges cannot replace current facts. Body-only change preserves project indexes; changed parameter/docs republish current importer facts. Real references scheduler rejects stale or cancelled held tasks without result leakage; repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Standalone cancellation/close/save/process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_matrix_preserves_full_repair_restore_facts_and_signed_stale_version_policy"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_ranges_apply_in_message_order_and_mixed_replacements_preserve_exact_unicode_bytes"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_invalid_ranges_rollback_atomically_and_keep_current_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_dependency_updates_discard_stale_or_cancelled_tasks_and_keep_current_hover"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
+        }
+      ]
     }
   ],
   "featureFiles": [

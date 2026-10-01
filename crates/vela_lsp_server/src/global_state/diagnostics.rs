@@ -62,6 +62,25 @@ impl ProjectState {
         publish_diagnostics_notification(uri, diagnostics, None)
     }
 
+    pub(super) fn publish_document_sync_error(
+        &self,
+        document: &DocumentId,
+        error: String,
+    ) -> Message {
+        // A rejected edit leaves the source unchanged. Keep its diagnostics in
+        // the notification so clients do not clear valid problems on bad input.
+        let mut message = self.publish_document_diagnostics(document.as_str(), document);
+        let Message::Notification(notification) = &mut message else {
+            unreachable!("diagnostics are notifications");
+        };
+        notification
+            .params
+            .as_object_mut()
+            .expect("typed diagnostic params")
+            .insert("error".to_owned(), JsonValue::String(error));
+        message
+    }
+
     fn config_diagnostic_notifications(&self) -> Vec<Message> {
         self.config_documents
             .iter()

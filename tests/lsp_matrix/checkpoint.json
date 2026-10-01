@@ -7531,10 +7531,40 @@
         "did-open/environments/client_capabilities/protocol"
       ],
       "summary": "Close seventeen did-open obligations under reviews/document-open.md. Fifteen independently marked documents cover every S1 declaration family, duplicates and state/removed-global errors, empty/comment-only source, absent scratch, unrelated non-source input, incomplete member/call/type/declaration and an imported API. Both layers run LF/CRLF, original/prefixed complete source and signed versions 0/-1/i32::MAX/i32::MIN. Exact buffer/SourceDb text and opaque version ownership, generations, diagnostic code/severity/message/full UTF-16 range/labels/ordered candidates/repair count; immutable old snapshots, repeated current facts and fresh equivalence. Non-Vela buffers retain workspace text without analysis input; all guarded owned disk bytes remain unchanged and scratch/text stay absent. Defining-module disk/body/parameter-doc opening phases preserve or replace importer Markdown/range; signature change republishes current importer diagnostics. Service rejects stale diagnostic generation; real scheduler holds completed references tasks across didOpen and publishes only exact ContentModified, followed by valid repeated current hover. Three client capability profiles, full sync options and seven malformed payloads preserve current ownership. Exposed and fixed ordinary notifications mutating/publishing before initialize and after shutdown. Enforce existing pre-init method policy and permit exit/cancel after shutdown; source/change/close/save/config/root/watch invalid-session notifications remain silent and cannot mutate. Focused service two/protocol three; Node 99, fmt, workspace Clippy and workspace 4756 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server identity. Strict B07 service 741 with two historical ignores/protocol 749; original accepted B00-B07 and prior children unchanged. Catalog 797 verified, 528 unreviewed, two N/A, zero failed; B08 30/83. Next B08.3; remaining change/close/save/cancellation/process/editor lifecycle, independent macOS proof and deferred B16. VSIX editors/vscode/test-results/run-oVXVb6/results.json; input editors/vscode/test-results/input-EmD2zR/results.json; audit target/lsp-matrix/run-145pd4/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.3",
+      "revision": null,
+      "requirements": [
+        "did-change/syntax/S0/positive/service",
+        "did-change/syntax/S0/positive/protocol",
+        "did-change/syntax/S0/negative/service",
+        "did-change/syntax/S0/negative/protocol",
+        "did-change/syntax/S1/positive/service",
+        "did-change/syntax/S1/positive/protocol",
+        "did-change/syntax/S1/negative/service",
+        "did-change/syntax/S1/negative/protocol",
+        "did-change/syntax/S2/positive/service",
+        "did-change/syntax/S2/positive/protocol",
+        "did-change/syntax/S2/negative/service",
+        "did-change/syntax/S2/negative/protocol",
+        "did-change/syntax/S9/positive/service",
+        "did-change/syntax/S9/positive/protocol",
+        "did-change/syntax/S9/negative/service",
+        "did-change/syntax/S9/negative/protocol",
+        "did-change/syntax/S11/positive/service",
+        "did-change/syntax/S11/positive/protocol",
+        "did-change/syntax/S11/negative/service",
+        "did-change/syntax/S11/negative/protocol",
+        "did-change/states/stale_version/protocol",
+        "did-change/states/cancellation/protocol",
+        "did-change/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close twenty-three did-change obligations under reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo full shifted/repaired/restored changes in LF/CRLF with signed version bit preservation and three client profiles. Exact buffers/SourceDb text/version and full diagnostic code/severity/message/UTF-16 primary/label ranges/ordered candidates/repair count; immutable snapshots, repeats, clear-after-repair/restored negatives and fresh equivalence. Sequential range changes use authored post-edit positions; mixed full/ranged replacement, EOF insertion and ignored deprecated rangeLength preserve complete bytes. Empty/outside/surrogate/reversed/CRLF-overrun inputs and bad second edits roll back atomically, preserve version/generation/current diagnostics and recover with the same next version. Exposed and fixed error publication clearing current diagnostics despite unchanged source; retain exact facts alongside existing controlled error. Equal/older signed versions and seven malformed payloads cannot poison current state. Unopened ranges reject without creating overlays; full replacement retains existing creation policy. Body-only defining-module change reparses one document, keeps project indexes and rebuilds HIR; parameter/docs changes update and republish importer facts. Real held references tasks across change publish only exact ContentModified or RequestCancelled; no old locations leak, repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Extract shared setup/normalization support by responsibility, retain original B08.2 test bodies; service open regression two/protocol three. Focused service two/protocol five; Node 99, fmt, workspace Clippy and workspace 4763 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 743 with two historical ignores/protocol 754; accepted B00-B07 and prior children unchanged. Catalog 820 verified, 505 unreviewed, two N/A, zero failed; B08 53/83. Next B08.4; close/save, standalone cancellation, process/editor lifecycle, independent macOS capture and deferred B16 remain. VSIX editors/vscode/test-results/run-yGa9mo/results.json; input editors/vscode/test-results/input-dZNhxZ/results.json; audit target/lsp-matrix/run-HDmR2i/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08.3",
+  "nextTask": "B08.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9687,7 +9717,10 @@
     "editors/vscode/test-results/input-PrY3AZ/results.json",
     "target/lsp-matrix/run-145pd4/report.json",
     "editors/vscode/test-results/run-oVXVb6/results.json",
-    "editors/vscode/test-results/input-EmD2zR/results.json"
+    "editors/vscode/test-results/input-EmD2zR/results.json",
+    "target/lsp-matrix/run-HDmR2i/report.json",
+    "editors/vscode/test-results/run-yGa9mo/results.json",
+    "editors/vscode/test-results/input-dZNhxZ/results.json"
   ],
   "openIssues": [
     {
@@ -13089,8 +13122,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7df884399445c76ec09146baf6e9d96cabf1d968",
-          "treeSha256": "331b0631e341ed56db0d554210c87c14c2f794e971b1f0b5246ce7133a42b5b4"
+          "revision": "4dd32ba664158c74d1da4e7ba931dc3b2df99419",
+          "treeSha256": "d7519fac502ce7bc6b8f513494b71a9436dbaee93131e9641e9d4fc3225df346"
         },
         "profile": {
           "platform": "win32",
@@ -13098,11 +13131,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-145pd4/report.json"
+          "target/lsp-matrix/run-HDmR2i/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-oVXVb6/results.json --local-results editors/vscode/test-results/input-EmD2zR/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-yGa9mo/results.json --local-results editors/vscode/test-results/input-dZNhxZ/results.json",
             "exitCode": 0
           }
         ]

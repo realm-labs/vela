@@ -196,9 +196,11 @@ mod diagnostic_source_state;
 mod diagnostic_type_positions;
 
 mod diagnostic_top_level;
+mod document_change_matrix;
 mod document_open_matrix;
 mod document_sync;
 mod document_sync_dependents;
+mod document_sync_matrix_support;
 mod file_watching;
 mod formatting;
 mod incremental;

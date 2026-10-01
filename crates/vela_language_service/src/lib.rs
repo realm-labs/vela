@@ -125,3 +125,9 @@ mod shared_fixture_tests;
 
 #[cfg(test)]
 mod document_open_tests;
+
+#[cfg(test)]
+mod document_sync_test_support;
+
+#[cfg(test)]
+mod document_change_tests;
