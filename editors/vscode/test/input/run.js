@@ -72,6 +72,13 @@ async function run() {
   };
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
+  const workspaceSchema = require("../../../../tests/lsp_matrix/fixtures/input-workspace-schema.json");
+  for (const [file, document] of new FixtureWorkspace(workspaceSchema).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "schema fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const workspaceFiles = require("../../../../tests/lsp_matrix/fixtures/input-workspace-files.json");
   for (const [file, document] of new FixtureWorkspace(workspaceFiles).disk) {
     const target = path.join(workspace, file);
@@ -101,6 +108,10 @@ async function run() {
     fs.writeFileSync(target, document.text);
   }
   require("../completion-fixture").materializeCompletion(workspace);
+  // Add an independent type to the already-configured static artifact without
+  // changing completion facts. Accepted replacements use native editing below.
+  const schemaModel = require("../../../../scripts/lsp-matrix/workspace-schema-contracts").workspaceSchemaModel();
+  fs.writeFileSync(path.join(workspace, schemaModel.o.schema), schemaModel.original);
   const rename = require("../../../../tests/lsp_matrix/fixtures/input-rename.json");
   for (const [file, document] of new FixtureWorkspace(rename).disk) {
     const target = path.join(workspace, file);
@@ -509,6 +520,10 @@ async function run() {
     await require("./workspace-files").runWorkspaceFiles({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
       until, pid: child.pid, platform: profile.platform, onProof: proof => proofs.push(proof),
+    });
+    await require("./workspace-schema").runWorkspaceSchema({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: proof => proofs.push(proof),
     });
     restoreKeyboard();
     await bridge("finish");

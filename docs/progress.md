@@ -49,9 +49,14 @@ have independent full command/native navigation and diagnostic contracts, with
 exact Unicode coordinates and dirty caller ownership; see the
 [Explorer review](../tests/lsp_matrix/reviews/workspace-files-workbench.md).
 Registered profiles keep file deletion confirmation enabled and use workbench
-dialogs through private application settings. Roots/settings/schema and UX21
-trust B09 proofs remain open; the checkpoint records the current verified child
-and next task.
+dialogs through private application settings. Installed UX17 schema replacement
+now pins full command/native hover facts, removed/new fields, exact diagnostics,
+unchanged disk callers and unsaved-buffer ownership across replacement/recovery;
+see the [schema review](../tests/lsp_matrix/reviews/workspace-schema-workbench.md).
+Windows schema events compare drive/verbatim-prefix aliases and preserve the
+configured metadata owner instead of retaining stale facts or duplicate owners.
+Roots/settings, invalid configuration/schema and UX21 trust B09 proofs remain
+open; the checkpoint records the current verified child and next task.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

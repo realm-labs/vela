@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use lsp_types::{FileChangeType, FileEvent};
 use vela_language_service::DocumentId;
 
-use crate::paths::{CONFIG_FILE, SOURCE_EXTENSION, document_uri_path, normalized_path};
+use crate::paths::{CONFIG_FILE, SOURCE_EXTENSION, document_uri_path, same_file_path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ReloadOperation {
@@ -143,9 +143,7 @@ fn reload_target(uri: &str, schema_path: Option<&str>) -> ReloadTarget {
 }
 
 fn is_schema_uri(uri: &str, schema_path: Option<&str>) -> bool {
-    schema_path.is_some_and(|schema_path| {
-        normalized_path(document_uri_path(uri)) == normalized_path(schema_path)
-    })
+    schema_path.is_some_and(|schema_path| same_file_path(document_uri_path(uri), schema_path))
 }
 
 #[cfg(test)]

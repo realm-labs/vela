@@ -181,6 +181,16 @@ fn schema_queries(server: &mut TestServer, layout: &Layout, source: &Document, f
 
 #[test]
 fn watched_schema_replacement_invalid_missing_and_empty_states_restore_exact_current_facts() {
+    schema_replacement_states(false);
+}
+
+#[cfg(windows)]
+#[test]
+fn watched_schema_client_drive_alias_reloads_and_keeps_one_metadata_owner() {
+    schema_replacement_states(true);
+}
+
+fn schema_replacement_states(client_drive_alias: bool) {
     for crlf in [false, true] {
         let s = spec(crlf);
         let layout = Layout::new(&s);
@@ -218,11 +228,23 @@ fn watched_schema_replacement_invalid_missing_and_empty_states_restore_exact_cur
                         .replace('\\', "/"),
                 )
             });
+            let uri = layout.uri("schema.json");
+            let uri = if client_drive_alias {
+                let suffix = uri.strip_prefix("file:///").expect("local drive URI");
+                let (drive, tail) = suffix.split_at(1);
+                assert!(drive.as_bytes()[0].is_ascii_alphabetic());
+                let tail = tail.strip_prefix(':').expect("drive colon");
+                // VS Code lowercases and percent-encodes the drive colon.
+                // Keep the configured metadata owner and all query goldens.
+                format!("file:///{}%3A{tail}", drive.to_ascii_lowercase())
+            } else {
+                uri
+            };
             publications(
-                &watch(
+                &send(
                     &mut server,
-                    &layout,
-                    &[("schema.json", if text.is_some() { 2 } else { 3 })],
+                    json!({"jsonrpc":"2.0","method":"workspace/didChangeWatchedFiles",
+                    "params":{"changes":[{"uri":uri,"type":if text.is_some() { 2 } else { 3 }}]}}),
                 ),
                 vec![(
                     layout.uri("schema.json"),

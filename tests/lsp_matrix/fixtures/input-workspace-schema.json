@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "ux17-schema",
+  "files": {
+    "scripts/schema_observer.vela": "// 中😀\nfn schema_observer(host: WorkbenchCell) {\n  host.[[value:start]]value[[value:end]]; host.[[gone:start]]gone[[gone:end]]; host.[[rank:start]]rank[[rank:end]];\n}\n",
+    "workbench-schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"WorkbenchCell\",\"fact\":{\"kind\":\"host\",\"name\":\"WorkbenchCell\"}}],\"fields\":[{\"owner\":\"WorkbenchCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"WorkbenchCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/schema_observer.vela",
+    "schema": "ux04-schema.json",
+    "seed": "workbench-schema.json",
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "replacement": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"WorkbenchCell\",\"fact\":{\"kind\":\"host\",\"name\":\"WorkbenchCell\"}}],\"fields\":[{\"owner\":\"WorkbenchCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"WorkbenchCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "states": [
+      {"id":"baseline","fields":{"value":"i64","gone":"bool","rank":null},"unknown":"rank","candidates":["gone","value"]},
+      {"id":"current","fields":{"value":"String","gone":null,"rank":"bool"},"unknown":"gone","candidates":["rank","value"]},
+      {"id":"restored","fields":{"value":"i64","gone":"bool","rank":null},"unknown":"rank","candidates":["gone","value"]}
+    ]
+  }
+}

@@ -33,6 +33,12 @@ Package discovery and source watcher events project physical paths back through
 the client's workspace roots at the server boundary, preserving symlink-root
 URI spelling and matching deletion events through existing ancestors.
 
+Static schema events compare Windows drive-letter and verbatim-prefix aliases
+at both reload classification and project matching. Folder and file names keep
+their existing exact comparison. All alias events retain the configured schema
+document URI as the metadata diagnostic owner, preventing duplicate publications
+without rewriting the client's source URI or changing non-Windows case behavior.
+
 Watched-file notifications validate every event type before scheduling or
 coalescing: only Created, Changed and Deleted are accepted. An unknown numeric
 type rejects the whole notification without publication or partial state changes.

@@ -140,3 +140,14 @@ the keyboard layout only on the test-owned window. macOS retains its Swift nativ
 menu and input-source helpers. Both require an unlocked interactive session.
 Display observations are retained as `observed-display.json`; changed screen,
 scale, font or editor settings require a reviewed profile update and fresh proof.
+
+UX17 static schema replacement uses Quick Open pointer selection, actual editor
+text insertion and Save. Independent fixtures retain existing completion metadata
+while changing only a distinct host type's fields. Full SDK and native keyboard
+hover responses, exact diagnostic publications, dirty caller/disk ownership and
+byte-for-byte schema restoration are checked. A null schema hover still permits
+the workbench's exact diagnostic tooltip. The schema bridge performs read-only
+queries; accepted replacements never use it to write artifacts. A focused run is
+`npm --prefix editors/vscode run test:input -- --proof ux17-schema-replace`;
+batch validation still requires all current native proofs. See the
+[schema review](../../../../tests/lsp_matrix/reviews/workspace-schema-workbench.md).

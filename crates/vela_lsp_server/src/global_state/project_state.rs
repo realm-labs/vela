@@ -15,7 +15,7 @@ use crate::{
     config_change::{ConfigChange, WorkspaceConfigChange},
     paths::{
         CONFIG_FILE, SOURCE_EXTENSION, document_path_uri, document_uri_path, normalized_path,
-        workspace_document_uri,
+        same_file_path, workspace_document_uri,
     },
 };
 
@@ -396,7 +396,7 @@ impl ProjectState {
             return;
         };
         self.schema_documents
-            .insert(DocumentId::from(uri.to_owned()));
+            .insert(DocumentId::from(document_path_uri(&schema_path)));
         match read_document_uri(uri) {
             Some(source) => self
                 .databases_mut()
@@ -415,9 +415,8 @@ impl ProjectState {
     }
 
     fn is_schema_uri(&self, uri: &str) -> bool {
-        self.schema_path().is_some_and(|schema_path| {
-            normalized_path(document_uri_path(uri)) == normalized_path(schema_path)
-        })
+        self.schema_path()
+            .is_some_and(|schema_path| same_file_path(document_uri_path(uri), schema_path))
     }
 
     fn authorized_package_roots(&self, config_uri: &str) -> Vec<PathBuf> {

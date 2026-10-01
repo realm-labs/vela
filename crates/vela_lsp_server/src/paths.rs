@@ -51,6 +51,32 @@ pub(crate) fn normalized_path(path: impl AsRef<Path>) -> String {
     path.as_ref().display().to_string().replace('\\', "/")
 }
 
+/// Compare schema path spellings without rewriting outgoing document URIs.
+/// Windows drive letters and verbatim prefixes do not identify different files;
+/// keep the existing exact comparison for folder names and file names.
+pub(crate) fn same_file_path(left: impl AsRef<Path>, right: impl AsRef<Path>) -> bool {
+    fn key(path: &Path) -> String {
+        let path = normalized_path(path);
+        #[cfg(windows)]
+        {
+            let mut path = if let Some(unc) = path.strip_prefix("//?/UNC/") {
+                format!("//{unc}")
+            } else {
+                path.strip_prefix("//?/").unwrap_or(&path).to_owned()
+            };
+            if path.as_bytes().get(1) == Some(&b':') && path.as_bytes()[0].is_ascii_alphabetic() {
+                path.replace_range(0..1, &path[..1].to_ascii_uppercase());
+            }
+            path
+        }
+        #[cfg(not(windows))]
+        {
+            path
+        }
+    }
+    key(left.as_ref()) == key(right.as_ref())
+}
+
 /// Keep package discovery and file events in the client's workspace spelling.
 /// Physical identity is resolved here, at the server's filesystem boundary;
 /// service queries and outgoing locations retain the workspace URI.
@@ -84,6 +110,49 @@ fn canonicalize_existing_ancestor(path: &Path) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod uri_tests {
+    #[test]
+    fn schema_path_identity_keeps_file_names_and_accepts_native_drive_aliases() {
+        use super::same_file_path;
+        assert!(same_file_path(
+            "/workspace/中文 %/schema.json",
+            "/workspace/中文 %/schema.json"
+        ));
+        assert!(!same_file_path(
+            "/workspace/schema.json",
+            "/workspace/other.json"
+        ));
+        assert!(!same_file_path(
+            "/workspace/schema.json",
+            "/workspace/Schema.json"
+        ));
+        #[cfg(windows)]
+        {
+            let configured = r"F:\workspace\中文 %\schema.json";
+            for alias in [
+                "f:/workspace/中文 %/schema.json",
+                r"\\?\f:\workspace\中文 %\schema.json",
+                "//?/F:/workspace/中文 %/schema.json",
+            ] {
+                assert!(same_file_path(configured, alias), "{alias}");
+            }
+            let client = "file:///f%3A/workspace/%E4%B8%AD%E6%96%87%20%25/schema.json";
+            assert!(same_file_path(configured, super::document_uri_path(client)));
+            assert!(!same_file_path(
+                configured,
+                "G:/workspace/中文 %/schema.json"
+            ));
+            assert!(same_file_path(
+                r"\\?\UNC\server\share\schema.json",
+                "//server/share/schema.json"
+            ));
+        }
+        #[cfg(not(windows))]
+        assert!(!same_file_path(
+            "F:/workspace/schema.json",
+            "f:/workspace/schema.json"
+        ));
+    }
+
     #[test]
     fn file_uris_encode_unicode_and_normalize_windows_verbatim_roots() {
         let encoded = "%E4%B8%AD%E6%96%87%20%25%20source";
