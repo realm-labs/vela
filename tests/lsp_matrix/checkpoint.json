@@ -7595,10 +7595,21 @@
         "stdio/environments/process_transport/protocol"
       ],
       "summary": "Close eight cancel/stdio obligations under reviews/cancellation-stdio.md. Independent marked declaration/call/unknown/shifted sources, LF/CRLF, three client profiles and integer extremes/zero, Unicode/numeric-looking/empty string request IDs. Real queued/completed held tasks cancel with exactly one RequestCancelled and no location leakage; exact text/version/SourceDb/parse count/generation unchanged, same-ID reuse and repeated current reference sets succeed. Unknown/late/duplicate/malformed cancellation cannot poison later requests. Integer 20/string 20 isolation and targeted cancellation priority across new generations yield only exact Cancelled/ContentModified for the correct owner; current marked positions and guarded disk bytes survive. Preserve integer helper call sites and add typed-ID scheduling. Audit now discovers and executes real stdio_transport separately from libraries; merging preserves results and rejects duplicate/unknown identities. Four negative Node self-tests prevent library-only/listed-only/failed/ignored process false acceptance. Bounded real binary helper drains outputs, caps one MiB, imposes ten-second exit deadline and kills/reaps on failure; original process assertions preserved. Typed frames then original raw wire JSON check version without synthesized fields. Seven-byte writes and concatenated Unicode LF/CRLF messages reproduce seven exact declaration diagnostic facts and repaired clear state with explicit scratch main owner, older-version rejection, close, Unicode shutdown and post-exit silence. Exact framing of lifecycle/unknown/notification-only errors and silent invalid notifications. EOF succeeds; bad/missing lengths/truncated body/invalid JSON fail with stderr and no stdout junk. Integration target four process tests plus six namespaced reused fixture self-tests. Fix audit artifact ownership: normal-target integration builds overwrote the dev server and exposed strict stale-evidence rejection. Isolate the stdio target and derive the enclosing editor deadline from suite count, retaining per-suite/child bounds. Initial captures are superseded by fresh matching artifacts; product semantics unchanged. Focused cancellation three/stdio ten; baseline one; Node 103, fmt, workspace Clippy and workspace 4782 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 746 with two historical ignores/protocol 761/stdio ten; accepted B00-B07 and prior children unchanged. Catalog 840 verified, 485 unreviewed, two N/A, zero failed; B08 73/83. Next B08.6; ten editor lifecycle obligations remain. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-gJCxYs/results.json; input editors/vscode/test-results/input-Uy5rlZ/results.json; audit target/lsp-matrix/run-L3KnOa/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.6",
+      "revision": null,
+      "requirements": [
+        "vscode/UX01/install-open/command/local",
+        "vscode/UX01/install-open/input/local",
+        "vscode/UX01/unrelated-file/command/local",
+        "vscode/UX01/unrelated-file/input/local"
+      ],
+      "summary": "Close all four UX01 installation/open and unrelated-file Input/Command obligations under reviews/installation-workbench.md. Install actual VSIX into isolated profile and verify installed archive/source/bundled binary. Bridge observes inactive extension before first Vela file; native Quick Open and Go to Line open identical Vela-shaped Unicode .txt first, verify plaintext, exact unchanged source/caret and inactive Vela/server after F12. Independently execute vscode.open plus definition-provider query and require exact empty array with no activation. First native main.vela open owns language activation; readiness only observes extension/startup log. Native F12 and separate command open/definition each require exactly one completed real-client request with authored call URI/UTF-16 position and target URI/range/text, plus actual destination and immutable disk bytes. Shared exact registered macOS/Windows keys, typed command/input receipts, retained screenshots/logs and bounded one-shot actions. Initial investigation retained plaintext screenshot; no-provider F12 is guarded by VS Code and has no navigation message, not accepted evidence. Direct live-bundle integrity then exposed startup action leakage into original completion proof: scope receipt filtering to its proof ID, retain validator strictness and preserve failure reproduction. Superseded audit trees were stopped and all accepted captures/audits recollected. No extension/runtime behavior changes; UX18 remains separate. Node 105, baseline 15, fmt, workspace Clippy. Fresh Windows VSIX 20/native 40 share frozen source/server; strict B07 executes service 746+2 historical ignores/protocol 761/stdio ten. Rust unchanged from verified B08.5 workspace 4782+2 historical ignores. Accepted B00-B07 and prior children preserved. Catalog 840/485/2 N/A/zero failed; B08 77/83. Next B08.7, six UX18 stop/reload and invalid-path obligations. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-NfiCdX/results.json; input editors/vscode/test-results/input-pEok6b/results.json; audit target/lsp-matrix/run-rf9Nua/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08.6",
+  "nextTask": "B08.7",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9760,7 +9771,10 @@
     "editors/vscode/test-results/input-Oa4DeV/results.json",
     "target/lsp-matrix/run-L3KnOa/report.json",
     "editors/vscode/test-results/run-gJCxYs/results.json",
-    "editors/vscode/test-results/input-Uy5rlZ/results.json"
+    "editors/vscode/test-results/input-Uy5rlZ/results.json",
+    "target/lsp-matrix/run-rf9Nua/report.json",
+    "editors/vscode/test-results/run-NfiCdX/results.json",
+    "editors/vscode/test-results/input-pEok6b/results.json"
   ],
   "openIssues": [
     {
@@ -13162,8 +13176,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "892dea351deec8a09b26640d516a88663974275e",
-          "treeSha256": "17efbcfba977d4b6182fcd23c56ec6959874d01f428ce9352730ef9ab0529347"
+          "revision": "86a923329e091a6ad63ddf41c67fd8b5ae88889f",
+          "treeSha256": "d1eac8288792414adabd27f240dd88905d601316e37d8cc496745ad7c2806e90"
         },
         "profile": {
           "platform": "win32",
@@ -13171,11 +13185,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-L3KnOa/report.json"
+          "target/lsp-matrix/run-rf9Nua/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-gJCxYs/results.json --local-results editors/vscode/test-results/input-Uy5rlZ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-NfiCdX/results.json --local-results editors/vscode/test-results/input-pEok6b/results.json",
             "exitCode": 0
           }
         ]

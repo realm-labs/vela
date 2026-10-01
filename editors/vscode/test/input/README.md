@@ -32,6 +32,15 @@ expectations. The audit verifies the archive's contents against installed files
 and current extension sources, and rejects substituted or stale package bytes.
 The proof is not accepted solely from a screenshot or a provider result.
 
+UX01 starts with an inactive installed extension. Native Quick Open first opens
+Vela-shaped `.txt` source and verifies plaintext, unchanged caret and no Vela
+activation; an independent command open/query also returns an empty definition
+set. The first native `.vela` open activates the bundled server, then native F12
+and a separate command open/definition query must return the exact authored
+target and move the actual editor there. Startup polling only observes logs and
+extension state. These two proofs precede the existing driver prerequisites even
+for a selected investigation such as `--proof ux01-install-open`.
+
 UX10 runs pointer and keyboard hover, named/defaulted signature argument changes,
 pointer leave and Escape dismissal, and unknown-receiver suppression. Its marked
 Unicode source, exact rendered documentation, highlighted range, active parameter,

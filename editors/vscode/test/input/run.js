@@ -72,6 +72,13 @@ async function run() {
   };
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
+  const installation = require("../../../../tests/lsp_matrix/fixtures/input-installation.json");
+  for (const [file, document] of new FixtureWorkspace(installation).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "installation fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const navigation = require("../../../../tests/lsp_matrix/fixtures/input-navigation.json");
   for (const [file, document] of new FixtureWorkspace(navigation).disk) {
     const target = path.join(workspace, file);
@@ -264,7 +271,7 @@ async function run() {
     };
     await page.bringToFront();
     if (profile.platform === "win32") keyboardState = windowsDesktop("select", child.pid, profile.keyboardLayout);
-    const before = await bridge("inspect");
+    let before = await bridge("inspect");
     assert.equal(before.vscodeVersion, profile.vscodeVersion);
     assert.deepEqual(before.settings, profile.settings);
     assert.equal(before.locale, profile.locale);
@@ -300,6 +307,13 @@ async function run() {
     );
     const requirements = loadInventory(repository).executionRequirements;
     contracts = localContracts(requirements, fixture, profile.platform);
+    assert.equal(before.extensionActive, false, "the native first open must own Vela activation");
+    await require("./installation").runInstallation({
+      page, bridge, record, root, workspace, contracts, until, onProof: (proof) => proofs.push(proof),
+    });
+    const cursor = new FixtureWorkspace(fixture).disk.get("scripts/main.vela").markers.cursor.start;
+    await bridge("setup", { file: "scripts/main.vela", line: cursor.line, character: cursor.character });
+    before = await bridge("inspect");
     const contract = contracts[0];
     const proofStarted = Date.now();
     assert.equal(
@@ -394,7 +408,7 @@ async function run() {
       startedAt: new Date(proofStarted).toISOString(),
       finishedAt: new Date(proofFinished).toISOString(),
       actions: trace
-        .filter((item) => item.kind === "input")
+        .filter((item) => item.kind === "input" && item.proof === contract.id)
         .map(({ kind, at, proof: owner, ...action }) => action),
       checks: [
         { ...contract.checks[0], status: "passed", observed: focus },
@@ -420,9 +434,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux03-to-ux10-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux01-or-ux03-to-ux10-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux(?:0[3456789]|10)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux(?:0[13456789]|10)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }

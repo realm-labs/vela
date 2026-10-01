@@ -25,7 +25,9 @@ Initialization coverage now checks complete capability projection, conditional
 registration, invalid/repeated requests and bounded real main-loop termination;
 canonical Windows roots produce properly encoded watcher URIs. Real stdio
 process tests cover exact wire diagnostics, malformed frames and bounded exits;
-editor lifecycle coverage remains open in B08.
+Installed-extension activation and unrelated-file association now have shared
+native/command contracts with independent startup and exact navigation facts;
+server-stop/reload and invalid-path lifecycle coverage remain open in B08.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

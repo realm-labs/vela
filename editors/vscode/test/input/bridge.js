@@ -9,10 +9,8 @@ const crypto = require("node:crypto");
 const vscode = require("vscode");
 const { fileUri } = require("./paths");
 const {
-  parseMarkers,
   safeFile,
 } = require("../../../../scripts/lsp-matrix/fixtures");
-const spec = require("../../../../tests/lsp_matrix/fixtures/input-driver.json");
 
 async function run() {
   const root = process.env.VELA_TEST_RESULT_DIR;
@@ -21,38 +19,11 @@ async function run() {
   const finished = new Promise((resolve) => {
     finish = resolve;
   });
-  const file = vscode.Uri.joinPath(
-    vscode.workspace.workspaceFolders[0].uri,
-    "scripts/main.vela",
-  );
-  const document = await vscode.workspace.openTextDocument(file);
-  const fixture = parseMarkers(spec.files["scripts/main.vela"]);
-  const cursor = fixture.markers.cursor.start;
-  await vscode.window.showTextDocument(document, {
-    selection: new vscode.Range(
-      cursor.line,
-      cursor.character,
-      cursor.line,
-      cursor.character,
-    ),
-  });
-  const deadline = Date.now() + 15000;
-  let ready = false;
-  while (Date.now() < deadline) {
-    const symbols = await vscode.commands.executeCommand(
-      "vscode.executeDocumentSymbolProvider",
-      file,
-    );
-    if (symbols?.some((symbol) => symbol.name === "main")) {
-      ready = true;
-      break;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  if (!ready) throw new Error("installed language client did not become ready");
+  // Observe an installed but inactive extension. The external native driver
+  // opens the first Vela file; setup must not pre-activate its language client.
   const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");
   if (
-    !extension?.isActive ||
+    !extension ||
     !path
       .resolve(extension.extensionPath)
       .startsWith(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR) + path.sep)
@@ -73,6 +44,8 @@ async function run() {
       arch: process.arch,
       locale: vscode.env.language,
       extensionPath: extension.extensionPath,
+      extensionActive: extension.isActive,
+      serverPath: vscode.workspace.getConfiguration("vela").get("server.path"),
       settings,
       documents: vscode.workspace.textDocuments
         .filter((doc) => doc.uri.scheme === "file")
@@ -87,6 +60,7 @@ async function run() {
         uri: fileUri(editor.document.uri.fsPath),
         text: editor.document.getText(),
         dirty: editor.document.isDirty,
+          languageId: editor.document.languageId,
         selections: editor.selections.map((selection) => ({
           anchor: {
             line: selection.anchor.line,
@@ -173,6 +147,19 @@ async function run() {
           if (!allowed.includes(message.command)) throw Error("unsupported navigation command");
           await vscode.commands.executeCommand(message.command);
           value = await inspect();
+          break;
+        }
+        case "installation-command": {
+          const spec = require("../../../../tests/lsp_matrix/fixtures/input-installation.json");
+          if (!Object.hasOwn(spec.files, message.file)) throw Error("unsupported installation file");
+          const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, safeFile(message.file));
+          const p = spec.oracle.call;
+          if (message.command === "vscode.open") {
+            await vscode.commands.executeCommand(message.command, uri, { selection: new vscode.Range(p.line, p.character, p.line, p.character) });
+            value = await inspect();
+          } else if (message.command === "vscode.executeDefinitionProvider") {
+            value = await vscode.commands.executeCommand(message.command, uri, new vscode.Position(p.line, p.character));
+          } else throw Error("unsupported installation command");
           break;
         }
         case "finish":

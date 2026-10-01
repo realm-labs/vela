@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "input-installation",
+  "files": {
+    "scripts/installation/main.vela": "fn [[definition:start]]launch[[definition:end]]() -> i64 { 41 }\nfn main() {\n    // 中😀\n    let result = [[call:start]]launch[[call:end]]();\n}\n",
+    "scripts/unrelated.txt": "fn launch() -> i64 { 41 }\nfn main() {\n    // 中😀\n    let result = launch();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "velaFile": "scripts/installation/main.vela",
+    "unrelatedFile": "scripts/unrelated.txt",
+    "unrelatedLanguage": "plaintext",
+    "call": { "line": 3, "character": 17 },
+    "definition": {
+      "start": { "line": 0, "character": 3 },
+      "end": { "line": 0, "character": 9 }
+    }
+  }
+}
