@@ -73,11 +73,15 @@ function localContracts(requirements, fixture, platform = "darwin") {
     ...require("./diagnostic-contracts").diagnosticContracts(requirements),
     ...require("./quick-fix-contracts").quickFixContracts(requirements),
     ...require("./token-render-contracts").tokenRenderContracts(requirements),
+    ...require("./hover-signature-contracts").hoverSignatureContracts(requirements),
   ];
   if (platform === "win32") {
     const keys = { "Meta+Shift+P": "Control+Shift+P", "Meta+Shift+M": "Control+Shift+M", "Meta+1": "Control+1", "Meta+.": "Control+.", "Meta+,": "Control+,", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", "Meta+a": "Control+a", "Meta+Shift+z": "Control+y", Meta: "Control" };
     for (const contract of contracts) {
       for (const action of contract.actions) {
+        if (action.key === "Meta+ArrowLeft") action.key = "Home";
+        if (action.key === "Meta+ArrowRight") action.key = "End";
+        if (["Meta+k", "Meta+i", "Meta+Shift+Space"].includes(action.key)) action.key = action.key.replace("Meta", "Control");
         if (keys[action.key]) action.key = keys[action.key];
         if (action.id === "accept-candidate") action.selector = "suggest-widget listitem";
       }

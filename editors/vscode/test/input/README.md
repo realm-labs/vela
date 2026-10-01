@@ -32,6 +32,14 @@ expectations. The audit verifies the archive's contents against installed files
 and current extension sources, and rejects substituted or stale package bytes.
 The proof is not accepted solely from a screenshot or a provider result.
 
+UX10 runs pointer and keyboard hover, named/defaulted signature argument changes,
+pointer leave and Escape dismissal, and unknown-receiver suppression. Its marked
+Unicode source, exact rendered documentation, highlighted range, active parameter,
+caret, dirty state and unchanged disk inputs have independent fixture expectations.
+Unknown requests must actually complete before widget absence is accepted.
+Use `--proof ux10-pointer-hover` (or another registered route) for investigation;
+batch acceptance requires fresh evidence for all owned routes.
+
 To combine current provider and Input/Render evidence:
 
 ```sh

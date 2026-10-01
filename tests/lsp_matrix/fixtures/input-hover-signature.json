@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "ux10",
+  "files": {
+    "scripts/ux10/hover_input.vela": "use ux10::helper::combine;\nfn hover_input(dynamic: Any) {\n    /* 中😀 */ let value = [[target:start]]combine[[target:end]](1);\n    /* 中😀 */ dynamic.[[unknown:start]]combine[[unknown:end]]([[unknown-argument]]1);\n    [[cursor]]\n}\n",
+    "scripts/ux10/helper.vela": "#[doc(\"Compute the primary total. 中😀\")]\npub fn combine(left: i64, right: i64 = 2) -> i64 { return left + right; }\n",
+    "scripts/ux10/decoy.vela": "#[doc(\"Decoy documentation must never appear.\")]\npub fn combine(left: String, right: String) -> String { return left; }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/ux10/hover_input.vela",
+    "hover": {
+      "label": "ux10::helper::combine",
+      "paragraphs": [
+        "function: (left: i64, right: i64) -> i64",
+        "Compute the primary total. 中😀"
+      ]
+    },
+    "signature": {
+      "label": "combine(left: i64, right: i64 (defaulted)) -> i64",
+      "parameters": [
+        "left: i64",
+        "right: i64 (defaulted)"
+      ]
+    },
+    "typed": {
+      "open": "use ux10::helper::combine;\nfn hover_input(dynamic: Any) {\n    /* 中😀 */ let value = [[target:start]]combine[[target:end]](1);\n    /* 中😀 */ dynamic.[[unknown:start]]combine[[unknown:end]]([[unknown-argument]]1);\n    combine([[active]])\n}\n",
+      "right": "use ux10::helper::combine;\nfn hover_input(dynamic: Any) {\n    /* 中😀 */ let value = [[target:start]]combine[[target:end]](1);\n    /* 中😀 */ dynamic.[[unknown:start]]combine[[unknown:end]]([[unknown-argument]]1);\n    combine(right = 4[[active]])\n}\n",
+      "both": "use ux10::helper::combine;\nfn hover_input(dynamic: Any) {\n    /* 中😀 */ let value = [[target:start]]combine[[target:end]](1);\n    /* 中😀 */ dynamic.[[unknown:start]]combine[[unknown:end]]([[unknown-argument]]1);\n    combine(right = 4, left = 1[[active]])\n}\n",
+      "first": "use ux10::helper::combine;\nfn hover_input(dynamic: Any) {\n    /* 中😀 */ let value = [[target:start]]combine[[target:end]](1);\n    /* 中😀 */ dynamic.[[unknown:start]]combine[[unknown:end]]([[unknown-argument]]1);\n    combine([[active]]right = 4, left = 1)\n}\n"
+    }
+  }
+}

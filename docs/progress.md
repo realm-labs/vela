@@ -12,9 +12,12 @@ Completed execution plans and acceptance reports live under
 
 Current implementation focus is the M20.5 local LSP coverage goal under the
 [execution plan](lsp-test-execution-plan.md). The execution checkpoint owns
-accepted batches, the next local task and fresh platform audits. B07's semantic
-and hover lifecycle checks are covered; native UX10 hover/signature interactions
-remain open. Semantic-token coverage includes exact installed provider results
+accepted batches, the next local task and fresh platform audits. Hover/signature
+coverage includes exact semantic facts, lifecycle states and native pointer and
+keyboard hover, named/defaulted parameter switching, dismissal and unknown
+receiver suppression; see the
+[workbench review](../tests/lsp_matrix/reviews/hover-signature-workbench.md).
+Semantic-token coverage includes exact installed provider results
 and native editing, scrolling, setting changes and unresolved-reference styles;
 see the
 [workbench review](../tests/lsp_matrix/reviews/semantic-token-workbench.md).

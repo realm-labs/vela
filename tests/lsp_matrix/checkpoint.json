@@ -3152,6 +3152,415 @@
           }
         ]
       }
+    },
+    {
+      "id": "B07",
+      "requirements": [
+        {
+          "id": "hover/editor/smoke",
+          "contractHash": "a0e4373c7885b00d285ab8ced2269d52daf5f68183d7caa29ec7846fb67039cd"
+        },
+        {
+          "id": "hover/environments/crlf/protocol",
+          "contractHash": "5098703fb33f8b149ec0a7fb4ff5167064faf06497dd44e80be9690d226f831d"
+        },
+        {
+          "id": "hover/environments/encoded_uri/protocol",
+          "contractHash": "3df4837d7d7e91ff6c6ca6a1ce7c750ba486297f6c9577bbf3bb78db756564e1"
+        },
+        {
+          "id": "hover/environments/utf16/protocol",
+          "contractHash": "031a4a6f918dd0c214430cbe459c9eaea7c97a134542b4b206d1f4675e8e9fd5"
+        },
+        {
+          "id": "hover/states/close_restore/protocol",
+          "contractHash": "68c903b36cd5c79634a826b9283145c1e728d00c21d682b730b5e87c68563660"
+        },
+        {
+          "id": "hover/states/dependency_change/protocol",
+          "contractHash": "7d5f51b479807f0c242cbe426e2837af204ad97b8b61a7f589ec68ea1944e049"
+        },
+        {
+          "id": "hover/states/dependency_delete/protocol",
+          "contractHash": "aefe0f67771935150e9485df4ef5936ec32df5b74855ddce73472959afa961b1"
+        },
+        {
+          "id": "hover/states/dirty/protocol",
+          "contractHash": "35a6c584cf21b878122a9466262c1fe6a2a6eda20b7ad05d0aded5a30f21b266"
+        },
+        {
+          "id": "hover/states/dynamic/protocol",
+          "contractHash": "8210ae3cea1ce6e375105c939937a15b803159c01c044a32bd1809dedd7361ea"
+        },
+        {
+          "id": "hover/states/missing_schema/protocol",
+          "contractHash": "b385daf4889c651ceb516b3545045e248399379e80c25689fb0e7d0701bf3a07"
+        },
+        {
+          "id": "hover/states/recovery/protocol",
+          "contractHash": "f4b8cacee0b147769862ad23df7670f8773e679946807762512d200d0c7befa2"
+        },
+        {
+          "id": "hover/states/repeat/protocol",
+          "contractHash": "0d5726013ef3da04ff49252ce38a2672243bbcfc96747d8efa8c7554bfb5c1e5"
+        },
+        {
+          "id": "hover/states/stale_schema/protocol",
+          "contractHash": "eef81fc60b2600a44cb59d060d72913f511adfaca56890b2a1c560adc4cac7bc"
+        },
+        {
+          "id": "hover/states/unresolved/protocol",
+          "contractHash": "57e0b23985f7b0431fa775a052f700dca2b09ef94dabf190aed764c229285b92"
+        },
+        {
+          "id": "hover/syntax/S1/negative/protocol",
+          "contractHash": "3616b0fcc2d848916f37c8fa8dc965d406eeed931e11a1ad513769e91c4afab6"
+        },
+        {
+          "id": "hover/syntax/S1/negative/service",
+          "contractHash": "fbe948a08fdf69803c9313317e08e57fb9597fd6025613dcf4161f4e06d0d500"
+        },
+        {
+          "id": "hover/syntax/S1/positive/protocol",
+          "contractHash": "8ff5f3a7bb16b6bea5482b51f38da0ae014bb388d21cbf2c0d5ad77e6cbe4263"
+        },
+        {
+          "id": "hover/syntax/S1/positive/service",
+          "contractHash": "ca9d0b2d25313b391cec43bf90050cc0474eb253e4372d22f3ff629b016aae8f"
+        },
+        {
+          "id": "hover/syntax/S10/negative/protocol",
+          "contractHash": "3b362c1b950202ca8be4b91ad3a907371f1b6b689d6f31dcf670477104139d08"
+        },
+        {
+          "id": "hover/syntax/S10/negative/service",
+          "contractHash": "5c62c61f726422c9dc40af448a17dbeb36f8cf5c7b793615777574d7edb5edd5"
+        },
+        {
+          "id": "hover/syntax/S10/positive/protocol",
+          "contractHash": "18c3356c120032d8791139aa2616b9699034025606a812374dd9f8aaf944d098"
+        },
+        {
+          "id": "hover/syntax/S10/positive/service",
+          "contractHash": "1d1890fabbb73cc97fe75f6bf2fd386338e78038210710e29d56db6756c4545d"
+        },
+        {
+          "id": "hover/syntax/S2/negative/protocol",
+          "contractHash": "47fa9556a6d01fc3a29c31822bb74882373fabb76f4beffa94d954aae896093f"
+        },
+        {
+          "id": "hover/syntax/S2/negative/service",
+          "contractHash": "fa3bc30471ab4d56c7237397dede076dad6c394f4d718f7d2677e315554209e1"
+        },
+        {
+          "id": "hover/syntax/S2/positive/protocol",
+          "contractHash": "6f6aa36df690d1a7640caf3ffe1d2986e9006a1155ee7e541b425698710fb76c"
+        },
+        {
+          "id": "hover/syntax/S2/positive/service",
+          "contractHash": "199a948d82dd8239d611f8d3e743307d6d5797da4168d5cb0adfc526b1733cd0"
+        },
+        {
+          "id": "hover/syntax/S3/negative/protocol",
+          "contractHash": "53407cd5d9456fc16f9c826d27ddf2458fe695f0ea4b7117f5c415a1bb3b7c07"
+        },
+        {
+          "id": "hover/syntax/S3/negative/service",
+          "contractHash": "38a4fe1e27c571aa7728ea158ffc7ce8ca36c6a32f63f2c9d4a6b274a2208304"
+        },
+        {
+          "id": "hover/syntax/S3/positive/protocol",
+          "contractHash": "2ddce0b3686a28f21bcbbd43c246f70851849406fb38871c34d6aceab526fc35"
+        },
+        {
+          "id": "hover/syntax/S3/positive/service",
+          "contractHash": "d53004f96e665c8babff6e2776cdcf0a624cc7328904ae7b339412f334f8ee6e"
+        },
+        {
+          "id": "hover/syntax/S4/negative/protocol",
+          "contractHash": "508349db9c96b820193d0989106bfc9ce39c4e28f5e819f669351d0c5498e2aa"
+        },
+        {
+          "id": "hover/syntax/S4/negative/service",
+          "contractHash": "11a9a43f5abbc990c78700b69865bcc2e6db741a49d56e0eb439ae01c083e044"
+        },
+        {
+          "id": "hover/syntax/S4/positive/protocol",
+          "contractHash": "b5ac46fa3b4d25cacc0f3068400039060bc5e2b7a020ed3ddd446c58b17e92f5"
+        },
+        {
+          "id": "hover/syntax/S4/positive/service",
+          "contractHash": "9a2bbcfe816a0f338535d6dca425a68aed5426e926b086275bd4131d4413fa9d"
+        },
+        {
+          "id": "hover/syntax/S5/negative/protocol",
+          "contractHash": "c3c1f6f9fbead73958ce27edccca5589bc09b4b7f747b03bbb9b93c6a69aa54a"
+        },
+        {
+          "id": "hover/syntax/S5/negative/service",
+          "contractHash": "b949278dd477035b43e582b5c494b5befcd7e1d8c8fe415c580a4d8910346fd5"
+        },
+        {
+          "id": "hover/syntax/S5/positive/protocol",
+          "contractHash": "e0237e513acb0cfce015ba27eb8c9d6d04b13950a037da33cba4fcf8f7d9b80e"
+        },
+        {
+          "id": "hover/syntax/S5/positive/service",
+          "contractHash": "115a5e4b8a5e7cfcc018e8c981b9f6ef7d0b202c46bcc60c7078ac35c9022f38"
+        },
+        {
+          "id": "hover/syntax/S6/negative/protocol",
+          "contractHash": "b362228bbe868d2cfefc4a9f5dd7fdfc70532d5b3cd5e7b0c1c4a1760afb8cf1"
+        },
+        {
+          "id": "hover/syntax/S6/negative/service",
+          "contractHash": "6b7eaec4a15510842ee244a0dc3f4ed14a8b9f6da1a29231a4a3262450e975ff"
+        },
+        {
+          "id": "hover/syntax/S6/positive/protocol",
+          "contractHash": "0195592c64c4395e2c05c64c0c97ac96b36bdbf1203832534dedf1ff3cb71519"
+        },
+        {
+          "id": "hover/syntax/S6/positive/service",
+          "contractHash": "8979daf2890aafdd68e7caabe3eea19a6c5524cbc2cb8a96f936f1f4b134d2a9"
+        },
+        {
+          "id": "hover/syntax/S7/negative/protocol",
+          "contractHash": "b955006c09460d6876b00116cdae9992aae4516a1c19a1c46f31f34278b76984"
+        },
+        {
+          "id": "hover/syntax/S7/negative/service",
+          "contractHash": "6aa0f1933ec960fbeeb315bffae12acf21d86514fc2f1bb64c4587223a168c1c"
+        },
+        {
+          "id": "hover/syntax/S7/positive/protocol",
+          "contractHash": "f09098e5e2f9e6d1b4a248423d58af6104a82775d607f8df29b4d5053f4f60c7"
+        },
+        {
+          "id": "hover/syntax/S7/positive/service",
+          "contractHash": "a90f8e58869413da57eb27e564a8c833303d26861590a1f5cbdae108352cac61"
+        },
+        {
+          "id": "hover/syntax/S8/negative/protocol",
+          "contractHash": "9418daec89d136455185ec5ff2f83ae45ff4ca2f98fa0776ea698609ad027d7d"
+        },
+        {
+          "id": "hover/syntax/S8/negative/service",
+          "contractHash": "752ca25d087f4f4e5288670388a2e8ebfb6ba61c1598538197eed310c9a93286"
+        },
+        {
+          "id": "hover/syntax/S8/positive/protocol",
+          "contractHash": "3bf7f2e79a6927b72f20871a0b89841acab97052cb553c516237d8155016f002"
+        },
+        {
+          "id": "hover/syntax/S8/positive/service",
+          "contractHash": "1d04d6f192ca1261e872dd5fd43d8724da5c75c5d534c93f852dfef0b11bf9b8"
+        },
+        {
+          "id": "hover/syntax/S9/negative/protocol",
+          "contractHash": "5ecd64d01c4d0d4f19c7331e471694ba4c97641a492a26e0150d0ac2a4da44df"
+        },
+        {
+          "id": "hover/syntax/S9/negative/service",
+          "contractHash": "ebe542122abe420c5eb6a37439e9a14823ba753b0d32c368c0f40da3bdf71cc3"
+        },
+        {
+          "id": "hover/syntax/S9/positive/protocol",
+          "contractHash": "c82fb6a00b389fdbfc001c0f85ddd8a7293c3202d4e87b0523b22291d5a36d0f"
+        },
+        {
+          "id": "hover/syntax/S9/positive/service",
+          "contractHash": "097ceb613da2ca0833e86414acb0cb06ea9dd1898406a8347be6ecd2b847ad53"
+        },
+        {
+          "id": "signature-help/editor/smoke",
+          "contractHash": "7e30d78770573db21d8ef17ba21498de1bb164d85be6a8eb27a2deea72c605f6"
+        },
+        {
+          "id": "signature-help/environments/client_capabilities/protocol",
+          "contractHash": "b81a85fc5a2c70e8d17f102f0abcc7d0de749a7bc1978eb95e5cb447cf0ad321"
+        },
+        {
+          "id": "signature-help/states/close_restore/protocol",
+          "contractHash": "1faad719633bafac466fea6fa9bec6cebd0e9b6c65caab7db22ce299d1227a49"
+        },
+        {
+          "id": "signature-help/states/dependency_change/protocol",
+          "contractHash": "217db3750a492bfe7b52cf6989d792f7a507f9a41d0391bada736a6171ecec6d"
+        },
+        {
+          "id": "signature-help/states/dependency_delete/protocol",
+          "contractHash": "8adf1a8d0800cb5a5adfffe3b775bc3050ade03a08e9eb9032d15633c31d06d3"
+        },
+        {
+          "id": "signature-help/states/dirty/protocol",
+          "contractHash": "9a1cecf1345d955a19cb2ca7a0f4491459076b70c557d50c9bf657adea323bc2"
+        },
+        {
+          "id": "signature-help/states/dynamic/protocol",
+          "contractHash": "dacb6f96b789dda26483fe348c8f220cb85422eedf9c80df38b4a5715844160d"
+        },
+        {
+          "id": "signature-help/states/missing_schema/protocol",
+          "contractHash": "c1a8146bf0f09f2cf77bb3fc61a32b36dff8b5cca0c022055318947225158011"
+        },
+        {
+          "id": "signature-help/states/recovery/protocol",
+          "contractHash": "378accad21d57853f39bf8bdae07e01935ff5e80dfa4b2a7a0f31eb4e028df7f"
+        },
+        {
+          "id": "signature-help/states/repeat/protocol",
+          "contractHash": "7307d9f4d8893582958f33d14d03e96fa7d0be4a0ae21f128a6fa682c09d1700"
+        },
+        {
+          "id": "signature-help/states/stale_schema/protocol",
+          "contractHash": "5185cf3ac386a500f7eb85010f42cdad7f6146107ede786eb015fe5c0be63355"
+        },
+        {
+          "id": "signature-help/states/unresolved/protocol",
+          "contractHash": "ea063e66e6883489f11924276daba9fdacbae70670d1319724f49e5657199064"
+        },
+        {
+          "id": "signature-help/syntax/S10/negative/protocol",
+          "contractHash": "522f69248509b0a3c20aae60d1f17fee4f8c891af60df47c9bef7442be9c35f8"
+        },
+        {
+          "id": "signature-help/syntax/S10/negative/service",
+          "contractHash": "80d23b0755b10ebdcf16d14fe2d9ebfd10dbd90a6d05f38884f2185496ce3e68"
+        },
+        {
+          "id": "signature-help/syntax/S10/positive/protocol",
+          "contractHash": "8b8cb23cda94b43da2152bdceef07a75b65625e0ba238ca4f9d7595cd72b275d"
+        },
+        {
+          "id": "signature-help/syntax/S10/positive/service",
+          "contractHash": "4c76cb107d495d431bc91f35782b8742154c9caf86c4a88942638ab29cccde28"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/protocol",
+          "contractHash": "7b5b919286d5e32474aff3a52493181f7458f793307b30472ba9b335a94ccb11"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/service",
+          "contractHash": "b63841dbff8336545c6d1b32246eca8839f1d456019607d8416e564757bfaacc"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/protocol",
+          "contractHash": "5dcfc0a0e32344da7dc2fcfb4a6b144f76bc9215a19f388ac6ec2f67a33c8ef2"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/service",
+          "contractHash": "1bba2f4272cbc5f9763aa1fa218728fc48016748e6e3450bc14a05cf93f24b0f"
+        },
+        {
+          "id": "signature-help/syntax/S5/negative/protocol",
+          "contractHash": "f02eb658050b7406af16c022c0b5d95f54a6bb5eb7495f7b036078583724e82a"
+        },
+        {
+          "id": "signature-help/syntax/S5/negative/service",
+          "contractHash": "9c868e248528bf875177d06d4d07ee7c5ce38f0ea06312d1b199a0302622f947"
+        },
+        {
+          "id": "signature-help/syntax/S5/positive/protocol",
+          "contractHash": "6f57011a4dc38b92cca4957d05271f9d8c62505543aee1fd34720918f91813ae"
+        },
+        {
+          "id": "signature-help/syntax/S5/positive/service",
+          "contractHash": "5bde6fb1217bb33ebbfb49086605561efa613e012d909fdbf65291d0c1253633"
+        },
+        {
+          "id": "signature-help/syntax/S8/negative/protocol",
+          "contractHash": "b287ec182c547a78517074eb391bf9f62170901115f9c24b1724619984a584bc"
+        },
+        {
+          "id": "signature-help/syntax/S8/negative/service",
+          "contractHash": "5e4a4576d71c8af308bd0cc8bf8734eff3afa7e2be4dc6064ba6558bc70114a4"
+        },
+        {
+          "id": "signature-help/syntax/S8/positive/protocol",
+          "contractHash": "5bc97f603afd389ad1df30464e9d16978f0d4c2d912faf1bdefaab06a0febe4d"
+        },
+        {
+          "id": "signature-help/syntax/S8/positive/service",
+          "contractHash": "60f59184e8eed1db13965277c2ff5d26055e7b4c0319be00283115f4ad744f0e"
+        },
+        {
+          "id": "signature-help/syntax/S9/negative/protocol",
+          "contractHash": "ecbfab07486b8c6e211d795a18aba723209edeac87c21edb4857a410cfeea5d3"
+        },
+        {
+          "id": "signature-help/syntax/S9/negative/service",
+          "contractHash": "cb3e7aee1308f12f1e319e49efd267105232bc3af2a5d32f654c7a333caa725a"
+        },
+        {
+          "id": "signature-help/syntax/S9/positive/protocol",
+          "contractHash": "39e33ee8ab9993047a2978f7cdecd03010a0e0cb962148fc2205cb3ed662315b"
+        },
+        {
+          "id": "signature-help/syntax/S9/positive/service",
+          "contractHash": "52c3d76bccc8a655793a87e331ce7132e7e8dbf59d8470799f2e83166385a149"
+        },
+        {
+          "id": "vscode/UX10/dismiss-hover/input/local",
+          "contractHash": "1966e9858b1a2718a4f591f658dced7714d0f8d5e7465bd12c9c8cb31c9cc69a"
+        },
+        {
+          "id": "vscode/UX10/dismiss-hover/render/local",
+          "contractHash": "1966e9858b1a2718a4f591f658dced7714d0f8d5e7465bd12c9c8cb31c9cc69a"
+        },
+        {
+          "id": "vscode/UX10/keyboard-hover/input/local",
+          "contractHash": "61c93f2c34eb303de370120123aa9471229fce8e12a3de8b3ebca4aef4af2735"
+        },
+        {
+          "id": "vscode/UX10/keyboard-hover/render/local",
+          "contractHash": "61c93f2c34eb303de370120123aa9471229fce8e12a3de8b3ebca4aef4af2735"
+        },
+        {
+          "id": "vscode/UX10/pointer-hover/input/local",
+          "contractHash": "ad1e65d138230da38f8a70912e615a3c95d2c885e415223f544030e9048d290d"
+        },
+        {
+          "id": "vscode/UX10/pointer-hover/render/local",
+          "contractHash": "ad1e65d138230da38f8a70912e615a3c95d2c885e415223f544030e9048d290d"
+        },
+        {
+          "id": "vscode/UX10/signature-arguments/input/local",
+          "contractHash": "ac0ee86078baec26ef882ec3c610eece0b03c717495ac58449adafa20d91033d"
+        },
+        {
+          "id": "vscode/UX10/signature-arguments/render/local",
+          "contractHash": "ac0ee86078baec26ef882ec3c610eece0b03c717495ac58449adafa20d91033d"
+        },
+        {
+          "id": "vscode/UX10/unknown-receiver/input/local",
+          "contractHash": "24ae1d7c54321261a0a60421b3ca4dee3f05a772ff11fb071c917025b961edac"
+        },
+        {
+          "id": "vscode/UX10/unknown-receiver/render/local",
+          "contractHash": "24ae1d7c54321261a0a60421b3ca4dee3f05a772ff11fb071c917025b961edac"
+        }
+      ],
+      "validation": {
+        "source": {
+          "revision": "b84295ddd564598edbcf8337d2e5df95cca0c76b",
+          "treeSha256": "c24fb89e04fbfb1a8d0951418935f219a71f655068c63a8379121d5df69fc16b"
+        },
+        "profile": {
+          "platform": "win32",
+          "arch": "x64",
+          "vscodeVersion": "1.137.0"
+        },
+        "artifacts": [
+          "target/lsp-matrix/run-I7tcwg/report.json"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-7cQcXr/results.json --local-results editors/vscode/test-results/input-5th3fM/results.json",
+            "exitCode": 0
+          }
+        ]
+      }
     }
   ],
   "reopenedBatches": [],
@@ -7061,10 +7470,27 @@
         "hover/states/dependency_delete/protocol"
       ],
       "summary": "Close nine hover protocol lifecycle obligations under reviews/hover-lifecycle.md. Independent hover-lifecycle authors 34 queries through 30 finite phases in five physical inputs; LF/CRLF, positive token start/interior and null start yield 3748 positions per incremental instance and independent fresh instance per layer, all repeated. Optional exact physical definitions or null add 1836 positions per instance plus repeats. Complete metadata, physical identity, Markdown and UTF-16 ranges match authored expectations before fresh equivalence. Dirty Unicode caller shifts; moved source signatures, fields, methods and docs; body-only changes; missing-delimiter recovery; unresolved callee/label; disk replacements hidden by overlays; close-to-current-disk; watched dependency delete/recreate and delete-with-dirty-overlay retain or clear exactly current facts. Known source/schema Any-return callables preserve metadata but never guess suffix facts; changing source factory return to Any clears the formerly known member and target. Watched schema replacement/removal/malformed JSON/physical deletion remove stale docs, types, members and named labels, publish schema::unavailable, preserve source/stdlib facts and restore on repair. Actual typed notifications and affected-caller publication counts, selected parse-error presence, SchemaDb diagnostics and absent SourceDb entries are checked. Independent encoded fresh roots carry current disk and overlays; guarded owned file mutations, immutable query bytes and final exact restoration. Primary contracts distinguish unchanged exports from caller invalidation, CST errors from lazy lowering and disk-backed close from scratch clearing. No production defect or new design decision; no B15, cancellation/generation or native UX10 closure claim. Full workspace 4746 pass with two historical ignores; hover service 46/protocol 38, Node 92, fmt and workspace Clippy pass. Fresh Windows VSIX 20/native 33 share current source/server identity. Strict B06 service 739 with two historical ignores and protocol 741; accepted B00-B06 snapshots remain unchanged. Catalog 767 verified, 558 unreviewed, two N/A, zero failed; B07 86/96. Continue B07.18 for ten native UX10 cells; macOS requires independent fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-hpntOx/results.json; input editors/vscode/test-results/input-JDe8Hy/results.json; audit target/lsp-matrix/run-VWjtit/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B07.18",
+      "revision": null,
+      "requirements": [
+        "vscode/UX10/pointer-hover/input/local",
+        "vscode/UX10/pointer-hover/render/local",
+        "vscode/UX10/keyboard-hover/input/local",
+        "vscode/UX10/keyboard-hover/render/local",
+        "vscode/UX10/signature-arguments/input/local",
+        "vscode/UX10/signature-arguments/render/local",
+        "vscode/UX10/dismiss-hover/input/local",
+        "vscode/UX10/dismiss-hover/render/local",
+        "vscode/UX10/unknown-receiver/input/local",
+        "vscode/UX10/unknown-receiver/render/local"
+      ],
+      "summary": "Close all ten native UX10 Input/Render obligations and accept full B07 (96/96). Independent ux10 fixture authors Unicode marked source, complete qualified hover label/type/docs, concrete defaulted signature labels, caret and disk expectations with same-spelled source decoy and Any receiver. External keyboard/pointer input renders exact docs at the marked glyph and checks its actual highlight range. Native keyboard hover matches pointer docs. Typing an auto-paired call selects left initially, named defaulted right in argument position zero and named left in position one; native caret moves and explicit hints verify first/last identities. Pointer leave and separate keyboard Escape clear hover and preserve source, caret and usable focus. Unknown hover and signature requests must actually complete for the owned document after native invocation before absent widgets can pass. Every route checks full buffer, dirty state, selections and all three physical files; no bridge input commands, provider expectations or script/host execution. DOM observations follow actual tokenized markdown code and active signature spans. Windows Ctrl chords/Home twice/End and macOS Cmd chords/line movement are registered independently; no platform aggregation. Five focused UX10 proofs pass; fresh complete Windows native 38 and VSIX 20 share current source/server identity. Node 94 and fmt pass. Rust sources are unchanged; full service 739 with two historical ignores and protocol 741 execute in current strict B07 gate. Original B00-B06 acceptance snapshots stay unchanged; new B07 acceptance records exact 96-row scope. Catalog 767 verified, 558 unreviewed, two N/A, zero failed. Next B08 transport/sync/cancellation scope; macOS requires its own fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-7cQcXr/results.json; input editors/vscode/test-results/input-5th3fM/results.json; audit target/lsp-matrix/run-I7tcwg/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B07.18",
+  "nextTask": "B08",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -7255,60 +7681,6 @@
     "formatting/syntax/S9/negative/service",
     "formatting/syntax/S9/positive/protocol",
     "formatting/syntax/S9/positive/service",
-    "hover/editor/smoke",
-    "hover/environments/crlf/protocol",
-    "hover/environments/encoded_uri/protocol",
-    "hover/environments/utf16/protocol",
-    "hover/states/close_restore/protocol",
-    "hover/states/dependency_change/protocol",
-    "hover/states/dependency_delete/protocol",
-    "hover/states/dirty/protocol",
-    "hover/states/dynamic/protocol",
-    "hover/states/missing_schema/protocol",
-    "hover/states/recovery/protocol",
-    "hover/states/repeat/protocol",
-    "hover/states/stale_schema/protocol",
-    "hover/states/unresolved/protocol",
-    "hover/syntax/S1/negative/protocol",
-    "hover/syntax/S1/negative/service",
-    "hover/syntax/S1/positive/protocol",
-    "hover/syntax/S1/positive/service",
-    "hover/syntax/S10/negative/protocol",
-    "hover/syntax/S10/negative/service",
-    "hover/syntax/S10/positive/protocol",
-    "hover/syntax/S10/positive/service",
-    "hover/syntax/S2/negative/protocol",
-    "hover/syntax/S2/negative/service",
-    "hover/syntax/S2/positive/protocol",
-    "hover/syntax/S2/positive/service",
-    "hover/syntax/S3/negative/protocol",
-    "hover/syntax/S3/negative/service",
-    "hover/syntax/S3/positive/protocol",
-    "hover/syntax/S3/positive/service",
-    "hover/syntax/S4/negative/protocol",
-    "hover/syntax/S4/negative/service",
-    "hover/syntax/S4/positive/protocol",
-    "hover/syntax/S4/positive/service",
-    "hover/syntax/S5/negative/protocol",
-    "hover/syntax/S5/negative/service",
-    "hover/syntax/S5/positive/protocol",
-    "hover/syntax/S5/positive/service",
-    "hover/syntax/S6/negative/protocol",
-    "hover/syntax/S6/negative/service",
-    "hover/syntax/S6/positive/protocol",
-    "hover/syntax/S6/positive/service",
-    "hover/syntax/S7/negative/protocol",
-    "hover/syntax/S7/negative/service",
-    "hover/syntax/S7/positive/protocol",
-    "hover/syntax/S7/positive/service",
-    "hover/syntax/S8/negative/protocol",
-    "hover/syntax/S8/negative/service",
-    "hover/syntax/S8/positive/protocol",
-    "hover/syntax/S8/positive/service",
-    "hover/syntax/S9/negative/protocol",
-    "hover/syntax/S9/negative/service",
-    "hover/syntax/S9/positive/protocol",
-    "hover/syntax/S9/positive/service",
     "incoming-calls/editor/smoke",
     "incoming-calls/environments/crlf/protocol",
     "incoming-calls/environments/encoded_uri/protocol",
@@ -7621,38 +7993,6 @@
     "shutdown-exit/syntax/S0/positive/protocol",
     "shutdown-exit/syntax/S11/negative/protocol",
     "shutdown-exit/syntax/S11/positive/protocol",
-    "signature-help/editor/smoke",
-    "signature-help/environments/client_capabilities/protocol",
-    "signature-help/states/close_restore/protocol",
-    "signature-help/states/dependency_change/protocol",
-    "signature-help/states/dependency_delete/protocol",
-    "signature-help/states/dirty/protocol",
-    "signature-help/states/dynamic/protocol",
-    "signature-help/states/missing_schema/protocol",
-    "signature-help/states/recovery/protocol",
-    "signature-help/states/repeat/protocol",
-    "signature-help/states/stale_schema/protocol",
-    "signature-help/states/unresolved/protocol",
-    "signature-help/syntax/S10/negative/protocol",
-    "signature-help/syntax/S10/negative/service",
-    "signature-help/syntax/S10/positive/protocol",
-    "signature-help/syntax/S10/positive/service",
-    "signature-help/syntax/S3/negative/protocol",
-    "signature-help/syntax/S3/negative/service",
-    "signature-help/syntax/S3/positive/protocol",
-    "signature-help/syntax/S3/positive/service",
-    "signature-help/syntax/S5/negative/protocol",
-    "signature-help/syntax/S5/negative/service",
-    "signature-help/syntax/S5/positive/protocol",
-    "signature-help/syntax/S5/positive/service",
-    "signature-help/syntax/S8/negative/protocol",
-    "signature-help/syntax/S8/negative/service",
-    "signature-help/syntax/S8/positive/protocol",
-    "signature-help/syntax/S8/positive/service",
-    "signature-help/syntax/S9/negative/protocol",
-    "signature-help/syntax/S9/negative/service",
-    "signature-help/syntax/S9/positive/protocol",
-    "signature-help/syntax/S9/positive/service",
     "stdio/environments/process_transport/protocol",
     "stdio/syntax/S0/negative/protocol",
     "stdio/syntax/S0/positive/protocol",
@@ -7660,16 +8000,6 @@
     "vscode/UX01/install-open/input/local",
     "vscode/UX01/unrelated-file/command/local",
     "vscode/UX01/unrelated-file/input/local",
-    "vscode/UX10/dismiss-hover/input/local",
-    "vscode/UX10/dismiss-hover/render/local",
-    "vscode/UX10/keyboard-hover/input/local",
-    "vscode/UX10/keyboard-hover/render/local",
-    "vscode/UX10/pointer-hover/input/local",
-    "vscode/UX10/pointer-hover/render/local",
-    "vscode/UX10/signature-arguments/input/local",
-    "vscode/UX10/signature-arguments/render/local",
-    "vscode/UX10/unknown-receiver/input/local",
-    "vscode/UX10/unknown-receiver/render/local",
     "vscode/UX11/document-picker/input/local",
     "vscode/UX11/document-picker/render/local",
     "vscode/UX11/no-match/input/local",
@@ -9304,7 +9634,10 @@
     "editors/vscode/test-results/input-MCBpZx/results.json",
     "target/lsp-matrix/run-VWjtit/report.json",
     "editors/vscode/test-results/run-hpntOx/results.json",
-    "editors/vscode/test-results/input-JDe8Hy/results.json"
+    "editors/vscode/test-results/input-JDe8Hy/results.json",
+    "target/lsp-matrix/run-I7tcwg/report.json",
+    "editors/vscode/test-results/run-7cQcXr/results.json",
+    "editors/vscode/test-results/input-5th3fM/results.json"
   ],
   "openIssues": [
     {
@@ -9343,7 +9676,8 @@
         "B03",
         "B04",
         "B05",
-        "B06"
+        "B06",
+        "B07"
       ],
       "requirements": [
         {
@@ -12317,12 +12651,396 @@
         {
           "id": "vscode/UX09/unresolved-token/render/local",
           "contractHash": "f5176eefd5f3c2f2b0b3d447456a8edcdde26f089cf9334c0e7a46cc44e49381"
+        },
+        {
+          "id": "hover/editor/smoke",
+          "contractHash": "a0e4373c7885b00d285ab8ced2269d52daf5f68183d7caa29ec7846fb67039cd"
+        },
+        {
+          "id": "hover/environments/crlf/protocol",
+          "contractHash": "5098703fb33f8b149ec0a7fb4ff5167064faf06497dd44e80be9690d226f831d"
+        },
+        {
+          "id": "hover/environments/encoded_uri/protocol",
+          "contractHash": "3df4837d7d7e91ff6c6ca6a1ce7c750ba486297f6c9577bbf3bb78db756564e1"
+        },
+        {
+          "id": "hover/environments/utf16/protocol",
+          "contractHash": "031a4a6f918dd0c214430cbe459c9eaea7c97a134542b4b206d1f4675e8e9fd5"
+        },
+        {
+          "id": "hover/states/close_restore/protocol",
+          "contractHash": "68c903b36cd5c79634a826b9283145c1e728d00c21d682b730b5e87c68563660"
+        },
+        {
+          "id": "hover/states/dependency_change/protocol",
+          "contractHash": "7d5f51b479807f0c242cbe426e2837af204ad97b8b61a7f589ec68ea1944e049"
+        },
+        {
+          "id": "hover/states/dependency_delete/protocol",
+          "contractHash": "aefe0f67771935150e9485df4ef5936ec32df5b74855ddce73472959afa961b1"
+        },
+        {
+          "id": "hover/states/dirty/protocol",
+          "contractHash": "35a6c584cf21b878122a9466262c1fe6a2a6eda20b7ad05d0aded5a30f21b266"
+        },
+        {
+          "id": "hover/states/dynamic/protocol",
+          "contractHash": "8210ae3cea1ce6e375105c939937a15b803159c01c044a32bd1809dedd7361ea"
+        },
+        {
+          "id": "hover/states/missing_schema/protocol",
+          "contractHash": "b385daf4889c651ceb516b3545045e248399379e80c25689fb0e7d0701bf3a07"
+        },
+        {
+          "id": "hover/states/recovery/protocol",
+          "contractHash": "f4b8cacee0b147769862ad23df7670f8773e679946807762512d200d0c7befa2"
+        },
+        {
+          "id": "hover/states/repeat/protocol",
+          "contractHash": "0d5726013ef3da04ff49252ce38a2672243bbcfc96747d8efa8c7554bfb5c1e5"
+        },
+        {
+          "id": "hover/states/stale_schema/protocol",
+          "contractHash": "eef81fc60b2600a44cb59d060d72913f511adfaca56890b2a1c560adc4cac7bc"
+        },
+        {
+          "id": "hover/states/unresolved/protocol",
+          "contractHash": "57e0b23985f7b0431fa775a052f700dca2b09ef94dabf190aed764c229285b92"
+        },
+        {
+          "id": "hover/syntax/S1/negative/protocol",
+          "contractHash": "3616b0fcc2d848916f37c8fa8dc965d406eeed931e11a1ad513769e91c4afab6"
+        },
+        {
+          "id": "hover/syntax/S1/negative/service",
+          "contractHash": "fbe948a08fdf69803c9313317e08e57fb9597fd6025613dcf4161f4e06d0d500"
+        },
+        {
+          "id": "hover/syntax/S1/positive/protocol",
+          "contractHash": "8ff5f3a7bb16b6bea5482b51f38da0ae014bb388d21cbf2c0d5ad77e6cbe4263"
+        },
+        {
+          "id": "hover/syntax/S1/positive/service",
+          "contractHash": "ca9d0b2d25313b391cec43bf90050cc0474eb253e4372d22f3ff629b016aae8f"
+        },
+        {
+          "id": "hover/syntax/S10/negative/protocol",
+          "contractHash": "3b362c1b950202ca8be4b91ad3a907371f1b6b689d6f31dcf670477104139d08"
+        },
+        {
+          "id": "hover/syntax/S10/negative/service",
+          "contractHash": "5c62c61f726422c9dc40af448a17dbeb36f8cf5c7b793615777574d7edb5edd5"
+        },
+        {
+          "id": "hover/syntax/S10/positive/protocol",
+          "contractHash": "18c3356c120032d8791139aa2616b9699034025606a812374dd9f8aaf944d098"
+        },
+        {
+          "id": "hover/syntax/S10/positive/service",
+          "contractHash": "1d1890fabbb73cc97fe75f6bf2fd386338e78038210710e29d56db6756c4545d"
+        },
+        {
+          "id": "hover/syntax/S2/negative/protocol",
+          "contractHash": "47fa9556a6d01fc3a29c31822bb74882373fabb76f4beffa94d954aae896093f"
+        },
+        {
+          "id": "hover/syntax/S2/negative/service",
+          "contractHash": "fa3bc30471ab4d56c7237397dede076dad6c394f4d718f7d2677e315554209e1"
+        },
+        {
+          "id": "hover/syntax/S2/positive/protocol",
+          "contractHash": "6f6aa36df690d1a7640caf3ffe1d2986e9006a1155ee7e541b425698710fb76c"
+        },
+        {
+          "id": "hover/syntax/S2/positive/service",
+          "contractHash": "199a948d82dd8239d611f8d3e743307d6d5797da4168d5cb0adfc526b1733cd0"
+        },
+        {
+          "id": "hover/syntax/S3/negative/protocol",
+          "contractHash": "53407cd5d9456fc16f9c826d27ddf2458fe695f0ea4b7117f5c415a1bb3b7c07"
+        },
+        {
+          "id": "hover/syntax/S3/negative/service",
+          "contractHash": "38a4fe1e27c571aa7728ea158ffc7ce8ca36c6a32f63f2c9d4a6b274a2208304"
+        },
+        {
+          "id": "hover/syntax/S3/positive/protocol",
+          "contractHash": "2ddce0b3686a28f21bcbbd43c246f70851849406fb38871c34d6aceab526fc35"
+        },
+        {
+          "id": "hover/syntax/S3/positive/service",
+          "contractHash": "d53004f96e665c8babff6e2776cdcf0a624cc7328904ae7b339412f334f8ee6e"
+        },
+        {
+          "id": "hover/syntax/S4/negative/protocol",
+          "contractHash": "508349db9c96b820193d0989106bfc9ce39c4e28f5e819f669351d0c5498e2aa"
+        },
+        {
+          "id": "hover/syntax/S4/negative/service",
+          "contractHash": "11a9a43f5abbc990c78700b69865bcc2e6db741a49d56e0eb439ae01c083e044"
+        },
+        {
+          "id": "hover/syntax/S4/positive/protocol",
+          "contractHash": "b5ac46fa3b4d25cacc0f3068400039060bc5e2b7a020ed3ddd446c58b17e92f5"
+        },
+        {
+          "id": "hover/syntax/S4/positive/service",
+          "contractHash": "9a2bbcfe816a0f338535d6dca425a68aed5426e926b086275bd4131d4413fa9d"
+        },
+        {
+          "id": "hover/syntax/S5/negative/protocol",
+          "contractHash": "c3c1f6f9fbead73958ce27edccca5589bc09b4b7f747b03bbb9b93c6a69aa54a"
+        },
+        {
+          "id": "hover/syntax/S5/negative/service",
+          "contractHash": "b949278dd477035b43e582b5c494b5befcd7e1d8c8fe415c580a4d8910346fd5"
+        },
+        {
+          "id": "hover/syntax/S5/positive/protocol",
+          "contractHash": "e0237e513acb0cfce015ba27eb8c9d6d04b13950a037da33cba4fcf8f7d9b80e"
+        },
+        {
+          "id": "hover/syntax/S5/positive/service",
+          "contractHash": "115a5e4b8a5e7cfcc018e8c981b9f6ef7d0b202c46bcc60c7078ac35c9022f38"
+        },
+        {
+          "id": "hover/syntax/S6/negative/protocol",
+          "contractHash": "b362228bbe868d2cfefc4a9f5dd7fdfc70532d5b3cd5e7b0c1c4a1760afb8cf1"
+        },
+        {
+          "id": "hover/syntax/S6/negative/service",
+          "contractHash": "6b7eaec4a15510842ee244a0dc3f4ed14a8b9f6da1a29231a4a3262450e975ff"
+        },
+        {
+          "id": "hover/syntax/S6/positive/protocol",
+          "contractHash": "0195592c64c4395e2c05c64c0c97ac96b36bdbf1203832534dedf1ff3cb71519"
+        },
+        {
+          "id": "hover/syntax/S6/positive/service",
+          "contractHash": "8979daf2890aafdd68e7caabe3eea19a6c5524cbc2cb8a96f936f1f4b134d2a9"
+        },
+        {
+          "id": "hover/syntax/S7/negative/protocol",
+          "contractHash": "b955006c09460d6876b00116cdae9992aae4516a1c19a1c46f31f34278b76984"
+        },
+        {
+          "id": "hover/syntax/S7/negative/service",
+          "contractHash": "6aa0f1933ec960fbeeb315bffae12acf21d86514fc2f1bb64c4587223a168c1c"
+        },
+        {
+          "id": "hover/syntax/S7/positive/protocol",
+          "contractHash": "f09098e5e2f9e6d1b4a248423d58af6104a82775d607f8df29b4d5053f4f60c7"
+        },
+        {
+          "id": "hover/syntax/S7/positive/service",
+          "contractHash": "a90f8e58869413da57eb27e564a8c833303d26861590a1f5cbdae108352cac61"
+        },
+        {
+          "id": "hover/syntax/S8/negative/protocol",
+          "contractHash": "9418daec89d136455185ec5ff2f83ae45ff4ca2f98fa0776ea698609ad027d7d"
+        },
+        {
+          "id": "hover/syntax/S8/negative/service",
+          "contractHash": "752ca25d087f4f4e5288670388a2e8ebfb6ba61c1598538197eed310c9a93286"
+        },
+        {
+          "id": "hover/syntax/S8/positive/protocol",
+          "contractHash": "3bf7f2e79a6927b72f20871a0b89841acab97052cb553c516237d8155016f002"
+        },
+        {
+          "id": "hover/syntax/S8/positive/service",
+          "contractHash": "1d04d6f192ca1261e872dd5fd43d8724da5c75c5d534c93f852dfef0b11bf9b8"
+        },
+        {
+          "id": "hover/syntax/S9/negative/protocol",
+          "contractHash": "5ecd64d01c4d0d4f19c7331e471694ba4c97641a492a26e0150d0ac2a4da44df"
+        },
+        {
+          "id": "hover/syntax/S9/negative/service",
+          "contractHash": "ebe542122abe420c5eb6a37439e9a14823ba753b0d32c368c0f40da3bdf71cc3"
+        },
+        {
+          "id": "hover/syntax/S9/positive/protocol",
+          "contractHash": "c82fb6a00b389fdbfc001c0f85ddd8a7293c3202d4e87b0523b22291d5a36d0f"
+        },
+        {
+          "id": "hover/syntax/S9/positive/service",
+          "contractHash": "097ceb613da2ca0833e86414acb0cb06ea9dd1898406a8347be6ecd2b847ad53"
+        },
+        {
+          "id": "signature-help/editor/smoke",
+          "contractHash": "7e30d78770573db21d8ef17ba21498de1bb164d85be6a8eb27a2deea72c605f6"
+        },
+        {
+          "id": "signature-help/environments/client_capabilities/protocol",
+          "contractHash": "b81a85fc5a2c70e8d17f102f0abcc7d0de749a7bc1978eb95e5cb447cf0ad321"
+        },
+        {
+          "id": "signature-help/states/close_restore/protocol",
+          "contractHash": "1faad719633bafac466fea6fa9bec6cebd0e9b6c65caab7db22ce299d1227a49"
+        },
+        {
+          "id": "signature-help/states/dependency_change/protocol",
+          "contractHash": "217db3750a492bfe7b52cf6989d792f7a507f9a41d0391bada736a6171ecec6d"
+        },
+        {
+          "id": "signature-help/states/dependency_delete/protocol",
+          "contractHash": "8adf1a8d0800cb5a5adfffe3b775bc3050ade03a08e9eb9032d15633c31d06d3"
+        },
+        {
+          "id": "signature-help/states/dirty/protocol",
+          "contractHash": "9a1cecf1345d955a19cb2ca7a0f4491459076b70c557d50c9bf657adea323bc2"
+        },
+        {
+          "id": "signature-help/states/dynamic/protocol",
+          "contractHash": "dacb6f96b789dda26483fe348c8f220cb85422eedf9c80df38b4a5715844160d"
+        },
+        {
+          "id": "signature-help/states/missing_schema/protocol",
+          "contractHash": "c1a8146bf0f09f2cf77bb3fc61a32b36dff8b5cca0c022055318947225158011"
+        },
+        {
+          "id": "signature-help/states/recovery/protocol",
+          "contractHash": "378accad21d57853f39bf8bdae07e01935ff5e80dfa4b2a7a0f31eb4e028df7f"
+        },
+        {
+          "id": "signature-help/states/repeat/protocol",
+          "contractHash": "7307d9f4d8893582958f33d14d03e96fa7d0be4a0ae21f128a6fa682c09d1700"
+        },
+        {
+          "id": "signature-help/states/stale_schema/protocol",
+          "contractHash": "5185cf3ac386a500f7eb85010f42cdad7f6146107ede786eb015fe5c0be63355"
+        },
+        {
+          "id": "signature-help/states/unresolved/protocol",
+          "contractHash": "ea063e66e6883489f11924276daba9fdacbae70670d1319724f49e5657199064"
+        },
+        {
+          "id": "signature-help/syntax/S10/negative/protocol",
+          "contractHash": "522f69248509b0a3c20aae60d1f17fee4f8c891af60df47c9bef7442be9c35f8"
+        },
+        {
+          "id": "signature-help/syntax/S10/negative/service",
+          "contractHash": "80d23b0755b10ebdcf16d14fe2d9ebfd10dbd90a6d05f38884f2185496ce3e68"
+        },
+        {
+          "id": "signature-help/syntax/S10/positive/protocol",
+          "contractHash": "8b8cb23cda94b43da2152bdceef07a75b65625e0ba238ca4f9d7595cd72b275d"
+        },
+        {
+          "id": "signature-help/syntax/S10/positive/service",
+          "contractHash": "4c76cb107d495d431bc91f35782b8742154c9caf86c4a88942638ab29cccde28"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/protocol",
+          "contractHash": "7b5b919286d5e32474aff3a52493181f7458f793307b30472ba9b335a94ccb11"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/service",
+          "contractHash": "b63841dbff8336545c6d1b32246eca8839f1d456019607d8416e564757bfaacc"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/protocol",
+          "contractHash": "5dcfc0a0e32344da7dc2fcfb4a6b144f76bc9215a19f388ac6ec2f67a33c8ef2"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/service",
+          "contractHash": "1bba2f4272cbc5f9763aa1fa218728fc48016748e6e3450bc14a05cf93f24b0f"
+        },
+        {
+          "id": "signature-help/syntax/S5/negative/protocol",
+          "contractHash": "f02eb658050b7406af16c022c0b5d95f54a6bb5eb7495f7b036078583724e82a"
+        },
+        {
+          "id": "signature-help/syntax/S5/negative/service",
+          "contractHash": "9c868e248528bf875177d06d4d07ee7c5ce38f0ea06312d1b199a0302622f947"
+        },
+        {
+          "id": "signature-help/syntax/S5/positive/protocol",
+          "contractHash": "6f57011a4dc38b92cca4957d05271f9d8c62505543aee1fd34720918f91813ae"
+        },
+        {
+          "id": "signature-help/syntax/S5/positive/service",
+          "contractHash": "5bde6fb1217bb33ebbfb49086605561efa613e012d909fdbf65291d0c1253633"
+        },
+        {
+          "id": "signature-help/syntax/S8/negative/protocol",
+          "contractHash": "b287ec182c547a78517074eb391bf9f62170901115f9c24b1724619984a584bc"
+        },
+        {
+          "id": "signature-help/syntax/S8/negative/service",
+          "contractHash": "5e4a4576d71c8af308bd0cc8bf8734eff3afa7e2be4dc6064ba6558bc70114a4"
+        },
+        {
+          "id": "signature-help/syntax/S8/positive/protocol",
+          "contractHash": "5bc97f603afd389ad1df30464e9d16978f0d4c2d912faf1bdefaab06a0febe4d"
+        },
+        {
+          "id": "signature-help/syntax/S8/positive/service",
+          "contractHash": "60f59184e8eed1db13965277c2ff5d26055e7b4c0319be00283115f4ad744f0e"
+        },
+        {
+          "id": "signature-help/syntax/S9/negative/protocol",
+          "contractHash": "ecbfab07486b8c6e211d795a18aba723209edeac87c21edb4857a410cfeea5d3"
+        },
+        {
+          "id": "signature-help/syntax/S9/negative/service",
+          "contractHash": "cb3e7aee1308f12f1e319e49efd267105232bc3af2a5d32f654c7a333caa725a"
+        },
+        {
+          "id": "signature-help/syntax/S9/positive/protocol",
+          "contractHash": "39e33ee8ab9993047a2978f7cdecd03010a0e0cb962148fc2205cb3ed662315b"
+        },
+        {
+          "id": "signature-help/syntax/S9/positive/service",
+          "contractHash": "52c3d76bccc8a655793a87e331ce7132e7e8dbf59d8470799f2e83166385a149"
+        },
+        {
+          "id": "vscode/UX10/dismiss-hover/input/local",
+          "contractHash": "1966e9858b1a2718a4f591f658dced7714d0f8d5e7465bd12c9c8cb31c9cc69a"
+        },
+        {
+          "id": "vscode/UX10/dismiss-hover/render/local",
+          "contractHash": "1966e9858b1a2718a4f591f658dced7714d0f8d5e7465bd12c9c8cb31c9cc69a"
+        },
+        {
+          "id": "vscode/UX10/keyboard-hover/input/local",
+          "contractHash": "61c93f2c34eb303de370120123aa9471229fce8e12a3de8b3ebca4aef4af2735"
+        },
+        {
+          "id": "vscode/UX10/keyboard-hover/render/local",
+          "contractHash": "61c93f2c34eb303de370120123aa9471229fce8e12a3de8b3ebca4aef4af2735"
+        },
+        {
+          "id": "vscode/UX10/pointer-hover/input/local",
+          "contractHash": "ad1e65d138230da38f8a70912e615a3c95d2c885e415223f544030e9048d290d"
+        },
+        {
+          "id": "vscode/UX10/pointer-hover/render/local",
+          "contractHash": "ad1e65d138230da38f8a70912e615a3c95d2c885e415223f544030e9048d290d"
+        },
+        {
+          "id": "vscode/UX10/signature-arguments/input/local",
+          "contractHash": "ac0ee86078baec26ef882ec3c610eece0b03c717495ac58449adafa20d91033d"
+        },
+        {
+          "id": "vscode/UX10/signature-arguments/render/local",
+          "contractHash": "ac0ee86078baec26ef882ec3c610eece0b03c717495ac58449adafa20d91033d"
+        },
+        {
+          "id": "vscode/UX10/unknown-receiver/input/local",
+          "contractHash": "24ae1d7c54321261a0a60421b3ca4dee3f05a772ff11fb071c917025b961edac"
+        },
+        {
+          "id": "vscode/UX10/unknown-receiver/render/local",
+          "contractHash": "24ae1d7c54321261a0a60421b3ca4dee3f05a772ff11fb071c917025b961edac"
         }
       ],
       "validation": {
         "source": {
-          "revision": "304bd95dbcda5c8326d406f2069322412be335a2",
-          "treeSha256": "c11645587f66f2ff5175925ba2b361b30d0ded2244b2b96ed98248911f8be9f3"
+          "revision": "b84295ddd564598edbcf8337d2e5df95cca0c76b",
+          "treeSha256": "c24fb89e04fbfb1a8d0951418935f219a71f655068c63a8379121d5df69fc16b"
         },
         "profile": {
           "platform": "win32",
@@ -12330,11 +13048,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-VWjtit/report.json"
+          "target/lsp-matrix/run-I7tcwg/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B06 --editor-results editors/vscode/test-results/run-hpntOx/results.json --local-results editors/vscode/test-results/input-JDe8Hy/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-7cQcXr/results.json --local-results editors/vscode/test-results/input-5th3fM/results.json",
             "exitCode": 0
           }
         ]
