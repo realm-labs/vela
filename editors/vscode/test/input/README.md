@@ -5,6 +5,16 @@ builds and installs the actual VSIX into a fresh test-owned profile, then contro
 that VS Code workbench through pinned Playwright/CDP keyboard and pointer events.
 The extension-host bridge only sets up fixtures, reports observations and ends
 the run. It does not perform the input action under acceptance.
+The native runner uses an ordinary window with Vela and the test-only observer
+installed into private extension, user-data and shared-data directories. It
+does not use the development extension host for native acceptance. Reload starts
+a new observer session and keeps the ordinary workbench's dirty-buffer backups.
+Both registered profiles pin `workbench.editor.useModal: "off"` so Settings uses
+the regular tab required by the existing Ctrl+Tab return route. VS Code's
+[documented setting](https://code.visualstudio.com/docs/editing/getting-started/userinterface#modal-editors)
+matches the inspected pinned editor; default modal behavior differs from the
+development test host. Profile fingerprints and all acceptance captures must
+be regenerated after this reviewed adjustment.
 
 `profiles/darwin-arm64.json` and `profiles/win32-x64.json` pin the local
 machine/editor configurations, selected automatically using the platform and
@@ -48,6 +58,25 @@ caret, dirty state and unchanged disk inputs have independent fixture expectatio
 Unknown requests must actually complete before widget absence is accepted.
 Use `--proof ux10-pointer-hover` (or another registered route) for investigation;
 batch acceptance requires fresh evidence for all owned routes.
+
+UX18 types an unsaved Unicode prefix, checks exact definition facts and then
+suspends only the captured test-owned server. One real definition request must
+remain pending before that same process is stopped. It must finish empty within
+five seconds, show the Vela connection error and leave the server stopped across
+three observations. Native Developer: Reload Window must preserve the full dirty
+source and caret and restore exact command and F12 results. A separate route
+configures an absent executable under the private workspace, reloads, checks the
+visible error including the exact path, then removes the override and repeats
+recovery. Windows suspends the captured process's threads; macOS uses SIGSTOP.
+The helper verifies executable, creation identity and test-window ancestry before
+mutation. Cleanup can stop only a server captured by this attempt.
+
+Each host writes an identifying output marker. Session metadata points to that
+host's marked output directory, even when VS Code reuses its exthost parent.
+Raw trace/output/host/server snapshots survive every reload and are hashed in
+the bundle alongside failure and recovery screenshots and typed receipts.
+Use `--proof ux18-server-stop-reload --proof ux18-invalid-server-path` for a
+focused investigation; final acceptance still requires every local route.
 
 To combine current provider and Input/Render evidence:
 

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "input-lifecycle",
+  "files": {
+    "scripts/lifecycle.vela": "fn [[definition:start]]resume[[definition:end]]() -> i64 { 41 }\nfn lifecycle_main() {\n    // 中😀\n    let result = [[call:start]]resume[[call:end]]();\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/lifecycle.vela",
+    "dirtyPrefix": "// recovery 中😀\n",
+    "call": { "line": 4, "character": 17 },
+    "definition": {
+      "start": { "line": 1, "character": 3 },
+      "end": { "line": 1, "character": 9 }
+    },
+    "missingDirectory": "missing-ux18",
+    "closedMessage": "Language server connection closed; not restarting automatically.",
+    "failedMessage": "Language server start failed:"
+  }
+}

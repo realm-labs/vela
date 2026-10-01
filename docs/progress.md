@@ -26,8 +26,12 @@ registration, invalid/repeated requests and bounded real main-loop termination;
 canonical Windows roots produce properly encoded watcher URIs. Real stdio
 process tests cover exact wire diagnostics, malformed frames and bounded exits;
 Installed-extension activation and unrelated-file association now have shared
-native/command contracts with independent startup and exact navigation facts;
-server-stop/reload and invalid-path lifecycle coverage remain open in B08.
+native/command contracts with independent startup and exact navigation facts.
+Server-stop/reload and invalid-path lifecycle routes now check bounded real
+request failure, visible errors, no automatic restart and exact unsaved-source
+recovery in an ordinary installed workbench; see the
+[lifecycle review](../tests/lsp_matrix/reviews/lifecycle-workbench.md).
+The execution checkpoint records B08 acceptance and the next B09 task.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
@@ -36,7 +40,7 @@ rollback, current diagnostic retention, stale versions and old task rejection;
 close restores current disk ownership and save notifications preserve the
 advertised no-op policy. Cancellation now covers real queued/completed work,
 typed ID isolation, duplicate/late/invalid input and stale-generation priority;
-editor lifecycle coverage remains open.
+editor lifecycle recovery preserves exact dirty source, caret and navigation.
 Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)

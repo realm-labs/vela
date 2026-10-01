@@ -14,6 +14,27 @@ const {
 
 async function run() {
   const root = process.env.VELA_TEST_RESULT_DIR;
+  const host = await vscode.extensions.getExtension("vela-tests.vela-test-driver").activate();
+  const observerRelative = path.relative(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR), path.resolve(host.extensionPath));
+  if (host.mode !== vscode.ExtensionMode.Production || !observerRelative || observerRelative.startsWith("..") || path.isAbsolute(observerRelative))
+    throw Error("native recovery requires an installed observer and a normal workbench");
+  const identity = vscode.window.createOutputChannel(`Vela Test Host ${process.pid}`);
+  identity.appendLine(`VELA_INPUT_HOST ${process.pid}`);
+  const identityDeadline = Date.now() + 10000;
+  let logDirectory;
+  while (Date.now() < identityDeadline) {
+    const files = require("./logs").logFiles(host.logDirectory, name => name.endsWith(`-Vela Test Host ${process.pid}.log`));
+    if (files.length > 1) throw Error("duplicate test host identity logs");
+    if (files.length === 1 && fs.readFileSync(files[0], "utf8").includes(`VELA_INPUT_HOST ${process.pid}`)) {
+      logDirectory = path.dirname(files[0]); break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 25));
+  }
+  if (!logDirectory) throw Error("test host identity log did not become ready");
+  const session = { pid: host.pid, logDirectory, hostLogDirectory: host.logDirectory, mode: host.mode };
+  const logRelative = path.relative(path.resolve(root, "user-data/logs"), path.resolve(session.logDirectory));
+  if (session.pid !== process.pid || !logRelative || logRelative.startsWith("..") || path.isAbsolute(logRelative))
+    throw Error("extension host logs must belong to the test-owned profile");
   const token = crypto.randomBytes(32).toString("hex");
   let finish;
   const finished = new Promise((resolve) => {
@@ -22,11 +43,10 @@ async function run() {
   // Observe an installed but inactive extension. The external native driver
   // opens the first Vela file; setup must not pre-activate its language client.
   const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");
+  const installedRelative = extension && path.relative(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR), path.resolve(extension.extensionPath));
   if (
     !extension ||
-    !path
-      .resolve(extension.extensionPath)
-      .startsWith(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR) + path.sep)
+    !installedRelative || installedRelative.startsWith("..") || path.isAbsolute(installedRelative)
   ) {
     throw new Error("Vela must load from installed VSIX");
   }
@@ -60,7 +80,7 @@ async function run() {
         uri: fileUri(editor.document.uri.fsPath),
         text: editor.document.getText(),
         dirty: editor.document.isDirty,
-          languageId: editor.document.languageId,
+        languageId: editor.document.languageId,
         selections: editor.selections.map((selection) => ({
           anchor: {
             line: selection.anchor.line,
@@ -162,6 +182,26 @@ async function run() {
           } else throw Error("unsupported installation command");
           break;
         }
+        case "lifecycle-query": {
+          const spec = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
+          const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, spec.oracle.file), p = spec.oracle.call;
+          const locations = await vscode.commands.executeCommand("vscode.executeDefinitionProvider", uri, new vscode.Position(p.line, p.character));
+          value = (locations ?? []).map(location => ({ uri: fileUri((location.targetUri ?? location.uri).fsPath),
+            range: { start: { line: (location.targetSelectionRange ?? location.range).start.line, character: (location.targetSelectionRange ?? location.range).start.character },
+              end: { line: (location.targetSelectionRange ?? location.range).end.line, character: (location.targetSelectionRange ?? location.range).end.character } } }));
+          break;
+        }
+        case "lifecycle-config": {
+          if (!["missing", "default"].includes(message.value)) throw Error("unsupported test server configuration");
+          const spec = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json"), cfg = vscode.workspace.getConfiguration("vela");
+          const missing = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, spec.oracle.missingDirectory,
+            process.platform === "win32" ? "vela_lsp_server.exe" : "vela_lsp_server").fsPath;
+          if (fs.existsSync(missing)) throw Error("the missing test server unexpectedly exists");
+          await cfg.update("server.path", message.value === "missing" ? missing : undefined, vscode.ConfigurationTarget.Workspace);
+          const current = vscode.workspace.getConfiguration("vela"), details = current.inspect("server.path");
+          value = { path: current.get("server.path"), override: details.workspaceValue !== undefined || details.workspaceFolderValue !== undefined };
+          break;
+        }
         case "finish":
           value = { finished: true };
           setImmediate(finish);
@@ -181,7 +221,7 @@ async function run() {
   });
   fs.writeFileSync(
     path.join(root, "bridge.json"),
-    JSON.stringify({ port: server.address().port, token }),
+    JSON.stringify({ port: server.address().port, token, ...session }),
   );
   let expired = false;
   const timer = setTimeout(() => {
@@ -195,6 +235,7 @@ async function run() {
   } finally {
     clearTimeout(timer);
     await new Promise((resolve) => server.close(resolve));
+    identity.dispose();
   }
 }
 module.exports = { run };

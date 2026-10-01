@@ -75,6 +75,7 @@ function localContracts(requirements, fixture, platform = "darwin") {
     ...require("./token-render-contracts").tokenRenderContracts(requirements),
     ...require("./hover-signature-contracts").hoverSignatureContracts(requirements),
     ...require("./installation-contracts").installationContracts(requirements),
+    ...require("./lifecycle-contracts").lifecycleContracts(requirements),
   ];
   if (platform === "win32") {
     const keys = { "Meta+p": "Control+p", "Meta+Shift+P": "Control+Shift+P", "Meta+Shift+M": "Control+Shift+M", "Meta+1": "Control+1", "Meta+.": "Control+.", "Meta+,": "Control+,", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", "Meta+a": "Control+a", "Meta+Shift+z": "Control+y", Meta: "Control" };

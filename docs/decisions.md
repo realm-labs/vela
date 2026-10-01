@@ -8,6 +8,21 @@ decision history lives in
 
 Installed editor acceptance uses a separately installed VSIX and a test-only
 driver extension, with an isolated profile and the bundled native server.
+Native lifecycle acceptance runs an ordinary window with both Vela and its
+test-only observer installed into private extension, user-data and shared-data
+directories. A development extension host discards dirty buffers during reload
+and cannot certify ordinary hot-exit recovery. The observer reactivates after
+each native reload; PID-marked output directories identify that host's logs
+without selecting a newest file or mixing requests from different hosts.
+Both registered native profiles explicitly set `workbench.editor.useModal` to
+`off`, preserving the accepted Settings-tab and Ctrl+Tab input contract that
+the development host previously enforced implicitly. Ordinary windows otherwise
+open Settings modally. This reviewed profile adjustment requires fresh evidence;
+it does not expand B16 or change existing requirement/action hashes.
+Process failure injection suspends and stops only a captured server whose exact
+executable, creation identity and parent ancestry belong to the current test
+window. Platform helpers retain the same independent lifecycle expectations;
+each registered platform still needs its own fresh evidence.
 Feature checks call VS Code providers/commands and assert destinations and
 ranges; service/protocol fixtures retain broad syntax coverage. The
 [editor test guide](../editors/vscode/README.md#automated-editor-tests) defines

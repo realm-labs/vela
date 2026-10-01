@@ -72,6 +72,13 @@ async function run() {
   };
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
+  const lifecycle = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
+  for (const [file, document] of new FixtureWorkspace(lifecycle).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "lifecycle fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const installation = require("../../../../tests/lsp_matrix/fixtures/input-installation.json");
   for (const [file, document] of new FixtureWorkspace(installation).disk) {
     const target = path.join(workspace, file);
@@ -154,6 +161,8 @@ async function run() {
     extensions,
     "--user-data-dir",
     userData,
+    "--shared-data-dir",
+    path.join(root,"shared-data"),
   ];
   const install = await runVSCodeCommand(
     ["--install-extension", vsix, "--force", ...isolated],
@@ -161,18 +170,34 @@ async function run() {
   );
   if (install.exitCode !== undefined && install.exitCode !== 0)
     throw Error("VSIX install failed");
+  const observerPackage = path.join(root,"observer-package"), observerVsix = path.join(root,"observer.vsix");
+  fs.mkdirSync(observerPackage);
+  for (const file of ["package.json","extension.js"]) fs.copyFileSync(path.join(extensionRoot,"test/driver",file),path.join(observerPackage,file));
+  fs.writeFileSync(path.join(observerPackage,"README.md"),"Test-only observer for isolated Vela matrix workbench runs.\n");
+  const observerArchive = spawnSync(process.execPath,[path.join(extensionRoot,"node_modules/@vscode/vsce/vsce"),"package","--allow-missing-repository","--skip-license","--out",observerVsix],
+    {cwd:observerPackage,stdio:"inherit",timeout:60000,windowsHide:true});
+  if(observerArchive.error)throw observerArchive.error;
+  if(observerArchive.status!==0)throw Error("test observer packaging failed");
+  const observerInstall = await runVSCodeCommand(["--install-extension",observerVsix,"--force",...isolated],
+    {version:profile.vscodeVersion,cachePath,spawn:{timeout:120000,windowsHide:true}});
+  if(observerInstall.exitCode!==undefined&&observerInstall.exitCode!==0)throw Error("test observer install failed");
+  const observerInstalled=path.join(extensions,"vela-tests.vela-test-driver-0.0.1");
+  assert.deepEqual(fs.readFileSync(path.join(observerInstalled,"extension.js")),fs.readFileSync(path.join(observerPackage,"extension.js")),"installed observer must match source");
+  const observerManifest=JSON.parse(fs.readFileSync(path.join(observerInstalled,"package.json")));
+  delete observerManifest.__metadata; // Only the installer's own metadata is outside the archive manifest.
+  assert.deepEqual(observerManifest,JSON.parse(fs.readFileSync(path.join(observerPackage,"package.json"))),"installed observer manifest must match source");
   const log = fs.createWriteStream(path.join(root, "workbench.log"));
   const env = {
     ...process.env,
     VELA_TEST_RESULT_DIR: root,
     VELA_TEST_EXTENSIONS_DIR: extensions,
+    VELA_TEST_INPUT_DRIVER: "1",
+    VELA_TEST_INPUT_BRIDGE: path.join(__dirname,"bridge.js"),
   };
   delete env.ELECTRON_RUN_AS_NODE;
   const args = [
     workspace,
     ...isolated,
-    "--extensionDevelopmentPath=" + path.join(extensionRoot, "test/driver"),
-    "--extensionTestsPath=" + path.join(__dirname, "bridge.js"),
     "--remote-debugging-port=0",
     "--remote-debugging-address=127.0.0.1",
     "--locale=en",
@@ -255,10 +280,8 @@ async function run() {
       const file = path.join(root, "bridge.json");
       if (fs.existsSync(file)) return true;
     });
-    const address = JSON.parse(
-      fs.readFileSync(path.join(root, "bridge.json"), "utf8"),
-    );
     bridge = async (op, params = {}) => {
+      const address = require("./session").readSession(root);
       const response = await fetch(`http://127.0.0.1:${address.port}`, {
         method: "POST",
         headers: { authorization: `Bearer ${address.token}` },
@@ -434,9 +457,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <ux01-or-ux03-to-ux10-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux10-or-ux18-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux(?:0[13456789]|10)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux(?:0[13456789]|10|18)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
@@ -475,6 +498,10 @@ async function run() {
     await require("./hover-signature").runHoverSignature({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
       until, onProof: (proof) => proofs.push(proof),
+    });
+    await require("./lifecycle").runLifecycle({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item=>requestedProofs.includes(item.id)) : contracts,
+      until, pid: child.pid, platform: profile.platform, binary: path.join(root,installedServer), onProof: proof=>proofs.push(proof),
     });
     restoreKeyboard();
     await bridge("finish");
@@ -540,6 +567,10 @@ async function run() {
             "workbench.log",
             "vela.vsix",
             installedServer,
+            "observer.vsix",
+            path.relative(root,path.join(observerInstalled,"extension.js")).split(path.sep).join('/'),
+            path.relative(root,path.join(observerInstalled,"package.json")).split(path.sep).join('/'),
+            ...fs.readdirSync(root).filter(file=>/^.+-session-\d+-(trace|output|host|server)\.log$/.test(file)),
             ...new Set(proofs.flatMap((proof) => contracts.find((item) => item.id === proof.id).artifacts)
               .filter((file) => !["trace.json", "suggestions.png", "suggestions.aria.txt", "final.png", "workbench.log"].includes(file))),
           ].map((file) => evidence.artifact(root, file))
