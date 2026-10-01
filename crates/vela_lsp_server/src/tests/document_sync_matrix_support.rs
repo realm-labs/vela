@@ -32,6 +32,28 @@ impl Layout {
     pub(super) fn id(&self, file: &str) -> DocumentId {
         DocumentId::from(self.uri(file))
     }
+    fn owned_file(&self, file: &str) -> PathBuf {
+        assert!(
+            std::path::Path::new(file)
+                .components()
+                .all(|component| matches!(component, std::path::Component::Normal(_)))
+        );
+        let path = self.root.join(file);
+        assert!(
+            path.parent()
+                .expect("parent")
+                .canonicalize()
+                .expect("owned directory")
+                .starts_with(self.root.canonicalize().expect("owned root"))
+        );
+        path
+    }
+    pub(super) fn write_disk(&self, file: &str, text: &str) {
+        fs::write(self.owned_file(file), text).expect("write owned fixture");
+    }
+    pub(super) fn remove_disk(&self, file: &str) {
+        fs::remove_file(self.owned_file(file)).expect("remove owned fixture file");
+    }
     pub(super) fn server(&self, capabilities: Value) -> TestServer {
         let mut config = LaunchConfiguration::new();
         config.set_watch_files_enabled(false);

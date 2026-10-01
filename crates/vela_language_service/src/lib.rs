@@ -131,3 +131,6 @@ mod document_sync_test_support;
 
 #[cfg(test)]
 mod document_change_tests;
+
+#[cfg(test)]
+mod document_close_tests;

@@ -23,14 +23,16 @@ see the
 [workbench review](../tests/lsp_matrix/reviews/semantic-token-workbench.md).
 Initialization coverage now checks complete capability projection, conditional
 registration, invalid/repeated requests and bounded real main-loop termination;
-canonical Windows roots produce properly encoded watcher URIs. Source-sync,
-cancellation and process/editor lifecycle coverage remain open in B08.
+canonical Windows roots produce properly encoded watcher URIs. Cancellation
+and process/editor lifecycle coverage remain open in B08.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
 after shutdown. Change synchronization now covers ordered UTF-16 edits, atomic
 rollback, current diagnostic retention, stale versions and old task rejection;
-close/save and standalone cancellation coverage remain open.
+close restores current disk ownership and save notifications preserve the
+advertised no-op policy. Standalone cancellation and process/editor lifecycle
+coverage remain open.
 Incremental HIR re-lowering remains an open
 follow-up and may be required by the local scale gate. The post-M20
 [Verified-MIR superinstruction and basic-block interpreter plan](verified-mir-superinstruction-basic-block-interpreter-plan.md)

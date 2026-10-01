@@ -16049,6 +16049,198 @@
           "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
         }
       ]
+    },
+    {
+      "requirement": "did-close/syntax/S0/positive/service",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_matrix_restores_full_disk_facts_removes_scratch_and_preserves_frozen_overlays"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_uses_supplied_current_disk_revisions_deletion_and_recreation"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_rebinds_importer_hover_to_disk_and_keeps_overlay_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_matrix_restores_exact_disk_diagnostics_clears_scratch_and_resets_reopen_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rereads_changed_deleted_and_created_disk_files_without_touching_other_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rebinds_importer_and_discards_real_held_overlay_task_results"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S0/negative/service",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_matrix_restores_full_disk_facts_removes_scratch_and_preserves_frozen_overlays"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_uses_supplied_current_disk_revisions_deletion_and_recreation"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_rebinds_importer_hover_to_disk_and_keeps_overlay_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_matrix_restores_exact_disk_diagnostics_clears_scratch_and_resets_reopen_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rereads_changed_deleted_and_created_disk_files_without_touching_other_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rebinds_importer_and_discards_real_held_overlay_task_results"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_matrix_restores_full_disk_facts_removes_scratch_and_preserves_frozen_overlays"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_uses_supplied_current_disk_revisions_deletion_and_recreation"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_rebinds_importer_hover_to_disk_and_keeps_overlay_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_matrix_restores_exact_disk_diagnostics_clears_scratch_and_resets_reopen_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rereads_changed_deleted_and_created_disk_files_without_touching_other_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rebinds_importer_and_discards_real_held_overlay_task_results"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_matrix_restores_full_disk_facts_removes_scratch_and_preserves_frozen_overlays"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_uses_supplied_current_disk_revisions_deletion_and_recreation"
+        },
+        {
+          "layer": "service",
+          "name": "document_close_tests::document_close_rebinds_importer_hover_to_disk_and_keeps_overlay_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_matrix_restores_exact_disk_diagnostics_clears_scratch_and_resets_reopen_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rereads_changed_deleted_and_created_disk_files_without_touching_other_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rebinds_importer_and_discards_real_held_overlay_task_results"
+        }
+      ]
+    },
+    {
+      "requirement": "did-close/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Reuse seventeen independently authored declaration/body/recovery/source-state documents in LF/CRLF; repaired/restored overlays close to exact current disk bytes, initial source versions and full diagnostic code/severity/message/UTF-16 primary and label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable source/database snapshots, repeats and fresh equivalence. Explicit current disk inputs and real guarded file updates/deletion/recreation/scratch creation prevent phantom source ownership. Unknown/repeated/malformed close cannot poison another overlay; reopen i32::MIN after closed i32::MAX resets versions. Defining-module close restores importer parameter/docs target and republishes complete current facts; real held references work publishes only ContentModified, repeated current hover succeeds. Three client profiles retain exact wire semantics; original fixture bytes restored. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_matrix_restores_exact_disk_diagnostics_clears_scratch_and_resets_reopen_versions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rereads_changed_deleted_and_created_disk_files_without_touching_other_overlays"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_close_rebinds_importer_and_discards_real_held_overlay_task_results"
+        }
+      ]
+    },
+    {
+      "requirement": "did-save/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Assert advertised save:false and no-response no-op for unsolicited didSave across seventeen independent positive/negative declaration/body/recovery/source-state documents, LF/CRLF and three client profiles. Omitted/null/poisoned optional text and malformed payloads cannot change exact text/version, SourceDb, parse count or generation. Open/closed/unknown/non-source inputs cannot acquire phantom ownership. Physical disk repair during an open overlay does not make save consume text or clear current problems; close adopts authored repaired disk bytes and exact clear diagnostic facts. Guarded files restore original complete bytes. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_save_ignores_optional_poison_text_and_keeps_open_closed_and_unknown_document_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-save/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Assert advertised save:false and no-response no-op for unsolicited didSave across seventeen independent positive/negative declaration/body/recovery/source-state documents, LF/CRLF and three client profiles. Omitted/null/poisoned optional text and malformed payloads cannot change exact text/version, SourceDb, parse count or generation. Open/closed/unknown/non-source inputs cannot acquire phantom ownership. Physical disk repair during an open overlay does not make save consume text or clear current problems; close adopts authored repaired disk bytes and exact clear diagnostic facts. Guarded files restore original complete bytes. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_save_ignores_optional_poison_text_and_keeps_open_closed_and_unknown_document_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "did-save/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/document-close-save.md. Assert advertised save:false and no-response no-op for unsolicited didSave across seventeen independent positive/negative declaration/body/recovery/source-state documents, LF/CRLF and three client profiles. Omitted/null/poisoned optional text and malformed payloads cannot change exact text/version, SourceDb, parse count or generation. Open/closed/unknown/non-source inputs cannot acquire phantom ownership. Physical disk repair during an open overlay does not make save consume text or clear current problems; close adopts authored repaired disk bytes and exact clear diagnostic facts. Guarded files restore original complete bytes. Standalone cancellation and process/editor lifecycle remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_close_matrix::document_save_ignores_optional_poison_text_and_keeps_open_closed_and_unknown_document_facts"
+        }
+      ]
     }
   ],
   "featureFiles": [

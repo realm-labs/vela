@@ -7561,10 +7561,29 @@
         "did-change/environments/client_capabilities/protocol"
       ],
       "summary": "Close twenty-three did-change obligations under reviews/document-change.md. Seventeen independently marked declaration/body/recovery/source-state inputs undergo full shifted/repaired/restored changes in LF/CRLF with signed version bit preservation and three client profiles. Exact buffers/SourceDb text/version and full diagnostic code/severity/message/UTF-16 primary/label ranges/ordered candidates/repair count; immutable snapshots, repeats, clear-after-repair/restored negatives and fresh equivalence. Sequential range changes use authored post-edit positions; mixed full/ranged replacement, EOF insertion and ignored deprecated rangeLength preserve complete bytes. Empty/outside/surrogate/reversed/CRLF-overrun inputs and bad second edits roll back atomically, preserve version/generation/current diagnostics and recover with the same next version. Exposed and fixed error publication clearing current diagnostics despite unchanged source; retain exact facts alongside existing controlled error. Equal/older signed versions and seven malformed payloads cannot poison current state. Unopened ranges reject without creating overlays; full replacement retains existing creation policy. Body-only defining-module change reparses one document, keeps project indexes and rebuilds HIR; parameter/docs changes update and republish importer facts. Real held references tasks across change publish only exact ContentModified or RequestCancelled; no old locations leak, repeated current hover succeeds. Guarded disk bytes and absent scratch/text inputs stay unchanged. Extract shared setup/normalization support by responsibility, retain original B08.2 test bodies; service open regression two/protocol three. Focused service two/protocol five; Node 99, fmt, workspace Clippy and workspace 4763 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 743 with two historical ignores/protocol 754; accepted B00-B07 and prior children unchanged. Catalog 820 verified, 505 unreviewed, two N/A, zero failed; B08 53/83. Next B08.4; close/save, standalone cancellation, process/editor lifecycle, independent macOS capture and deferred B16 remain. VSIX editors/vscode/test-results/run-yGa9mo/results.json; input editors/vscode/test-results/input-dZNhxZ/results.json; audit target/lsp-matrix/run-HDmR2i/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B08.4",
+      "revision": null,
+      "requirements": [
+        "did-close/syntax/S0/positive/service",
+        "did-close/syntax/S0/positive/protocol",
+        "did-close/syntax/S0/negative/service",
+        "did-close/syntax/S0/negative/protocol",
+        "did-close/syntax/S11/positive/service",
+        "did-close/syntax/S11/positive/protocol",
+        "did-close/syntax/S11/negative/service",
+        "did-close/syntax/S11/negative/protocol",
+        "did-close/environments/client_capabilities/protocol",
+        "did-save/syntax/S0/positive/protocol",
+        "did-save/syntax/S0/negative/protocol",
+        "did-save/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close twelve did-close/did-save obligations under reviews/document-close-save.md. Reuse seventeen independently marked declaration/body/recovery/source-state inputs; no duplicate fixture corpus. LF/CRLF repaired/restored overlays close to exact current disk bytes, initial source version and complete diagnostic code/severity/message/UTF-16 primary/label ranges/ordered candidates/repair count. Scratch absence removes SourceDb and clears diagnostics; non-source inputs never enter analysis. Immutable workspace/database snapshots, repeats and fresh equivalence. Service receives current disk inputs explicitly; protocol validates real guarded file updates/deletion/recreation/scratch creation without watchers and restores all fixture bytes. Unknown/repeated/malformed close cannot poison other overlays; close resets version ownership and reopen i32::MIN after i32::MAX succeeds. Defining-module close rebinds importer to authored disk parameter/docs hover and republishes current facts. A held real references task publishes only exact ContentModified; old locations do not leak and subsequent repeated hover succeeds. Assert save:false; unsolicited saves with omitted/null/poisoned optional text and malformed payloads preserve exact open/closed/unknown/non-source facts, text/version, SourceDb, parse count and generation under three client profiles. Physical disk repair while overlay remains open cannot make save consume text or clear diagnostics; close adopts authored repaired bytes. No product correction needed. Focused service three/protocol four, close baseline one; Node 99, fmt, workspace Clippy, workspace 4770 with two historical ignores. Fresh Windows VSIX 20/native 38 share frozen source/server. Strict B07 service 746 with two historical ignores/protocol 758; accepted B00-B07 and prior children unchanged. Catalog 832 verified, 493 unreviewed, two N/A, zero failed; B08 65/83. Next B08.5; standalone cancellation five, stdio three and editor lifecycle ten remain. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-luRThl/results.json; input editors/vscode/test-results/input-Oa4DeV/results.json; audit target/lsp-matrix/run-RlXkYS/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B08.4",
+  "nextTask": "B08.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -9720,7 +9739,10 @@
     "editors/vscode/test-results/input-EmD2zR/results.json",
     "target/lsp-matrix/run-HDmR2i/report.json",
     "editors/vscode/test-results/run-yGa9mo/results.json",
-    "editors/vscode/test-results/input-dZNhxZ/results.json"
+    "editors/vscode/test-results/input-dZNhxZ/results.json",
+    "target/lsp-matrix/run-RlXkYS/report.json",
+    "editors/vscode/test-results/run-luRThl/results.json",
+    "editors/vscode/test-results/input-Oa4DeV/results.json"
   ],
   "openIssues": [
     {
@@ -13122,8 +13144,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4dd32ba664158c74d1da4e7ba931dc3b2df99419",
-          "treeSha256": "d7519fac502ce7bc6b8f513494b71a9436dbaee93131e9641e9d4fc3225df346"
+          "revision": "b45ea20b7b69bcc0259299d181b17935f307c5d5",
+          "treeSha256": "01169f3d542f7d6b75dbac86c598515dce37e05715ee0e73e61893c788c12912"
         },
         "profile": {
           "platform": "win32",
@@ -13131,11 +13153,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-HDmR2i/report.json"
+          "target/lsp-matrix/run-RlXkYS/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-yGa9mo/results.json --local-results editors/vscode/test-results/input-dZNhxZ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B07 --editor-results editors/vscode/test-results/run-luRThl/results.json --local-results editors/vscode/test-results/input-Oa4DeV/results.json",
             "exitCode": 0
           }
         ]

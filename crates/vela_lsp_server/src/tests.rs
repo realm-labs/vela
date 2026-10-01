@@ -197,6 +197,7 @@ mod diagnostic_type_positions;
 
 mod diagnostic_top_level;
 mod document_change_matrix;
+mod document_close_matrix;
 mod document_open_matrix;
 mod document_sync;
 mod document_sync_dependents;
