@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "id": "watched-files",
+  "files": {
+    "vela.toml": "[package]\nid=\"dev.vela.watch_matrix\"\nname=\"watch_matrix\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n",
+    "scripts/defs.vela": "/* 中😀 */ pub fn [[decl:start]]resume[[decl:end]]() -> i64 { return 1; }\n",
+    "scripts/main.vela": "[[import:start]]use defs::resume;[[import:end]]\nfn main() { /* 中😀 */ [[call:start]]resume[[call:end]](); }\n",
+    "scripts/unrelated.vela": "pub fn independent() -> i64 { return 7; }\n",
+    "scripts/schema_caller.vela": "fn schema_main(host: HostCell) {\n /* 中😀 */ host.[[value:start]]value[[value:end]]; host.[[gone:start]]gone[[gone:end]]; host.[[rank:start]]rank[[rank:end]];\n}\n",
+    "other/defs.vela": "// second root 中😀\n// fixed shift\npub fn [[decl:start]]resume[[decl:end]]() -> i64 { return 99; }\n",
+    "other/main.vela": "use defs::resume;\nfn alternate() { /* 中😀 */ [[call:start]]resume[[call:end]](); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "missingDisk": [],
+    "shifted": "// changed 中😀\n// fixed shift\n/* 中😀 */ pub fn [[decl:start]]resume[[decl:end]]() -> i64 { return 41; }\n",
+    "overlay": "// unsaved 中😀\n/* 中😀 */ pub fn [[decl:start]]resume[[decl:end]]() -> i64 { return 55; }\n",
+    "removedName": "pub fn distant_service() -> i64 { return 3; }\n",
+    "renamedCaller": "[[import:start]]use renamed::resume;[[import:end]]\nfn main() { /* 中😀 */ [[call:start]]resume[[call:end]](); }\n",
+    "configOther": "[package]\nid=\"dev.vela.watch_matrix\"\nname=\"watch_matrix\"\nversion=\"0.1.0\"\n[source]\nroots=[\"other\"]\n",
+    "configInvalid": "[package]\nid=\"dev.vela.watch_matrix\"\nname=\"watch_matrix\"\nversion=\"0.1.0\"\n[source]\nroots=[[bad:start]]\"scripts\"[[bad:end]]\n",
+    "configError": "source.roots must be an array of strings at bytes {START}..{END}",
+    "missingModule": { "code": "hir::unresolved_module", "message": "unresolved module `defs`", "label": "no similar modules found" },
+    "missingImport": { "code": "hir::unresolved_import", "message": "unresolved import `resume` in module `defs`", "label": "no similar declarations found" },
+    "schemaOriginal": {"formatVersion":1,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"i64"}},{"owner":"HostCell","name":"gone","fact":{"kind":"primitive","name":"bool"}}]}},
+    "schemaChanged": {"formatVersion":1,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"string"}},{"owner":"HostCell","name":"rank","fact":{"kind":"primitive","name":"bool"}}]}},
+    "schemaStates": [
+      {"id":"original","schema":"schemaOriginal","fields":{"value":"i64","gone":"bool","rank":null},"error":null},
+      {"id":"changed","schema":"schemaChanged","fields":{"value":"String","gone":null,"rank":"bool"},"error":null},
+      {"id":"invalid-version","text":"{\"formatVersion\":99,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 1; host facts degrade to Any"},
+      {"id":"truncated","text":"{","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: invalid schema artifact: EOF while parsing an object at line 1 column 1; host facts degrade to Any"},
+      {"id":"missing","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is unavailable; host facts degrade to Any"},
+      {"id":"empty","text":"{\"formatVersion\":1,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":null},
+      {"id":"restored","schema":"schemaOriginal","fields":{"value":"i64","gone":"bool","rank":null},"error":null}
+    ]
+  }
+}

@@ -314,6 +314,9 @@ impl ProjectState {
             Arc::make_mut(databases).update_with_open_documents(&project, open_documents);
         }
         self.analysis_diagnostics = project.diagnostics().to_vec();
+        // Any completed refresh already incorporates pending disk/config work,
+        // including the initial package load and document-driven refreshes.
+        self.watched_project_changed = false;
     }
 
     fn reload_schema_from_config(&mut self) {

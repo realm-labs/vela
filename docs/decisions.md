@@ -33,6 +33,12 @@ Package discovery and source watcher events project physical paths back through
 the client's workspace roots at the server boundary, preserving symlink-root
 URI spelling and matching deletion events through existing ancestors.
 
+Watched-file notifications validate every event type before scheduling or
+coalescing: only Created, Changed and Deleted are accepted. An unknown numeric
+type rejects the whole notification without publication or partial state changes.
+Completed database refreshes consume pending watched-project changes, including
+initial package loading, so later no-op events cannot spuriously invalidate work.
+
 Proactive LSP coverage is requirement-driven under the
 [test strategy](lsp-test-strategy.md). The machine-readable catalog pins current
 syntax/protocol contracts, expands applicable layers and states, and binds

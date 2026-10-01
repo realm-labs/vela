@@ -16397,6 +16397,148 @@
           "name": "stdio_process_matrix_terminates_on_eof_invalid_headers_and_truncated_or_invalid_json_frames"
         }
       ]
+    },
+    {
+      "requirement": "watched-files/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_source_create_change_delete_rename_and_repair_keep_exact_current_locations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_batches_coalesce_to_last_event_and_republish_only_the_final_complete_state"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_invalid_notifications_do_not_mutate_or_publish_and_ignored_paths_keep_facts"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_missing_import_repair_drops_stale_declarations_and_pins_exact_diagnostics"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_source_create_change_delete_rename_and_repair_keep_exact_current_locations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::metadata::watched_manifest_switches_roots_retains_last_valid_graph_and_clears_repaired_errors"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_missing_import_repair_drops_stale_declarations_and_pins_exact_diagnostics"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::metadata::watched_manifest_switches_roots_retains_last_valid_graph_and_clears_repaired_errors"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_batches_coalesce_to_last_event_and_republish_only_the_final_complete_state"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::metadata::watched_schema_replacement_invalid_missing_and_empty_states_restore_exact_current_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::metadata::watched_schema_replacement_invalid_missing_and_empty_states_restore_exact_current_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_disk_changes_and_deletion_preserve_dirty_overlays_until_close"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_source_create_change_delete_rename_and_repair_keep_exact_current_locations"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_disk_changes_and_deletion_preserve_dirty_overlays_until_close"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_invalid_notifications_do_not_mutate_or_publish_and_ignored_paths_keep_facts"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::tasks::watched_mutations_reject_real_old_tasks_before_and_after_worker_completion"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::tasks::watched_reloads_preserve_typed_cancellation_priority_without_poisoning_new_queries"
+        }
+      ]
+    },
+    {
+      "requirement": "watched-files/environments/client_capabilities/protocol",
+      "assertion": "Reviewed in reviews/watched-files.md. Independent LF/CRLF Unicode marked sources, literal UTF-16 and manifest-byte goldens; complete publication URI sets/diagnostic data, repeated authored current locations and fresh-server equivalence. Create/change/delete/rename and coalesced final state; dirty overlay text/version through disk change/deletion/close; immutable old snapshots; valid/invalid/deleted/repaired manifest and seven schema states with exact diagnostics/hover/null definitions. Atomic invalid-type batches in either order and ignored/missing events preserve current facts; real held references workers enforce stale errors and typed cancellation priority without poisoning new requests. Three profiles retain exact semantic/progress behavior; exact initialization registration proof retained. Current registered platform evidence remains separate from macOS; other B09 features remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::watched_files_matrix::source::watched_source_create_change_delete_rename_and_repair_keep_exact_current_locations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
+        }
+      ]
     }
   ],
   "featureFiles": [

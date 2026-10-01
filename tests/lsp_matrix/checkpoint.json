@@ -7976,10 +7976,28 @@
         "vscode/UX18/invalid-server-path/render/local"
       ],
       "summary": "Close all six UX18 Command/Input/Render obligations under reviews/lifecycle-workbench.md and accept B08 83/83. Independent marked Unicode fixture pins full dirty source, immutable disk, call caret and exact definition wire/target. Capture only test-owned installed server by executable, PID creation identity and window ancestry; actually suspend it, observe one pending real definition request without response, stop captured child and require empty result within five seconds. Native Show Output displays exact connection error; three process/startup observations span at least one second and require no automatic restart. Separate absent workspace executable route uses native reload/open, exact visible startup error/path, zero servers and bounded empty provider; restore override before recovery. Native Developer Reload must change host, retain installed extension and complete dirty source/caret, start one server and restore separate command plus exact native F12 destination/wire. Investigations exposed development-window dirty-buffer loss, shared reload log parent, installed metadata/drive case, old server graceful-exit race and Monaco wrapped path text; retain failed attempts and strict expectations. Use ordinary window with both Vela and observer installed under private extensions/user-data/shared-data, PID-marked per-host output and raw session snapshots. No native action retries; bounded observations only. Node 110, baseline 11, fmt, workspace Clippy. Fresh Windows VSIX 20/native 42 share frozen source/server; strict B08 executes service 746+2 historical ignores/protocol 761/stdio ten. Rust unchanged from verified B08.5 workspace 4782+2 historical ignores. Original B00-B07 snapshots and prior children preserved; B08 accepted. Catalog 840/485/2 N/A/zero failed. Next B09.1. macOS needs independent fresh evidence; B16 deferred. Full ordinary-window regression exposed modal Settings; both registered profiles explicitly pin workbench.editor.useModal=off to preserve accepted Ctrl+Tab actions and exact source/style expectations. Retain failed full reproduction and cancel only captured superseded audit tree; focused Settings 12 validates complete bundle, then recollect all source/profile evidence. VSIX editors/vscode/test-results/run-VDQp9X/results.json; input editors/vscode/test-results/input-pxTU7o/results.json; audit target/lsp-matrix/run-QsF0T7/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B09.1",
+      "revision": null,
+      "requirements": [
+        "watched-files/syntax/S0/positive/protocol",
+        "watched-files/syntax/S0/negative/protocol",
+        "watched-files/syntax/S8/positive/protocol",
+        "watched-files/syntax/S8/negative/protocol",
+        "watched-files/syntax/S9/positive/protocol",
+        "watched-files/syntax/S9/negative/protocol",
+        "watched-files/syntax/S11/positive/protocol",
+        "watched-files/syntax/S11/negative/protocol",
+        "watched-files/states/stale_version/protocol",
+        "watched-files/states/cancellation/protocol",
+        "watched-files/environments/client_capabilities/protocol"
+      ],
+      "summary": "Close all eleven watched-files protocol obligations under reviews/watched-files.md. Independent LF/CRLF Unicode marked disk/overlay/dependency and alternate-root/schema fixtures, literal UTF-16/config-byte goldens, entire diagnostic URI sets and complete wire facts. Create/change/delete/rename/coalesced batches, missing-import repair, dirty overlay authority through disk deletion/replacement and close, immutable snapshots and fresh-server equivalence. Manifest switches roots, invalid preserves last valid graph, repair/delete/recreate; seven schema states pin exact metadata diagnostics and hover/null locations. Real held references workers before/after completion reject stale publication; typed cancellation takes priority without poisoning current queries. Three capability profiles plus exact reused initialization/watcher registration. Independent failures expose unknown numeric event types treated as updates and an initial reload flag surviving refresh. Validate all types before scheduling any mixed batch; consume pending flags after every completed refresh; invalid/no-op events preserve exact source/version/generation and current navigation. Retain failure artifacts and expectations. Baseline 11, focused 9, existing watches 11 and capability 1, Node 111, fmt, workspace Clippy, workspace 4791+2 historical ignores. Fresh Windows VSIX 20/native 42 share frozen source/server; strict B08 service 746+2 ignores/protocol 770/stdio ten. Preserve nine accepted B00-B08 snapshots and prior children. Catalog 851 verified/474 unreviewed/2 N/A/zero failed; B09 eleven verified/two N/A/35 open. Next B09.2 configuration-change, workspace-folders and conditional configuration-request before installed UX17/UX21. macOS fresh proofs separate; B16 deferred. VSIX editors/vscode/test-results/run-GQi7Cf/results.json; input editors/vscode/test-results/input-2U1eLp/results.json; audit target/lsp-matrix/run-VXTV8d/report.json. Find commit through LSP-Batch trailer."
     }
   ],
   "activeChild": null,
-  "nextTask": "B09.1",
+  "nextTask": "B09.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10064,7 +10082,10 @@
     "editors/vscode/test-results/input-pEok6b/results.json",
     "target/lsp-matrix/run-QsF0T7/report.json",
     "editors/vscode/test-results/run-VDQp9X/results.json",
-    "editors/vscode/test-results/input-pxTU7o/results.json"
+    "editors/vscode/test-results/input-pxTU7o/results.json",
+    "editors/vscode/test-results/run-GQi7Cf/results.json",
+    "editors/vscode/test-results/input-2U1eLp/results.json",
+    "target/lsp-matrix/run-VXTV8d/report.json"
   ],
   "openIssues": [
     {

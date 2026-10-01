@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use lsp_server::Message;
-use lsp_types::DidChangeWatchedFilesParams;
+use lsp_types::{DidChangeWatchedFilesParams, FileChangeType};
 use vela_language_service::DocumentId;
 
 use super::{GlobalState, diagnostics::publish_diagnostics_notification};
@@ -15,6 +15,18 @@ impl GlobalState {
         &mut self,
         params: DidChangeWatchedFilesParams,
     ) -> Vec<Message> {
+        // The wire type accepts unknown integer values. Validate the entire
+        // notification before coalescing or applying any otherwise valid event.
+        if params.changes.iter().any(|change| {
+            ![
+                FileChangeType::CREATED,
+                FileChangeType::CHANGED,
+                FileChangeType::DELETED,
+            ]
+            .contains(&change.typ)
+        }) {
+            return Vec::new();
+        }
         let schema_path = self.project.schema_path().map(str::to_owned);
         self.reload_scheduler.schedule_watched_files(
             params.changes,

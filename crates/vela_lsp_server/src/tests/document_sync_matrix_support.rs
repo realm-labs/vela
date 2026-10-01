@@ -51,6 +51,9 @@ impl Layout {
     pub(super) fn write_disk(&self, file: &str, text: &str) {
         fs::write(self.owned_file(file), text).expect("write owned fixture");
     }
+    pub(super) fn path(&self, file: &str) -> PathBuf {
+        self.owned_file(file)
+    }
     pub(super) fn remove_disk(&self, file: &str) {
         fs::remove_file(self.owned_file(file)).expect("remove owned fixture file");
     }
