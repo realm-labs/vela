@@ -224,6 +224,18 @@ async function run() {
               end: { line: (location.targetSelectionRange ?? location.range).end.line, character: (location.targetSelectionRange ?? location.range).end.character } } }));
           break;
         }
+        case "invalid-config-schema-query": {
+          const m = require("../../../../scripts/lsp-matrix/invalid-config-schema-contracts").invalidConfigSchemaModel(process.platform);
+          const base = process.env.VELA_TEST_WORKSPACE_BASE;
+          if (!base) throw Error("missing owned workspace base");
+          const uri = vscode.Uri.file(path.join(base, safeFile(m.o.file))), p = m.dirty.markers[message.field]?.start;
+          if (!p || !["value", "gone", "rank"].includes(message.field)) throw Error("unknown invalid schema query field");
+          const hovers = await vscode.commands.executeCommand("vscode.executeHoverProvider", uri, new vscode.Position(p.line, p.character));
+          value = (hovers ?? []).map(hover => ({ contents: hover.contents.map(c => ({ value: c.value })),
+            range: hover.range ? { start: { line: hover.range.start.line, character: hover.range.start.character },
+              end: { line: hover.range.end.line, character: hover.range.end.character } } : null }));
+          break;
+        }
         case "lifecycle-query": {
           const spec = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
           const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, spec.oracle.file), p = spec.oracle.call;

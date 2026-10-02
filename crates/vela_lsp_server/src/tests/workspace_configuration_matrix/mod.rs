@@ -1,5 +1,6 @@
 mod conditional;
 mod configuration;
+mod empty_manifest;
 mod folders;
 mod packages;
 mod root_aliases;

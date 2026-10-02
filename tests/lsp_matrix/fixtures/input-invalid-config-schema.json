@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "input-invalid-config-schema",
+  "files": {
+    "ux17-roots/left/invalid_probe.vela": "// 中😀\nfn invalid_probe(host: HostCell) {\n  host.[[value:start]]value[[value:end]]; host.[[gone:start]]gone[[gone:end]]; host.[[rank:start]]rank[[rank:end]];\n}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "ux17-roots/left/invalid_probe.vela",
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "manifest": "ux17-roots/left/vela.toml",
+    "invalidManifest": "# 中😀\n[source]\nroots=[[bad:start]]7[[bad:end]]\n",
+    "validManifest": "[package]\nid=\"dev.vela.native_invalid\"\nname=\"native_invalid\"\nversion=\"0.1.0\"\n[source]\nroots=[\".\"]\n[host]\nschema=\"schema-one.json\"\n",
+    "phases": [
+      {"id":"baseline","operation":"settings","schema":"schema-one.json"},
+      {"id":"rejected","operation":"settings","schema":"schema-one.json","roots":7},
+      {"id":"missing","operation":"settings","schema":"schema-missing.json"},
+      {"id":"invalid","operation":"settings","schema":"schema-invalid.json"},
+      {"id":"switched","operation":"settings","schema":"schema-two.json"},
+      {"id":"repaired","operation":"settings","schema":"schema-one.json"},
+      {"id":"deleted","operation":"delete-schema","schema":"schema-one.json","unavailable":true},
+      {"id":"recreated","operation":"create-schema","schema":"schema-one.json"},
+      {"id":"empty","operation":"create-manifest","schema":"","scratch":true},
+      {"id":"badmanifest","operation":"invalid-manifest","schema":"","scratch":true},
+      {"id":"package","operation":"repair-manifest","schema":"schema-one.json","package":true},
+      {"id":"fallback","operation":"delete-manifest","schema":"schema-one.json"}
+    ]
+  }
+}

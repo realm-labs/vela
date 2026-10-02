@@ -8042,10 +8042,21 @@
         "vscode/UX17/schema-replace/input/local"
       ],
       "summary": "Close exactly the two UX17 schema-replace Command and Input requirements under reviews/workspace-schema-workbench.md. Independent Unicode/LF/CRLF fixture, literal UTF-16 spans, complete original/replaced/restored field types, removed gone/new rank facts. Actual Quick Open pointer selection, keyboard select/insert/Save replace the configured artifact and preserve all original completion function facts. Nine complete SDK hover queries plus nine actual keyboard hover request/response pairs with full metadata/ranges or wire null. Unknown-field tooltips must retain exact diagnostic text/source/code with no schema content; a null provider hover does not suppress native diagnostics. Complete changed diagnostics with labels/candidates/repair hints and clear metadata publications after the mutation boundary; full unsaved-source/language/caret/immutable disk ownership and exact schema restoration. Readiness observes only and every accepted action executes once. Retain fixture/negative-widget/native stale-schema investigations. Actual Windows file events use a lowercase drive and encoded colon; independently authored alias regression fails before the fix, then passes complete original/changed/invalid/missing/empty/restored goldens, one configured metadata owner and immutable snapshots in LF/CRLF. Reload classifier and ProjectState share Windows drive/verbatim-prefix path identity; keep exact folder/file comparison, outgoing URI spelling and non-Windows case semantics. Schema aliases retain the configured diagnostic owner. All45 previous native contract hashes and nine accepted B00-B08 snapshots preserved. Node125; focused schema Rust3 and path1; fmt; Clippy server/all-targets -D warnings; fresh VSIX20/native46; ordinary audit plus correct scoped B08 CLI gate service746+2 historical ignored/protocol786/stdio10. No full-goal acceptance claim. Catalog870 verified/455 unreviewed/2 N/A; B09 thirty-eight verified/two N/A/eight open. Next B09.5 roots/settings and invalid configuration/schema before UX21 trust. macOS must capture its own fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-YhKpDt/results.json; input editors/vscode/test-results/input-IHlOrt/results.json; scoped audit target/lsp-matrix/run-LC2rks/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B09.5",
+      "revision": null,
+      "requirements": [
+        "vscode/UX17/roots-settings/command/local",
+        "vscode/UX17/roots-settings/input/local",
+        "vscode/UX17/invalid-config-schema/command/local",
+        "vscode/UX17/invalid-config-schema/input/local"
+      ],
+      "summary": "Close four UX17 roots-settings and invalid-config-schema Command/Input requirements. Preserve independent 47 prior contract hashes. Native workspace folder/settings transitions plus twelve invalid/recovery states pin 36 hover command/native pairs, exact rejection logs, complete source/schema/manifest ownership and clears, physical schema delete/recreate, empty manifest scratch, invalid TOML last-valid retention, package boundaries and deletion fallback. Four dirty overlays retain disk bytes. LF/CRLF backend regression pins the whole manifest chain, immutable snapshots and exact versions. Synchronize the new owned host before further native UI/observer input after first-folder changes. Node135; fmt; server all-target Clippy; fresh Windows VSIX20/native48; strict B08 service746+2 historical ignores/protocol793/stdio10, core870/455/2/zero failed and B09 42 verified/2 N/A/4 trust open. Preserve nine accepted B00-B08 snapshots and prior200 children. Next B09.6 UX21 untrusted-open and grant-trust input/render. macOS requires independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-23RxaG/results.json; native editors/vscode/test-results/input-vUd1VH/results.json; audit target/lsp-matrix/run-X47InD/report.json. Find commit through LSP-Batch trailer."
     }
   ],
-  "activeChild": "B09.5",
-  "nextTask": "B09.5",
+  "activeChild": "B09.6",
+  "nextTask": "B09.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10162,7 +10173,21 @@
     "editors/vscode/test-results/input-5Uv0RM/results.json",
     "target/b09-5-roots-node-final.log",
     "target/b09-5-roots-format.log",
-    "target/b09-5-roots-scoped.log"
+    "target/b09-5-roots-scoped.log",
+    "target/lsp-matrix/run-X47InD/report.json",
+    "editors/vscode/test-results/run-23RxaG/results.json",
+    "editors/vscode/test-results/input-vUd1VH/results.json",
+    "editors/vscode/test-results/input-gfS8Jf/results.json",
+    "target/b09-5-invalid-node-final.log",
+    "target/b09-5-invalid-format.log",
+    "target/b09-5-invalid-clippy.log",
+    "target/b09-5-invalid-empty-manifest.log",
+    "target/b09-5-invalid-scoped.log",
+    "target/b09-5-invalid-input-1.log",
+    "target/b09-5-invalid-input-2.log",
+    "target/b09-5-invalid-input-3.log",
+    "target/b09-5-invalid-input-4.log",
+    "target/b09-5-invalid-input-5.log"
   ],
   "openIssues": [
     {
@@ -13897,8 +13922,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b63764d371a2385d761946aac69d9afd2d41f792",
-          "treeSha256": "98b8aba7f8df2524253dcbc660c1f1a81a79dd614d373b2539585fedb18bf223"
+          "revision": "22260683921ff583c08acf34d341cee0191de2f6",
+          "treeSha256": "d5b44aaff478d55fec65e9b4501f932ff84e1ff9ac2ff48ae5d64129ce24134e"
         },
         "profile": {
           "platform": "win32",
@@ -13906,11 +13931,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-P5i0vO/report.json"
+          "target/lsp-matrix/run-X47InD/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B08 --editor-results editors/vscode/test-results/run-9xZcy3/results.json --local-results editors/vscode/test-results/input-5Uv0RM/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B08 --editor-results editors/vscode/test-results/run-23RxaG/results.json --local-results editors/vscode/test-results/input-vUd1VH/results.json",
             "exitCode": 0
           }
         ]

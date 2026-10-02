@@ -55,8 +55,8 @@ unchanged disk callers and unsaved-buffer ownership across replacement/recovery;
 see the [schema review](../tests/lsp_matrix/reviews/workspace-schema-workbench.md).
 Windows schema events compare drive/verbatim-prefix aliases and preserve the
 configured metadata owner instead of retaining stale facts or duplicate owners.
-Roots/settings, invalid configuration/schema and UX21 trust B09 proofs remain
-open; the checkpoint records the current verified child and next task.
+UX21 trust B09 proofs remain open; the checkpoint records accepted scope,
+the current verified child and the next task.
 B09.5 backend work now loads independent workspace manifests into one
 package-aware graph and retains manifest-free folder discovery. New independent
 LF/CRLF regressions pin same-named module ownership, root removal/readdition,
@@ -67,12 +67,20 @@ retaining directory aliases and one diagnostic owner through repair.
 Dynamic watcher registrations now follow current source roots, configuration
 folders and schema paths, dispose
 their previous registration, and avoid duplicate registrations on no-op updates.
-The B09.5 root/settings workbench driver now checks real multi-root transitions,
+The B09.5 roots/settings workbench proof checks real multi-root transitions,
 settings selection/restoration, current client sessions, exact dirty sources,
-full command/native targets and diagnostic publications; its targeted Windows
-run passes. See the [roots review](../tests/lsp_matrix/reviews/workspace-roots-workbench.md).
-The complete fresh regression gate and invalid configuration/schema input
-remain required before B09.5 acceptance, with independent platform captures.
+full command/native targets and diagnostic publications. Its Windows checkpoint
+passed the complete 47-proof regression and strict prior-batch gate; see the
+[roots review](../tests/lsp_matrix/reviews/workspace-roots-workbench.md).
+The appended invalid configuration/schema proof pins twelve finite states,
+36 command/native hover pairs, exact rejection logs, source/metadata diagnostic
+owners, schema delete/recreate and invalid manifest retention/repair/delete.
+Independent LF/CRLF backend regression also pins empty manifest scratch sources,
+package boundaries, preserved overlays and frozen snapshots. The targeted
+Windows run passes; see the
+[invalid configuration review](../tests/lsp_matrix/reviews/invalid-config-schema-workbench.md).
+Child acceptance requires a fresh complete 48-proof run and strict gate on the
+current source. Windows and macOS retain independent platform captures.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

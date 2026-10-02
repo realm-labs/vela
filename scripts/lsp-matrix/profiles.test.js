@@ -43,7 +43,7 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
     assert.deepEqual(windows[i].requirements, mac[i].requirements);
     const semantic = (c) => !["native-submenu", "visible-candidate"].includes(c.id);
     const semanticChecks = (checks) => checks.filter(semantic).map(c => {
-      if (c.id === "confirmation") return { ...c, expected: { ...c.expected, button: "<platform deletion label>" } };
+      if (c.id === "confirmation" || c.id.endsWith("-confirmation")) return { ...c, expected: { ...c.expected, button: "<platform deletion label>" } };
       if (c.expected.file !== "ux17-matrix.code-workspace") return c;
       const normalized = structuredClone(c);
       // Retain folders, semantic settings and complete JSON. Only this pinned

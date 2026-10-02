@@ -168,3 +168,15 @@ queries; accepted replacements never use it to write artifacts. A focused run is
 `npm --prefix editors/vscode run test:input -- --proof ux17-schema-replace`;
 batch validation still requires all current native proofs. See the
 [schema review](../../../../tests/lsp_matrix/reviews/workspace-schema-workbench.md).
+
+UX17 invalid configuration/schema appends twelve finite recovery states after
+roots/settings, with 36 command/native keyboard hover pairs, complete current
+source/metadata diagnostics, exact rejection logs and native schema/manifest
+deletion/recreation. Four unsaved overlays retain their original disk bytes.
+An empty manifest establishes a valid graph before invalid TOML is typed, so
+retention and package repair cannot accidentally reuse an earlier fallback graph.
+A focused run includes its owned workspace prerequisite:
+`npm --prefix editors/vscode run test:input -- --proof ux17-roots-settings --proof ux17-invalid-config-schema`.
+The complete suite now contains 48 proofs; strict gates require the full fresh
+suite on the selected registered profile. See the
+[invalid configuration review](../../../../tests/lsp_matrix/reviews/invalid-config-schema-workbench.md).

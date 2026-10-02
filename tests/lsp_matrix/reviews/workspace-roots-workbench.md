@@ -33,9 +33,12 @@ accepted workspace changes use keyboard/pointer input. Generated workspace
 identity is setup metadata; semantic expectations come from this fixture.
 Per-platform JSON differs only in the pinned font. Both exact byte/caret contracts
 remain required, while the infrastructure comparison normalizes that physical
-font difference. A targeted Windows run passed all five phases and fifteen
-command/native pairs. The complete fresh regression gate and invalid-input
-routes remain required before B09.5 acceptance; macOS needs its own captures.
+font difference. The Windows roots checkpoint passed all five phases and fifteen
+command/native pairs in a complete 47-proof run plus the strict prior-batch gate.
+Subsequent source changes require a fresh complete run, including the appended
+invalid-input route, before B09.5 acceptance; macOS needs its own captures.
+The driver waits for the new owned host immediately after first-folder changes,
+before subsequent UI actions or observation requests can use a closing socket.
 
 Both registered profiles enable the editor's real file/folder picker through
 `files.simpleDialog.enable`. Primary code in the pinned desktop workbench gates

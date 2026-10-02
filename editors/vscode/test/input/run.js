@@ -93,6 +93,13 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, document.text);
   }
+  const invalidConfig = require("../../../../tests/lsp_matrix/fixtures/input-invalid-config-schema.json");
+  for (const [file, document] of new FixtureWorkspace(invalidConfig).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "invalid configuration fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const lifecycle = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
   for (const [file, document] of new FixtureWorkspace(lifecycle).disk) {
     const target = path.join(workspace, file);
@@ -538,6 +545,10 @@ async function run() {
     await require("./workspace-roots").runWorkspaceRoots({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
       until, onProof: proof => proofs.push(proof),
+    });
+    await require("./invalid-config-schema").runInvalidConfigSchema({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, pid: child.pid, platform: profile.platform, onProof: proof => proofs.push(proof),
     });
     restoreKeyboard();
     await bridge("finish");

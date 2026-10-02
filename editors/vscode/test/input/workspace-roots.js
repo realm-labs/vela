@@ -122,7 +122,10 @@ async function runWorkspaceRoots({ page, bridge, record, root, workspace, contra
       if (["both-replace", "selected-replace", "restored-replace", "remove-left", "readd-confirm"].includes(a.id)) {
         saveSession(); mutationBoundary = trace().length;
       }
-      if (["workspace-confirm", "save-workspace-confirm"].includes(a.id)) { beforeHost = readSession(root); saveSession(); }
+      // Saving the first-folder replacement and removing that first folder
+      // restart the installed host. Wait for the new owned observer before
+      // sending subsequent UI actions or inspecting an about-to-close socket.
+      if (["workspace-confirm", "save-workspace-confirm", "both-save", "remove-left"].includes(a.id)) { beforeHost = readSession(root); saveSession(); }
       if (a.id.endsWith("-path-select")) {
         const title = a.id.startsWith("save-workspace") ? "Save Workspace" : "Add Folder to Workspace";
         await folderDialog().locator(".quick-input-title").filter({ hasText: title }).waitFor({ state: "visible" });
@@ -187,7 +190,7 @@ async function runWorkspaceRoots({ page, bridge, record, root, workspace, contra
         else await page.keyboard.press(a.key);
         actions.push(a); receipt("input", a.id, Object.fromEntries(Object.entries(a).filter(([key]) => key !== "id")));
       }
-      if (["workspace-confirm", "save-workspace-confirm"].includes(a.id)) await newHost();
+      if (["workspace-confirm", "save-workspace-confirm", "both-save", "remove-left"].includes(a.id)) await newHost();
       if (a.id.endsWith("-open") || a.id.endsWith("-goto")) {
         await input().waitFor({ state: "visible" });
         assert(await input().evaluate(element => document.activeElement === element), "native picker owns input focus");
