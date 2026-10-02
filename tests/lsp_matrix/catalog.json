@@ -17071,6 +17071,66 @@
           "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
         }
       ]
+    },
+    {
+      "requirement": "document-symbol/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/close_restore/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/missing_schema/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/stale_schema/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/dependency_change/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/dependency_delete/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-lifecycle.md. Nineteen independently authored phases pin disk/open/effective source state and whole ordered trees for eight variants across three files. Actual open/change/close and watched writes/deletes cover two dirty/close cycles, disk edits underneath overlays, dependency replacement/deletion/recreation, loaded schema replacement, invalid format/missing schema and restoration. Every complete JSON-RPC tree repeats three times against independent UTF-16 markers and fresh server initialization from phase state maps; all retained snapshots keep their exact source texts, schema facts/status and whole trees. Loaded field name/type/location setup assertions distinguish known facts from fallback; invalid/missing facts clear with established diagnostics. Actual source declarations and alias impl owners survive metadata/import changes; deleted source trees/records are absent. LF/CRLF, shifted Unicode lines, encoded private roots and literal non-BMP UTF-16/byte goldens are independent. Matching service tests provide fresh database and old snapshot parity. Installed symbol and other B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -52,6 +52,12 @@ fn lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_sch
         let facts = loaded.databases().schema_db().facts();
         assert_eq!(facts.types().count(), 4);
         assert_eq!(facts.fields().count(), 5);
+        assert!(
+            facts
+                .fields()
+                .all(|field| field.fact.display_name() == "String"),
+            "loaded string facts, not unknown primitive spellings"
+        );
         assert_eq!(facts.methods().count(), 3);
         assert_eq!(facts.trait_methods().count(), 1);
         assert_eq!(facts.functions().count(), 2);

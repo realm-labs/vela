@@ -39,6 +39,12 @@ fn database(fixture: &FixtureWorkspace, facts: &Value) -> LanguageServiceDatabas
     let loaded = db.schema_db().facts();
     assert_eq!(loaded.types().count(), 4);
     assert_eq!(loaded.fields().count(), 5);
+    assert!(
+        loaded
+            .fields()
+            .all(|field| field.fact.display_name() == "String"),
+        "loaded string facts, not unknown primitive spellings"
+    );
     assert_eq!(loaded.methods().count(), 3);
     assert_eq!(loaded.trait_methods().count(), 1);
     assert_eq!(loaded.functions().count(), 2);

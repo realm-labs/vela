@@ -8325,10 +8325,23 @@
         "document-symbol/states/dynamic/protocol"
       ],
       "summary": "Close ten document-symbol S4/S8 positive/negative service/protocol and unresolved/dynamic protocol requirements. Independently authored eight-file/25-root/46-node complete ordered trees pin source names/kinds/details, canonical identities, extents, actual selections and ancestry under local/module/schema collisions. Struct/enum unit/tuple/record fields, trait required/default methods and inherent/trait overrides remain owned; explicit source/host alias impl declarations remain present. Plain/aliased public/private source, function/const/VM/extern state/type/trait/variant imports, file/directory/deep aliases, qualified uses and stdlib imports add no declarations. Loaded source-backed and metadata-only host/schema types/fields/methods/traits/functions/variants have explicit count and bound-location setup assertions. Different source/schema names, kinds, details and variant shapes never substitute outline nodes; schema JSON, missing source and imports-only trees are empty. Unknown constructors/calls, missing/private imports, conflicting aliases and typed Any/unresolved receivers cannot borrow known members. Existing independent declaration/recovery fixtures cover the wider valid/malformed S4 partition. Three whole repeats for two separately assembled service databases and actual disk/didOpen JSON-RPC trees; LF/CRLF and encoded private roots, literal Chinese/non-BMP UTF-16 21..27 versus byte25..31 goldens. Preserve first oracle/setup failures: correct impl root names against the established B10.1 prefix contract and include mandatory package metadata before asserting eight discovered sources. Retain the strict preflight Git inventory timeout log; the terminal attempt never ran tests or wrote acceptance, and the unchanged frozen source is reverified before retry. No production defect was exposed; no runtime or provider behavior changed. Focused service4/protocol7; Node140; fmt; relevant all-target Clippy; fresh Windows VSIX20/native50; strict B09 service749+2 historical ignored/protocol796/stdio10. Core893 verified/432 open/2NA/zero failed; B10 twenty-three verified/153 pending. Preserve ten accepted snapshots, prior204 children, all50 native contract hashes and the independent historical macOS audit. Next B10.4 document-symbol dirty/close, dependency and schema lifecycle cells, then installed symbol workflows and remaining B10 features. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-XHdvke/results.json; native editors/vscode/test-results/input-8iUMYw/results.json; audit target/lsp-matrix/run-3GKQ2E/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B10.4",
+      "revision": null,
+      "requirements": [
+        "document-symbol/states/dirty/protocol",
+        "document-symbol/states/close_restore/protocol",
+        "document-symbol/states/missing_schema/protocol",
+        "document-symbol/states/stale_schema/protocol",
+        "document-symbol/states/dependency_change/protocol",
+        "document-symbol/states/dependency_delete/protocol"
+      ],
+      "summary": "Close six document-symbol protocol dirty/close_restore/missing_schema/stale_schema/dependency_change/dependency_delete requirements. Nineteen independently authored phases pin disk, open overlay, effective sources and complete ordered trees for eight source variants across three files. Two dirty/close cycles, disk-under-overlay changes, dependency replacement/deletion/recreation and final restoration preserve actual names, kinds, details, canonical identities, extents, selections and owners without stale nodes/ranges. Loaded schema replacement changes known field names/types and bound locations; invalid format99 and missing schema clear facts/locations with established Any-fallback diagnostics; restoration loads facts again. Real source outlines and alias impl declarations never become metadata. Three whole JSON-RPC repeats per phase versus independent UTF-16 markers and fresh server initialization from phase maps; service whole byte-tree/fresh database parity. Every retained immutable database/server snapshot keeps its authored source text, schema status and tree after each later action. LF/CRLF, shifted Chinese/non-BMP lines, encoded private roots and literal UTF16 13..16 versus byte17 goldens. Physical disk bytes and absent deleted source records checked. Correct schema primitive author spelling string versus display String; strengthen B10.3 loaded-field assertions so unknown facts cannot satisfy collision setup. Retain initial compile/setup/display failed logs; no production defect or runtime/provider change claimed. Focused service5/protocol8, Node140, fmt, relevant all-target Clippy, fresh Windows VSIX20/native50, automatic full audit and strict B09 service750+2 historical ignored/protocol797/stdio10. Core899 verified/426 open/2NA/zero failed; B10 twenty-nine verified/147 pending. Preserve ten accepted snapshots, prior205 children, all50 native contract hashes and independent historical macOS audit. Next B10.5 installed symbol workflows and remaining B10 features; macOS requires independent fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-CiG77n/results.json; native editors/vscode/test-results/input-TSZAHs/results.json; audit target/lsp-matrix/run-EojVxG/report.json. Find commit through LSP-Batch trailer. The first full audit rejected self.server under the existing single-owner guard; rename the production TestServer field to test_server without altering dispatch or guard behavior. Keep that failed audit and first captures as historical failures; final source is separately frozen and recaptured. The corrected-source first input bundle fails at the existing Explorer rename Quick Open click when the observed row becomes invisible; retain its failed bundle/screenshot/log, verify unchanged frozen source, and rerun the entire bundle without changing contracts, timeouts or assertions. No partial native bundle is accepted."
     }
   ],
-  "activeChild": "B10.4",
-  "nextTask": "B10.4",
+  "activeChild": "B10.5",
+  "nextTask": "B10.5",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10499,7 +10512,31 @@
     "target/b10-3-protocol-final.log",
     "target/b10-3-node.log",
     "target/b10-3-format.log",
-    "target/b10-3-clippy.log"
+    "target/b10-3-clippy.log",
+    "target/lsp-matrix/run-EojVxG/report.json",
+    "target/lsp-matrix/run-9vOQE1/report.json",
+    "editors/vscode/test-results/run-CiG77n/results.json",
+    "editors/vscode/test-results/input-TSZAHs/results.json",
+    "target/b10-4-input.log",
+    "target/b10-4-editor.log",
+    "target/b10-4-scoped.log",
+    "target/b10-4-baseline.log",
+    "target/b10-4-service-first.log",
+    "target/b10-4-protocol-first.log",
+    "target/b10-4-service-string-display-red.log",
+    "target/b10-4-service-final.log",
+    "target/b10-4-protocol-final.log",
+    "target/b10-4-node.log",
+    "target/b10-4-format.log",
+    "target/b10-4-clippy.log",
+    "target/b10-4-architecture.log",
+    "target/b10-4-input-first.log",
+    "target/b10-4-editor-first.log",
+    "target/lsp-matrix/run-moPomX/report.json",
+    "editors/vscode/test-results/input-EmVoza/results.json",
+    "editors/vscode/test-results/run-GbOpEN/results.json",
+    "target/b10-4-input-quick-open-timeout.log",
+    "editors/vscode/test-results/input-FKEChr/results.json"
   ],
   "openIssues": [
     {
@@ -14427,8 +14464,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e041deee12d7789f6a49d3abdc154def10caa6b1",
-          "treeSha256": "a6292df6f02a740d2d55c4c969ca0dd8374bf29d53379f03df9a2af2c1218838"
+          "revision": "bb6138d76505e533ad1e9f40e17c573bd2dee30a",
+          "treeSha256": "4b10fbe7ede8dbbc1f78cad3be9f0f318cf3f8d866b5664a825f0d015e9f2a2b"
         },
         "profile": {
           "platform": "win32",
@@ -14436,11 +14473,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-3GKQ2E/report.json"
+          "target/lsp-matrix/run-EojVxG/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-XHdvke/results.json --local-results editors/vscode/test-results/input-8iUMYw/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-CiG77n/results.json --local-results editors/vscode/test-results/input-TSZAHs/results.json",
             "exitCode": 0
           }
         ]

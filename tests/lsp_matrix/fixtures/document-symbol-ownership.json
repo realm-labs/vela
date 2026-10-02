@@ -630,7 +630,7 @@
             "params": [],
             "returns": {
               "kind": "primitive",
-              "name": "String"
+              "name": "string"
             }
           }
         }
@@ -641,7 +641,7 @@
           "name": "value",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           },
           "sourceSpan": {
             "file": "scripts/origins.vela",
@@ -653,7 +653,7 @@
           "name": "value",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           }
         },
         {
@@ -661,7 +661,7 @@
           "name": "value",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           }
         },
         {
@@ -669,7 +669,7 @@
           "name": "value",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           }
         },
         {
@@ -677,7 +677,7 @@
           "name": "value",
           "fact": {
             "kind": "primitive",
-            "name": "String"
+            "name": "string"
           }
         }
       ],
@@ -690,7 +690,7 @@
             "params": [],
             "returns": {
               "kind": "primitive",
-              "name": "String"
+              "name": "string"
             }
           },
           "sourceSpan": {
@@ -706,7 +706,7 @@
             "params": [],
             "returns": {
               "kind": "primitive",
-              "name": "String"
+              "name": "string"
             }
           }
         },
@@ -718,7 +718,7 @@
             "params": [],
             "returns": {
               "kind": "primitive",
-              "name": "String"
+              "name": "string"
             }
           }
         }
@@ -732,7 +732,7 @@
             "params": [],
             "returns": {
               "kind": "primitive",
-              "name": "String"
+              "name": "string"
             }
           },
           "sourceSpan": {

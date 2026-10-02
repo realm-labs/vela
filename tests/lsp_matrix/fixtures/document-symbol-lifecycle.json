@@ -1,0 +1,1081 @@
+{
+  "version": 1,
+  "id": "document-symbol-lifecycle",
+  "files": {
+    "scripts/main.vela": "use api::Widget as Row; use api::make as build; use host::Box as Host;\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]run[[main-fn-name:end]](host: Host, value: Any) { let value = 1; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: i64[[local-value-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n",
+    "scripts/api.vela": "/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]value[[api-field-name:end]]: i64[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]read[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n",
+    "scripts/origins.vela": "[[origin-a-range:start]]fn [[origin-a-name:start]]origin_a[[origin-a-name:end]]() {}[[origin-a-range:end]]\n[[origin-b-range:start]]fn [[origin-b-name:start]]origin_b[[origin-b-name:end]]() {}[[origin-b-range:end]]\n",
+    "vela.toml": "[package]\nid = 'dev.vela.outline.lifecycle'\nname = 'outline_lifecycle'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'schema.json'\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "variants": {
+      "main-base": {
+        "source": "use api::Widget as Row; use api::make as build; use host::Box as Host;\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]run[[main-fn-name:end]](host: Host, value: Any) { let value = 1; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: i64[[local-value-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "main-fn",
+            "name": "run",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::run",
+            "detail": "(host: Host, value: Any)",
+            "range": "main-fn-range",
+            "selection": "main-fn-name",
+            "children": []
+          },
+          {
+            "id": "local",
+            "name": "Local",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Local",
+            "detail": null,
+            "range": "local-range",
+            "selection": "local-name",
+            "children": [
+              {
+                "id": "local-value",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Local.value",
+                "detail": "i64",
+                "range": "local-value-range",
+                "selection": "local-value-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "impl",
+            "name": "impl Row",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Row",
+            "detail": null,
+            "range": "impl-range",
+            "selection": "impl-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "added",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Row.added",
+                "detail": "(self) -> bool",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "main-dirty": {
+        "source": "use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 dirty prefix\n\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]dirty[[main-fn-name:end]](host: Host, value: Any) { let value = \"text\"; let row = Row { value }; row.value; build(); host.value; value.read(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: String[[local-value-range:end]], [[local-extra-range:start]][[local-extra-name:start]]extra[[local-extra-name:end]]: bool[[local-extra-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "main-fn",
+            "name": "dirty",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::dirty",
+            "detail": "(host: Host, value: Any)",
+            "range": "main-fn-range",
+            "selection": "main-fn-name",
+            "children": []
+          },
+          {
+            "id": "local",
+            "name": "Local",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Local",
+            "detail": null,
+            "range": "local-range",
+            "selection": "local-name",
+            "children": [
+              {
+                "id": "local-value",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Local.value",
+                "detail": "String",
+                "range": "local-value-range",
+                "selection": "local-value-name",
+                "children": []
+              },
+              {
+                "id": "local-extra",
+                "name": "extra",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Local.extra",
+                "detail": "bool",
+                "range": "local-extra-range",
+                "selection": "local-extra-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "impl",
+            "name": "impl Row",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Row",
+            "detail": null,
+            "range": "impl-range",
+            "selection": "impl-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "added",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Row.added",
+                "detail": "(self) -> bool",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "main-disk": {
+        "source": "use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 new disk\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]disk_run[[main-fn-name:end]](host: Host, value: Any) { host.replaced; missing(); }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-new-range:start]][[local-new-name:start]]new_value[[local-new-name:end]]: bool[[local-new-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "main-fn",
+            "name": "disk_run",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::disk_run",
+            "detail": "(host: Host, value: Any)",
+            "range": "main-fn-range",
+            "selection": "main-fn-name",
+            "children": []
+          },
+          {
+            "id": "local",
+            "name": "Local",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Local",
+            "detail": null,
+            "range": "local-range",
+            "selection": "local-name",
+            "children": [
+              {
+                "id": "local-new",
+                "name": "new_value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Local.new_value",
+                "detail": "bool",
+                "range": "local-new-range",
+                "selection": "local-new-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "impl",
+            "name": "impl Row",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Row",
+            "detail": null,
+            "range": "impl-range",
+            "selection": "impl-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "added",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Row.added",
+                "detail": "(self) -> bool",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "main-second": {
+        "source": "use api::Widget as Row; use api::make as build; use host::Box as Host;\n// 中😀 second unsaved buffer\n\n\n/* 中😀 */ [[main-fn-range:start]]fn [[main-fn-name:start]]second_dirty[[main-fn-name:end]](host: Host, value: Any) { host.replaced; let row = Row { value: 2 }; row.value += 1; }[[main-fn-range:end]]\n[[local-range:start]]struct [[local-name:start]]Local[[local-name:end]] { [[local-extra-range:start]][[local-extra-name:start]]extra[[local-extra-name:end]]: Array<i64>[[local-extra-range:end]] }[[local-range:end]]\n[[impl-range:start]][[impl-name:start]]impl Row[[impl-name:end]] { [[method-range:start]]fn [[method-name:start]]added[[method-name:end]](self) -> bool { return true; }[[method-range:end]] }[[impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "main-fn",
+            "name": "second_dirty",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::second_dirty",
+            "detail": "(host: Host, value: Any)",
+            "range": "main-fn-range",
+            "selection": "main-fn-name",
+            "children": []
+          },
+          {
+            "id": "local",
+            "name": "Local",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Local",
+            "detail": null,
+            "range": "local-range",
+            "selection": "local-name",
+            "children": [
+              {
+                "id": "local-extra",
+                "name": "extra",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Local.extra",
+                "detail": "Array<i64>",
+                "range": "local-extra-range",
+                "selection": "local-extra-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "impl",
+            "name": "impl Row",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Row",
+            "detail": null,
+            "range": "impl-range",
+            "selection": "impl-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "added",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Row.added",
+                "detail": "(self) -> bool",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "api-base": {
+        "source": "/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]value[[api-field-name:end]]: i64[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]read[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "widget",
+            "name": "Widget",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "api::Widget",
+            "detail": null,
+            "range": "widget-range",
+            "selection": "widget-name",
+            "children": [
+              {
+                "id": "api-field",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "api::Widget.value",
+                "detail": "i64",
+                "range": "api-field-range",
+                "selection": "api-field-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "make",
+            "name": "make",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "api::make",
+            "detail": "() -> Widget",
+            "range": "make-range",
+            "selection": "make-name",
+            "children": []
+          },
+          {
+            "id": "api-impl",
+            "name": "impl Widget",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "api::impl Widget",
+            "detail": null,
+            "range": "api-impl-range",
+            "selection": "api-impl-name",
+            "children": [
+              {
+                "id": "api-method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "api::Widget.read",
+                "detail": "(self) -> bool",
+                "range": "api-method-range",
+                "selection": "api-method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "api-replaced": {
+        "source": "// 中😀 replaced dependency\n\n[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]changed[[api-field-name:end]]: String[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { changed: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]preview[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "widget",
+            "name": "Widget",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "api::Widget",
+            "detail": null,
+            "range": "widget-range",
+            "selection": "widget-name",
+            "children": [
+              {
+                "id": "api-field",
+                "name": "changed",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "api::Widget.changed",
+                "detail": "String",
+                "range": "api-field-range",
+                "selection": "api-field-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "make",
+            "name": "make",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "api::make",
+            "detail": "() -> Widget",
+            "range": "make-range",
+            "selection": "make-name",
+            "children": []
+          },
+          {
+            "id": "api-impl",
+            "name": "impl Widget",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "api::impl Widget",
+            "detail": null,
+            "range": "api-impl-range",
+            "selection": "api-impl-name",
+            "children": [
+              {
+                "id": "api-method",
+                "name": "preview",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "api::Widget.preview",
+                "detail": "(self) -> bool",
+                "range": "api-method-range",
+                "selection": "api-method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "api-new": {
+        "source": "// 中😀 recreated dependency\n[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]new_value[[api-field-name:end]]: bool[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { new_value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]restored[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n",
+        "symbols": [
+          {
+            "id": "widget",
+            "name": "Widget",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "api::Widget",
+            "detail": null,
+            "range": "widget-range",
+            "selection": "widget-name",
+            "children": [
+              {
+                "id": "api-field",
+                "name": "new_value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "api::Widget.new_value",
+                "detail": "bool",
+                "range": "api-field-range",
+                "selection": "api-field-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "make",
+            "name": "make",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "api::make",
+            "detail": "() -> Widget",
+            "range": "make-range",
+            "selection": "make-name",
+            "children": []
+          },
+          {
+            "id": "api-impl",
+            "name": "impl Widget",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "api::impl Widget",
+            "detail": null,
+            "range": "api-impl-range",
+            "selection": "api-impl-name",
+            "children": [
+              {
+                "id": "api-method",
+                "name": "restored",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "api::Widget.restored",
+                "detail": "(self) -> bool",
+                "range": "api-method-range",
+                "selection": "api-method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      "origins": {
+        "source": "[[origin-a-range:start]]fn [[origin-a-name:start]]origin_a[[origin-a-name:end]]() {}[[origin-a-range:end]]\n[[origin-b-range:start]]fn [[origin-b-name:start]]origin_b[[origin-b-name:end]]() {}[[origin-b-range:end]]\n",
+        "symbols": [
+          {
+            "id": "origin-a",
+            "name": "origin_a",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "origins::origin_a",
+            "detail": "()",
+            "range": "origin-a-range",
+            "selection": "origin-a-name",
+            "children": []
+          },
+          {
+            "id": "origin-b",
+            "name": "origin_b",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "origins::origin_b",
+            "detail": "()",
+            "range": "origin-b-range",
+            "selection": "origin-b-name",
+            "children": []
+          }
+        ]
+      }
+    },
+    "schemas": {
+      "a": {
+        "types": [
+          {
+            "name": "host::Box",
+            "fact": {
+              "kind": "host",
+              "name": "host::Box"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-a-name"
+            }
+          }
+        ],
+        "fields": [
+          {
+            "owner": "host::Box",
+            "name": "value",
+            "fact": {
+              "kind": "primitive",
+              "name": "i64"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-a-name"
+            }
+          }
+        ]
+      },
+      "b": {
+        "types": [
+          {
+            "name": "host::Box",
+            "fact": {
+              "kind": "host",
+              "name": "host::Box"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-b-name"
+            }
+          }
+        ],
+        "fields": [
+          {
+            "owner": "host::Box",
+            "name": "replaced",
+            "fact": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-b-name"
+            }
+          }
+        ]
+      },
+      "c": {
+        "types": [
+          {
+            "name": "host::Box",
+            "fact": {
+              "kind": "host",
+              "name": "host::Box"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-a-name"
+            }
+          }
+        ],
+        "fields": [
+          {
+            "owner": "host::Box",
+            "name": "new_value",
+            "fact": {
+              "kind": "primitive",
+              "name": "bool"
+            },
+            "sourceSpan": {
+              "file": "scripts/origins.vela",
+              "marker": "origin-a-name"
+            }
+          }
+        ]
+      }
+    },
+    "schemaFieldDisplays": {
+      "a": "i64",
+      "b": "String",
+      "c": "bool"
+    },
+    "phases": [
+      {
+        "id": "disk",
+        "actions": [],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "open",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "dirty",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "variant": "main-dirty"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "disk-under-overlay",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/main.vela",
+            "variant": "main-disk"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "dependency-replaced",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "variant": "api-replaced"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-replaced",
+        "actions": [],
+        "schemaAction": {
+          "mode": "valid",
+          "id": "b"
+        },
+        "schema": {
+          "mode": "valid",
+          "id": "b"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-invalid",
+        "actions": [],
+        "schemaAction": {
+          "mode": "invalid",
+          "text": "{\"formatVersion\":99,\"facts\":{}}"
+        },
+        "schema": {
+          "mode": "invalid",
+          "text": "{\"formatVersion\":99,\"facts\":{}}"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-missing",
+        "actions": [],
+        "schemaAction": {
+          "mode": "missing"
+        },
+        "schema": {
+          "mode": "missing"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-restored",
+        "actions": [],
+        "schemaAction": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": "api-replaced",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "dependency-deleted",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "scripts/api.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "close-restores-disk",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "reopen",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-disk"
+        },
+        "views": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "second-dirty",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "variant": "main-second"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-second"
+        },
+        "views": {
+          "scripts/main.vela": "main-second",
+          "scripts/api.vela": null,
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "dependency-recreated",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "variant": "api-new"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "c"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-second"
+        },
+        "views": {
+          "scripts/main.vela": "main-second",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-invalid-again",
+        "actions": [],
+        "schemaAction": {
+          "mode": "invalid",
+          "text": "{\"formatVersion\":99,\"facts\":{}}"
+        },
+        "schema": {
+          "mode": "invalid",
+          "text": "{\"formatVersion\":99,\"facts\":{}}"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-second"
+        },
+        "views": {
+          "scripts/main.vela": "main-second",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "schema-restored-again",
+        "actions": [],
+        "schemaAction": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-second"
+        },
+        "views": {
+          "scripts/main.vela": "main-second",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "second-close-restores-disk",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-disk",
+          "scripts/api.vela": "api-new",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "restore-original-disk",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/main.vela",
+            "variant": "main-base"
+          },
+          {
+            "op": "write",
+            "file": "scripts/api.vela",
+            "variant": "api-base"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      },
+      {
+        "id": "final-reopen",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela"
+          }
+        ],
+        "schemaAction": null,
+        "schema": {
+          "mode": "valid",
+          "id": "a"
+        },
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/api.vela": "api-base",
+          "scripts/origins.vela": "origins"
+        }
+      }
+    ]
+  }
+}
