@@ -42,8 +42,31 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
   for (let i = 0; i < mac.length; i++) {
     assert.deepEqual(windows[i].requirements, mac[i].requirements);
     const semantic = (c) => !["native-submenu", "visible-candidate"].includes(c.id);
-    const semanticChecks = (checks) => checks.filter(semantic).map(c => c.id === "confirmation"
-      ? { ...c, expected: { ...c.expected, button: "<platform deletion label>" } } : c);
+    const semanticChecks = (checks) => checks.filter(semantic).map(c => {
+      if (c.id === "confirmation") return { ...c, expected: { ...c.expected, button: "<platform deletion label>" } };
+      if (c.expected.file !== "ux17-matrix.code-workspace") return c;
+      const normalized = structuredClone(c);
+      // Retain folders, semantic settings and complete JSON. Only this pinned
+      // font and the physical end-of-JSON caret differ between our profiles.
+      for (const field of ["text", "disk"]) {
+        if (!normalized.expected[field]) continue;
+        const document = JSON.parse(normalized.expected[field]);
+        assert(["Menlo", "Consolas"].includes(document.settings["editor.fontFamily"]));
+        document.settings["editor.fontFamily"] = "<pinned profile font>";
+        normalized.expected[field] = JSON.stringify(document);
+      }
+      if (normalized.expected.document) {
+        assert(["Menlo", "Consolas"].includes(normalized.expected.document.settings["editor.fontFamily"]));
+        normalized.expected.document.settings["editor.fontFamily"] = "<pinned profile font>";
+      }
+      if (normalized.expected.selections && c.expected.text) {
+        for (const selection of normalized.expected.selections) for (const p of [selection.anchor, selection.active]) {
+          assert.deepEqual(p, { line: 0, character: c.expected.text.length });
+          p.character = normalized.expected.text.length;
+        }
+      }
+      return normalized;
+    });
     assert.deepEqual(semanticChecks(windows[i].checks), semanticChecks(mac[i].checks));
     assert.equal(windows[i].actions.length, mac[i].actions.length);
   }

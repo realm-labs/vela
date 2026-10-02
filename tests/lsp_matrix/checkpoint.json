@@ -10156,7 +10156,13 @@
     "target/b09-5-root-alias-reproducer.log",
     "target/b09-5-clippy.log",
     "target/b09-5-format.log",
-    "target/b09-5-backend-scoped.log"
+    "target/b09-5-backend-scoped.log",
+    "target/lsp-matrix/run-P5i0vO/report.json",
+    "editors/vscode/test-results/run-9xZcy3/results.json",
+    "editors/vscode/test-results/input-5Uv0RM/results.json",
+    "target/b09-5-roots-node-final.log",
+    "target/b09-5-roots-format.log",
+    "target/b09-5-roots-scoped.log"
   ],
   "openIssues": [
     {
@@ -13891,8 +13897,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "2456ed2d2a7db26b3f153b1c774601fd89dbec44",
-          "treeSha256": "b9c8be00e9dc1057fe53ffa10e71246b4a90819d1e8c4619867b00b47135eb82"
+          "revision": "b63764d371a2385d761946aac69d9afd2d41f792",
+          "treeSha256": "98b8aba7f8df2524253dcbc660c1f1a81a79dd614d373b2539585fedb18bf223"
         },
         "profile": {
           "platform": "win32",
@@ -13900,11 +13906,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-U6nIqx/report.json"
+          "target/lsp-matrix/run-P5i0vO/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B08 --editor-results editors/vscode/test-results/run-lSNESb/results.json --local-results editors/vscode/test-results/input-gJ2gEk/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B08 --editor-results editors/vscode/test-results/run-9xZcy3/results.json --local-results editors/vscode/test-results/input-5Uv0RM/results.json",
             "exitCode": 0
           }
         ]

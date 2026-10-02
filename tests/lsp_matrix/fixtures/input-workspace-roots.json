@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "id": "input-workspace-roots",
+  "files": {
+    "ux17-roots/left/alpha.vela": "/* 中😀 */ pub fn [[decl:start]]alpha[[decl:end]]() -> i64 { return 1; }\n",
+    "ux17-roots/left/cross.vela": "[[import-alpha:start]]use alpha::alpha;[[import-alpha:end]]\n[[import-beta:start]]use beta::beta;[[import-beta:end]]\nfn cross_main() { /* 中😀 */ [[alpha:start]]alpha[[alpha:end]](); [[beta:start]]beta[[beta:end]](); }\n",
+    "ux17-roots/right/beta.vela": "// independent root\n// independent location\npub fn [[decl:start]]beta[[decl:end]]() -> i64 { return 2; }\n",
+    "ux17-roots/right/other_caller.vela": "[[import:start]]use beta::beta;[[import:end]]\nfn right_main() { /* 中😀 */ [[call:start]]beta[[call:end]](); }\n",
+    "ux17-roots/left/schema-one.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "ux17-roots/left/schema-two.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "ux17-roots/left/schema-invalid.json": "{\"formatVersion\":99,\"facts\":{}}"
+  },
+  "actions": [],
+  "oracle": {
+    "workspace": "ux17-matrix.code-workspace",
+    "left": "ux17-roots/left",
+    "right": "ux17-roots/right",
+    "leftCaller": "ux17-roots/left/cross.vela",
+    "rightCaller": "ux17-roots/right/other_caller.vela",
+    "leftTarget": "ux17-roots/left/alpha.vela",
+    "rightTarget": "ux17-roots/right/beta.vela",
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "overlay": "// unsaved authority\n/* 中😀 */ pub fn [[decl:start]]alpha[[decl:end]]() -> i64 { return 33; }\n",
+    "missingModule": {
+      "code": "hir::unresolved_module",
+      "message": "unresolved module `{MODULE}`",
+      "label": "no similar modules found"
+    },
+    "missingDisk": [],
+    "inputColumns": {
+      "alpha": 30,
+      "beta": 39,
+      "call": 30
+    }
+  }
+}

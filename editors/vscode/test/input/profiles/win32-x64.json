@@ -16,6 +16,7 @@
     "workbench.startupEditor": "none",
     "workbench.editor.useModal": "off",
     "window.dialogStyle": "custom",
+    "files.simpleDialog.enable": true,
     "explorer.confirmDelete": true,
     "workbench.colorTheme": "Dark Modern",
     "window.zoomLevel": 0,

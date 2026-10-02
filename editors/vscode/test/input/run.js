@@ -86,6 +86,13 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, document.text);
   }
+  const workspaceRoots = require("../../../../tests/lsp_matrix/fixtures/input-workspace-roots.json");
+  for (const [file, document] of new FixtureWorkspace(workspaceRoots).disk) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "roots fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, document.text);
+  }
   const lifecycle = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
   for (const [file, document] of new FixtureWorkspace(lifecycle).disk) {
     const target = path.join(workspace, file);
@@ -207,6 +214,7 @@ async function run() {
     VELA_TEST_EXTENSIONS_DIR: extensions,
     VELA_TEST_INPUT_DRIVER: "1",
     VELA_TEST_INPUT_BRIDGE: path.join(__dirname,"bridge.js"),
+    VELA_TEST_WORKSPACE_BASE: workspace,
   };
   delete env.ELECTRON_RUN_AS_NODE;
   const args = [
@@ -272,7 +280,9 @@ async function run() {
       keyboardState = undefined;
     }
   };
-  const timer = setTimeout(() => child.kill("SIGTERM"), 180000);
+  // Existing routes 180s + roots 120s + invalid configuration 120s + setup 30s.
+  // Pin this finite additive budget before capturing the expanded suite.
+  const timer = setTimeout(() => child.kill("SIGTERM"), 450000);
   try {
     await until(
       "debug endpoint",
@@ -522,6 +532,10 @@ async function run() {
       until, pid: child.pid, platform: profile.platform, onProof: proof => proofs.push(proof),
     });
     await require("./workspace-schema").runWorkspaceSchema({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: proof => proofs.push(proof),
+    });
+    await require("./workspace-roots").runWorkspaceRoots({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
       until, onProof: proof => proofs.push(proof),
     });

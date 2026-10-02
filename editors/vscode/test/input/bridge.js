@@ -204,6 +204,26 @@ async function run() {
               end: { line: hover.range.end.line, character: hover.range.end.character } } : null }));
           break;
         }
+        case "workspace-roots-inspect": {
+          const base = process.env.VELA_TEST_WORKSPACE_BASE;
+          if (!base) throw Error("missing owned workspace base");
+          value = { folders: (vscode.workspace.workspaceFolders ?? []).map(folder => require("./paths").relativeFile(base, folder.uri.fsPath)),
+            settingsRoots: vscode.workspace.getConfiguration("vela").inspect("workspace.roots")?.workspaceValue ?? null };
+          break;
+        }
+        case "workspace-roots-query": {
+          const { workspaceRootsModel } = require("../../../../scripts/lsp-matrix/workspace-roots-contracts");
+          const m = workspaceRootsModel(process.platform), base = process.env.VELA_TEST_WORKSPACE_BASE;
+          if (!base) throw Error("missing owned workspace base");
+          const file = safeFile(message.file), uri = vscode.Uri.file(path.join(base, file));
+          const p = m.dirty(file).markers[message.marker]?.start;
+          if (!p) throw Error("unknown roots query marker");
+          const locations = await vscode.commands.executeCommand("vscode.executeDefinitionProvider", uri, new vscode.Position(p.line, p.character));
+          value = (locations ?? []).map(location => ({ uri: fileUri((location.targetUri ?? location.uri).fsPath),
+            range: { start: { line: (location.targetSelectionRange ?? location.range).start.line, character: (location.targetSelectionRange ?? location.range).start.character },
+              end: { line: (location.targetSelectionRange ?? location.range).end.line, character: (location.targetSelectionRange ?? location.range).end.character } } }));
+          break;
+        }
         case "lifecycle-query": {
           const spec = require("../../../../tests/lsp_matrix/fixtures/input-lifecycle.json");
           const uri = vscode.Uri.joinPath(vscode.workspace.workspaceFolders[0].uri, spec.oracle.file), p = spec.oracle.call;
@@ -249,7 +269,7 @@ async function run() {
   const timer = setTimeout(() => {
     expired = true;
     finish();
-  }, 180000);
+  }, 450000);
   try {
     await finished;
     if (expired)

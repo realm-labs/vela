@@ -16,6 +16,23 @@ matches the inspected pinned editor; default modal behavior differs from the
 development test host. Profile fingerprints and all acceptance captures must
 be regenerated after this reviewed adjustment.
 
+UX17 root/settings input runs after the existing routes. Native Add Folder,
+Save Workspace As, workspace JSON editing and Remove Folder use the actual
+workbench. File-dialog input paths are resolved only against the owned fixture
+base, recorded verbatim as observations and typed by the physical input driver.
+The observer only reads folder/settings state and executes the separate definition
+commands; it does not update folders or accepted settings. Full workspace JSON
+preserves each pinned profile's preferences, with application dialog settings
+remaining in the private user profile. The roots proof has a 120-second budget.
+Before expanded captures, the runner and observer budgets are set to 450 seconds:
+180 for existing routes, 120 for roots, 120 for invalid configuration/schema,
+and 30 for transitions. These are finite planned budgets, not measured relaxations.
+Both profiles now also pin `files.simpleDialog.enable: true`. The inspected
+pinned editor uses this setting for file/folder pickers; `window.dialogStyle`
+only controls confirmation dialogs. Workbench pickers remain actual VS Code
+UI and accept physical keyboard/pointer input. The change requires fresh profile
+verification and captures; it does not reuse older profile fingerprints.
+
 Both also pin `window.dialogStyle: "custom"` and `explorer.confirmDelete: true`
 for Explorer file-operation acceptance. Delete still requires the real workbench
 confirmation. Dialog style has APPLICATION scope in the pinned VS Code; the

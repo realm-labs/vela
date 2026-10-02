@@ -67,9 +67,12 @@ retaining directory aliases and one diagnostic owner through repair.
 Dynamic watcher registrations now follow current source roots, configuration
 folders and schema paths, dispose
 their previous registration, and avoid duplicate registrations on no-op updates.
-These backend regressions do not close the four pending B09.5 installed-editor
-requirements; fresh root/settings and invalid configuration/schema input proofs
-are still required on each recorded platform.
+The B09.5 root/settings workbench driver now checks real multi-root transitions,
+settings selection/restoration, current client sessions, exact dirty sources,
+full command/native targets and diagnostic publications; its targeted Windows
+run passes. See the [roots review](../tests/lsp_matrix/reviews/workspace-roots-workbench.md).
+The complete fresh regression gate and invalid configuration/schema input
+remain required before B09.5 acceptance, with independent platform captures.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
