@@ -16955,6 +16955,122 @@
           "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
         }
       ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_ownership_tests::document_symbol_members_and_imports_preserve_whole_source_trees_under_schema_collisions"
+        },
+        {
+          "layer": "service",
+          "name": "document_symbol_matrix_tests::document_symbol_declarations_preserve_complete_ranges_selections_and_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_ownership_tests::document_symbol_members_and_imports_preserve_whole_source_trees_under_schema_collisions"
+        },
+        {
+          "layer": "service",
+          "name": "document_symbol_recovery_tests::document_symbol_recovery_preserves_exact_owned_trees_and_restores_current_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_ownership_tests::document_symbol_members_and_imports_preserve_whole_source_trees_under_schema_collisions"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_ownership_tests::document_symbol_members_and_imports_preserve_whole_source_trees_under_schema_collisions"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-ownership.md. Independently authored eight-file/25-root/46-node whole source outline trees pin names/kinds/details, canonical identities, extents, real selections and ancestry under module/local/schema collisions. All source member/variant/trait/impl shapes retain their owners; imported source/host alias impls are actual declarations. Public/private source, plain/aliased function/const/VM/extern state/type/trait/variant imports, file/deep/directory aliases, qualified uses and stdlib imports never add declarations. Loaded source-backed and metadata-only schema types/fields/methods/trait methods/functions/variants have explicit fact-count and bound-location assertions; differing source/schema names, kinds, details and variant shapes do not substitute outline nodes. Private/missing imports, conflicting aliases, unknown and typed Any receivers/constructors/calls preserve exact source trees; imports-only, schema JSON and missing source results are empty. Service compares independent fresh databases; protocol checks real disk and didOpen whole JSON-RPC trees; each response repeats three times. LF/CRLF, encoded private URI owners and literal Chinese/non-BMP byte/UTF-16 goldens remain independent. Existing declaration/recovery tests cover the wider valid/malformed S4 partition. Other lifecycle/schema/editor and B10 obligations stay open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_ownership::lsp_document_symbol_members_and_imports_pin_whole_utf16_source_trees_with_schema_collisions"
+        }
+      ]
     }
   ],
   "featureFiles": [

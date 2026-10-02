@@ -131,6 +131,9 @@ mod document_symbol_matrix_tests;
 mod document_symbol_recovery_tests;
 
 #[cfg(test)]
+mod document_symbol_ownership_tests;
+
+#[cfg(test)]
 mod document_open_tests;
 
 #[cfg(test)]

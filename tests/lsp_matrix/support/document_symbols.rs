@@ -57,6 +57,25 @@ pub(crate) fn recovery(crlf: bool) -> (FixtureWorkspace, Value) {
     (fixture, spec.oracle)
 }
 
+pub(crate) fn ownership(crlf: bool) -> (FixtureWorkspace, Value) {
+    let mut spec = load("document-symbol-ownership");
+    if crlf {
+        for source in spec.files.values_mut() {
+            *source = source.replace('\n', "\r\n");
+        }
+    }
+    let fixture = FixtureWorkspace::new(&spec).expect("ownership fixture");
+    let doc = &fixture.disk["scripts/source.vela"];
+    let name = doc.markers["widget-name"];
+    assert_eq!(
+        (name.start.line, name.start.character, name.end.character),
+        (0, 21, 27)
+    );
+    assert_eq!((name.start.byte, name.end.byte), (25, 31));
+    assert_eq!(&doc.text[name.start.byte..name.end.byte], "Widget");
+    (fixture, spec.oracle)
+}
+
 pub(crate) fn expected(document: &Document, rows: &Value, protocol: bool) -> Value {
     Value::Array(rows.as_array().expect("authored tree").iter().map(|row| {
         let mut result = json!({

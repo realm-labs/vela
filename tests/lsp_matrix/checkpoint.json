@@ -8308,10 +8308,27 @@
         "document-symbol/states/repeat/protocol"
       ],
       "summary": "Close eight document-symbol S1 negative and S9 positive/negative service/protocol plus recovery/repeat state requirements. Shared independently authored 56-case whole source-owned trees cover malformed const, VM/extern state, functions/parameters/defaults/return types/bodies, struct/enum/trait/inherent and trait impl owners/members/defaults/targets, partial member/call/constructor/pattern/type/expression, EOF, empty/trivia/error-run files and unresolved/dynamic bodies. Exact names/kinds/details/full extents/selections/ancestry/identities exclude guessed owners and same-named helpers. LF/CRLF literal Chinese/non-BMP byte/UTF-16 goldens; damage/repair/redamage matches authored trees in incremental/fresh service and actual typed protocol coordinators, with three exact repeated requests each step. Red tests expose later-identifier name theft, missing available return hints and missing declaration-child diagnostics; narrow validation to declarations and preserve accepted quiet partial-expression recovery after the full regression rejects an overbroad first rule. Existing accepted assertions remain fixed; retain the first failed backend report. Validate without discarding lossless nodes or changing runtime semantics. Direct syntax tests pin messages, owned bounded source spans, lossless text and valid counterparts; compact >= annotation/initializer token remains valid. Focused service1/protocol6, full syntax119+diagnostic fixture1, Node140, fmt, relevant all-target Clippy, fresh Windows VSIX20/native50, strict B09 service748+2 historical ignored/protocol795/stdio10, core883/442/2/zero failed, B10 thirteen verified/163 pending. Scope language hover observations to the already asserted tokenized code labels or marker diagnostics; Markdown tab-path tooltips cannot collide. Retain bounded DOM collision metadata, the first failed full native bundle and the selected investigation missing its workspace prerequisite. Preserve all native input actions and whole expected hover facts. Preserve ten accepted snapshots, prior203 children, all50 native contract hashes and historical macOS audit. Next B10.3 remaining document-symbol S4/S8 and lifecycle/schema partitions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-wauR8C/results.json; native editors/vscode/test-results/input-leNRnE/results.json; audit target/lsp-matrix/run-aCi4eb/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B10.3",
+      "revision": null,
+      "requirements": [
+        "document-symbol/syntax/S4/positive/service",
+        "document-symbol/syntax/S4/positive/protocol",
+        "document-symbol/syntax/S4/negative/service",
+        "document-symbol/syntax/S4/negative/protocol",
+        "document-symbol/syntax/S8/positive/service",
+        "document-symbol/syntax/S8/positive/protocol",
+        "document-symbol/syntax/S8/negative/service",
+        "document-symbol/syntax/S8/negative/protocol",
+        "document-symbol/states/unresolved/protocol",
+        "document-symbol/states/dynamic/protocol"
+      ],
+      "summary": "Close ten document-symbol S4/S8 positive/negative service/protocol and unresolved/dynamic protocol requirements. Independently authored eight-file/25-root/46-node complete ordered trees pin source names/kinds/details, canonical identities, extents, actual selections and ancestry under local/module/schema collisions. Struct/enum unit/tuple/record fields, trait required/default methods and inherent/trait overrides remain owned; explicit source/host alias impl declarations remain present. Plain/aliased public/private source, function/const/VM/extern state/type/trait/variant imports, file/directory/deep aliases, qualified uses and stdlib imports add no declarations. Loaded source-backed and metadata-only host/schema types/fields/methods/traits/functions/variants have explicit count and bound-location setup assertions. Different source/schema names, kinds, details and variant shapes never substitute outline nodes; schema JSON, missing source and imports-only trees are empty. Unknown constructors/calls, missing/private imports, conflicting aliases and typed Any/unresolved receivers cannot borrow known members. Existing independent declaration/recovery fixtures cover the wider valid/malformed S4 partition. Three whole repeats for two separately assembled service databases and actual disk/didOpen JSON-RPC trees; LF/CRLF and encoded private roots, literal Chinese/non-BMP UTF-16 21..27 versus byte25..31 goldens. Preserve first oracle/setup failures: correct impl root names against the established B10.1 prefix contract and include mandatory package metadata before asserting eight discovered sources. Retain the strict preflight Git inventory timeout log; the terminal attempt never ran tests or wrote acceptance, and the unchanged frozen source is reverified before retry. No production defect was exposed; no runtime or provider behavior changed. Focused service4/protocol7; Node140; fmt; relevant all-target Clippy; fresh Windows VSIX20/native50; strict B09 service749+2 historical ignored/protocol796/stdio10. Core893 verified/432 open/2NA/zero failed; B10 twenty-three verified/153 pending. Preserve ten accepted snapshots, prior204 children, all50 native contract hashes and the independent historical macOS audit. Next B10.4 document-symbol dirty/close, dependency and schema lifecycle cells, then installed symbol workflows and remaining B10 features. macOS needs independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-XHdvke/results.json; native editors/vscode/test-results/input-8iUMYw/results.json; audit target/lsp-matrix/run-3GKQ2E/report.json. Find commit through LSP-Batch trailer."
     }
   ],
-  "activeChild": "B10.3",
-  "nextTask": "B10.3",
+  "activeChild": "B10.4",
+  "nextTask": "B10.4",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10466,7 +10483,23 @@
     "target/b10-2-service-final.log",
     "target/b10-2-protocol-final.log",
     "target/b10-2-syntax-final-current.log",
-    "target/b10-2-syntax-format-red.log"
+    "target/b10-2-syntax-format-red.log",
+    "target/lsp-matrix/run-3GKQ2E/report.json",
+    "target/b10-3-scoped-first-timeout.log",
+    "target/lsp-matrix/run-zR49UP/report.json",
+    "editors/vscode/test-results/run-XHdvke/results.json",
+    "editors/vscode/test-results/input-8iUMYw/results.json",
+    "target/b10-3-input.log",
+    "target/b10-3-editor.log",
+    "target/b10-3-scoped.log",
+    "target/b10-3-service-first.log",
+    "target/b10-3-protocol-first.log",
+    "target/b10-3-protocol-setup-failure.log",
+    "target/b10-3-service-final.log",
+    "target/b10-3-protocol-final.log",
+    "target/b10-3-node.log",
+    "target/b10-3-format.log",
+    "target/b10-3-clippy.log"
   ],
   "openIssues": [
     {
@@ -14394,8 +14427,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "04ac7c38b7aebc9a0958802fca50fbb77396a9f0",
-          "treeSha256": "25dff9eec8bdbfb5d7aa7fc1040e0373a0dbd4b1857ee3cb07067ddb598e40af"
+          "revision": "e041deee12d7789f6a49d3abdc154def10caa6b1",
+          "treeSha256": "a6292df6f02a740d2d55c4c969ca0dd8374bf29d53379f03df9a2af2c1218838"
         },
         "profile": {
           "platform": "win32",
@@ -14403,11 +14436,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-aCi4eb/report.json"
+          "target/lsp-matrix/run-3GKQ2E/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-wauR8C/results.json --local-results editors/vscode/test-results/input-leNRnE/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-XHdvke/results.json --local-results editors/vscode/test-results/input-8iUMYw/results.json",
             "exitCode": 0
           }
         ]

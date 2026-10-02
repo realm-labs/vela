@@ -1,0 +1,787 @@
+{
+  "version": 1,
+  "id": "document-symbol-ownership",
+  "files": {
+    "scripts/source.vela": "/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[value-range:start]][[value-name:start]]value[[value-name:end]]: i64 = 1[[value-range:end]], [[other-range:start]][[other-name:start]]other[[other-name:end]]: Any[[other-range:end]] }[[widget-range:end]]\n[[choice-range:start]]pub enum [[choice-name:start]]Choice[[choice-name:end]] { [[empty-range:start]][[empty-name:start]]Empty[[empty-name:end]][[empty-range:end]], [[pair-range:start]][[pair-name:start]]Pair[[pair-name:end]]([[pair-value-range:start]][[pair-value-name:start]]value[[pair-value-name:end]]: i64[[pair-value-range:end]])[[pair-range:end]], [[named-range:start]][[named-name:start]]Named[[named-name:end]] { [[named-value-range:start]][[named-value-name:start]]value[[named-value-name:end]]: i64[[named-value-range:end]] }[[named-range:end]] }[[choice-range:end]]\n[[readable-range:start]]pub trait [[readable-name:start]]Readable[[readable-name:end]] { [[required-range:start]]fn [[required-name:start]]read[[required-name:end]](self) -> i64;[[required-range:end]] [[default-range:start]]fn [[default-name:start]]preview[[default-name:end]](self, value: i64 = 2) -> i64 { return value; }[[default-range:end]] }[[readable-range:end]]\n[[inherent-range:start]][[inherent-name:start]]impl Widget[[inherent-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self) -> i64 { return self.value; }[[method-range:end]] }[[inherent-range:end]]\n[[override-range:start]][[override-name:start]]impl Readable for Widget[[override-name:end]] { [[override-read-range:start]]fn [[override-read-name:start]]read[[override-read-name:end]](self) -> i64 { return self.value; }[[override-read-range:end]] }[[override-range:end]]\n[[limit-range:start]]pub const [[limit-name:start]]LIMIT[[limit-name:end]]: i64 = 1;[[limit-range:end]]\n[[state-range:start]]pub state [[state-name:start]]live[[state-name:end]]: i64 = 1;[[state-range:end]]\n[[extern-range:start]]pub extern state [[extern-name:start]]external[[extern-name:end]]: i64;[[extern-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]](value: i64 = 1) -> Widget { return Widget { value, other: 1 }; }[[make-range:end]]\n[[private-range:start]]struct [[private-name:start]]Private[[private-name:end]] { [[private-value-range:start]][[private-value-name:start]]value[[private-value-name:end]]: bool[[private-value-range:end]] }[[private-range:end]]\n",
+    "scripts/main.vela": "use source::Widget as Row; use source::Choice as Pick; use source::Choice::Empty as Unit;\nuse source::Readable as Reader; use source::make as build; use source::LIMIT as Cap;\nuse source::live as Shared; use source::external as External; use source as api;\nuse host::Box as Host; use host::Choice as HostPick; use host::Readable as HostReader;\nuse host::make as host_build; use host as native; use metadata::Box as Metadata;\nuse std::array as arrays; use std::print as output;\n/* 中😀 */ [[local-range:start]]struct [[local-name:start]]Widget[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: bool[[local-value-range:end]] }[[local-range:end]]\n[[uses-range:start]]fn [[uses-name:start]]uses[[uses-name:end]](row: Row, host: Host, reader: Reader, hreader: HostReader, meta: Metadata, dynamic: Any) {\n let value = 1; let rec = Row { value, other: value }; let local = Widget { value: true };\n row.value += 1; row.read(); reader.read(); host.value += 1; host.read(); hreader.read();\n Pick::Empty; Pick::Pair(value); Pick::Named { value }; Unit;\n HostPick::Empty; HostPick::Pair(value); HostPick::Named { value }; meta.value; meta.read();\n build(value = 2); host_build(); native::make(); api::Widget { value, other: value }; Cap; Shared += 1; External += 1; arrays::new(); output(value);\n dynamic.value; dynamic.read(); row.missing; unknown::Box { value }; missing();\n match value { Pick::Named { value } => value, Pick::Pair(value) => value, Pick::Empty => 0 }\n}[[uses-range:end]]\n[[imported-impl-range:start]][[imported-impl-name:start]]impl Row[[imported-impl-name:end]] { [[added-range:start]]fn [[added-name:start]]added[[added-name:end]](self) -> bool { return true; }[[added-range:end]] }[[imported-impl-range:end]]\n[[host-impl-range:start]][[host-impl-name:start]]impl Host[[host-impl-name:end]] { [[scripted-range:start]]fn [[scripted-name:start]]scripted[[scripted-name:end]](self) -> i64 { return 1; }[[scripted-range:end]] }[[host-impl-range:end]]\n[[trait-imported-impl-range:start]][[trait-imported-impl-name:start]]impl Reader for Row[[trait-imported-impl-name:end]] { [[imported-read-range:start]]fn [[imported-read-name:start]]read[[imported-read-name:end]](self) -> i64 { return 1; }[[imported-read-range:end]] }[[trait-imported-impl-range:end]]\n",
+    "scripts/imports.vela": "pub use source::Widget; use source::Choice; use source::Choice::Pair as Tuple; use source::Readable; use source::make; use source::LIMIT; use source::live; use source::external; use source as api;\nuse source::Private as Hidden; use missing::Widget as Missing; use host::Box as Row; use metadata::Box; use std::print; use std::array;\n",
+    "scripts/unresolved.vela": "use missing::Widget as Row; use source::Private as Hidden; use source::NoType; use missing as api;\nuse source::Widget as Clash; use host::Box as Clash;\n[[unresolved-range:start]]fn [[unresolved-name:start]]unresolved[[unresolved-name:end]](dynamic: Any) { Row { value: 1 }; Hidden { value: true }; NoType::Missing; api::call(); Clash { value: 1 }; dynamic.value; dynamic.read(); unknown.value; unknown.read(); }[[unresolved-range:end]]\n",
+    "scripts/deep/nested.vela": "[[nested-range:start]]pub struct [[nested-name:start]]Widget[[nested-name:end]] { [[nested-value-range:start]][[nested-value-name:start]]value[[nested-value-name:end]]: String[[nested-value-range:end]] }[[nested-range:end]]\n[[nested-fn-range:start]]pub fn [[nested-fn-name:start]]make[[nested-fn-name:end]]() -> Widget { return Widget { value: \"nested\" }; }[[nested-fn-range:end]]\n",
+    "scripts/deep-user.vela": "use deep::nested as nested; use deep as directory; use deep::nested::Widget as Row;\n[[deep-use-range:start]]fn [[deep-use-name:start]]use_deep[[deep-use-name:end]]() { nested::make(); directory::nested::make(); deep::nested::Widget { value: \"中😀\" }; Row { value: \"text\" }; }[[deep-use-range:end]]\n",
+    "scripts/origins.vela": "[[origin-box-range:start]]struct [[origin-box-name:start]]HostBox[[origin-box-name:end]] { [[origin-value-range:start]][[origin-value-name:start]]value[[origin-value-name:end]]: bool[[origin-value-range:end]] }[[origin-box-range:end]]\n[[origin-choice-range:start]]enum [[origin-choice-name:start]]HostChoice[[origin-choice-name:end]] { [[origin-empty-range:start]][[origin-empty-name:start]]Empty[[origin-empty-name:end]][[origin-empty-range:end]] }[[origin-choice-range:end]]\n[[origin-trait-range:start]]trait [[origin-trait-name:start]]HostReader[[origin-trait-name:end]] { [[origin-read-range:start]]fn [[origin-read-name:start]]read[[origin-read-name:end]](self) -> bool;[[origin-read-range:end]] }[[origin-trait-range:end]]\n[[origin-factory-range:start]]fn [[origin-factory-name:start]]factory[[origin-factory-name:end]]() -> bool { return true; }[[origin-factory-range:end]]\n",
+    "scripts/collisions.vela": "[[collision-range:start]]pub struct [[collision-name:start]]Widget[[collision-name:end]] { [[collision-value-range:start]][[collision-value-name:start]]value[[collision-value-name:end]]: String[[collision-value-range:end]] }[[collision-range:end]]\n[[collision-fn-range:start]]pub fn [[collision-fn-name:start]]uses[[collision-fn-name:end]]() {}[[collision-fn-range:end]]\n",
+    "vela.toml": "[package]\nid = 'dev.vela.outline'\nname = 'outline'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'schema.json'\n",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "trees": {
+      "scripts/source.vela": [
+        {
+          "id": "widget",
+          "name": "Widget",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "source::Widget",
+          "detail": null,
+          "range": "widget-range",
+          "selection": "widget-name",
+          "children": [
+            {
+              "id": "value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "source::Widget.value",
+              "detail": "i64",
+              "range": "value-range",
+              "selection": "value-name",
+              "children": []
+            },
+            {
+              "id": "other",
+              "name": "other",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "source::Widget.other",
+              "detail": "Any",
+              "range": "other-range",
+              "selection": "other-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "choice",
+          "name": "Choice",
+          "kind": "Enum",
+          "protocolKind": 10,
+          "identity": "source::Choice",
+          "detail": null,
+          "range": "choice-range",
+          "selection": "choice-name",
+          "children": [
+            {
+              "id": "empty",
+              "name": "Empty",
+              "kind": "EnumMember",
+              "protocolKind": 22,
+              "identity": "source::Choice::Empty",
+              "detail": null,
+              "range": "empty-range",
+              "selection": "empty-name",
+              "children": []
+            },
+            {
+              "id": "pair",
+              "name": "Pair",
+              "kind": "EnumMember",
+              "protocolKind": 22,
+              "identity": "source::Choice::Pair",
+              "detail": null,
+              "range": "pair-range",
+              "selection": "pair-name",
+              "children": [
+                {
+                  "id": "pair-value",
+                  "name": "value",
+                  "kind": "Field",
+                  "protocolKind": 8,
+                  "identity": "source::Choice::Pair.value",
+                  "detail": "i64",
+                  "range": "pair-value-range",
+                  "selection": "pair-value-name",
+                  "children": []
+                }
+              ]
+            },
+            {
+              "id": "named",
+              "name": "Named",
+              "kind": "EnumMember",
+              "protocolKind": 22,
+              "identity": "source::Choice::Named",
+              "detail": null,
+              "range": "named-range",
+              "selection": "named-name",
+              "children": [
+                {
+                  "id": "named-value",
+                  "name": "value",
+                  "kind": "Field",
+                  "protocolKind": 8,
+                  "identity": "source::Choice::Named.value",
+                  "detail": "i64",
+                  "range": "named-value-range",
+                  "selection": "named-value-name",
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "readable",
+          "name": "Readable",
+          "kind": "Interface",
+          "protocolKind": 11,
+          "identity": "source::Readable",
+          "detail": null,
+          "range": "readable-range",
+          "selection": "readable-name",
+          "children": [
+            {
+              "id": "required",
+              "name": "read",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "source::Readable.read",
+              "detail": "(self) -> i64",
+              "range": "required-range",
+              "selection": "required-name",
+              "children": []
+            },
+            {
+              "id": "default",
+              "name": "preview",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "source::Readable.preview",
+              "detail": "(self, value: i64) -> i64",
+              "range": "default-range",
+              "selection": "default-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "inherent",
+          "name": "impl Widget",
+          "kind": "Object",
+          "protocolKind": 19,
+          "identity": "source::impl Widget",
+          "detail": null,
+          "range": "inherent-range",
+          "selection": "inherent-name",
+          "children": [
+            {
+              "id": "method",
+              "name": "read",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "source::Widget.read",
+              "detail": "(self) -> i64",
+              "range": "method-range",
+              "selection": "method-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "override",
+          "name": "impl Readable for Widget",
+          "kind": "Object",
+          "protocolKind": 19,
+          "identity": "source::impl Readable for Widget",
+          "detail": null,
+          "range": "override-range",
+          "selection": "override-name",
+          "children": [
+            {
+              "id": "override-read",
+              "name": "read",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "Readable for Widget.read",
+              "detail": "(self) -> i64",
+              "range": "override-read-range",
+              "selection": "override-read-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "limit",
+          "name": "LIMIT",
+          "kind": "Constant",
+          "protocolKind": 14,
+          "identity": "source::LIMIT",
+          "detail": "i64",
+          "range": "limit-range",
+          "selection": "limit-name",
+          "children": []
+        },
+        {
+          "id": "state",
+          "name": "live",
+          "kind": "Variable",
+          "protocolKind": 13,
+          "identity": "source::live",
+          "detail": "i64",
+          "range": "state-range",
+          "selection": "state-name",
+          "children": []
+        },
+        {
+          "id": "extern",
+          "name": "external",
+          "kind": "Variable",
+          "protocolKind": 13,
+          "identity": "source::external",
+          "detail": "i64",
+          "range": "extern-range",
+          "selection": "extern-name",
+          "children": []
+        },
+        {
+          "id": "make",
+          "name": "make",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "source::make",
+          "detail": "(value: i64) -> Widget",
+          "range": "make-range",
+          "selection": "make-name",
+          "children": []
+        },
+        {
+          "id": "private",
+          "name": "Private",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "source::Private",
+          "detail": null,
+          "range": "private-range",
+          "selection": "private-name",
+          "children": [
+            {
+              "id": "private-value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "source::Private.value",
+              "detail": "bool",
+              "range": "private-value-range",
+              "selection": "private-value-name",
+              "children": []
+            }
+          ]
+        }
+      ],
+      "scripts/main.vela": [
+        {
+          "id": "local",
+          "name": "Widget",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "main::Widget",
+          "detail": null,
+          "range": "local-range",
+          "selection": "local-name",
+          "children": [
+            {
+              "id": "local-value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "main::Widget.value",
+              "detail": "bool",
+              "range": "local-value-range",
+              "selection": "local-value-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "uses",
+          "name": "uses",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "main::uses",
+          "detail": "(row: Row, host: Host, reader: Reader, hreader: HostReader, meta: Metadata, dynamic: Any)",
+          "range": "uses-range",
+          "selection": "uses-name",
+          "children": []
+        },
+        {
+          "id": "imported-impl",
+          "name": "impl Row",
+          "kind": "Object",
+          "protocolKind": 19,
+          "identity": "main::impl Row",
+          "detail": null,
+          "range": "imported-impl-range",
+          "selection": "imported-impl-name",
+          "children": [
+            {
+              "id": "added",
+              "name": "added",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "main::Row.added",
+              "detail": "(self) -> bool",
+              "range": "added-range",
+              "selection": "added-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "host-impl",
+          "name": "impl Host",
+          "kind": "Object",
+          "protocolKind": 19,
+          "identity": "main::impl Host",
+          "detail": null,
+          "range": "host-impl-range",
+          "selection": "host-impl-name",
+          "children": [
+            {
+              "id": "scripted",
+              "name": "scripted",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "main::Host.scripted",
+              "detail": "(self) -> i64",
+              "range": "scripted-range",
+              "selection": "scripted-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "trait-imported-impl",
+          "name": "impl Reader for Row",
+          "kind": "Object",
+          "protocolKind": 19,
+          "identity": "main::impl Reader for Row",
+          "detail": null,
+          "range": "trait-imported-impl-range",
+          "selection": "trait-imported-impl-name",
+          "children": [
+            {
+              "id": "imported-read",
+              "name": "read",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "Reader for Row.read",
+              "detail": "(self) -> i64",
+              "range": "imported-read-range",
+              "selection": "imported-read-name",
+              "children": []
+            }
+          ]
+        }
+      ],
+      "scripts/imports.vela": [],
+      "scripts/unresolved.vela": [
+        {
+          "id": "unresolved",
+          "name": "unresolved",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "unresolved::unresolved",
+          "detail": "(dynamic: Any)",
+          "range": "unresolved-range",
+          "selection": "unresolved-name",
+          "children": []
+        }
+      ],
+      "scripts/deep/nested.vela": [
+        {
+          "id": "nested",
+          "name": "Widget",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "deep::nested::Widget",
+          "detail": null,
+          "range": "nested-range",
+          "selection": "nested-name",
+          "children": [
+            {
+              "id": "nested-value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "deep::nested::Widget.value",
+              "detail": "String",
+              "range": "nested-value-range",
+              "selection": "nested-value-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "nested-fn",
+          "name": "make",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "deep::nested::make",
+          "detail": "() -> Widget",
+          "range": "nested-fn-range",
+          "selection": "nested-fn-name",
+          "children": []
+        }
+      ],
+      "scripts/deep-user.vela": [
+        {
+          "id": "deep-use",
+          "name": "use_deep",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "deep-user::use_deep",
+          "detail": "()",
+          "range": "deep-use-range",
+          "selection": "deep-use-name",
+          "children": []
+        }
+      ],
+      "scripts/origins.vela": [
+        {
+          "id": "origin-box",
+          "name": "HostBox",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "origins::HostBox",
+          "detail": null,
+          "range": "origin-box-range",
+          "selection": "origin-box-name",
+          "children": [
+            {
+              "id": "origin-value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "origins::HostBox.value",
+              "detail": "bool",
+              "range": "origin-value-range",
+              "selection": "origin-value-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "origin-choice",
+          "name": "HostChoice",
+          "kind": "Enum",
+          "protocolKind": 10,
+          "identity": "origins::HostChoice",
+          "detail": null,
+          "range": "origin-choice-range",
+          "selection": "origin-choice-name",
+          "children": [
+            {
+              "id": "origin-empty",
+              "name": "Empty",
+              "kind": "EnumMember",
+              "protocolKind": 22,
+              "identity": "origins::HostChoice::Empty",
+              "detail": null,
+              "range": "origin-empty-range",
+              "selection": "origin-empty-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "origin-trait",
+          "name": "HostReader",
+          "kind": "Interface",
+          "protocolKind": 11,
+          "identity": "origins::HostReader",
+          "detail": null,
+          "range": "origin-trait-range",
+          "selection": "origin-trait-name",
+          "children": [
+            {
+              "id": "origin-read",
+              "name": "read",
+              "kind": "Method",
+              "protocolKind": 6,
+              "identity": "origins::HostReader.read",
+              "detail": "(self) -> bool",
+              "range": "origin-read-range",
+              "selection": "origin-read-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "origin-factory",
+          "name": "factory",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "origins::factory",
+          "detail": "() -> bool",
+          "range": "origin-factory-range",
+          "selection": "origin-factory-name",
+          "children": []
+        }
+      ],
+      "scripts/collisions.vela": [
+        {
+          "id": "collision",
+          "name": "Widget",
+          "kind": "Struct",
+          "protocolKind": 23,
+          "identity": "collisions::Widget",
+          "detail": null,
+          "range": "collision-range",
+          "selection": "collision-name",
+          "children": [
+            {
+              "id": "collision-value",
+              "name": "value",
+              "kind": "Field",
+              "protocolKind": 8,
+              "identity": "collisions::Widget.value",
+              "detail": "String",
+              "range": "collision-value-range",
+              "selection": "collision-value-name",
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "collision-fn",
+          "name": "uses",
+          "kind": "Function",
+          "protocolKind": 12,
+          "identity": "collisions::uses",
+          "detail": "()",
+          "range": "collision-fn-range",
+          "selection": "collision-fn-name",
+          "children": []
+        }
+      ]
+    },
+    "schema": {
+      "types": [
+        {
+          "name": "host::Box",
+          "fact": {
+            "kind": "host",
+            "name": "host::Box"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-box-name"
+          }
+        },
+        {
+          "name": "metadata::Box",
+          "fact": {
+            "kind": "host",
+            "name": "metadata::Box"
+          }
+        },
+        {
+          "name": "source::Widget",
+          "fact": {
+            "kind": "host",
+            "name": "source::Widget"
+          }
+        },
+        {
+          "name": "host::Choice",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-choice-name"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "host::Readable",
+          "fact": {
+            "kind": "trait",
+            "name": "host::Readable"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-trait-name"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "host::make",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "host::Box"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-factory-name"
+          }
+        },
+        {
+          "name": "source::make",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "String"
+            }
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "host::Box",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-value-name"
+          }
+        },
+        {
+          "owner": "metadata::Box",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          }
+        },
+        {
+          "owner": "source::Widget",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          }
+        },
+        {
+          "owner": "host::Choice::Pair",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          }
+        },
+        {
+          "owner": "host::Choice::Named",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "String"
+          }
+        }
+      ],
+      "methods": [
+        {
+          "owner": "host::Box",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "String"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-read-name"
+          }
+        },
+        {
+          "owner": "metadata::Box",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "String"
+            }
+          }
+        },
+        {
+          "owner": "source::Widget",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "String"
+            }
+          }
+        }
+      ],
+      "traitMethods": [
+        {
+          "owner": "host::Readable",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "String"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-read-name"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::Choice",
+          "name": "Empty",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Empty"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        },
+        {
+          "owner": "host::Choice",
+          "name": "Pair",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Pair"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        },
+        {
+          "owner": "host::Choice",
+          "name": "Named",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Named"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        }
+      ]
+    }
+  }
+}

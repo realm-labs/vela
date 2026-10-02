@@ -220,6 +220,7 @@ mod completion_analysis;
 mod completion_authoring_surface;
 mod definition;
 mod document_symbol_matrix;
+mod document_symbol_ownership;
 mod document_symbol_recovery;
 mod file_watching_coalescing;
 mod folding;

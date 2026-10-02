@@ -101,7 +101,11 @@ Missing required declaration parts remain diagnosed while named recovered declar
 keep current outline ranges and available return hints. Header names cannot
 borrow later identifiers; see the
 [recovery review](../tests/lsp_matrix/reviews/document-symbol-recovery.md).
-Remaining symbol partitions, other lifecycle states and B10 features remain
+Member/import ownership now pins complete trees across source/schema collisions,
+bound metadata spans, aliases and qualified uses. Constructors, members and
+unresolved/dynamic uses cannot add declarations; see the
+[ownership review](../tests/lsp_matrix/reviews/document-symbol-ownership.md).
+Remaining lifecycle states and other B10 features remain
 open under the execution checkpoint.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
