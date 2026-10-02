@@ -36,7 +36,11 @@ fn serde_json_usage_stays_at_protocol_boundaries() {
         ),
         (
             "lsp/to_proto.rs",
-            "diagnostic, workspace-symbol, and completion-resolve extension payloads",
+            "diagnostic and completion-resolve extension payloads",
+        ),
+        (
+            "lsp/to_proto/symbols.rs",
+            "workspace-symbol detail extension payload at the typed protocol projection boundary",
         ),
         ("main_loop.rs", "inline typed main-loop tests"),
         ("profile.rs", "profile JSONL events"),

@@ -464,7 +464,7 @@ fn workspace_symbols_project_typed_nested_symbols() {
     databases.update(&project);
     let symbols = databases.workspace_symbols("reward.vela");
 
-    let symbols = workspace_symbols(&symbols);
+    let symbols = workspace_symbols(&symbols, &databases).expect("valid source projection");
 
     let lsp_types::WorkspaceSymbolResponse::Nested(symbols) = symbols else {
         panic!("workspace symbols should project nested response");
@@ -482,6 +482,42 @@ fn workspace_symbols_project_typed_nested_symbols() {
         panic!("source workspace symbol should use source location");
     };
     assert_eq!(location.uri.as_str(), document.as_str());
+}
+
+#[test]
+fn workspace_symbol_projection_rejects_missing_snapshot_sources_and_invalid_uris() {
+    for document in [
+        "file:///workspace/scripts/main.vela",
+        "relative/scripts/main.vela",
+    ] {
+        let files = vec![SourceFileSnapshot::new(
+            DocumentId::from(document),
+            "/*中😀*/ pub fn main() {}",
+        )];
+        let root = if document.starts_with("file:") {
+            "/workspace/scripts"
+        } else {
+            "relative/scripts"
+        };
+        let config = WorkspaceConfig::workspace([WorkspaceRoot::from(root)]);
+        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
+        let mut databases = LanguageServiceDatabases::new();
+        databases.update(&project);
+        let symbols = databases.workspace_symbols("");
+        assert!(!symbols.is_empty());
+        assert!(
+            workspace_symbols(&symbols, &LanguageServiceDatabases::new())
+                .expect_err("missing immutable source")
+                .contains("source is unavailable")
+        );
+        if document.starts_with("relative") {
+            assert!(
+                workspace_symbols(&symbols, &databases)
+                    .expect_err("invalid source URI")
+                    .contains("invalid workspace symbol URI")
+            );
+        }
+    }
 }
 
 #[test]

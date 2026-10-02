@@ -17149,6 +17149,66 @@
           "name": "document symbol provider preserves complete dirty close and dependency lifecycle trees"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_matrix_tests::workspace_symbol_declarations_preserve_whole_owned_query_sets_and_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-declarations.md. Compare complete independently authored 31-row workspace sets from four sources and 32 explicit ordered query memberships. Pin all 23 top-level declarations across public/private const/state/extern state/defaulted/untyped/async functions, structs, enum forms, required/default traits and inherent/trait impls; files/modules and same-named Widget/LIMIT/api.vela owners remain distinct. Exact names/kinds/optional details/containers/canonical service identities and complete source ranges. Nested members/aliases/parameters/locals/attribute text do not add name matches. Whole/trimmed-empty, ASCII case/edge trim, qualified substring and literal wildcard/interior-space/no-match policies have exact sets. All queries repeat three times at LF/CRLF with and without two Unicode prefix lines; literal UTF16 8 versus byte12, encoded Chinese/space/percent private roots, whole JSON-RPC results and unchanged physical/source bytes. Checked immutable-snapshot UTF16 projection caches one source index per requested source; existing metadata location/detail remains unchanged. Other syntax/state/schema/import/editor/native requirements remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
+        }
+      ]
     }
   ],
   "featureFiles": [

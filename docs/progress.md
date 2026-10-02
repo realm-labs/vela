@@ -105,8 +105,13 @@ Member/import ownership now pins complete trees across source/schema collisions,
 bound metadata spans, aliases and qualified uses. Constructors, members and
 unresolved/dynamic uses cannot add declarations; see the
 [ownership review](../tests/lsp_matrix/reviews/document-symbol-ownership.md).
-Remaining lifecycle states and other B10 features remain
-open under the execution checkpoint.
+Document-symbol lifecycle and installed provider proof now cover complete current
+and frozen trees, disk/overlay/dependency/schema transitions, actual closes and
+damage/repair sequences. See the
+[lifecycle review](../tests/lsp_matrix/reviews/document-symbol-lifecycle.md) and
+[installed provider review](../tests/lsp_matrix/reviews/document-symbol-editor.md).
+The checkpoint records complete document-symbol core coverage. Workspace symbols,
+folding, selection and native Outline/picker workflows remain open.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

@@ -11,13 +11,12 @@ use vela_language_service::{
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
     PrepareRename, ProjectDiagnostic, Reference, RenameRiskKind, SchemaDiagnostic,
     SelectionRange as ServiceSelectionRange, ServiceDiagnostic, ServiceDiagnosticSeverity,
-    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit, WorkspaceSymbol,
-    WorkspaceSymbolLocation,
+    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
 };
 
 mod symbols;
 mod tokens;
-pub(crate) use symbols::document_symbols;
+pub(crate) use symbols::{document_symbols, workspace_symbols};
 pub(crate) use tokens::{
     delta as semantic_tokens_delta, full as semantic_tokens, range as semantic_tokens_range,
 };
@@ -172,10 +171,6 @@ pub(crate) fn document_highlights(
             kind: document_highlight_kind(highlight.kind()),
         })
         .collect()
-}
-
-pub(crate) fn workspace_symbols(symbols: &[WorkspaceSymbol]) -> lsp_types::WorkspaceSymbolResponse {
-    lsp_types::WorkspaceSymbolResponse::Nested(symbols.iter().map(workspace_symbol).collect())
 }
 
 pub(crate) fn folding_ranges(ranges: &[ServiceFoldingRange]) -> Vec<lsp_types::FoldingRange> {
@@ -409,35 +404,6 @@ const fn document_highlight_kind(
         DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
         DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
     }
-}
-
-fn workspace_symbol(symbol: &WorkspaceSymbol) -> lsp_types::WorkspaceSymbol {
-    lsp_types::WorkspaceSymbol {
-        name: symbol.name().to_owned(),
-        kind: symbol_kind(symbol.kind()),
-        tags: None,
-        container_name: symbol.container_name().map(str::to_owned),
-        location: workspace_symbol_location(symbol.location()),
-        data: workspace_symbol_data(symbol),
-    }
-}
-
-fn workspace_symbol_location(
-    location: &WorkspaceSymbolLocation,
-) -> lsp_types::OneOf<lsp_types::Location, lsp_types::WorkspaceLocation> {
-    match location {
-        WorkspaceSymbolLocation::Source { document_id, range } => {
-            lsp_types::OneOf::Left(self::location(document_id, *range))
-        }
-        WorkspaceSymbolLocation::Schema => lsp_types::OneOf::Right(lsp_types::WorkspaceLocation {
-            uri: lsp_types::Url::parse("vela-schema:")
-                .expect("schema workspace symbol URI should parse"),
-        }),
-    }
-}
-
-fn workspace_symbol_data(symbol: &WorkspaceSymbol) -> Option<JsonValue> {
-    symbol.detail().map(|detail| json!({ "detail": detail }))
 }
 
 fn folding_range(range: &ServiceFoldingRange) -> lsp_types::FoldingRange {

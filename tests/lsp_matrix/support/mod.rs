@@ -9,6 +9,7 @@ pub(crate) mod document_open;
 pub(crate) mod document_symbol_lifecycle;
 pub(crate) mod document_symbols;
 mod schema;
+pub(crate) mod workspace_symbols;
 pub(crate) use schema::{lifecycle_facts, schema_artifact, schema_lifecycle_source};
 pub(crate) mod hover_recovery;
 pub(crate) mod hover_signature;

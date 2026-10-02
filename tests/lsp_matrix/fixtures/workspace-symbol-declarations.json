@@ -1,0 +1,653 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-declarations",
+  "files": {
+    "scripts/api.vela": "[[file:start]]use helper::external as imported; pub use helper::Widget as Row;\n/*中😀*/ [[limit-range:start]]pub const [[limit-name:start]]LIMIT[[limit-name:end]]: i64 = 3;[[limit-range:end]]\n/*中😀*/ [[label-range:start]]const [[label-name:start]]LABEL[[label-name:end]] = \"中😀\";[[label-range:end]]\n/*中😀*/ [[counter-range:start]]pub state [[counter-name:start]]counter[[counter-name:end]]: i64 = 0;[[counter-range:end]]\n/*中😀*/ [[state-range:start]]state [[state-name:start]]local_state[[state-name:end]]: String = \"text\";[[state-range:end]]\n/*中😀*/ [[external-range:start]]pub extern state [[external-name:start]]live[[external-name:end]]: Widget;[[external-range:end]]\n/*中😀*/ [[hidden-range:start]]extern state [[hidden-name:start]]hidden[[hidden-name:end]]: bool;[[hidden-range:end]]\n/*中😀*/ [[choose-range:start]]#[doc(\"中😀 choose before its identifier\")]\npub fn [[choose-name:start]]choose[[choose-name:end]](value: i64, amount: i64 = 2) -> i64 {\n let shadow = amount;\n return value + shadow;\n}[[choose-range:end]]\n/*中😀*/ [[private-range:start]]fn [[private-name:start]]private_fn[[private-name:end]](value) { return value; }[[private-range:end]]\n/*中😀*/ [[zero-range:start]]fn [[zero-name:start]]zero[[zero-name:end]]() {}[[zero-range:end]]\n/*中😀*/ [[async-range:start]]pub async fn [[async-name:start]]worker[[async-name:end]](value: i64) -> i64 { return value; }[[async-range:end]]\n/*中😀*/ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] {\n [[value-range:start]][[value-name:start]]value[[value-name:end]]: i64 = 1[[value-range:end]]\n [[misc-range:start]][[misc-name:start]]misc[[misc-name:end]]: Any[[misc-range:end]]\n}[[widget-range:end]]\n/*中😀*/ [[private-struct-range:start]]struct [[private-struct-name:start]]Private[[private-struct-name:end]] { [[private-field-range:start]][[private-field-name:start]]flag[[private-field-name:end]]: bool[[private-field-range:end]] }[[private-struct-range:end]]\n/*中😀*/ [[choice-range:start]]pub enum [[choice-name:start]]Choice[[choice-name:end]] {\n [[unit-range:start]][[unit-name:start]]Empty[[unit-name:end]][[unit-range:end]]\n [[tuple-range:start]][[tuple-name:start]]Pair[[tuple-name:end]]([[count-range:start]][[count-name:start]]count[[count-name:end]]: i64 = 2[[count-range:end]], [[reason-range:start]][[reason-name:start]]reason[[reason-name:end]]: String[[reason-range:end]])[[tuple-range:end]]\n [[record-range:start]][[record-name:start]]Named[[record-name:end]] { [[key-range:start]][[key-name:start]]key[[key-name:end]]: String[[key-range:end]] }[[record-range:end]]\n}[[choice-range:end]]\n/*中😀*/ [[private-enum-range:start]]enum [[private-enum-name:start]]HiddenChoice[[private-enum-name:end]] {}[[private-enum-range:end]]\n/*中😀*/ [[readable-range:start]]pub trait [[readable-name:start]]Readable[[readable-name:end]] {\n [[required-range:start]]#[doc(\"中😀 read misleading name\")] fn [[required-name:start]]read[[required-name:end]](self, amount: i64 = 1) -> i64;[[required-range:end]]\n [[default-range:start]]fn [[default-name:start]]preview[[default-name:end]](self, amount: i64 = 2) -> bool { return amount > 0; }[[default-range:end]]\n}[[readable-range:end]]\n/*中😀*/ [[private-trait-range:start]]trait [[private-trait-name:start]]HiddenTrait[[private-trait-name:end]] {}[[private-trait-range:end]]\n/*中😀*/ [[impl-range:start]]#[doc(\"impl Widget before actual header\")]\n[[impl-name:start]]impl Widget[[impl-name:end]] {\n [[inherent-range:start]]#[doc(\"中😀 accept decoy\")] pub fn [[inherent-name:start]]accept[[inherent-name:end]](self, amount: i64 = 2) -> bool { return amount > 0; }[[inherent-range:end]]\n [[async-method-range:start]]pub async fn [[async-method-name:start]]process[[async-method-name:end]](self, value: i64) -> String { return \"done\"; }[[async-method-range:end]]\n}[[impl-range:end]]\n/*中😀*/ [[trait-impl-range:start]][[trait-impl-name:start]]impl Readable for Widget[[trait-impl-name:end]] {\n [[override-range:start]]fn [[override-name:start]]read[[override-name:end]](self, amount: i64) -> i64 { return amount; }[[override-range:end]]\n}[[trait-impl-range:end]]\n/*中😀*/ [[uses-range:start]]fn [[uses-name:start]]uses[[uses-name:end]]() {\n let value = 1;\n let alias = Row { value: true };\n let row = Widget { value, misc: 2 };\n row.value += 1; row.accept(1); imported();\n Choice::Empty; Choice::Pair(1, \"text\"); Choice::Named { key: \"text\" };\n}[[uses-range:end]]\n[[file:end]]",
+    "scripts/helper.vela": "[[file:start]][[external-range:start]]pub fn external() {}[[external-range:end]]\n[[widget-range:start]]pub struct Widget { value: bool }[[widget-range:end]]\n[[file:end]]",
+    "scripts/imports.vela": "[[file:start]]use api::Widget as Row;\n[[file:end]]",
+    "scripts/nested/api.vela": "[[file:start]]/*中😀*/ [[limit-range:start]]pub const LIMIT: bool = true;[[limit-range:end]]\n[[widget-range:start]]pub struct Widget { value: String }[[widget-range:end]]\n[[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "symbols": [
+      {
+        "id": "api-module",
+        "name": "api",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/api.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::api"
+      },
+      {
+        "id": "api-file",
+        "name": "api.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/api.vela",
+        "range": "file",
+        "detail": "api",
+        "container": null,
+        "fileIdentity": true
+      },
+      {
+        "id": "nested-api-file",
+        "name": "api.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/nested/api.vela",
+        "range": "file",
+        "detail": "nested::api",
+        "container": null,
+        "fileIdentity": true
+      },
+      {
+        "id": "api-choice",
+        "name": "api::Choice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "file": "scripts/api.vela",
+        "range": "choice-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::Choice"
+      },
+      {
+        "id": "api-private-enum",
+        "name": "api::HiddenChoice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "file": "scripts/api.vela",
+        "range": "private-enum-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::HiddenChoice"
+      },
+      {
+        "id": "api-private-trait",
+        "name": "api::HiddenTrait",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "file": "scripts/api.vela",
+        "range": "private-trait-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::HiddenTrait"
+      },
+      {
+        "id": "api-label",
+        "name": "api::LABEL",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "file": "scripts/api.vela",
+        "range": "label-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::LABEL"
+      },
+      {
+        "id": "api-limit",
+        "name": "api::LIMIT",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "file": "scripts/api.vela",
+        "range": "limit-range",
+        "detail": "i64",
+        "container": "api",
+        "identity": "api::LIMIT"
+      },
+      {
+        "id": "api-private-struct",
+        "name": "api::Private",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/api.vela",
+        "range": "private-struct-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::Private"
+      },
+      {
+        "id": "api-readable",
+        "name": "api::Readable",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "file": "scripts/api.vela",
+        "range": "readable-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::Readable"
+      },
+      {
+        "id": "api-widget",
+        "name": "api::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/api.vela",
+        "range": "widget-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::Widget"
+      },
+      {
+        "id": "api-choose",
+        "name": "api::choose",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/api.vela",
+        "range": "choose-range",
+        "detail": "(value: i64, amount: i64) -> i64",
+        "container": "api",
+        "identity": "api::choose"
+      },
+      {
+        "id": "api-counter",
+        "name": "api::counter",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/api.vela",
+        "range": "counter-range",
+        "detail": "i64",
+        "container": "api",
+        "identity": "api::counter"
+      },
+      {
+        "id": "api-hidden",
+        "name": "api::hidden",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/api.vela",
+        "range": "hidden-range",
+        "detail": "bool",
+        "container": "api",
+        "identity": "api::hidden"
+      },
+      {
+        "id": "api-trait-impl",
+        "name": "api::impl Readable for Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/api.vela",
+        "range": "trait-impl-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::impl Readable for Widget"
+      },
+      {
+        "id": "api-impl",
+        "name": "api::impl Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/api.vela",
+        "range": "impl-range",
+        "detail": null,
+        "container": "api",
+        "identity": "api::impl Widget"
+      },
+      {
+        "id": "api-external",
+        "name": "api::live",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/api.vela",
+        "range": "external-range",
+        "detail": "Widget",
+        "container": "api",
+        "identity": "api::live"
+      },
+      {
+        "id": "api-state",
+        "name": "api::local_state",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/api.vela",
+        "range": "state-range",
+        "detail": "String",
+        "container": "api",
+        "identity": "api::local_state"
+      },
+      {
+        "id": "api-private",
+        "name": "api::private_fn",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/api.vela",
+        "range": "private-range",
+        "detail": "(value)",
+        "container": "api",
+        "identity": "api::private_fn"
+      },
+      {
+        "id": "api-uses",
+        "name": "api::uses",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/api.vela",
+        "range": "uses-range",
+        "detail": "()",
+        "container": "api",
+        "identity": "api::uses"
+      },
+      {
+        "id": "api-async",
+        "name": "api::worker",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/api.vela",
+        "range": "async-range",
+        "detail": "async (value: i64) -> i64",
+        "container": "api",
+        "identity": "api::worker"
+      },
+      {
+        "id": "api-zero",
+        "name": "api::zero",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/api.vela",
+        "range": "zero-range",
+        "detail": "()",
+        "container": "api",
+        "identity": "api::zero"
+      },
+      {
+        "id": "helper-module",
+        "name": "helper",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/helper.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::helper"
+      },
+      {
+        "id": "helper-file",
+        "name": "helper.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/helper.vela",
+        "range": "file",
+        "detail": "helper",
+        "container": null,
+        "fileIdentity": true
+      },
+      {
+        "id": "helper-widget",
+        "name": "helper::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/helper.vela",
+        "range": "widget-range",
+        "detail": null,
+        "container": "helper",
+        "identity": "helper::Widget"
+      },
+      {
+        "id": "helper-external",
+        "name": "helper::external",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/helper.vela",
+        "range": "external-range",
+        "detail": "()",
+        "container": "helper",
+        "identity": "helper::external"
+      },
+      {
+        "id": "imports-module",
+        "name": "imports",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::imports"
+      },
+      {
+        "id": "imports-file",
+        "name": "imports.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": "imports",
+        "container": null,
+        "fileIdentity": true
+      },
+      {
+        "id": "nested-api-module",
+        "name": "nested::api",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/nested/api.vela",
+        "range": "file",
+        "detail": null,
+        "container": "nested",
+        "identity": "dev.vela.anonymous::nested::api"
+      },
+      {
+        "id": "nested-api-limit",
+        "name": "nested::api::LIMIT",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "file": "scripts/nested/api.vela",
+        "range": "limit-range",
+        "detail": "bool",
+        "container": "nested::api",
+        "identity": "nested::api::LIMIT"
+      },
+      {
+        "id": "nested-api-widget",
+        "name": "nested::api::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/nested/api.vela",
+        "range": "widget-range",
+        "detail": null,
+        "container": "nested::api",
+        "identity": "nested::api::Widget"
+      }
+    ],
+    "queries": [
+      {
+        "id": "all",
+        "query": "",
+        "symbols": [
+          "api-module",
+          "api-file",
+          "nested-api-file",
+          "api-choice",
+          "api-private-enum",
+          "api-private-trait",
+          "api-label",
+          "api-limit",
+          "api-private-struct",
+          "api-readable",
+          "api-widget",
+          "api-choose",
+          "api-counter",
+          "api-hidden",
+          "api-trait-impl",
+          "api-impl",
+          "api-external",
+          "api-state",
+          "api-private",
+          "api-uses",
+          "api-async",
+          "api-zero",
+          "helper-module",
+          "helper-file",
+          "helper-widget",
+          "helper-external",
+          "imports-module",
+          "imports-file",
+          "nested-api-module",
+          "nested-api-limit",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "trim-empty",
+        "query": " \t\n",
+        "symbols": [
+          "api-module",
+          "api-file",
+          "nested-api-file",
+          "api-choice",
+          "api-private-enum",
+          "api-private-trait",
+          "api-label",
+          "api-limit",
+          "api-private-struct",
+          "api-readable",
+          "api-widget",
+          "api-choose",
+          "api-counter",
+          "api-hidden",
+          "api-trait-impl",
+          "api-impl",
+          "api-external",
+          "api-state",
+          "api-private",
+          "api-uses",
+          "api-async",
+          "api-zero",
+          "helper-module",
+          "helper-file",
+          "helper-widget",
+          "helper-external",
+          "imports-module",
+          "imports-file",
+          "nested-api-module",
+          "nested-api-limit",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "case-fold",
+        "query": "WiDgEt",
+        "symbols": [
+          "api-widget",
+          "api-trait-impl",
+          "api-impl",
+          "helper-widget",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "trim-case",
+        "query": "  WiDgEt\t ",
+        "symbols": [
+          "api-widget",
+          "api-trait-impl",
+          "api-impl",
+          "helper-widget",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "qualified-substring",
+        "query": "api::",
+        "symbols": [
+          "api-choice",
+          "api-private-enum",
+          "api-private-trait",
+          "api-label",
+          "api-limit",
+          "api-private-struct",
+          "api-readable",
+          "api-widget",
+          "api-choose",
+          "api-counter",
+          "api-hidden",
+          "api-trait-impl",
+          "api-impl",
+          "api-external",
+          "api-state",
+          "api-private",
+          "api-uses",
+          "api-async",
+          "api-zero",
+          "nested-api-limit",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "nested-module",
+        "query": "nested::api",
+        "symbols": [
+          "nested-api-module",
+          "nested-api-limit",
+          "nested-api-widget"
+        ]
+      },
+      {
+        "id": "duplicate-files",
+        "query": "api.vela",
+        "symbols": [
+          "api-file",
+          "nested-api-file"
+        ]
+      },
+      {
+        "id": "helper",
+        "query": "helper",
+        "symbols": [
+          "helper-module",
+          "helper-file",
+          "helper-widget",
+          "helper-external"
+        ]
+      },
+      {
+        "id": "imports-only",
+        "query": "imports",
+        "symbols": [
+          "imports-module",
+          "imports-file"
+        ]
+      },
+      {
+        "id": "duplicate-constants",
+        "query": "LIMIT",
+        "symbols": [
+          "api-limit",
+          "nested-api-limit"
+        ]
+      },
+      {
+        "id": "exact-nested",
+        "query": "nested::api::LIMIT",
+        "symbols": [
+          "nested-api-limit"
+        ]
+      },
+      {
+        "id": "function",
+        "query": "choose",
+        "symbols": [
+          "api-choose"
+        ]
+      },
+      {
+        "id": "private",
+        "query": "private_fn",
+        "symbols": [
+          "api-private"
+        ]
+      },
+      {
+        "id": "state",
+        "query": "local_state",
+        "symbols": [
+          "api-state"
+        ]
+      },
+      {
+        "id": "async",
+        "query": "worker",
+        "symbols": [
+          "api-async"
+        ]
+      },
+      {
+        "id": "trait-and-impl",
+        "query": "read",
+        "symbols": [
+          "api-readable",
+          "api-trait-impl"
+        ]
+      },
+      {
+        "id": "enum",
+        "query": "Choice",
+        "symbols": [
+          "api-choice",
+          "api-private-enum"
+        ]
+      },
+      {
+        "id": "private-case",
+        "query": "api::Private",
+        "symbols": [
+          "api-private-struct",
+          "api-private"
+        ]
+      },
+      {
+        "id": "detail-is-not-name",
+        "query": "String",
+        "symbols": []
+      },
+      {
+        "id": "no-wildcards",
+        "query": "*",
+        "symbols": []
+      },
+      {
+        "id": "interior-space",
+        "query": "api LIMIT",
+        "symbols": []
+      },
+      {
+        "id": "alias",
+        "query": "Row",
+        "symbols": []
+      },
+      {
+        "id": "import-alias",
+        "query": "imported",
+        "symbols": []
+      },
+      {
+        "id": "field-local",
+        "query": "value",
+        "symbols": []
+      },
+      {
+        "id": "method",
+        "query": "accept",
+        "symbols": []
+      },
+      {
+        "id": "tuple-variant",
+        "query": "Pair",
+        "symbols": []
+      },
+      {
+        "id": "record-variant",
+        "query": "Named",
+        "symbols": []
+      },
+      {
+        "id": "local",
+        "query": "shadow",
+        "symbols": []
+      },
+      {
+        "id": "parameter",
+        "query": "amount",
+        "symbols": []
+      },
+      {
+        "id": "attribute-text",
+        "query": "choose before",
+        "symbols": []
+      },
+      {
+        "id": "unicode-trivia",
+        "query": "中😀",
+        "symbols": []
+      },
+      {
+        "id": "no-match",
+        "query": "not_a_symbol_987",
+        "symbols": []
+      }
+    ]
+  }
+}

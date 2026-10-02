@@ -526,9 +526,9 @@ impl GlobalStateSnapshot {
             .databases
             .workspace_symbols(from_proto::workspace_symbol_params(&params));
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::workspace_symbols(&symbols),
+            to_proto::workspace_symbols(&symbols, &self.databases),
             "typed workspace/symbol response",
         )
     }
