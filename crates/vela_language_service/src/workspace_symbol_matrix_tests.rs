@@ -66,7 +66,7 @@ fn workspace_symbol_declarations_preserve_whole_owned_query_sets_and_ranges() {
     }
 }
 
-fn project(symbol: &WorkspaceSymbol) -> Value {
+pub(crate) fn project(symbol: &WorkspaceSymbol) -> Value {
     let SymbolRef::Source(identity) = symbol.symbol() else {
         panic!("no schema/provider symbol in this source-only corpus")
     };

@@ -1,0 +1,1407 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-ownership",
+  "files": {
+    "scripts/source.vela": "[[file:start]]/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[value-range:start]][[value-name:start]]value[[value-name:end]]: i64 = 1[[value-range:end]], [[other-range:start]][[other-name:start]]other[[other-name:end]]: Any[[other-range:end]] }[[widget-range:end]]\n[[choice-range:start]]pub enum [[choice-name:start]]Choice[[choice-name:end]] { [[empty-range:start]][[empty-name:start]]Empty[[empty-name:end]][[empty-range:end]], [[pair-range:start]][[pair-name:start]]Pair[[pair-name:end]]([[pair-value-range:start]][[pair-value-name:start]]value[[pair-value-name:end]]: i64[[pair-value-range:end]])[[pair-range:end]], [[named-range:start]][[named-name:start]]Named[[named-name:end]] { [[named-value-range:start]][[named-value-name:start]]value[[named-value-name:end]]: i64[[named-value-range:end]] }[[named-range:end]] }[[choice-range:end]]\n[[readable-range:start]]pub trait [[readable-name:start]]Readable[[readable-name:end]] { [[required-range:start]]fn [[required-name:start]]read[[required-name:end]](self) -> i64;[[required-range:end]] [[default-range:start]]fn [[default-name:start]]preview[[default-name:end]](self, value: i64 = 2) -> i64 { return value; }[[default-range:end]] }[[readable-range:end]]\n[[inherent-range:start]][[inherent-name:start]]impl Widget[[inherent-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self) -> i64 { return self.value; }[[method-range:end]] }[[inherent-range:end]]\n[[override-range:start]][[override-name:start]]impl Readable for Widget[[override-name:end]] { [[override-read-range:start]]fn [[override-read-name:start]]read[[override-read-name:end]](self) -> i64 { return self.value; }[[override-read-range:end]] }[[override-range:end]]\n[[limit-range:start]]pub const [[limit-name:start]]LIMIT[[limit-name:end]]: i64 = 1;[[limit-range:end]]\n[[state-range:start]]pub state [[state-name:start]]live[[state-name:end]]: i64 = 1;[[state-range:end]]\n[[extern-range:start]]pub extern state [[extern-name:start]]external[[extern-name:end]]: i64;[[extern-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]](value: i64 = 1) -> Widget { return Widget { value, other: 1 }; }[[make-range:end]]\n[[private-range:start]]struct [[private-name:start]]Private[[private-name:end]] { [[private-value-range:start]][[private-value-name:start]]value[[private-value-name:end]]: bool[[private-value-range:end]] }[[private-range:end]]\n[[file:end]]",
+    "scripts/main.vela": "[[file:start]]use source::Widget as Row; use source::Choice as Pick; use source::Choice::Empty as Unit;\nuse source::Readable as Reader; use source::make as build; use source::LIMIT as Cap;\nuse source::live as Shared; use source::external as External; use source as api;\nuse host::Box as Host; use host::Choice as HostPick; use host::Readable as HostReader;\nuse host::make as host_build; use host as native; use metadata::Box as Metadata;\nuse std::array as arrays; use std::print as output;\n/* 中😀 */ [[local-range:start]]struct [[local-name:start]]Widget[[local-name:end]] { [[local-value-range:start]][[local-value-name:start]]value[[local-value-name:end]]: bool[[local-value-range:end]] }[[local-range:end]]\n[[uses-range:start]]fn [[uses-name:start]]uses[[uses-name:end]](row: Row, host: Host, reader: Reader, hreader: HostReader, meta: Metadata, dynamic: Any) {\n let value = 1; let rec = Row { value, other: value }; let local = Widget { value: true };\n row.value += 1; row.read(); reader.read(); host.value += 1; host.read(); hreader.read();\n Pick::Empty; Pick::Pair(value); Pick::Named { value }; Unit;\n HostPick::Empty; HostPick::Pair(value); HostPick::Named { value }; meta.value; meta.read();\n build(value = 2); host_build(); native::make(); api::Widget { value, other: value }; Cap; Shared += 1; External += 1; arrays::new(); output(value);\n dynamic.value; dynamic.read(); row.missing; unknown::Box { value }; missing();\n match value { Pick::Named { value } => value, Pick::Pair(value) => value, Pick::Empty => 0 }\n}[[uses-range:end]]\n[[imported-impl-range:start]][[imported-impl-name:start]]impl Row[[imported-impl-name:end]] { [[added-range:start]]fn [[added-name:start]]added[[added-name:end]](self) -> bool { return true; }[[added-range:end]] }[[imported-impl-range:end]]\n[[host-impl-range:start]][[host-impl-name:start]]impl Host[[host-impl-name:end]] { [[scripted-range:start]]fn [[scripted-name:start]]scripted[[scripted-name:end]](self) -> i64 { return 1; }[[scripted-range:end]] }[[host-impl-range:end]]\n[[trait-imported-impl-range:start]][[trait-imported-impl-name:start]]impl Reader for Row[[trait-imported-impl-name:end]] { [[imported-read-range:start]]fn [[imported-read-name:start]]read[[imported-read-name:end]](self) -> i64 { return 1; }[[imported-read-range:end]] }[[trait-imported-impl-range:end]]\n[[file:end]]",
+    "scripts/imports.vela": "[[file:start]]pub use source::Widget; use source::Choice; use source::Choice::Pair as Tuple; use source::Readable; use source::make; use source::LIMIT; use source::live; use source::external; use source as api;\nuse source::Private as Hidden; use missing::Widget as Missing; use host::Box as Row; use metadata::Box; use std::print; use std::array;\n[[file:end]]",
+    "scripts/unresolved.vela": "[[file:start]]use missing::Widget as Row; use source::Private as Hidden; use source::NoType; use missing as api;\nuse source::Widget as Clash; use host::Box as Clash;\n[[unresolved-range:start]]fn [[unresolved-name:start]]unresolved[[unresolved-name:end]](dynamic: Any) { Row { value: 1 }; Hidden { value: true }; NoType::Missing; api::call(); Clash { value: 1 }; dynamic.value; dynamic.read(); unknown.value; unknown.read(); }[[unresolved-range:end]]\n[[file:end]]",
+    "scripts/deep/nested.vela": "[[file:start]][[nested-range:start]]pub struct [[nested-name:start]]Widget[[nested-name:end]] { [[nested-value-range:start]][[nested-value-name:start]]value[[nested-value-name:end]]: String[[nested-value-range:end]] }[[nested-range:end]]\n[[nested-fn-range:start]]pub fn [[nested-fn-name:start]]make[[nested-fn-name:end]]() -> Widget { return Widget { value: \"nested\" }; }[[nested-fn-range:end]]\n[[file:end]]",
+    "scripts/deep-user.vela": "[[file:start]]use deep::nested as nested; use deep as directory; use deep::nested::Widget as Row;\n[[deep-use-range:start]]fn [[deep-use-name:start]]use_deep[[deep-use-name:end]]() { nested::make(); directory::nested::make(); deep::nested::Widget { value: \"中😀\" }; Row { value: \"text\" }; }[[deep-use-range:end]]\n[[file:end]]",
+    "scripts/origins.vela": "[[file:start]][[origin-box-range:start]]struct [[origin-box-name:start]]HostBox[[origin-box-name:end]] { [[origin-value-range:start]][[origin-value-name:start]]value[[origin-value-name:end]]: bool[[origin-value-range:end]] }[[origin-box-range:end]]\n[[origin-choice-range:start]]enum [[origin-choice-name:start]]HostChoice[[origin-choice-name:end]] { [[origin-empty-range:start]][[origin-empty-name:start]]Empty[[origin-empty-name:end]][[origin-empty-range:end]] }[[origin-choice-range:end]]\n[[origin-trait-range:start]]trait [[origin-trait-name:start]]HostReader[[origin-trait-name:end]] { [[origin-read-range:start]]fn [[origin-read-name:start]]read[[origin-read-name:end]](self) -> bool;[[origin-read-range:end]] }[[origin-trait-range:end]]\n[[origin-factory-range:start]]fn [[origin-factory-name:start]]factory[[origin-factory-name:end]]() -> bool { return true; }[[origin-factory-range:end]]\n[[file:end]]",
+    "scripts/collisions.vela": "[[file:start]][[collision-range:start]]pub struct [[collision-name:start]]Widget[[collision-name:end]] { [[collision-value-range:start]][[collision-value-name:start]]value[[collision-value-name:end]]: String[[collision-value-range:end]] }[[collision-range:end]]\n[[collision-fn-range:start]]pub fn [[collision-fn-name:start]]uses[[collision-fn-name:end]]() {}[[collision-fn-range:end]]\n[[file:end]]",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "symbols": [
+      {
+        "id": "collisions-module",
+        "name": "collisions",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/collisions.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::collisions",
+        "ownership": "Source"
+      },
+      {
+        "id": "collisions-file",
+        "name": "collisions.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/collisions.vela",
+        "range": "file",
+        "detail": "collisions",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "collisions-collision",
+        "name": "collisions::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/collisions.vela",
+        "range": "collision-range",
+        "detail": null,
+        "container": "collisions",
+        "identity": "collisions::Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "collisions-collision-fn",
+        "name": "collisions::uses",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/collisions.vela",
+        "range": "collision-fn-range",
+        "detail": "()",
+        "container": "collisions",
+        "identity": "collisions::uses",
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-user-module",
+        "name": "deep-user",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/deep-user.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::deep-user",
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-user-file",
+        "name": "deep-user.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/deep-user.vela",
+        "range": "file",
+        "detail": "deep-user",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-user-deep-use",
+        "name": "deep-user::use_deep",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/deep-user.vela",
+        "range": "deep-use-range",
+        "detail": "()",
+        "container": "deep-user",
+        "identity": "deep-user::use_deep",
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-nested-module",
+        "name": "deep::nested",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/deep/nested.vela",
+        "range": "file",
+        "detail": null,
+        "container": "deep",
+        "identity": "dev.vela.anonymous::deep::nested",
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-nested-nested",
+        "name": "deep::nested::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/deep/nested.vela",
+        "range": "nested-range",
+        "detail": null,
+        "container": "deep::nested",
+        "identity": "deep::nested::Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "deep-nested-nested-fn",
+        "name": "deep::nested::make",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/deep/nested.vela",
+        "range": "nested-fn-range",
+        "detail": "() -> Widget",
+        "container": "deep::nested",
+        "identity": "deep::nested::make",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-host-box",
+        "name": "host::Box",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "host::Box",
+        "container": null,
+        "identity": "host::Box",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-box-read",
+        "name": "host::Box::read",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function() -> String",
+        "container": "host::Box",
+        "identity": "host::Box.read",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-box-value",
+        "name": "host::Box::value",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "String",
+        "container": "host::Box",
+        "identity": "host::Box.value",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-choice",
+        "name": "host::Choice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "detail": "host::Choice",
+        "container": null,
+        "identity": "host::Choice",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-choice-empty",
+        "name": "host::Choice::Empty",
+        "kind": "EnumMember",
+        "protocolKind": 22,
+        "detail": "host::Choice::Empty",
+        "container": "host::Choice",
+        "identity": "host::Choice::Empty",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-choice-named",
+        "name": "host::Choice::Named",
+        "kind": "EnumMember",
+        "protocolKind": 22,
+        "detail": "host::Choice::Named",
+        "container": "host::Choice",
+        "identity": "host::Choice::Named",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-named-value",
+        "name": "host::Choice::Named::value",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "String",
+        "container": "host::Choice::Named",
+        "identity": "host::Choice::Named.value",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-choice-pair",
+        "name": "host::Choice::Pair",
+        "kind": "EnumMember",
+        "protocolKind": 22,
+        "detail": "host::Choice::Pair",
+        "container": "host::Choice",
+        "identity": "host::Choice::Pair",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-pair-value",
+        "name": "host::Choice::Pair::value",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "String",
+        "container": "host::Choice::Pair",
+        "identity": "host::Choice::Pair.value",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-readable",
+        "name": "host::Readable",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "detail": "host::Readable",
+        "container": null,
+        "identity": "host::Readable",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-readable-read",
+        "name": "host::Readable::read",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function() -> String",
+        "container": "host::Readable",
+        "identity": "host::Readable.read",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-host-make",
+        "name": "host::make",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> host::Box",
+        "container": null,
+        "identity": "host::make",
+        "ownership": "Schema"
+      },
+      {
+        "id": "imports-module",
+        "name": "imports",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::imports",
+        "ownership": "Source"
+      },
+      {
+        "id": "imports-file",
+        "name": "imports.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": "imports",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "main-module",
+        "name": "main",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/main.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::main",
+        "ownership": "Source"
+      },
+      {
+        "id": "main-file",
+        "name": "main.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/main.vela",
+        "range": "file",
+        "detail": "main",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "main-local",
+        "name": "main::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/main.vela",
+        "range": "local-range",
+        "detail": null,
+        "container": "main",
+        "identity": "main::Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "main-host-impl",
+        "name": "main::impl Host",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/main.vela",
+        "range": "host-impl-range",
+        "detail": null,
+        "container": "main",
+        "identity": "main::impl Host",
+        "ownership": "Source"
+      },
+      {
+        "id": "main-trait-imported-impl",
+        "name": "main::impl Reader for Row",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/main.vela",
+        "range": "trait-imported-impl-range",
+        "detail": null,
+        "container": "main",
+        "identity": "main::impl Reader for Row",
+        "ownership": "Source"
+      },
+      {
+        "id": "main-imported-impl",
+        "name": "main::impl Row",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/main.vela",
+        "range": "imported-impl-range",
+        "detail": null,
+        "container": "main",
+        "identity": "main::impl Row",
+        "ownership": "Source"
+      },
+      {
+        "id": "main-uses",
+        "name": "main::uses",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/main.vela",
+        "range": "uses-range",
+        "detail": "(row: Row, host: Host, reader: Reader, hreader: HostReader, meta: Metadata, dynamic: Any)",
+        "container": "main",
+        "identity": "main::uses",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-metadata-box",
+        "name": "metadata::Box",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "metadata::Box",
+        "container": null,
+        "identity": "metadata::Box",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-metadata-box-read",
+        "name": "metadata::Box::read",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function() -> String",
+        "container": "metadata::Box",
+        "identity": "metadata::Box.read",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-metadata-box-value",
+        "name": "metadata::Box::value",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "String",
+        "container": "metadata::Box",
+        "identity": "metadata::Box.value",
+        "ownership": "Schema"
+      },
+      {
+        "id": "deep-nested-file",
+        "name": "nested.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/deep/nested.vela",
+        "range": "file",
+        "detail": "deep::nested",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-module",
+        "name": "origins",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/origins.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::origins",
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-file",
+        "name": "origins.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/origins.vela",
+        "range": "file",
+        "detail": "origins",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-origin-box",
+        "name": "origins::HostBox",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/origins.vela",
+        "range": "origin-box-range",
+        "detail": null,
+        "container": "origins",
+        "identity": "origins::HostBox",
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-origin-choice",
+        "name": "origins::HostChoice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "file": "scripts/origins.vela",
+        "range": "origin-choice-range",
+        "detail": null,
+        "container": "origins",
+        "identity": "origins::HostChoice",
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-origin-trait",
+        "name": "origins::HostReader",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "file": "scripts/origins.vela",
+        "range": "origin-trait-range",
+        "detail": null,
+        "container": "origins",
+        "identity": "origins::HostReader",
+        "ownership": "Source"
+      },
+      {
+        "id": "origins-origin-factory",
+        "name": "origins::factory",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/origins.vela",
+        "range": "origin-factory-range",
+        "detail": "() -> bool",
+        "container": "origins",
+        "identity": "origins::factory",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-module",
+        "name": "source",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/source.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::source",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-file",
+        "name": "source.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/source.vela",
+        "range": "file",
+        "detail": "source",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "source-choice",
+        "name": "source::Choice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "file": "scripts/source.vela",
+        "range": "choice-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::Choice",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-limit",
+        "name": "source::LIMIT",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "file": "scripts/source.vela",
+        "range": "limit-range",
+        "detail": "i64",
+        "container": "source",
+        "identity": "source::LIMIT",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-private",
+        "name": "source::Private",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/source.vela",
+        "range": "private-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::Private",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-readable",
+        "name": "source::Readable",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "file": "scripts/source.vela",
+        "range": "readable-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::Readable",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-source-widget",
+        "name": "source::Widget",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "source::Widget",
+        "container": null,
+        "identity": "source::Widget",
+        "ownership": "Schema"
+      },
+      {
+        "id": "source-widget",
+        "name": "source::Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/source.vela",
+        "range": "widget-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-source-widget-read",
+        "name": "source::Widget::read",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function() -> String",
+        "container": "source::Widget",
+        "identity": "source::Widget.read",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-source-widget-value",
+        "name": "source::Widget::value",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "String",
+        "container": "source::Widget",
+        "identity": "source::Widget.value",
+        "ownership": "Schema"
+      },
+      {
+        "id": "source-extern",
+        "name": "source::external",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/source.vela",
+        "range": "extern-range",
+        "detail": "i64",
+        "container": "source",
+        "identity": "source::external",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-override",
+        "name": "source::impl Readable for Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/source.vela",
+        "range": "override-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::impl Readable for Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-inherent",
+        "name": "source::impl Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "file": "scripts/source.vela",
+        "range": "inherent-range",
+        "detail": null,
+        "container": "source",
+        "identity": "source::impl Widget",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-state",
+        "name": "source::live",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/source.vela",
+        "range": "state-range",
+        "detail": "i64",
+        "container": "source",
+        "identity": "source::live",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-make",
+        "name": "source::make",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/source.vela",
+        "range": "make-range",
+        "detail": "(value: i64) -> Widget",
+        "container": "source",
+        "identity": "source::make",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-source-make",
+        "name": "source::make",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> String",
+        "container": null,
+        "identity": "source::make",
+        "ownership": "Schema"
+      },
+      {
+        "id": "unresolved-module",
+        "name": "unresolved",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/unresolved.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::unresolved",
+        "ownership": "Source"
+      },
+      {
+        "id": "unresolved-file",
+        "name": "unresolved.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/unresolved.vela",
+        "range": "file",
+        "detail": "unresolved",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "unresolved-unresolved",
+        "name": "unresolved::unresolved",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/unresolved.vela",
+        "range": "unresolved-range",
+        "detail": "(dynamic: Any)",
+        "container": "unresolved",
+        "identity": "unresolved::unresolved",
+        "ownership": "Source"
+      }
+    ],
+    "queries": [
+      {
+        "id": "all",
+        "query": "",
+        "symbols": [
+          "collisions-module",
+          "collisions-file",
+          "collisions-collision",
+          "collisions-collision-fn",
+          "deep-user-module",
+          "deep-user-file",
+          "deep-user-deep-use",
+          "deep-nested-module",
+          "deep-nested-nested",
+          "deep-nested-nested-fn",
+          "schema-host-box",
+          "schema-host-box-read",
+          "schema-host-box-value",
+          "schema-host-choice",
+          "schema-host-choice-empty",
+          "schema-host-choice-named",
+          "schema-named-value",
+          "schema-host-choice-pair",
+          "schema-pair-value",
+          "schema-host-readable",
+          "schema-host-readable-read",
+          "schema-host-make",
+          "imports-module",
+          "imports-file",
+          "main-module",
+          "main-file",
+          "main-local",
+          "main-host-impl",
+          "main-trait-imported-impl",
+          "main-imported-impl",
+          "main-uses",
+          "schema-metadata-box",
+          "schema-metadata-box-read",
+          "schema-metadata-box-value",
+          "deep-nested-file",
+          "origins-module",
+          "origins-file",
+          "origins-origin-box",
+          "origins-origin-choice",
+          "origins-origin-trait",
+          "origins-origin-factory",
+          "source-module",
+          "source-file",
+          "source-choice",
+          "source-limit",
+          "source-private",
+          "source-readable",
+          "schema-source-widget",
+          "source-widget",
+          "schema-source-widget-read",
+          "schema-source-widget-value",
+          "source-extern",
+          "source-override",
+          "source-inherent",
+          "source-state",
+          "source-make",
+          "schema-source-make",
+          "unresolved-module",
+          "unresolved-file",
+          "unresolved-unresolved"
+        ]
+      },
+      {
+        "id": "trim-empty",
+        "query": " \t\n",
+        "symbols": [
+          "collisions-module",
+          "collisions-file",
+          "collisions-collision",
+          "collisions-collision-fn",
+          "deep-user-module",
+          "deep-user-file",
+          "deep-user-deep-use",
+          "deep-nested-module",
+          "deep-nested-nested",
+          "deep-nested-nested-fn",
+          "schema-host-box",
+          "schema-host-box-read",
+          "schema-host-box-value",
+          "schema-host-choice",
+          "schema-host-choice-empty",
+          "schema-host-choice-named",
+          "schema-named-value",
+          "schema-host-choice-pair",
+          "schema-pair-value",
+          "schema-host-readable",
+          "schema-host-readable-read",
+          "schema-host-make",
+          "imports-module",
+          "imports-file",
+          "main-module",
+          "main-file",
+          "main-local",
+          "main-host-impl",
+          "main-trait-imported-impl",
+          "main-imported-impl",
+          "main-uses",
+          "schema-metadata-box",
+          "schema-metadata-box-read",
+          "schema-metadata-box-value",
+          "deep-nested-file",
+          "origins-module",
+          "origins-file",
+          "origins-origin-box",
+          "origins-origin-choice",
+          "origins-origin-trait",
+          "origins-origin-factory",
+          "source-module",
+          "source-file",
+          "source-choice",
+          "source-limit",
+          "source-private",
+          "source-readable",
+          "schema-source-widget",
+          "source-widget",
+          "schema-source-widget-read",
+          "schema-source-widget-value",
+          "source-extern",
+          "source-override",
+          "source-inherent",
+          "source-state",
+          "source-make",
+          "schema-source-make",
+          "unresolved-module",
+          "unresolved-file",
+          "unresolved-unresolved"
+        ]
+      },
+      {
+        "id": "source-root",
+        "query": "source::",
+        "symbols": [
+          "source-choice",
+          "source-limit",
+          "source-private",
+          "source-readable",
+          "schema-source-widget",
+          "source-widget",
+          "schema-source-widget-read",
+          "schema-source-widget-value",
+          "source-extern",
+          "source-override",
+          "source-inherent",
+          "source-state",
+          "source-make",
+          "schema-source-make"
+        ]
+      },
+      {
+        "id": "same-type",
+        "query": "source::Widget",
+        "symbols": [
+          "schema-source-widget",
+          "source-widget",
+          "schema-source-widget-read",
+          "schema-source-widget-value"
+        ]
+      },
+      {
+        "id": "same-function",
+        "query": "source::make",
+        "symbols": [
+          "source-make",
+          "schema-source-make"
+        ]
+      },
+      {
+        "id": "all-widget",
+        "query": "WiDgEt",
+        "symbols": [
+          "collisions-collision",
+          "deep-nested-nested",
+          "main-local",
+          "schema-source-widget",
+          "source-widget",
+          "schema-source-widget-read",
+          "schema-source-widget-value",
+          "source-override",
+          "source-inherent"
+        ]
+      },
+      {
+        "id": "host",
+        "query": "host::",
+        "symbols": [
+          "schema-host-box",
+          "schema-host-box-read",
+          "schema-host-box-value",
+          "schema-host-choice",
+          "schema-host-choice-empty",
+          "schema-host-choice-named",
+          "schema-named-value",
+          "schema-host-choice-pair",
+          "schema-pair-value",
+          "schema-host-readable",
+          "schema-host-readable-read",
+          "schema-host-make"
+        ]
+      },
+      {
+        "id": "metadata",
+        "query": "metadata::",
+        "symbols": [
+          "schema-metadata-box",
+          "schema-metadata-box-read",
+          "schema-metadata-box-value"
+        ]
+      },
+      {
+        "id": "fields",
+        "query": "value",
+        "symbols": [
+          "schema-host-box-value",
+          "schema-named-value",
+          "schema-pair-value",
+          "schema-metadata-box-value",
+          "schema-source-widget-value"
+        ]
+      },
+      {
+        "id": "methods",
+        "query": "::read",
+        "symbols": [
+          "schema-host-box-read",
+          "schema-host-readable",
+          "schema-host-readable-read",
+          "schema-metadata-box-read",
+          "source-readable",
+          "schema-source-widget-read"
+        ]
+      },
+      {
+        "id": "unit-variant",
+        "query": "Empty",
+        "symbols": [
+          "schema-host-choice-empty"
+        ]
+      },
+      {
+        "id": "tuple-variant",
+        "query": "Pair",
+        "symbols": [
+          "schema-host-choice-pair",
+          "schema-pair-value"
+        ]
+      },
+      {
+        "id": "record-variant",
+        "query": "Named",
+        "symbols": [
+          "schema-host-choice-named",
+          "schema-named-value"
+        ]
+      },
+      {
+        "id": "source-field-schema-collision",
+        "query": "source::Widget::value",
+        "symbols": [
+          "schema-source-widget-value"
+        ]
+      },
+      {
+        "id": "source-method-schema-collision",
+        "query": "source::Widget::read",
+        "symbols": [
+          "schema-source-widget-read"
+        ]
+      },
+      {
+        "id": "source-enum-members-not-global",
+        "query": "source::Choice::",
+        "symbols": []
+      },
+      {
+        "id": "source-trait-members-not-global",
+        "query": "source::Readable::read",
+        "symbols": []
+      },
+      {
+        "id": "imported-alias",
+        "query": "Row",
+        "symbols": [
+          "main-trait-imported-impl",
+          "main-imported-impl"
+        ]
+      },
+      {
+        "id": "host-alias",
+        "query": "Host",
+        "symbols": [
+          "schema-host-box",
+          "schema-host-box-read",
+          "schema-host-box-value",
+          "schema-host-choice",
+          "schema-host-choice-empty",
+          "schema-host-choice-named",
+          "schema-named-value",
+          "schema-host-choice-pair",
+          "schema-pair-value",
+          "schema-host-readable",
+          "schema-host-readable-read",
+          "schema-host-make",
+          "main-host-impl",
+          "origins-origin-box",
+          "origins-origin-choice",
+          "origins-origin-trait"
+        ]
+      },
+      {
+        "id": "imports-only",
+        "query": "imports",
+        "symbols": [
+          "imports-module",
+          "imports-file"
+        ]
+      },
+      {
+        "id": "private-original",
+        "query": "Private",
+        "symbols": [
+          "source-private"
+        ]
+      },
+      {
+        "id": "private-import-alias",
+        "query": "Hidden",
+        "symbols": []
+      },
+      {
+        "id": "unresolved-original",
+        "query": "unresolved",
+        "symbols": [
+          "unresolved-module",
+          "unresolved-file",
+          "unresolved-unresolved"
+        ]
+      },
+      {
+        "id": "unresolved-import-alias",
+        "query": "Missing",
+        "symbols": []
+      },
+      {
+        "id": "duplicate-import-alias",
+        "query": "Clash",
+        "symbols": []
+      },
+      {
+        "id": "missing-type",
+        "query": "NoType",
+        "symbols": []
+      },
+      {
+        "id": "missing-member",
+        "query": "missing",
+        "symbols": []
+      },
+      {
+        "id": "unknown-owner",
+        "query": "unknown",
+        "symbols": []
+      },
+      {
+        "id": "dynamic-owner",
+        "query": "dynamic",
+        "symbols": []
+      },
+      {
+        "id": "nested-qualified",
+        "query": "deep::nested",
+        "symbols": [
+          "deep-nested-module",
+          "deep-nested-nested",
+          "deep-nested-nested-fn"
+        ]
+      },
+      {
+        "id": "module-alias",
+        "query": "directory",
+        "symbols": []
+      },
+      {
+        "id": "source-module-alias",
+        "query": "api",
+        "symbols": []
+      },
+      {
+        "id": "stdlib-module-alias",
+        "query": "arrays",
+        "symbols": []
+      },
+      {
+        "id": "stdlib-function-alias",
+        "query": "output",
+        "symbols": []
+      },
+      {
+        "id": "stdlib-function",
+        "query": "std::print",
+        "symbols": []
+      },
+      {
+        "id": "stdlib-module",
+        "query": "std::array",
+        "symbols": []
+      },
+      {
+        "id": "constructor-use",
+        "query": "Box {",
+        "symbols": []
+      },
+      {
+        "id": "field-label-use",
+        "query": "other",
+        "symbols": []
+      },
+      {
+        "id": "source-added-method",
+        "query": "added",
+        "symbols": []
+      },
+      {
+        "id": "scripted-host-method",
+        "query": "scripted",
+        "symbols": []
+      },
+      {
+        "id": "source-method-body-name",
+        "query": "preview",
+        "symbols": []
+      },
+      {
+        "id": "detail-not-name",
+        "query": "String",
+        "symbols": []
+      },
+      {
+        "id": "schema-signature-not-name",
+        "query": "Function()",
+        "symbols": []
+      },
+      {
+        "id": "source-call-alias",
+        "query": "build",
+        "symbols": []
+      },
+      {
+        "id": "schema-call-alias",
+        "query": "host_build",
+        "symbols": []
+      },
+      {
+        "id": "variant-alias",
+        "query": "Unit",
+        "symbols": []
+      },
+      {
+        "id": "tuple-alias",
+        "query": "Tuple",
+        "symbols": []
+      },
+      {
+        "id": "unicode-trivia",
+        "query": "中😀",
+        "symbols": []
+      },
+      {
+        "id": "no-match",
+        "query": "not_a_symbol_721",
+        "symbols": []
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "host::Box",
+          "fact": {
+            "kind": "host",
+            "name": "host::Box"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-box-name"
+          }
+        },
+        {
+          "name": "metadata::Box",
+          "fact": {
+            "kind": "host",
+            "name": "metadata::Box"
+          }
+        },
+        {
+          "name": "source::Widget",
+          "fact": {
+            "kind": "host",
+            "name": "source::Widget"
+          }
+        },
+        {
+          "name": "host::Choice",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-choice-name"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "host::Readable",
+          "fact": {
+            "kind": "trait",
+            "name": "host::Readable"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-trait-name"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "host::make",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "host",
+              "name": "host::Box"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-factory-name"
+          }
+        },
+        {
+          "name": "source::make",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "string"
+            }
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "host::Box",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-value-name"
+          }
+        },
+        {
+          "owner": "metadata::Box",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          }
+        },
+        {
+          "owner": "source::Widget",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          }
+        },
+        {
+          "owner": "host::Choice::Pair",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          }
+        },
+        {
+          "owner": "host::Choice::Named",
+          "name": "value",
+          "fact": {
+            "kind": "primitive",
+            "name": "string"
+          }
+        }
+      ],
+      "methods": [
+        {
+          "owner": "host::Box",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "string"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-read-name"
+          }
+        },
+        {
+          "owner": "metadata::Box",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "string"
+            }
+          }
+        },
+        {
+          "owner": "source::Widget",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "string"
+            }
+          }
+        }
+      ],
+      "traitMethods": [
+        {
+          "owner": "host::Readable",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "primitive",
+              "name": "string"
+            }
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-read-name"
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::Choice",
+          "name": "Empty",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Empty"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        },
+        {
+          "owner": "host::Choice",
+          "name": "Pair",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Pair"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        },
+        {
+          "owner": "host::Choice",
+          "name": "Named",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Choice",
+            "variant": "Named"
+          },
+          "sourceSpan": {
+            "file": "scripts/origins.vela",
+            "marker": "origin-empty-name"
+          }
+        }
+      ]
+    }
+  }
+}

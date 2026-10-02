@@ -128,6 +128,8 @@ mod shared_fixture_tests;
 mod document_symbol_matrix_tests;
 #[cfg(test)]
 mod workspace_symbol_matrix_tests;
+#[cfg(test)]
+mod workspace_symbol_ownership_tests;
 
 #[cfg(test)]
 mod document_symbol_recovery_tests;

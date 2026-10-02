@@ -8359,10 +8359,25 @@
         "workspace-symbol/environments/encoded_uri/protocol"
       ],
       "summary": "Close six workspace-symbol S1 positive service/protocol, repeat and UTF16/CRLF/encoded-URI requirements. Four independently authored sources pin complete ordered 31-row results: four files, four modules and 23 top-level declarations, including public/private consts, state/extern state, zero/untyped/defaulted/async functions, structs/enum forms, required/default traits and inherent/trait impls. Three Widget owners, two LIMIT declarations and two api.vela files retain actual source locations, canonical service identities, kinds, optional details/containers and whole declaration/file/module extents. Thirty-two authored ordered query result ID sets pin whole/trimmed-empty, case folding, edge trim, qualified substring, duplicates/private/async/state/trait/enum matches and exact exclusions; source members, variants, aliases, locals, parameters, attribute text, details and wildcard/interior-space text cannot invent name results. Every query repeats three times at LF/CRLF and two Unicode line shifts, with literal UTF16 column8 versus byte12, complete JSON-RPC envelopes, encoded private roots and unchanged physical/source bytes. Initial service passes but whole protocol response exposes copied byte columns. Fix workspace-symbol projection using the same immutable database snapshot and at most one checked UTF16 index per requested source, with controlled missing-source/bad-URI/bounds/reversed-range projection errors; existing schema URI/detail payload remains unchanged. Move projection into existing focused symbols module, keep service byte columns and coordinator ownership unchanged. Focused projection test rejects missing snapshot sources and invalid source URIs. Retain initial failed protocol log and first automatic audit (798 protocol passed, exact symbols module absent from JSON boundary allowlist). Register only that typed extension-payload projection boundary, preserving the guard for unrelated modules; focused boundary passes before a new freeze and fresh complete Windows evidence. Earlier VSIX23/native50 belong to the superseded source and are retained without being used to close the final gate. Three Node corpus/query/golden tests; focused service7/protocol11, Node151, fmt and relevant all-target Clippy; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service751+2 historical ignored/protocol799/stdio10. Core906 verified/419 open/2NA/zero failed; B10 thirty-six verified/140 pending, parent open. Preserve ten accepted snapshots, prior207 completed children, all50 native contracts and independent historical macOS audit. S0, schema/import ownership, negative recovery, lifecycle, installed workspace-symbol smoke and native UX11/UX12 remain open; next B10.7; macOS requires fresh independent proof when used and B16 remains deferred. VSIX editors/vscode/test-results/run-1ZORme/results.json; native editors/vscode/test-results/input-ffhSTs/results.json; audit target/lsp-matrix/run-FuIGyz/report.json. Find commit through LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.7",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/syntax/S4/positive/service",
+        "workspace-symbol/syntax/S4/positive/protocol",
+        "workspace-symbol/syntax/S4/negative/service",
+        "workspace-symbol/syntax/S4/negative/protocol",
+        "workspace-symbol/syntax/S8/positive/service",
+        "workspace-symbol/syntax/S8/positive/protocol",
+        "workspace-symbol/syntax/S8/negative/service",
+        "workspace-symbol/syntax/S8/negative/protocol"
+      ],
+      "summary": "Close eight workspace-symbol S4/S8 positive/negative service/protocol requirements with independently authored whole60-row sets and49 literal ordered query memberships. Eight sources pin eight files/eight modules/25 top-level declarations under source/schema collisions, public/private source imports, aliases, nested modules, source/host-target impls, member writes, shorthand/record constructors, unit/tuple/record variants, trait/default methods and builtin/unresolved/dynamic uses. Nineteen static schema rows pin four types/one trait/two functions/five fields/three methods/one trait method/three variants; all10 marked metadata source origins are bound and checked, metadata-only origins absent. Canonical Source/Schema identities, kinds, optional details/containers and whole declaration/file/module ranges remain exact. Same source::Widget Class/Struct and source::make Function rows remain distinct; every metadata location uses URI-only vela-schema even for source-backed metadata. Aliases, constructor/field labels, source members/defaults/variants, builtin imports, unknown owners, dynamic uses and signature/type details cannot invent global names. All49 queries repeat three times through LF/CRLF and two Unicode prefix shifts; literal UTF16 column10 versus byte14, full JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparisons and unchanged source/schema physical bytes. Retain exploratory test setup compile failure (missing &str borrow), independent golden mismatch due two extra comment spaces, and source:: query membership error that included module name source without trailing separator; correct these from literal authored source/query contract, no production defect or behavior change inferred. Three Node partition/query/golden checks; focused service8/protocol12, Node154, fmt and relevant all-target Clippy; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service752+2 historical ignored/protocol800/stdio10. Core914 verified/411 open/2NA/zero failed; B10 forty-four verified/132 pending, parent open. Preserve ten accepted snapshots, prior208 completed children, all50 native contracts and independent historical macOS audit. Type hints, recovery, lifecycle and installed/native Outline/picker remain open; next B10.8; macOS requires fresh independent proof when used and B16 stays deferred. VSIX editors/vscode/test-results/run-jniCVW/results.json; native editors/vscode/test-results/input-hBX8YJ/results.json; audit target/lsp-matrix/run-bajIyB/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.7",
-  "nextTask": "B10.7",
+  "activeChild": "B10.8",
+  "nextTask": "B10.8",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10636,7 +10651,28 @@
     "target/b10-6-node.log",
     "target/b10-6-format.log",
     "target/b10-6-clippy.log",
-    "target/b10-6-checkpoint.log"
+    "target/b10-6-checkpoint.log",
+    "target/lsp-matrix/run-bajIyB/report.json",
+    "target/lsp-matrix/run-JOYFCw/report.json",
+    "editors/vscode/test-results/run-jniCVW/results.json",
+    "editors/vscode/test-results/input-hBX8YJ/results.json",
+    "target/b10-7-input.log",
+    "target/b10-7-editor.log",
+    "target/b10-7-scoped.log",
+    "target/b10-7-baseline.log",
+    "target/b10-7-service-first.log",
+    "target/b10-7-service-second.log",
+    "target/b10-7-service-third.log",
+    "target/b10-7-service-final.log",
+    "target/b10-7-protocol-first-pass.log",
+    "target/b10-7-protocol-final.log",
+    "target/b10-7-node-first.log",
+    "target/b10-7-node-second.log",
+    "target/b10-7-node-final.log",
+    "target/b10-7-node.log",
+    "target/b10-7-format.log",
+    "target/b10-7-clippy.log",
+    "target/b10-7-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14564,8 +14600,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "e70b70117386724e064853624b2a044472f1a063",
-          "treeSha256": "f5801c87b87c39f345a8fc1a2d2648442c83453d0a45703dc4afbf9c7a6617ed"
+          "revision": "6bb941dbf5fb09de4bc51d66d5a5bdd05f821c23",
+          "treeSha256": "9970a5b789cbc473a5a85f1b1274f8ab901ec965daf2b580c76ed4a6aac670c9"
         },
         "profile": {
           "platform": "win32",
@@ -14573,11 +14609,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-FuIGyz/report.json"
+          "target/lsp-matrix/run-bajIyB/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-1ZORme/results.json --local-results editors/vscode/test-results/input-ffhSTs/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-jniCVW/results.json --local-results editors/vscode/test-results/input-hBX8YJ/results.json",
             "exitCode": 0
           }
         ]

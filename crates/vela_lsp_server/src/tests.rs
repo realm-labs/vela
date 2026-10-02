@@ -247,3 +247,4 @@ mod watched_files_matrix;
 mod workspace_configuration_matrix;
 mod workspace_folders;
 mod workspace_symbol_matrix;
+mod workspace_symbol_ownership;

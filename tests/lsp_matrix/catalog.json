@@ -17209,6 +17209,86 @@
           "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-ownership.md. Compare independently authored complete 60-row workspace sets: eight source files, eight modules, 25 top-level source declarations and19 schema types/traits/functions/fields/methods/trait-methods/variants. All49 explicit ordered query memberships pin source/schema same-name collisions, canonical Source/Schema identities, actual declaration/file/module ranges, kinds, optional details/containers and URI-only metadata locations even for all10 checked bound source origins. Source fields/methods/defaults, unit/tuple/record variants, record/shorthand constructors, labels/writes, imported/host-target impls, alias/qualified calls, private/public/nested modules, source/host/builtin imports and unresolved/dynamic uses cannot manufacture extra global declarations. Exact positive sets and alias/member/builtin/detail/no-match exclusions; same source::Widget Class/Struct and source::make Function rows retain distinct ownership. Each query repeats three times across LF/CRLF and two Unicode line shifts; UTF16 column10 versus byte14, whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, immutable fresh service comparison and unchanged physical source/schema bytes. Type-hint, recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
     }
   ],
   "featureFiles": [
