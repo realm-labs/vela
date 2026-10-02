@@ -192,9 +192,7 @@ impl CstParser<'_, '_> {
             self.param_list(param_list_start, body.unwrap_or(end));
         }
 
-        if let Some(body_start) = body {
-            self.return_type(param_list_end, body_start);
-        }
+        self.return_type(param_list_end, body.unwrap_or(end));
 
         if let Some(body_start) = body {
             self.emit_until(body_start);
@@ -214,8 +212,8 @@ impl CstParser<'_, '_> {
         else {
             return false;
         };
-        self.find_first_kind_before(SyntaxKind::Ident, keyword + 1, param_list_start)
-            .is_none()
+        let name = self.skip_trivia(keyword + 1);
+        name >= param_list_start || !self.at_kind(name, SyntaxKind::Ident)
     }
 
     fn struct_item(&mut self, end: usize) {

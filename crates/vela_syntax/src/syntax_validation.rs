@@ -7,6 +7,8 @@ use crate::ast::{
 };
 use crate::syntax_kind::SyntaxKind;
 
+mod recovery;
+
 pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
     let mut diagnostics = tree
         .syntax()
@@ -27,6 +29,7 @@ pub(crate) fn validate_source(source: SourceId, tree: &SyntaxSourceFile) -> Vec<
             .flat_map(|pattern| validate_tuple_pattern(source, &pattern)),
     );
     diagnostics.extend(validate_removed_null(source, tree));
+    diagnostics.extend(recovery::validate(source, tree));
     diagnostics.extend(
         tree.syntax()
             .descendants()

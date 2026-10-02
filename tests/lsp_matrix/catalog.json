@@ -16875,6 +16875,86 @@
           "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
         }
       ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_recovery_tests::document_symbol_recovery_preserves_exact_owned_trees_and_restores_current_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S9/positive/service",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_recovery_tests::document_symbol_recovery_preserves_exact_owned_trees_and_restores_current_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S9/positive/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S9/negative/service",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_recovery_tests::document_symbol_recovery_preserves_exact_owned_trees_and_restores_current_ranges"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S9/negative/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-recovery.md. Independently authored 56-case complete source-owned outline trees pin names/kinds/details, full ranges, real selections and ancestry through damaged const/VM/extern state/function/parameter/default/struct/enum/trait/inherent and trait impl declarations, partial body/member/call/constructor/pattern/type/expression, missing names/targets, empty/trivia/error-run files and unresolved/dynamic uses. Healthy neighbors and same-named helper ownership remain separate. Damage/repair/redamage checks incremental and fresh results at both layers with three exact repeats per step; actual protocol sync pins whole UTF-16 JSON-RPC responses. LF/CRLF and literal Unicode byte/UTF-16 goldens remain independent. Declaration errors appear/clear/reappear while partial expression recovery preserves its accepted quiet policy; named recovered owners retain exact current extents and available return hints; immediate header slots reject later-identifier name theft. Remaining S4/S8, other state/schema and editor obligations stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
+        }
+      ]
     }
   ],
   "featureFiles": [

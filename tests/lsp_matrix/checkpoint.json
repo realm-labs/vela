@@ -8293,10 +8293,25 @@
         "document-symbol/environments/encoded_uri/protocol"
       ],
       "summary": "Close five document-symbol S1 positive service/protocol and UTF-16/CRLF/encoded-URI requirements. Independently authored 19-root/33-node whole tree pins public/private const, VM/extern state, typed/default/zero/untyped/async functions, struct fields/defaults, enum unit/tuple/record variants, required/default trait and inherent/trait impl methods, exact names/kinds/details, full ranges, actual identifier/header selections, ancestry and source ownership. Imports, locals and constructor uses do not create outline declarations. Attribute name decoys expose substring selection errors. Join existing HIR owners to cached CST extents by exact offsets without mutating semantic spans. Recursively project both ranges through current source UTF-16 instead of copied byte columns. LF/CRLF literal Unicode goldens and complete disk/open JSON-RPC trees retain one encoded source identity. Service red test reproduces wrong extents; protocol red tree reproduces byte-column projection. Focused service2/protocol5; Node140; fmt; service/server all-target Clippy; fresh Windows VSIX20/native50; strict B09 service747+2 historical ignores/protocol794/stdio10, core875/450/2/zero failed, B10 five verified/171 pending. Scope invalid-config rendered observations to language/marker widgets so an unrelated tab tooltip cannot collide; retain the first failed native bundle and unchanged actions/full expected hover facts. Preserve ten accepted snapshots, prior202 children and all50 native contract hashes. Next B10.2 document-symbol recovery and remaining syntax partitions. macOS needs independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-iFDxDJ/results.json; native editors/vscode/test-results/input-joZcUx/results.json; audit target/lsp-matrix/run-nwoCAw/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B10.2",
+      "revision": null,
+      "requirements": [
+        "document-symbol/syntax/S1/negative/service",
+        "document-symbol/syntax/S1/negative/protocol",
+        "document-symbol/syntax/S9/positive/service",
+        "document-symbol/syntax/S9/positive/protocol",
+        "document-symbol/syntax/S9/negative/service",
+        "document-symbol/syntax/S9/negative/protocol",
+        "document-symbol/states/recovery/protocol",
+        "document-symbol/states/repeat/protocol"
+      ],
+      "summary": "Close eight document-symbol S1 negative and S9 positive/negative service/protocol plus recovery/repeat state requirements. Shared independently authored 56-case whole source-owned trees cover malformed const, VM/extern state, functions/parameters/defaults/return types/bodies, struct/enum/trait/inherent and trait impl owners/members/defaults/targets, partial member/call/constructor/pattern/type/expression, EOF, empty/trivia/error-run files and unresolved/dynamic bodies. Exact names/kinds/details/full extents/selections/ancestry/identities exclude guessed owners and same-named helpers. LF/CRLF literal Chinese/non-BMP byte/UTF-16 goldens; damage/repair/redamage matches authored trees in incremental/fresh service and actual typed protocol coordinators, with three exact repeated requests each step. Red tests expose later-identifier name theft, missing available return hints and missing declaration-child diagnostics; narrow validation to declarations and preserve accepted quiet partial-expression recovery after the full regression rejects an overbroad first rule. Existing accepted assertions remain fixed; retain the first failed backend report. Validate without discarding lossless nodes or changing runtime semantics. Direct syntax tests pin messages, owned bounded source spans, lossless text and valid counterparts; compact >= annotation/initializer token remains valid. Focused service1/protocol6, full syntax119+diagnostic fixture1, Node140, fmt, relevant all-target Clippy, fresh Windows VSIX20/native50, strict B09 service748+2 historical ignored/protocol795/stdio10, core883/442/2/zero failed, B10 thirteen verified/163 pending. Scope language hover observations to the already asserted tokenized code labels or marker diagnostics; Markdown tab-path tooltips cannot collide. Retain bounded DOM collision metadata, the first failed full native bundle and the selected investigation missing its workspace prerequisite. Preserve all native input actions and whole expected hover facts. Preserve ten accepted snapshots, prior203 children, all50 native contract hashes and historical macOS audit. Next B10.3 remaining document-symbol S4/S8 and lifecycle/schema partitions. macOS requires independent fresh evidence; B16 deferred. VSIX editors/vscode/test-results/run-wauR8C/results.json; native editors/vscode/test-results/input-leNRnE/results.json; audit target/lsp-matrix/run-aCi4eb/report.json. Find commit through LSP-Batch trailer."
     }
   ],
-  "activeChild": "B10.2",
-  "nextTask": "B10.2",
+  "activeChild": "B10.3",
+  "nextTask": "B10.3",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10410,7 +10425,48 @@
     "target/b10-1-service-red.log",
     "target/b10-1-service-final.log",
     "target/b10-1-protocol-green-2.log",
-    "target/b10-1-protocol-final.log"
+    "target/b10-1-protocol-final.log",
+    "target/lsp-matrix/run-aCi4eb/report.json",
+    "target/lsp-matrix/run-X5cPCe/report.json",
+    "target/b10-2-input-current.log",
+    "target/b10-2-editor-current.log",
+    "target/b10-2-old-scoped-stale.log",
+    "target/b10-2-name-theft-red.json",
+    "target/b10-2-name-theft-red.log",
+    "target/b10-2-name-service-red.log",
+    "target/b10-2-return-service-red.log",
+    "editors/vscode/test-results/input-obzKp0/results.json",
+    "editors/vscode/test-results/run-PH4ebh/results.json",
+    "target/lsp-matrix/run-LzyYE0/report.json",
+    "target/lsp-matrix/run-xokwIe/service-run.log",
+    "target/lsp-matrix/run-xokwIe/protocol-run.log",
+    "editors/vscode/test-results/run-wauR8C/results.json",
+    "editors/vscode/test-results/input-leNRnE/results.json",
+    "target/lsp-matrix/run-S8am4o/report.json",
+    "target/lsp-matrix/run-7oQNms/service-run.log",
+    "target/lsp-matrix/run-7oQNms/protocol-run.log",
+    "target/b10-2-backend-retry.log",
+    "target/b10-2-accepted-recovery-final.log",
+    "target/b10-2-accepted-service-recovery-final.log",
+    "editors/vscode/test-results/input-cgvsYk/results.json",
+    "editors/vscode/test-results/input-SGjOR8/results.json",
+    "target/b10-2-input-investigation.log",
+    "target/b10-2-input-final-2.log",
+    "target/b10-2-input-final-3.log",
+    "editors/vscode/test-results/input-HpACx8/results.json",
+    "target/b10-2-backend-audit.log",
+    "target/b10-2-node-final.log",
+    "target/b10-2-format.log",
+    "target/b10-2-clippy-final.log",
+    "target/b10-2-input-final.log",
+    "target/b10-2-editor-final.log",
+    "target/b10-2-scoped.log",
+    "target/b10-2-service-red.log",
+    "target/b10-2-service-cases-red.log",
+    "target/b10-2-service-final.log",
+    "target/b10-2-protocol-final.log",
+    "target/b10-2-syntax-final-current.log",
+    "target/b10-2-syntax-format-red.log"
   ],
   "openIssues": [
     {
@@ -14338,8 +14394,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "53f2841f9dc8ef35b68a4ef3c58cf8f9c88a56d1",
-          "treeSha256": "3b86f69944eb2cefaba5972b5fd8a8c8108cfa29b82782c09dc787677ec5d3d0"
+          "revision": "04ac7c38b7aebc9a0958802fca50fbb77396a9f0",
+          "treeSha256": "25dff9eec8bdbfb5d7aa7fc1040e0373a0dbd4b1857ee3cb07067ddb598e40af"
         },
         "profile": {
           "platform": "win32",
@@ -14347,11 +14403,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-nwoCAw/report.json"
+          "target/lsp-matrix/run-aCi4eb/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-iFDxDJ/results.json --local-results editors/vscode/test-results/input-joZcUx/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-wauR8C/results.json --local-results editors/vscode/test-results/input-leNRnE/results.json",
             "exitCode": 0
           }
         ]

@@ -1,0 +1,2146 @@
+{
+  "version": 1,
+  "id": "document-symbol-recovery",
+  "files": {
+    "scripts/main.vela": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+    "scripts/helper.vela": "pub fn Broken() {}\npub struct Decoy { value: bool }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "symbols": [
+      {
+        "id": "before",
+        "name": "before",
+        "kind": "Function",
+        "protocolKind": 12,
+        "identity": "main::before",
+        "detail": "()",
+        "range": "before-range",
+        "selection": "before-name",
+        "children": []
+      },
+      {
+        "id": "after",
+        "name": "after",
+        "kind": "Function",
+        "protocolKind": 12,
+        "identity": "main::after",
+        "detail": "()",
+        "range": "after-range",
+        "selection": "after-name",
+        "children": []
+      }
+    ],
+    "cases": [
+      {
+        "id": "const-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub const = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "const-no-value",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]const [[broken-name:start]]Broken[[broken-name:end]]: i64 = ;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Constant",
+            "protocolKind": 14,
+            "identity": "main::Broken",
+            "detail": "i64",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nstate : i64 = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-no-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]state [[broken-name:start]]Broken[[broken-name:end]] = 1;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Variable",
+            "protocolKind": 13,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-no-value",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]state [[broken-name:start]]Broken[[broken-name:end]]: i64 = ;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Variable",
+            "protocolKind": 13,
+            "identity": "main::Broken",
+            "detail": "i64",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "extern-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nextern state : i64;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "extern-no-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]extern state [[broken-name:start]]Broken[[broken-name:end]];[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Variable",
+            "protocolKind": 13,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "extern-forbidden-value",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]extern state [[broken-name:start]]Broken[[broken-name:end]]: i64 = 1;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Variable",
+            "protocolKind": 13,
+            "identity": "main::Broken",
+            "detail": "i64",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub fn () {}\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-name-from-return",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\npub fn () -> Ghost\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub fn = Ghost() {}\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-unclosed-params",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]( { }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-no-param-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]](: i64, value: i64) {}[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "(value: i64)",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-partial-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]async fn [[broken-name:start]]Broken[[broken-name:end]](value: Array<[[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "async (value: Array)",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-no-body",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]()[[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-return-without-body",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]pub fn [[broken-name:start]]Broken[[broken-name:end]]() -> Ghost[[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "() -> Ghost",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "struct-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub struct { ghost: i64 }\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "enum-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub enum { Ghost, Tuple(value: i64) }\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-no-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub trait { fn ghost(self); }\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "struct-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\npub struct = Ghost\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "enum-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\npub enum = Ghost\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\npub trait = Ghost\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "const-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub const : Ghost = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nstate : Ghost = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "extern-state-name-after-punctuation",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nextern state : Ghost;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-name-from-path",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub state :: Ghost: i64 = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "extern-state-name-from-path",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub extern state :: Ghost: i64;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "impl-no-target",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nimpl { fn ghost(self) {} }\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "struct-no-field-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]struct [[broken-name:start]]Broken[[broken-name:end]] { : i64, [[field-range:start]][[field-name:start]]value[[field-name:end]]: i64[[field-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "field",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Broken.value",
+                "detail": "i64",
+                "range": "field-range",
+                "selection": "field-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "struct-unclosed",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]struct [[broken-name:start]]Broken[[broken-name:end]] { [[field-range:start]][[field-name:start]]value[[field-name:end]]: i64[[field-range:end]][[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "field",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Broken.value",
+                "detail": "i64",
+                "range": "field-range",
+                "selection": "field-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-unclosed-tuple",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]enum [[broken-name:start]]Broken[[broken-name:end]] { [[variant-range:start]][[variant-name:start]]Tuple[[variant-name:end]]([[field-range:start]][[field-name:start]]value[[field-name:end]]: Array<[[field-range:end]][[variant-range:end]][[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Enum",
+            "protocolKind": 10,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "variant",
+                "name": "Tuple",
+                "kind": "EnumMember",
+                "protocolKind": 22,
+                "identity": "main::Broken::Tuple",
+                "detail": null,
+                "range": "variant-range",
+                "selection": "variant-name",
+                "children": [
+                  {
+                    "id": "field",
+                    "name": "value",
+                    "kind": "Field",
+                    "protocolKind": 8,
+                    "identity": "main::Broken::Tuple.value",
+                    "detail": "Array",
+                    "range": "field-range",
+                    "selection": "field-name",
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-no-method-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]trait [[broken-name:start]]Broken[[broken-name:end]] { fn (self); [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self);[[method-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Interface",
+            "protocolKind": 11,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Broken.read",
+                "detail": "(self)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-unclosed",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]trait [[broken-name:start]]Broken[[broken-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self);[[method-range:end]][[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Interface",
+            "protocolKind": 11,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Broken.read",
+                "detail": "(self)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "impl-no-method-name",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]][[broken-name:start]]impl Broken[[broken-name:end]] { fn (self) {} [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self) {}[[method-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "impl Broken",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Broken.read",
+                "detail": "(self)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "impl-unclosed",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]][[broken-name:start]]impl Broken[[broken-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self) {}[[method-range:end]][[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "impl Broken",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Broken.read",
+                "detail": "(self)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "function-missing-default",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]](value: i64 = ) {}[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "(value: i64)",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "function-missing-return-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() -> {}[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "struct-missing-default",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]struct [[broken-name:start]]Broken[[broken-name:end]] { [[field-range:start]][[field-name:start]]value[[field-name:end]]: i64 =[[field-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Struct",
+            "protocolKind": 23,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "field",
+                "name": "value",
+                "kind": "Field",
+                "protocolKind": 8,
+                "identity": "main::Broken.value",
+                "detail": "i64",
+                "range": "field-range",
+                "selection": "field-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "enum-missing-default",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]enum [[broken-name:start]]Broken[[broken-name:end]] { [[variant-range:start]][[variant-name:start]]Pair[[variant-name:end]]([[field-range:start]][[field-name:start]]value[[field-name:end]]: i64 =[[field-range:end]])[[variant-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Enum",
+            "protocolKind": 10,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "variant",
+                "name": "Pair",
+                "kind": "EnumMember",
+                "protocolKind": 22,
+                "identity": "main::Broken::Pair",
+                "detail": null,
+                "range": "variant-range",
+                "selection": "variant-name",
+                "children": [
+                  {
+                    "id": "field",
+                    "name": "value",
+                    "kind": "Field",
+                    "protocolKind": 8,
+                    "identity": "main::Broken::Pair.value",
+                    "detail": "i64",
+                    "range": "field-range",
+                    "selection": "field-name",
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-missing-default",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]trait [[broken-name:start]]Broken[[broken-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self, value: i64 = );[[method-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Interface",
+            "protocolKind": 11,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "main::Broken.read",
+                "detail": "(self, value: i64)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-missing-default",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]][[broken-name:start]]impl Read for Broken[[broken-name:end]] { [[method-range:start]]fn [[method-name:start]]read[[method-name:end]](self, value: i64 = ) {}[[method-range:end]] }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "impl Read for Broken",
+            "kind": "Object",
+            "protocolKind": 19,
+            "identity": "main::impl Read for Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": [
+              {
+                "id": "method",
+                "name": "read",
+                "kind": "Method",
+                "protocolKind": 6,
+                "identity": "Read for Broken.read",
+                "detail": "(self, value: i64)",
+                "range": "method-range",
+                "selection": "method-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-missing-target",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nimpl Read for { fn ghost(self) {} }\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "const-missing-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]const [[broken-name:start]]Broken[[broken-name:end]]: = 1;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Constant",
+            "protocolKind": 14,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "state-missing-type",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]state [[broken-name:start]]Broken[[broken-name:end]]: = 1;[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Variable",
+            "protocolKind": 13,
+            "identity": "main::Broken",
+            "detail": null,
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "malformed-neighbor",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n@;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "member-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let row = unknown; row.; }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "call-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { unknown(value = ); }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "constructor-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { Unknown { value: }; }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "pattern-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { match unknown { Unknown { value: } => 1 } }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "type-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let value: Array< = []; }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "expression-incomplete",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let value = ; }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "body-unclosed",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let value = 1;[[broken-range:end]]\n",
+        "parseError": true,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "unresolved-owner",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let value = Unknown { field: 1 }; value.missing(); }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "dynamic-owner",
+        "source": "/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]]() { let value: Any = 1; value.missing(); }[[broken-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n",
+        "parseError": false,
+        "symbols": [
+          {
+            "id": "before",
+            "name": "before",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::before",
+            "detail": "()",
+            "range": "before-range",
+            "selection": "before-name",
+            "children": []
+          },
+          {
+            "id": "broken",
+            "name": "Broken",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::Broken",
+            "detail": "()",
+            "range": "broken-range",
+            "selection": "broken-name",
+            "children": []
+          },
+          {
+            "id": "after",
+            "name": "after",
+            "kind": "Function",
+            "protocolKind": 12,
+            "identity": "main::after",
+            "detail": "()",
+            "range": "after-range",
+            "selection": "after-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "",
+        "parseError": false,
+        "symbols": []
+      },
+      {
+        "id": "trivia-only",
+        "source": "#!/usr/bin/env vela\n// fn ghost() {}\n/* struct Ghost { value: i64 } 中😀 */\n",
+        "parseError": false,
+        "symbols": []
+      }
+    ]
+  }
+}

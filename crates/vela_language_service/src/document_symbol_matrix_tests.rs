@@ -47,7 +47,7 @@ fn document_symbol_declarations_preserve_complete_ranges_selections_and_ownershi
     }
 }
 
-fn project(symbol: &DocumentSymbol) -> Value {
+pub(super) fn project(symbol: &DocumentSymbol) -> Value {
     let SymbolRef::Source(identity) = symbol.symbol() else {
         panic!("source symbol");
     };

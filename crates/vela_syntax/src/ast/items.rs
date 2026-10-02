@@ -1127,17 +1127,26 @@ fn item_keyword(kind: SyntaxKind) -> bool {
 }
 
 fn token_after(parent: &SyntaxNode, after: SyntaxKind, wanted: SyntaxKind) -> Option<SyntaxToken> {
-    let mut seen_after = false;
-    parent
-        .children_with_tokens()
-        .filter_map(|element| element.into_token())
-        .find(|token| {
-            if token.kind() == after {
-                seen_after = true;
-                return false;
-            }
-            seen_after && token.kind() == wanted
-        })
+    header_token(parent, |token| token.kind() == after, wanted)
+}
+
+fn header_token(
+    parent: &SyntaxNode,
+    keyword: impl Fn(&SyntaxToken) -> bool,
+    wanted: SyntaxKind,
+) -> Option<SyntaxToken> {
+    let mut elements = parent.children_with_tokens();
+    elements.find(|element| element.as_token().is_some_and(&keyword))?;
+    // A child node or punctuation ends the header slot. Never borrow an
+    // identifier from a return type or a later malformed header fragment.
+    elements
+        .find(|element| {
+            element
+                .as_token()
+                .is_none_or(|token| !token.kind().is_trivia())
+        })?
+        .into_token()
+        .filter(|token| token.kind() == wanted)
 }
 
 fn contextual_state_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
@@ -1146,14 +1155,11 @@ fn contextual_state_token(parent: &SyntaxNode) -> Option<SyntaxToken> {
 }
 
 fn token_after_contextual_state(parent: &SyntaxNode) -> Option<SyntaxToken> {
-    let mut seen_state = false;
-    significant_tokens(parent).find(|token| {
-        if !seen_state && token.kind() == SyntaxKind::Ident && token.text() == "state" {
-            seen_state = true;
-            return false;
-        }
-        seen_state && token.kind() == SyntaxKind::Ident
-    })
+    header_token(
+        parent,
+        |token| token.kind() == SyntaxKind::Ident && token.text() == "state",
+        SyntaxKind::Ident,
+    )
 }
 
 fn token_before(

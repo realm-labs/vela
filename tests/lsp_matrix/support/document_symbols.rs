@@ -26,6 +26,37 @@ pub(crate) fn fixture(crlf: bool) -> (FixtureWorkspace, Value) {
     (fixture, spec.oracle)
 }
 
+pub(crate) fn recovery(crlf: bool) -> (FixtureWorkspace, Value) {
+    let mut spec = load("document-symbol-recovery");
+    if crlf {
+        for source in spec.files.values_mut() {
+            *source = source.replace('\n', "\r\n");
+        }
+        for case in spec.oracle["cases"].as_array_mut().expect("cases") {
+            case["source"] = json!(
+                case["source"]
+                    .as_str()
+                    .expect("source")
+                    .replace('\n', "\r\n")
+            );
+        }
+    }
+    let fixture = FixtureWorkspace::new(&spec).expect("recovery fixture");
+    let doc = &fixture.disk["scripts/main.vela"];
+    let selected = doc.markers["before-name"];
+    assert_eq!(
+        (
+            selected.start.line,
+            selected.start.character,
+            selected.end.character
+        ),
+        (0, 13, 19)
+    );
+    assert_eq!(selected.start.byte, 17);
+    assert_eq!(&doc.text[selected.start.byte..selected.end.byte], "before");
+    (fixture, spec.oracle)
+}
+
 pub(crate) fn expected(document: &Document, rows: &Value, protocol: bool) -> Value {
     Value::Array(rows.as_array().expect("authored tree").iter().map(|row| {
         let mut result = json!({

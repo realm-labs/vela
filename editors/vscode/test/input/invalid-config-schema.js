@@ -115,15 +115,20 @@ async function runInvalidConfigSchema({ page, bridge, record, root, workspace, c
     };
     // A Quick Open click can leave the pointer above a tab tooltip while the
     // keyboard opens the language hover. Observe the language widget only;
-    // retain both Markdown and marker-only (diagnostic) hover contents.
+    // Code labels identify language hovers; tab tooltips can also use Markdown.
+    // Retain marker-only diagnostic hovers as well.
     const hover = page.locator(".monaco-hover:visible").filter({
-      has: page.locator(".markdown-hover, .marker.hover-contents"),
+      has: page.locator(".monaco-tokenized-source, .marker.hover-contents"),
     });
     const widget = async id => check(id, await until(id, async () => {
       const value = await hover.count() === 0 ? { visible: false } : await hover.count() === 1 ? { visible: await hover.isVisible(),
         label: (await hover.locator(".monaco-tokenized-source").allTextContents()).join("").trim(),
         paragraphs: (await hover.locator(".markdown-hover p").allTextContents()).map(s => s.replaceAll("\u00a0", " ").trim()), diagnostics: await hover.locator(".marker.hover-contents").allTextContents() } : null;
-      receipt("observation", id + "-widget", { widget: value }); return isDeepStrictEqual(value, expected(id).expected) && value;
+      const candidates = value === null ? await page.locator(".monaco-hover:visible").evaluateAll(elements => elements.map(element => ({
+        classes: element.className, html: element.outerHTML.slice(0, 5000),
+        ancestors: Array.from((function* () { for (let parent = element.parentElement; parent; parent = parent.parentElement) yield parent.className; })()).slice(0, 8),
+      }))) : undefined;
+      receipt("observation", id + "-widget", { widget: value, ...(candidates ? { candidates } : {}) }); return isDeepStrictEqual(value, expected(id).expected) && value;
     }));
     const currentSession = readSession(root); saveSession(); await native.activate();
     for (const a of contract.actions) {

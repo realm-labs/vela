@@ -4325,6 +4325,15 @@ rewrite semantic name spans or search attribute text for a matching name.
 Nested outline ranges convert through the current document's UTF-16 index at
 the protocol boundary; service positions retain byte columns.
 
+Missing required declaration children produce parse diagnostics without discarding
+lossless recovery nodes. Partial expression input preserves its existing quiet
+recovery policy. Named partial declarations retain their current outline
+identity and available metadata; missing names or impl targets never create a
+guessed outline owner. Declaration and alias names occupy the immediate header
+slot; punctuation or child nodes terminate that slot rather than allowing a
+later identifier to supply a name. A missing function body does not discard
+an available return type hint.
+
 B01's shared JSON corpus is consumed by test-only Rust modules and the installed
 VSIX runner. Markers provide absolute UTF-8 offsets and UTF-16 positions; the
 service consumer derives byte columns independently. Hand-authored golden ranges

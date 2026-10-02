@@ -95,8 +95,14 @@ Outline extents come from the cached CST while existing HIR ownership remains
 unchanged. Actual identifier/header selections ignore duplicate names inside
 attributes. Both layers cover LF/CRLF and the protocol uses encoded private roots;
 see the [declaration review](../tests/lsp_matrix/reviews/document-symbol-declarations.md).
-Negative recovery, remaining symbol partitions, lifecycle and other B10 features
-remain open under the execution checkpoint.
+Recovery coverage now pins 56 complete source-owned trees through damage,
+repair and repeated damage, with incremental/fresh comparisons at both layers.
+Missing required declaration parts remain diagnosed while named recovered declarations
+keep current outline ranges and available return hints. Header names cannot
+borrow later identifiers; see the
+[recovery review](../tests/lsp_matrix/reviews/document-symbol-recovery.md).
+Remaining symbol partitions, other lifecycle states and B10 features remain
+open under the execution checkpoint.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
