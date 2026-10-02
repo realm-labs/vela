@@ -17131,6 +17131,24 @@
           "name": "tests::document_symbol_lifecycle::lsp_document_symbol_lifecycle_pins_current_and_frozen_whole_utf16_trees_and_fresh_parity"
         }
       ]
+    },
+    {
+      "requirement": "document-symbol/editor/smoke",
+      "assertion": "Reviewed in reviews/document-symbol-editor.md. Installed VSIX public provider compares complete independently authored ordered trees, including names, zero-based kinds, details, extents, actual selections and recursive ancestry. All 19 declaration roots/33 nodes and eight ownership files/25 roots/46 nodes run on disk, dirty two-line Unicode prefixes and actual didClose/restoration at LF/CRLF. Exact imports-only empties require matched installed-client wire [] pairs after the current open/edit boundary, including public undefined normalization and same-version OutlineModel cache reuse, and real alias impls keep source ownership under loaded metadata; independent known String hover and actual Widget alias URI/range setup probes prevent absent-schema/unresolved-import shortcuts. All 56 recovery cases damage and repair complete trees, including missing names/types/defaults, malformed neighbors and Any/unresolved owners. Thirteen authored source phases cover two dirty/close cycles, disk-under-overlay, watched dependency replacement/deletion/recreation and restoration; deleted public resources reject acquisition. Source bytes and disk maps are independently pinned, each complete tree repeats three times, requests/mutation completion waits are bounded, settings restore and private encoded roots are owned. Expectations and actual observations/client logs retained. Schema lifecycle/source-backed metadata/immutable and fresh-server proof remain in Rust; native UX11/UX12 and other B10 cells remain open.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "document symbol provider preserves complete authored declaration and ownership trees"
+        },
+        {
+          "layer": "editor",
+          "name": "document symbol provider preserves complete trees through damage repair and Unicode shifts"
+        },
+        {
+          "layer": "editor",
+          "name": "document symbol provider preserves complete dirty close and dependency lifecycle trees"
+        }
+      ]
     }
   ],
   "featureFiles": [

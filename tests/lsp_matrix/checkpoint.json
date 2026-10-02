@@ -8338,10 +8338,18 @@
         "document-symbol/states/dependency_delete/protocol"
       ],
       "summary": "Close six document-symbol protocol dirty/close_restore/missing_schema/stale_schema/dependency_change/dependency_delete requirements. Nineteen independently authored phases pin disk, open overlay, effective sources and complete ordered trees for eight source variants across three files. Two dirty/close cycles, disk-under-overlay changes, dependency replacement/deletion/recreation and final restoration preserve actual names, kinds, details, canonical identities, extents, selections and owners without stale nodes/ranges. Loaded schema replacement changes known field names/types and bound locations; invalid format99 and missing schema clear facts/locations with established Any-fallback diagnostics; restoration loads facts again. Real source outlines and alias impl declarations never become metadata. Three whole JSON-RPC repeats per phase versus independent UTF-16 markers and fresh server initialization from phase maps; service whole byte-tree/fresh database parity. Every retained immutable database/server snapshot keeps its authored source text, schema status and tree after each later action. LF/CRLF, shifted Chinese/non-BMP lines, encoded private roots and literal UTF16 13..16 versus byte17 goldens. Physical disk bytes and absent deleted source records checked. Correct schema primitive author spelling string versus display String; strengthen B10.3 loaded-field assertions so unknown facts cannot satisfy collision setup. Retain initial compile/setup/display failed logs; no production defect or runtime/provider change claimed. Focused service5/protocol8, Node140, fmt, relevant all-target Clippy, fresh Windows VSIX20/native50, automatic full audit and strict B09 service750+2 historical ignored/protocol797/stdio10. Core899 verified/426 open/2NA/zero failed; B10 twenty-nine verified/147 pending. Preserve ten accepted snapshots, prior205 children, all50 native contract hashes and independent historical macOS audit. Next B10.5 installed symbol workflows and remaining B10 features; macOS requires independent fresh evidence and B16 remains deferred. VSIX editors/vscode/test-results/run-CiG77n/results.json; native editors/vscode/test-results/input-TSZAHs/results.json; audit target/lsp-matrix/run-EojVxG/report.json. Find commit through LSP-Batch trailer. The first full audit rejected self.server under the existing single-owner guard; rename the production TestServer field to test_server without altering dispatch or guard behavior. Keep that failed audit and first captures as historical failures; final source is separately frozen and recaptured. The corrected-source first input bundle fails at the existing Explorer rename Quick Open click when the observed row becomes invisible; retain its failed bundle/screenshot/log, verify unchanged frozen source, and rerun the entire bundle without changing contracts, timeouts or assertions. No partial native bundle is accepted."
+    },
+    {
+      "id": "B10.5",
+      "revision": null,
+      "requirements": [
+        "document-symbol/editor/smoke"
+      ],
+      "summary": "Close document-symbol/editor/smoke with three installed VSIX checks of complete independently authored ordered trees, all names/kinds/details/extents/selections and recursive ancestry. Pin 19 declaration roots/33 nodes and eight ownership files/25 roots/46 nodes on disk, dirty two-line Unicode prefix and actual didClose/restoration; all56 damage/repair partitions; thirteen source lifecycle phases including disk-under-overlay and watched dependency replacement/delete/recreate. LF/CRLF encoded Chinese/space/percent private workspace roots, actual known String hover and real source Widget alias URI/range probes, metadata-only spans; no absent schema/unresolved importer shortcuts. Three public whole responses per phase, exact source buffer/physical disk maps, real close notifications, finite requests/stages and mutation completion receipts. Empty public undefined requires matching actual client [] wire pairs after the current open/edit boundary and exact same-version cached public repeats; null/error/partial logs cannot certify empties. Deleted resources reject public acquisition; backend deleted empty proof remains B10.4. Actual trees and independently authored expected trees/client logs retained. Start in owned one-folder .code-workspace before adding/removing private roots; retain first folder and settings, restore trace settings. Eight Node oracle/trace checks and Node148; fmt; baseline document-symbol service5; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service750+2 historical ignored/protocol797/stdio10. Retain initial byte-index golden error and seven exploratory GUI failures for cached close, Windows separator cleanup, manifest-owned schema, folder-to-workspace conversion and empty API normalization and OutlineModel transport caching and actual deleted-resource error spelling; no production/runtime/host change inferred. Core900 verified/425 open/2NA/zero failed; B10 thirty verified/146 pending, parent open. Preserve ten accepted snapshots, prior206 children, all50 native contract hashes and independent historical macOS audit. Native UX11/UX12, workspace symbols and remaining B10 features remain open; next B10.6; fresh macOS required when used and B16 deferred. VSIX editors/vscode/test-results/run-T0qA9K/results.json; native editors/vscode/test-results/input-tnHZgt/results.json; audit target/lsp-matrix/run-DPnSS2/report.json. Find commit through LSP-Batch trailer. First strict refresh exits101 with 796 protocol passes and one existing transport::tests::tcp_loopback_connection_handles_initialize_and_exit failure: lsp-server client socket reader unwraps Windows ConnectionReset during teardown. Retain that failed report/log; acceptance does not skip it. The original test passes once focused and twenty bounded independent invocations without source/assertion/timeout edits. Verify unchanged frozen source and rerun the entire strict audit. Only the new complete zero-failure strict result refreshes Windows acceptance; this does not claim a TCP production defect was fixed. Final checkpoint tests15 pass; post-commit source identity and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.5",
-  "nextTask": "B10.5",
+  "activeChild": "B10.6",
+  "nextTask": "B10.6",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10536,7 +10544,62 @@
     "editors/vscode/test-results/input-EmVoza/results.json",
     "editors/vscode/test-results/run-GbOpEN/results.json",
     "target/b10-4-input-quick-open-timeout.log",
-    "editors/vscode/test-results/input-FKEChr/results.json"
+    "editors/vscode/test-results/input-FKEChr/results.json",
+    "target/lsp-matrix/run-DPnSS2/report.json",
+    "target/lsp-matrix/run-e5u0Iw/report.json",
+    "editors/vscode/test-results/run-T0qA9K/results.json",
+    "editors/vscode/test-results/input-tnHZgt/results.json",
+    "target/b10-5-input.log",
+    "target/b10-5-editor.log",
+    "target/b10-5-scoped.log",
+    "target/b10-5-baseline.log",
+    "target/b10-5-oracle-first.log",
+    "target/b10-5-oracle-final.log",
+    "target/b10-5-node.log",
+    "target/b10-5-format.log",
+    "target/lsp-matrix/run-5danAH/report.json",
+    "target/b10-5-editor-eighth.log",
+    "editors/vscode/test-results/run-8VRgWF/results.json",
+    "target/b10-5-editor-first.log",
+    "editors/vscode/test-results/run-wS5gv6/results.json",
+    "target/b10-5-editor-second.log",
+    "editors/vscode/test-results/run-2Gmt1Z/results.json",
+    "target/b10-5-editor-third.log",
+    "editors/vscode/test-results/run-9TTzHc/results.json",
+    "target/b10-5-editor-fourth.log",
+    "editors/vscode/test-results/run-um1DoZ/results.json",
+    "target/b10-5-editor-fifth.log",
+    "editors/vscode/test-results/run-n5bI5u/results.json",
+    "target/b10-5-editor-sixth.log",
+    "editors/vscode/test-results/run-BGrXmS/results.json",
+    "target/b10-5-editor-seventh.log",
+    "editors/vscode/test-results/run-bZrApl/results.json",
+    "target/b10-5-tcp-repeat-1.log",
+    "target/b10-5-tcp-repeat-2.log",
+    "target/b10-5-tcp-repeat-3.log",
+    "target/b10-5-tcp-repeat-4.log",
+    "target/b10-5-tcp-repeat-5.log",
+    "target/b10-5-tcp-repeat-6.log",
+    "target/b10-5-tcp-repeat-7.log",
+    "target/b10-5-tcp-repeat-8.log",
+    "target/b10-5-tcp-repeat-9.log",
+    "target/b10-5-tcp-repeat-10.log",
+    "target/b10-5-tcp-repeat-11.log",
+    "target/b10-5-tcp-repeat-12.log",
+    "target/b10-5-tcp-repeat-13.log",
+    "target/b10-5-tcp-repeat-14.log",
+    "target/b10-5-tcp-repeat-15.log",
+    "target/b10-5-tcp-repeat-16.log",
+    "target/b10-5-tcp-repeat-17.log",
+    "target/b10-5-tcp-repeat-18.log",
+    "target/b10-5-tcp-repeat-19.log",
+    "target/b10-5-tcp-repeat-20.log",
+    "target/lsp-matrix/run-VKlpCf/report.json",
+    "target/b10-5-scoped-first.log",
+    "target/b10-5-tcp-first.log",
+    "target/b10-5-tcp-repeat.json",
+    "target/b10-5-tcp-repeat.log",
+    "target/b10-5-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14464,8 +14527,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "bb6138d76505e533ad1e9f40e17c573bd2dee30a",
-          "treeSha256": "4b10fbe7ede8dbbc1f78cad3be9f0f318cf3f8d866b5664a825f0d015e9f2a2b"
+          "revision": "878b62e91b7162a423bad643574f2d433d6e43d6",
+          "treeSha256": "79b01d74b6692cff1fafdcfa89a19cd79b1f82edee4315a34be4ed06d1f361bb"
         },
         "profile": {
           "platform": "win32",
@@ -14473,11 +14536,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-EojVxG/report.json"
+          "target/lsp-matrix/run-DPnSS2/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-CiG77n/results.json --local-results editors/vscode/test-results/input-TSZAHs/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-T0qA9K/results.json --local-results editors/vscode/test-results/input-tnHZgt/results.json",
             "exitCode": 0
           }
         ]

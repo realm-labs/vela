@@ -174,6 +174,13 @@ async function run() {
       tokens.runTokenProvider(vscode, workspace, "delta"), 60000);
     await check("semantic token range provider preserves exact token line and empty Unicode LF CRLF ranges", () =>
       tokens.runTokenProvider(vscode, workspace, "range"), 90000);
+    const symbols = require("./document-symbol-provider");
+    await check("document symbol provider preserves complete authored declaration and ownership trees", () =>
+      symbols.runDeclarationSymbols(vscode, workspace), 60000);
+    await check("document symbol provider preserves complete trees through damage repair and Unicode shifts", () =>
+      symbols.runRecoverySymbols(vscode, workspace), 120000);
+    await check("document symbol provider preserves complete dirty close and dependency lifecycle trees", () =>
+      symbols.runLifecycleSymbols(vscode, workspace), 90000);
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

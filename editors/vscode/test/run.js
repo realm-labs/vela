@@ -43,10 +43,11 @@ async function main() {
   }
   require("./completion-fixture").materializeCompletion(workspace);
   require("./signature-provider").materializeSignature(workspace);
+  require("./document-symbol-provider").materializeSymbols(resultRoot);
   const tokenModel = require("../../../scripts/lsp-matrix/semantic-token-oracle").tokenModel();
   fs.writeFileSync(path.join(workspace, tokenModel.file), tokenModel.states[0].document.text);
   fs.mkdirSync(path.join(workspace, ".vscode"));
-  fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify({
+  const settings = {
     "vela.trace.server": "verbose",
     "editor.gotoLocation.multipleDefinitions": "goto",
     "chat.disableAIFeatures": true,
@@ -54,7 +55,10 @@ async function main() {
     "workbench.startupEditor": "none",
     "files.autoSave": "off",
     "editor.semanticHighlighting.enabled": true
-  }));
+  };
+  fs.writeFileSync(path.join(workspace, ".vscode", "settings.json"), JSON.stringify(settings));
+  const workspaceFile = path.join(resultRoot, "editor-tests.code-workspace");
+  fs.writeFileSync(workspaceFile, JSON.stringify({ folders: [{ path: workspace }], settings }));
   const vsix = path.join(resultRoot, "vela.vsix");
   const packaged = spawnSync(process.execPath, [path.join(extensionRoot, "scripts", "package-vsix.js"), "--out", vsix], {
     cwd: extensionRoot, stdio: "inherit", timeout: 300000
@@ -86,7 +90,7 @@ async function main() {
         VELA_TEST_EXTENSIONS_DIR: extensionsDir,
         VELA_TEST_RESULT_DIR: resultRoot
       },
-      launchArgs: [workspace, ...isolatedArgs, "--skip-welcome", "--skip-release-notes",
+      launchArgs: [workspaceFile, ...isolatedArgs, "--skip-welcome", "--skip-release-notes",
         "--disable-workspace-trust", "--disable-updates", "--disable-gpu", "--no-sandbox"]
     });
   } catch (error) {
