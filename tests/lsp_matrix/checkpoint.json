@@ -3918,6 +3918,223 @@
           }
         ]
       }
+    },
+    {
+      "id": "B09",
+      "requirements": [
+        {
+          "id": "configuration-change/environments/client_capabilities/protocol",
+          "contractHash": "e930d966944eaa9eba610991fe56aee4aa5d38fd4671117e9cbec7bcd0a16bfa"
+        },
+        {
+          "id": "configuration-change/syntax/S0/negative/protocol",
+          "contractHash": "6660e152012db6d7d4c24239d513fd2d498c2a4913f24803df6c334b4613b297"
+        },
+        {
+          "id": "configuration-change/syntax/S0/positive/protocol",
+          "contractHash": "9246642799f058517fb0f42ade59d60268223aba5cb1c415a037e41ce5401526"
+        },
+        {
+          "id": "configuration-change/syntax/S11/negative/protocol",
+          "contractHash": "1d7a32d2a7de3aa4e304249eeeb43aad2e43756a7c971f94075a771dabc5e5c7"
+        },
+        {
+          "id": "configuration-change/syntax/S11/positive/protocol",
+          "contractHash": "a5d1b2bb0194ffef97c85cdebea55f9a67cff3d396193eb58aa9497f884b84ab"
+        },
+        {
+          "id": "configuration-change/syntax/S9/negative/protocol",
+          "contractHash": "0d87afb02c05d5977a894b3ad7fe9388177c2288dd00f527c20396a2933e5a6b"
+        },
+        {
+          "id": "configuration-change/syntax/S9/positive/protocol",
+          "contractHash": "9495dca03f3a56b5dc2c4cd6542d1a2187c6ff38f3537d79a51848d812d183a5"
+        },
+        {
+          "id": "configuration-request/environments/client_capabilities/protocol",
+          "contractHash": "b3b9f05f6aff097f4e92ff225c96952165d1848ea71967c7dcfe9e675160b245"
+        },
+        {
+          "id": "configuration-request/syntax/S0/negative/protocol",
+          "contractHash": "d2d5734e431312771543a4b607e18458ccc73ac1c17330033096fd8d87067872"
+        },
+        {
+          "id": "configuration-request/syntax/S0/positive/protocol",
+          "contractHash": "5b0db4affc49fea02f99d1a0e7112f233311fc24e131a9167febae925d7f07de"
+        },
+        {
+          "id": "configuration-request/syntax/S11/negative/protocol",
+          "contractHash": "e86bb4d33c84468079fb5ba8b58b207660226f1e5b7565af5cd51f5aa23a4af6"
+        },
+        {
+          "id": "configuration-request/syntax/S11/positive/protocol",
+          "contractHash": "400ad8bfacb69280c437bcce8988f7bac8896c447245be603cf424e3387d9bdf"
+        },
+        {
+          "id": "vscode/UX17/explorer-create/command/local",
+          "contractHash": "7c7ae3007f4f477a9e984e434e88e679747d3da4a26d8fcbbac24d7e616772ea"
+        },
+        {
+          "id": "vscode/UX17/explorer-create/input/local",
+          "contractHash": "7c7ae3007f4f477a9e984e434e88e679747d3da4a26d8fcbbac24d7e616772ea"
+        },
+        {
+          "id": "vscode/UX17/explorer-delete/command/local",
+          "contractHash": "22f26436f835b7c4b68bf9f6702604c40f02302335980f4c22935997a967ae17"
+        },
+        {
+          "id": "vscode/UX17/explorer-delete/input/local",
+          "contractHash": "22f26436f835b7c4b68bf9f6702604c40f02302335980f4c22935997a967ae17"
+        },
+        {
+          "id": "vscode/UX17/explorer-rename/command/local",
+          "contractHash": "be78c4ac61a123d6f2aafa5627bd866498e837222d413c1af35e19a561eb93dc"
+        },
+        {
+          "id": "vscode/UX17/explorer-rename/input/local",
+          "contractHash": "be78c4ac61a123d6f2aafa5627bd866498e837222d413c1af35e19a561eb93dc"
+        },
+        {
+          "id": "vscode/UX17/invalid-config-schema/command/local",
+          "contractHash": "5c94e1e14c5ab22d0ffe8eb8ac103d6e4641a1eaea05a2705990a5428983ff03"
+        },
+        {
+          "id": "vscode/UX17/invalid-config-schema/input/local",
+          "contractHash": "5c94e1e14c5ab22d0ffe8eb8ac103d6e4641a1eaea05a2705990a5428983ff03"
+        },
+        {
+          "id": "vscode/UX17/roots-settings/command/local",
+          "contractHash": "4c6e9ade34cb932d031ae235281d47e10bfb5d6cb6497ba1e7b10a6756b4e14e"
+        },
+        {
+          "id": "vscode/UX17/roots-settings/input/local",
+          "contractHash": "4c6e9ade34cb932d031ae235281d47e10bfb5d6cb6497ba1e7b10a6756b4e14e"
+        },
+        {
+          "id": "vscode/UX17/schema-replace/command/local",
+          "contractHash": "e3ecc602a082d57a444505449db16181f65e0a9e8d3e94e911fc9b2a2415470e"
+        },
+        {
+          "id": "vscode/UX17/schema-replace/input/local",
+          "contractHash": "e3ecc602a082d57a444505449db16181f65e0a9e8d3e94e911fc9b2a2415470e"
+        },
+        {
+          "id": "vscode/UX21/grant-trust/input/local",
+          "contractHash": "8a1ef7b57a3157f5ca171144dc4d4e5132a29fabd214b4814986b4349651fb92"
+        },
+        {
+          "id": "vscode/UX21/grant-trust/render/local",
+          "contractHash": "8a1ef7b57a3157f5ca171144dc4d4e5132a29fabd214b4814986b4349651fb92"
+        },
+        {
+          "id": "vscode/UX21/untrusted-open/input/local",
+          "contractHash": "81cdcee7e070207f62ebdd2781ee4766ea11b2274a6c74f665e1ce77a0f105cc"
+        },
+        {
+          "id": "vscode/UX21/untrusted-open/render/local",
+          "contractHash": "81cdcee7e070207f62ebdd2781ee4766ea11b2274a6c74f665e1ce77a0f105cc"
+        },
+        {
+          "id": "watched-files/environments/client_capabilities/protocol",
+          "contractHash": "f358962f0189d5508ffe321eebc7fc3de18e61d8b18ea60ae5e5dffcd20fc86e"
+        },
+        {
+          "id": "watched-files/states/cancellation/protocol",
+          "contractHash": "75e51e6402e5dd033a8e3753bf7cbdb2ef9405c74fc41b316bd2d828e56ee38e"
+        },
+        {
+          "id": "watched-files/states/stale_version/protocol",
+          "contractHash": "98af8af92d705eaee9a739402e22fb4c46d4e11527d568b67d49c245e1cebb1c"
+        },
+        {
+          "id": "watched-files/syntax/S0/negative/protocol",
+          "contractHash": "4cfc1e46338923abbf1be8d2a50acb0d9707db941c6d6f3cfd861442ab87ad9d"
+        },
+        {
+          "id": "watched-files/syntax/S0/positive/protocol",
+          "contractHash": "f4e539c36213a3e3304a2ae80852b20f6752759271cc04b078eb32bf49c2a3eb"
+        },
+        {
+          "id": "watched-files/syntax/S11/negative/protocol",
+          "contractHash": "c548400511e4d585de2f9ef23d2f409c09484095785f6773c455321c61851f9f"
+        },
+        {
+          "id": "watched-files/syntax/S11/positive/protocol",
+          "contractHash": "992ad7dec2f5cfc4fa994715aa71f7f660225b4ec0077343b8957a8f0a841027"
+        },
+        {
+          "id": "watched-files/syntax/S8/negative/protocol",
+          "contractHash": "fd66ba845ca0935db99ad4c90496588476af02fb91c05bed3621292b8478c42b"
+        },
+        {
+          "id": "watched-files/syntax/S8/positive/protocol",
+          "contractHash": "e1a3415785a04b5e12d65ff30f240f6039c0d154bf65c1087985ff0e4c93544a"
+        },
+        {
+          "id": "watched-files/syntax/S9/negative/protocol",
+          "contractHash": "5e10ad712762a6e123dfb0a92ea86dd1c6d94fb1c35c7c0b73a74c3f6feee69c"
+        },
+        {
+          "id": "watched-files/syntax/S9/positive/protocol",
+          "contractHash": "315060db311fbe37c8cdf8a6858144166ce40cdcefda895a4a29e0ec6f047a22"
+        },
+        {
+          "id": "workspace-folders/environments/client_capabilities/protocol",
+          "contractHash": "272af1ef6d21b8610167410f86d7f3450b0a0cbd635f946265acf9e953d64303"
+        },
+        {
+          "id": "workspace-folders/states/cancellation/protocol",
+          "contractHash": "dba207386fa9a725dcb3f0eb6c9211c0583185a413242ca8b604cf844a0efde6"
+        },
+        {
+          "id": "workspace-folders/states/stale_version/protocol",
+          "contractHash": "2740f09868d892e0de75010ee83069ca1bc78e55f88fa19dbad841ac91d48e8d"
+        },
+        {
+          "id": "workspace-folders/syntax/S0/negative/protocol",
+          "contractHash": "fbf89c709cff7c6a3aa5ad46e92faf62ddf1ed179f18db98c52ceb90f5baadbd"
+        },
+        {
+          "id": "workspace-folders/syntax/S0/positive/protocol",
+          "contractHash": "d897fdd2124b153550e987550cf4a88daabf94a8a9281c1b0b7a2cb6318afa68"
+        },
+        {
+          "id": "workspace-folders/syntax/S11/negative/protocol",
+          "contractHash": "706ea843dcdd4f2f1cfdbc3bbcb0ead0cfe4d5cf87f0c748c3744a58bd34f000"
+        },
+        {
+          "id": "workspace-folders/syntax/S11/positive/protocol",
+          "contractHash": "c4d47d7d30c3064d967ad5c2be73849795b943daa15c4b7f6ea648aa155566e6"
+        },
+        {
+          "id": "workspace-folders/syntax/S8/negative/protocol",
+          "contractHash": "8129f492693c9f1237bb59257ea34c8e85d1fa89dac6aac56e43b9959365eb17"
+        },
+        {
+          "id": "workspace-folders/syntax/S8/positive/protocol",
+          "contractHash": "0ceac7cb77c4dfbfd901baab6f9996b38afa37c5c5131726ef3d7319e5f5c3db"
+        }
+      ],
+      "validation": {
+        "source": {
+          "revision": "2f73f412cd9b0796c4da7748ec0889cd036fa6bb",
+          "treeSha256": "4273dc39702dc87005144045caa5c7de6f8c2b9aabe582acead35fdde0fd2792"
+        },
+        "profile": {
+          "platform": "win32",
+          "arch": "x64",
+          "vscodeVersion": "1.137.0"
+        },
+        "artifacts": [
+          "target/lsp-matrix/run-9rSq1e/report.json"
+        ],
+        "commands": [
+          {
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-0PrhPQ/results.json --local-results editors/vscode/test-results/input-DrEuoU/results.json",
+            "exitCode": 0
+          }
+        ]
+      }
     }
   ],
   "reopenedBatches": [],
@@ -8053,10 +8270,21 @@
         "vscode/UX17/invalid-config-schema/input/local"
       ],
       "summary": "Close four UX17 roots-settings and invalid-config-schema Command/Input requirements. Preserve independent 47 prior contract hashes. Native workspace folder/settings transitions plus twelve invalid/recovery states pin 36 hover command/native pairs, exact rejection logs, complete source/schema/manifest ownership and clears, physical schema delete/recreate, empty manifest scratch, invalid TOML last-valid retention, package boundaries and deletion fallback. Four dirty overlays retain disk bytes. LF/CRLF backend regression pins the whole manifest chain, immutable snapshots and exact versions. Synchronize the new owned host before further native UI/observer input after first-folder changes. Node135; fmt; server all-target Clippy; fresh Windows VSIX20/native48; strict B08 service746+2 historical ignores/protocol793/stdio10, core870/455/2/zero failed and B09 42 verified/2 N/A/4 trust open. Preserve nine accepted B00-B08 snapshots and prior200 children. Next B09.6 UX21 untrusted-open and grant-trust input/render. macOS requires independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-23RxaG/results.json; native editors/vscode/test-results/input-vUd1VH/results.json; audit target/lsp-matrix/run-X47InD/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B09.6",
+      "revision": null,
+      "requirements": [
+        "vscode/UX21/untrusted-open/input/local",
+        "vscode/UX21/untrusted-open/render/local",
+        "vscode/UX21/grant-trust/input/local",
+        "vscode/UX21/grant-trust/render/local"
+      ],
+      "summary": "Close four UX21 untrusted-open/grant-trust Input/Render requirements and accept whole B09. Explicit unsupported trust policy preserves the pinned native launcher default. A separate sequential normal installed window enables Workspace Trust, refuses startup through real pointer input, retains dirty Unicode caller/F12 no-jump and visible disabled policy, then grants trust through the real Trust button. Exact dirty ownership, full provider and independent F12 wire/target caret, complete diagnostic clears and one owned configured binary/server session restore. Read-only private observer supports Restricted Mode without trust/document/configuration mutation. Preserve all 48 previous native contract hashes, nine accepted snapshots and 201 previous children. Node140; fmt; fresh Windows VSIX20/native50; strict B09 service746+2 historical ignores/protocol793/stdio10, core870/455/2/zero failed, B09 46 verified/2 N/A/zero open. Next B10 symbols/folding/selection. macOS requires independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-0PrhPQ/results.json; native editors/vscode/test-results/input-DrEuoU/results.json; audit target/lsp-matrix/run-9rSq1e/report.json. Find commit through LSP-Batch trailer."
     }
   ],
-  "activeChild": "B09.6",
-  "nextTask": "B09.6",
+  "activeChild": null,
+  "nextTask": "B10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -8066,18 +8294,6 @@
     "batch/B18/scale-budgets",
     "batch/B19/acceptance-report",
     "batch/B19/repository",
-    "configuration-change/environments/client_capabilities/protocol",
-    "configuration-change/syntax/S0/negative/protocol",
-    "configuration-change/syntax/S0/positive/protocol",
-    "configuration-change/syntax/S11/negative/protocol",
-    "configuration-change/syntax/S11/positive/protocol",
-    "configuration-change/syntax/S9/negative/protocol",
-    "configuration-change/syntax/S9/positive/protocol",
-    "configuration-request/environments/client_capabilities/protocol",
-    "configuration-request/syntax/S0/negative/protocol",
-    "configuration-request/syntax/S0/positive/protocol",
-    "configuration-request/syntax/S11/negative/protocol",
-    "configuration-request/syntax/S11/positive/protocol",
     "document-symbol/editor/smoke",
     "document-symbol/environments/crlf/protocol",
     "document-symbol/environments/encoded_uri/protocol",
@@ -8533,42 +8749,6 @@
     "vscode/UX16/save-close-reopen/input/local",
     "vscode/UX16/undo-redo/command/local",
     "vscode/UX16/undo-redo/input/local",
-    "vscode/UX17/explorer-create/command/local",
-    "vscode/UX17/explorer-create/input/local",
-    "vscode/UX17/explorer-delete/command/local",
-    "vscode/UX17/explorer-delete/input/local",
-    "vscode/UX17/explorer-rename/command/local",
-    "vscode/UX17/explorer-rename/input/local",
-    "vscode/UX17/invalid-config-schema/command/local",
-    "vscode/UX17/invalid-config-schema/input/local",
-    "vscode/UX17/roots-settings/command/local",
-    "vscode/UX17/roots-settings/input/local",
-    "vscode/UX17/schema-replace/command/local",
-    "vscode/UX17/schema-replace/input/local",
-    "vscode/UX21/grant-trust/input/local",
-    "vscode/UX21/grant-trust/render/local",
-    "vscode/UX21/untrusted-open/input/local",
-    "vscode/UX21/untrusted-open/render/local",
-    "watched-files/environments/client_capabilities/protocol",
-    "watched-files/states/cancellation/protocol",
-    "watched-files/states/stale_version/protocol",
-    "watched-files/syntax/S0/negative/protocol",
-    "watched-files/syntax/S0/positive/protocol",
-    "watched-files/syntax/S11/negative/protocol",
-    "watched-files/syntax/S11/positive/protocol",
-    "watched-files/syntax/S8/negative/protocol",
-    "watched-files/syntax/S8/positive/protocol",
-    "watched-files/syntax/S9/negative/protocol",
-    "watched-files/syntax/S9/positive/protocol",
-    "workspace-folders/environments/client_capabilities/protocol",
-    "workspace-folders/states/cancellation/protocol",
-    "workspace-folders/states/stale_version/protocol",
-    "workspace-folders/syntax/S0/negative/protocol",
-    "workspace-folders/syntax/S0/positive/protocol",
-    "workspace-folders/syntax/S11/negative/protocol",
-    "workspace-folders/syntax/S11/positive/protocol",
-    "workspace-folders/syntax/S8/negative/protocol",
-    "workspace-folders/syntax/S8/positive/protocol",
     "workspace-symbol/editor/smoke",
     "workspace-symbol/environments/crlf/protocol",
     "workspace-symbol/environments/encoded_uri/protocol",
@@ -10187,7 +10367,23 @@
     "target/b09-5-invalid-input-2.log",
     "target/b09-5-invalid-input-3.log",
     "target/b09-5-invalid-input-4.log",
-    "target/b09-5-invalid-input-5.log"
+    "target/b09-5-invalid-input-5.log",
+    "target/lsp-matrix/run-9rSq1e/report.json",
+    "editors/vscode/test-results/run-0PrhPQ/results.json",
+    "editors/vscode/test-results/input-DrEuoU/results.json",
+    "editors/vscode/test-results/input-2dao7h/results.json",
+    "target/b09-6-trust-node-final.log",
+    "target/b09-6-trust-format.log",
+    "target/b09-6-trust-package.log",
+    "target/b09-6-trust-input-final.log",
+    "target/b09-6-trust-editor-final.log",
+    "target/b09-6-trust-scoped.log",
+    "target/b09-6-trust-checkpoint-final.log",
+    "target/b09-6-trust-input-1.log",
+    "target/b09-6-trust-input-2.log",
+    "target/b09-6-trust-input-3.log",
+    "target/b09-6-trust-input-4.log",
+    "target/b09-6-trust-input-5.log"
   ],
   "openIssues": [
     {
@@ -10228,7 +10424,8 @@
         "B05",
         "B06",
         "B07",
-        "B08"
+        "B08",
+        "B09"
       ],
       "requirements": [
         {
@@ -13918,12 +14115,204 @@
         {
           "id": "vscode/UX18/server-stop-reload/render/local",
           "contractHash": "73f2983501be8ea0db00ba4350fad1bb79c2c4b36fc3f609433fbeb55070d474"
+        },
+        {
+          "id": "configuration-change/environments/client_capabilities/protocol",
+          "contractHash": "e930d966944eaa9eba610991fe56aee4aa5d38fd4671117e9cbec7bcd0a16bfa"
+        },
+        {
+          "id": "configuration-change/syntax/S0/negative/protocol",
+          "contractHash": "6660e152012db6d7d4c24239d513fd2d498c2a4913f24803df6c334b4613b297"
+        },
+        {
+          "id": "configuration-change/syntax/S0/positive/protocol",
+          "contractHash": "9246642799f058517fb0f42ade59d60268223aba5cb1c415a037e41ce5401526"
+        },
+        {
+          "id": "configuration-change/syntax/S11/negative/protocol",
+          "contractHash": "1d7a32d2a7de3aa4e304249eeeb43aad2e43756a7c971f94075a771dabc5e5c7"
+        },
+        {
+          "id": "configuration-change/syntax/S11/positive/protocol",
+          "contractHash": "a5d1b2bb0194ffef97c85cdebea55f9a67cff3d396193eb58aa9497f884b84ab"
+        },
+        {
+          "id": "configuration-change/syntax/S9/negative/protocol",
+          "contractHash": "0d87afb02c05d5977a894b3ad7fe9388177c2288dd00f527c20396a2933e5a6b"
+        },
+        {
+          "id": "configuration-change/syntax/S9/positive/protocol",
+          "contractHash": "9495dca03f3a56b5dc2c4cd6542d1a2187c6ff38f3537d79a51848d812d183a5"
+        },
+        {
+          "id": "configuration-request/environments/client_capabilities/protocol",
+          "contractHash": "b3b9f05f6aff097f4e92ff225c96952165d1848ea71967c7dcfe9e675160b245"
+        },
+        {
+          "id": "configuration-request/syntax/S0/negative/protocol",
+          "contractHash": "d2d5734e431312771543a4b607e18458ccc73ac1c17330033096fd8d87067872"
+        },
+        {
+          "id": "configuration-request/syntax/S0/positive/protocol",
+          "contractHash": "5b0db4affc49fea02f99d1a0e7112f233311fc24e131a9167febae925d7f07de"
+        },
+        {
+          "id": "configuration-request/syntax/S11/negative/protocol",
+          "contractHash": "e86bb4d33c84468079fb5ba8b58b207660226f1e5b7565af5cd51f5aa23a4af6"
+        },
+        {
+          "id": "configuration-request/syntax/S11/positive/protocol",
+          "contractHash": "400ad8bfacb69280c437bcce8988f7bac8896c447245be603cf424e3387d9bdf"
+        },
+        {
+          "id": "vscode/UX17/explorer-create/command/local",
+          "contractHash": "7c7ae3007f4f477a9e984e434e88e679747d3da4a26d8fcbbac24d7e616772ea"
+        },
+        {
+          "id": "vscode/UX17/explorer-create/input/local",
+          "contractHash": "7c7ae3007f4f477a9e984e434e88e679747d3da4a26d8fcbbac24d7e616772ea"
+        },
+        {
+          "id": "vscode/UX17/explorer-delete/command/local",
+          "contractHash": "22f26436f835b7c4b68bf9f6702604c40f02302335980f4c22935997a967ae17"
+        },
+        {
+          "id": "vscode/UX17/explorer-delete/input/local",
+          "contractHash": "22f26436f835b7c4b68bf9f6702604c40f02302335980f4c22935997a967ae17"
+        },
+        {
+          "id": "vscode/UX17/explorer-rename/command/local",
+          "contractHash": "be78c4ac61a123d6f2aafa5627bd866498e837222d413c1af35e19a561eb93dc"
+        },
+        {
+          "id": "vscode/UX17/explorer-rename/input/local",
+          "contractHash": "be78c4ac61a123d6f2aafa5627bd866498e837222d413c1af35e19a561eb93dc"
+        },
+        {
+          "id": "vscode/UX17/invalid-config-schema/command/local",
+          "contractHash": "5c94e1e14c5ab22d0ffe8eb8ac103d6e4641a1eaea05a2705990a5428983ff03"
+        },
+        {
+          "id": "vscode/UX17/invalid-config-schema/input/local",
+          "contractHash": "5c94e1e14c5ab22d0ffe8eb8ac103d6e4641a1eaea05a2705990a5428983ff03"
+        },
+        {
+          "id": "vscode/UX17/roots-settings/command/local",
+          "contractHash": "4c6e9ade34cb932d031ae235281d47e10bfb5d6cb6497ba1e7b10a6756b4e14e"
+        },
+        {
+          "id": "vscode/UX17/roots-settings/input/local",
+          "contractHash": "4c6e9ade34cb932d031ae235281d47e10bfb5d6cb6497ba1e7b10a6756b4e14e"
+        },
+        {
+          "id": "vscode/UX17/schema-replace/command/local",
+          "contractHash": "e3ecc602a082d57a444505449db16181f65e0a9e8d3e94e911fc9b2a2415470e"
+        },
+        {
+          "id": "vscode/UX17/schema-replace/input/local",
+          "contractHash": "e3ecc602a082d57a444505449db16181f65e0a9e8d3e94e911fc9b2a2415470e"
+        },
+        {
+          "id": "vscode/UX21/grant-trust/input/local",
+          "contractHash": "8a1ef7b57a3157f5ca171144dc4d4e5132a29fabd214b4814986b4349651fb92"
+        },
+        {
+          "id": "vscode/UX21/grant-trust/render/local",
+          "contractHash": "8a1ef7b57a3157f5ca171144dc4d4e5132a29fabd214b4814986b4349651fb92"
+        },
+        {
+          "id": "vscode/UX21/untrusted-open/input/local",
+          "contractHash": "81cdcee7e070207f62ebdd2781ee4766ea11b2274a6c74f665e1ce77a0f105cc"
+        },
+        {
+          "id": "vscode/UX21/untrusted-open/render/local",
+          "contractHash": "81cdcee7e070207f62ebdd2781ee4766ea11b2274a6c74f665e1ce77a0f105cc"
+        },
+        {
+          "id": "watched-files/environments/client_capabilities/protocol",
+          "contractHash": "f358962f0189d5508ffe321eebc7fc3de18e61d8b18ea60ae5e5dffcd20fc86e"
+        },
+        {
+          "id": "watched-files/states/cancellation/protocol",
+          "contractHash": "75e51e6402e5dd033a8e3753bf7cbdb2ef9405c74fc41b316bd2d828e56ee38e"
+        },
+        {
+          "id": "watched-files/states/stale_version/protocol",
+          "contractHash": "98af8af92d705eaee9a739402e22fb4c46d4e11527d568b67d49c245e1cebb1c"
+        },
+        {
+          "id": "watched-files/syntax/S0/negative/protocol",
+          "contractHash": "4cfc1e46338923abbf1be8d2a50acb0d9707db941c6d6f3cfd861442ab87ad9d"
+        },
+        {
+          "id": "watched-files/syntax/S0/positive/protocol",
+          "contractHash": "f4e539c36213a3e3304a2ae80852b20f6752759271cc04b078eb32bf49c2a3eb"
+        },
+        {
+          "id": "watched-files/syntax/S11/negative/protocol",
+          "contractHash": "c548400511e4d585de2f9ef23d2f409c09484095785f6773c455321c61851f9f"
+        },
+        {
+          "id": "watched-files/syntax/S11/positive/protocol",
+          "contractHash": "992ad7dec2f5cfc4fa994715aa71f7f660225b4ec0077343b8957a8f0a841027"
+        },
+        {
+          "id": "watched-files/syntax/S8/negative/protocol",
+          "contractHash": "fd66ba845ca0935db99ad4c90496588476af02fb91c05bed3621292b8478c42b"
+        },
+        {
+          "id": "watched-files/syntax/S8/positive/protocol",
+          "contractHash": "e1a3415785a04b5e12d65ff30f240f6039c0d154bf65c1087985ff0e4c93544a"
+        },
+        {
+          "id": "watched-files/syntax/S9/negative/protocol",
+          "contractHash": "5e10ad712762a6e123dfb0a92ea86dd1c6d94fb1c35c7c0b73a74c3f6feee69c"
+        },
+        {
+          "id": "watched-files/syntax/S9/positive/protocol",
+          "contractHash": "315060db311fbe37c8cdf8a6858144166ce40cdcefda895a4a29e0ec6f047a22"
+        },
+        {
+          "id": "workspace-folders/environments/client_capabilities/protocol",
+          "contractHash": "272af1ef6d21b8610167410f86d7f3450b0a0cbd635f946265acf9e953d64303"
+        },
+        {
+          "id": "workspace-folders/states/cancellation/protocol",
+          "contractHash": "dba207386fa9a725dcb3f0eb6c9211c0583185a413242ca8b604cf844a0efde6"
+        },
+        {
+          "id": "workspace-folders/states/stale_version/protocol",
+          "contractHash": "2740f09868d892e0de75010ee83069ca1bc78e55f88fa19dbad841ac91d48e8d"
+        },
+        {
+          "id": "workspace-folders/syntax/S0/negative/protocol",
+          "contractHash": "fbf89c709cff7c6a3aa5ad46e92faf62ddf1ed179f18db98c52ceb90f5baadbd"
+        },
+        {
+          "id": "workspace-folders/syntax/S0/positive/protocol",
+          "contractHash": "d897fdd2124b153550e987550cf4a88daabf94a8a9281c1b0b7a2cb6318afa68"
+        },
+        {
+          "id": "workspace-folders/syntax/S11/negative/protocol",
+          "contractHash": "706ea843dcdd4f2f1cfdbc3bbcb0ead0cfe4d5cf87f0c748c3744a58bd34f000"
+        },
+        {
+          "id": "workspace-folders/syntax/S11/positive/protocol",
+          "contractHash": "c4d47d7d30c3064d967ad5c2be73849795b943daa15c4b7f6ea648aa155566e6"
+        },
+        {
+          "id": "workspace-folders/syntax/S8/negative/protocol",
+          "contractHash": "8129f492693c9f1237bb59257ea34c8e85d1fa89dac6aac56e43b9959365eb17"
+        },
+        {
+          "id": "workspace-folders/syntax/S8/positive/protocol",
+          "contractHash": "0ceac7cb77c4dfbfd901baab6f9996b38afa37c5c5131726ef3d7319e5f5c3db"
         }
       ],
       "validation": {
         "source": {
-          "revision": "22260683921ff583c08acf34d341cee0191de2f6",
-          "treeSha256": "d5b44aaff478d55fec65e9b4501f932ff84e1ff9ac2ff48ae5d64129ce24134e"
+          "revision": "2f73f412cd9b0796c4da7748ec0889cd036fa6bb",
+          "treeSha256": "4273dc39702dc87005144045caa5c7de6f8c2b9aabe582acead35fdde0fd2792"
         },
         "profile": {
           "platform": "win32",
@@ -13931,11 +14320,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-X47InD/report.json"
+          "target/lsp-matrix/run-9rSq1e/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B08 --editor-results editors/vscode/test-results/run-23RxaG/results.json --local-results editors/vscode/test-results/input-vUd1VH/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-0PrhPQ/results.json --local-results editors/vscode/test-results/input-DrEuoU/results.json",
             "exitCode": 0
           }
         ]

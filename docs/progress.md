@@ -55,8 +55,8 @@ unchanged disk callers and unsaved-buffer ownership across replacement/recovery;
 see the [schema review](../tests/lsp_matrix/reviews/workspace-schema-workbench.md).
 Windows schema events compare drive/verbatim-prefix aliases and preserve the
 configured metadata owner instead of retaining stale facts or duplicate owners.
-UX21 trust B09 proofs remain open; the checkpoint records accepted scope,
-the current verified child and the next task.
+The checkpoint records accepted B09 scope, the current verified child and the
+next task. UX21 now has separate trust-enabled installed Input/Render contracts.
 B09.5 backend work now loads independent workspace manifests into one
 package-aware graph and retains manifest-free folder discovery. New independent
 LF/CRLF regressions pin same-named module ownership, root removal/readdition,
@@ -81,6 +81,14 @@ Windows run passes; see the
 [invalid configuration review](../tests/lsp_matrix/reviews/invalid-config-schema-workbench.md).
 Child acceptance requires a fresh complete 48-proof run and strict gate on the
 current source. Windows and macOS retain independent platform captures.
+The native launcher explicitly preserves the editor's default untrusted policy:
+Restricted Mode disables Vela and workspace-configured executables until trust.
+A separate sequential private window checks actual startup refusal, the visible
+Vela policy, Restricted Mode, real trust grant, one owned configured server and
+restored dirty-source F12/diagnostics. The targeted Windows run passes; see the
+[trust review](../tests/lsp_matrix/reviews/workspace-trust-workbench.md).
+B09 acceptance requires a fresh complete 50-proof run and strict current-source
+gate. Trust-disabled smoke cannot substitute for the enabled-trust lane.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

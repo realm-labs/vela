@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "input-workspace-trust",
+  "files": {
+    "unrelated.txt": "Trust workflow starts outside the Vela language.\n",
+    "trust_target.vela": "// 初😀\npub fn [[decl:start]]trusted_value[[decl:end]]() -> i64 { return 1; }\n",
+    "trust_caller.vela": "use trust_target::trusted_value;\n// 中😀\nfn caller() { [[call:start]]trusted_value[[call:end]](); }\n"
+  },
+  "actions": [],
+  "oracle": {
+    "caller": "trust_caller.vela",
+    "target": "trust_target.vela",
+    "dirtyPrefix": "// unsaved 中😀\n",
+    "untrustedHeading": "You are in Restricted Mode",
+    "trustedHeading": "You trust this folder",
+    "banner": "Restricted Mode is intended for safe code browsing. Trust this folder to enable all features.",
+    "policyDescription": "Vela starts a native language server and requires a trusted workspace."
+  }
+}

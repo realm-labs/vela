@@ -60,6 +60,11 @@ assert(manifest.main === "./extension.js", "package main must point at extension
 assert(manifest.activationEvents.includes("onLanguage:vela"), "Vela language activation is missing");
 assert(manifest.activationEvents.includes("onCommand:vela.showOutput"), "Vela output command activation is missing");
 assert(manifest.dependencies["vscode-languageclient"], "vscode-languageclient dependency is required");
+assert(manifest.capabilities?.untrustedWorkspaces?.supported === false,
+  "Vela must declare its native launcher unavailable in untrusted workspaces");
+assert(manifest.capabilities.untrustedWorkspaces.description ===
+  "Vela starts a native language server and requires a trusted workspace.",
+  "Workspace Trust policy description must explain native launcher activation");
 assert(
   manifest.contributes.commands.some((entry) => entry.command === "vela.showOutput"),
   "Vela output command contribution is missing"

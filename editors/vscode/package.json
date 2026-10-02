@@ -17,6 +17,12 @@
     "onCommand:vela.showOutput"
   ],
   "main": "./extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Vela starts a native language server and requires a trusted workspace."
+    }
+  },
   "scripts": {
     "test": "node test/run.js",
     "test:matrix": "node ../../scripts/lsp-matrix/run.js --run",

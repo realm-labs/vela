@@ -6,6 +6,16 @@ decision history lives in
 
 ## Installed Editor Acceptance
 
+The native Vela launcher explicitly declares `untrustedWorkspaces.supported`
+as `false`. This preserves the pinned editor's existing default for a runtime
+extension without trust support: Restricted Mode disables activation, including
+workspace-configured executables, until the user trusts that workspace. Trust
+acceptance uses a separate normal installed window with Workspace Trust enabled,
+an owned configured binary and actual refusal/grant input. The private test-only
+observer supports Restricted Mode solely for read-only state/provider inspection;
+it never grants trust or changes workspace settings through its API. Existing
+trusted workflow evidence cannot satisfy this lane.
+
 Installed editor acceptance uses a separately installed VSIX and a test-only
 driver extension, with an isolated profile and the bundled native server.
 Native lifecycle acceptance runs an ordinary window with both Vela and its

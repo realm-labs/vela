@@ -88,7 +88,8 @@ F12 requests, complete diagnostic appearance/clearing, owned file membership,
 Unicode ranges and unchanged dirty caller source. Investigate a selected route
 with `--proof ux17-explorer-create`, `--proof ux17-explorer-rename` or
 `--proof ux17-explorer-delete`; a strict gate still requires every owned proof.
-Roots/settings/schema and workspace trust routes remain pending.
+Roots/settings/schema and trust routes have independent installed contracts;
+the checkpoint owns their current acceptance status and next task.
 Use `--proof ux10-pointer-hover` (or another registered route) for investigation;
 batch acceptance requires fresh evidence for all owned routes.
 
@@ -180,3 +181,16 @@ A focused run includes its owned workspace prerequisite:
 The complete suite now contains 48 proofs; strict gates require the full fresh
 suite on the selected registered profile. See the
 [invalid configuration review](../../../../tests/lsp_matrix/reviews/invalid-config-schema-workbench.md).
+
+UX21 uses a second sequential normal window, separate private user/shared data,
+and enabled Workspace Trust. It declines the startup prompt, checks Vela's
+visible disabled policy and Restricted Mode, and grants trust through the actual
+trust editor. The owned configured binary must stay unstarted until trust;
+afterward the exact server, dirty caller, native F12 and diagnostics recover.
+The read-only trust observer never changes trust/configuration through its API.
+The trusted 450-second lane and new 210-second lane keep separate finite budgets;
+the latter covers two 90-second proofs plus setup. No native windows run together.
+A focused run is
+`npm --prefix editors/vscode run test:input -- --proof ux21-untrusted-open --proof ux21-grant-trust`.
+Full acceptance now requires all 50 proofs on one frozen source/profile/server.
+See the [trust review](../../../../tests/lsp_matrix/reviews/workspace-trust-workbench.md).
