@@ -510,9 +510,9 @@ impl GlobalStateSnapshot {
         let document_id = from_proto::document_symbol_params(&params);
         let symbols = self.databases.document_symbols(&document_id);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::document_symbols(&symbols),
+            to_proto::document_symbols(&symbols, &snapshot_document_text(&self, &document_id)),
             "typed documentSymbol response",
         )
     }

@@ -427,7 +427,7 @@ pub fn main(player: Player) -> i64 {
     databases.update(&project);
     let symbols = databases.document_symbols(&document);
 
-    let symbols = document_symbols(&symbols);
+    let symbols = document_symbols(&symbols, source).expect("valid symbol ranges");
 
     let lsp_types::DocumentSymbolResponse::Nested(symbols) = symbols else {
         panic!("document symbols should project nested response");

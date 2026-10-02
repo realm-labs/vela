@@ -113,7 +113,12 @@ async function runInvalidConfigSchema({ page, bridge, record, root, workspace, c
         });
       }
     };
-    const hover = page.locator(".monaco-hover:visible");
+    // A Quick Open click can leave the pointer above a tab tooltip while the
+    // keyboard opens the language hover. Observe the language widget only;
+    // retain both Markdown and marker-only (diagnostic) hover contents.
+    const hover = page.locator(".monaco-hover:visible").filter({
+      has: page.locator(".markdown-hover, .marker.hover-contents"),
+    });
     const widget = async id => check(id, await until(id, async () => {
       const value = await hover.count() === 0 ? { visible: false } : await hover.count() === 1 ? { visible: await hover.isVisible(),
         label: (await hover.locator(".monaco-tokenized-source").allTextContents()).join("").trim(),

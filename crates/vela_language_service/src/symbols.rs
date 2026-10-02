@@ -6,6 +6,9 @@ use vela_common::Span;
 use vela_hir::module_graph::{Declaration, DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature};
 
+mod ranges;
+use ranges::SymbolSource;
+
 use crate::{
     DiagnosticRange, DisplayParts, DocumentId, LanguageServiceDatabases, LineIndex, SourceRecord,
     SymbolRef, TextRange,
@@ -164,11 +167,15 @@ impl LanguageServiceDatabases {
         let Some(source) = self.source_db().records().get(document_id) else {
             return Vec::new();
         };
+        let Some(parsed) = self.parse_db().syntax_parse(document_id) else {
+            return Vec::new();
+        };
+        let outline = SymbolSource::new(source, parsed.syntax_node());
         let graph = self.hir_db().graph();
         let mut symbols = graph
             .declarations()
             .filter(|declaration| declaration.span.source == source.source_id())
-            .filter_map(|declaration| symbol_from_declaration(graph, declaration, source))
+            .filter_map(|declaration| symbol_from_declaration(graph, declaration, &outline))
             .collect::<Vec<_>>();
         symbols.sort_by_key(|symbol| {
             let start = symbol.range.start();
@@ -432,7 +439,7 @@ fn file_symbol_name(document_id: &DocumentId) -> Option<String> {
 fn symbol_from_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
-    source: &SourceRecord,
+    source: &SymbolSource<'_>,
 ) -> Option<DocumentSymbol> {
     let kind = kind_for_declaration(declaration.kind);
     let children = children_for_declaration(graph, declaration, source);
@@ -462,7 +469,7 @@ fn kind_for_declaration(kind: DeclarationKind) -> DocumentSymbolKind {
 fn children_for_declaration(
     graph: &ModuleGraph,
     declaration: &Declaration,
-    source: &SourceRecord,
+    source: &SymbolSource<'_>,
 ) -> Vec<DocumentSymbol> {
     match declaration.kind {
         DeclarationKind::Struct => graph
@@ -619,7 +626,7 @@ fn signature_detail_parts(signature: &FunctionSignature) -> DisplayParts {
 }
 
 fn symbol_from_span(
-    source: &SourceRecord,
+    source: &SymbolSource<'_>,
     span: Span,
     name_parts: DisplayParts,
     detail_parts: Option<DisplayParts>,
@@ -627,14 +634,9 @@ fn symbol_from_span(
     children: Vec<DocumentSymbol>,
     symbol: SymbolRef,
 ) -> Option<DocumentSymbol> {
-    if span.source != source.source_id() {
-        return None;
-    }
     let name = name_parts.render();
     let detail = detail_parts.as_ref().map(DisplayParts::render);
-    let range = diagnostic_range(source.text(), span_range(span)?);
-    let selection_range = name_range_in_span(source.text(), span, &name)
-        .map_or(range, |range| diagnostic_range(source.text(), range));
+    let (range, selection_range) = source.ranges(span)?;
     Some(DocumentSymbol {
         name,
         name_parts,
@@ -652,16 +654,6 @@ fn span_range(span: Span) -> Option<TextRange> {
     let start = usize::try_from(span.start).ok()?;
     let end = usize::try_from(span.end).ok()?;
     Some(TextRange::new(start, end))
-}
-
-fn name_range_in_span(text: &str, span: Span, name: &str) -> Option<TextRange> {
-    let span_range = span_range(span)?;
-    let slice = text.get(span_range.start..span_range.end)?;
-    let offset = slice.find(name)?;
-    Some(TextRange::new(
-        span_range.start + offset,
-        span_range.start + offset + name.len(),
-    ))
 }
 
 fn diagnostic_range(text: &str, range: TextRange) -> DiagnosticRange {

@@ -16825,6 +16825,56 @@
           "name": "tests::session_init::session_initialization_matrix_preserves_complete_capabilities_and_registration_policy"
         }
       ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/document-symbol-declarations.md. Independently authored complete 19-root/33-node declaration tree pins every name, kind, detail, full range, identifier or impl-header selection and ancestry. Public/private const, VM/extern state, typed/default/zero/untyped/async function, struct fields/defaults, enum unit/tuple/record fields, required/default trait and inherent/trait impl methods preserve source ownership; imports, parameters, locals and constructors never add outline declarations. Attribute-name decoys expose source-search errors. LF/CRLF use literal same-line Chinese/non-BMP UTF-16 and byte-column goldens. Protocol compares complete JSON-RPC trees before/after opening a URL-encoded Chinese/space/percent private root; service checks canonical identities. Negative/recovery/state/editor and other syntax cells stay unreviewed.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "document_symbol_matrix_tests::document_symbol_declarations_preserve_complete_ranges_selections_and_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-declarations.md. Independently authored complete 19-root/33-node declaration tree pins every name, kind, detail, full range, identifier or impl-header selection and ancestry. Public/private const, VM/extern state, typed/default/zero/untyped/async function, struct fields/defaults, enum unit/tuple/record fields, required/default trait and inherent/trait impl methods preserve source ownership; imports, parameters, locals and constructors never add outline declarations. Attribute-name decoys expose source-search errors. LF/CRLF use literal same-line Chinese/non-BMP UTF-16 and byte-column goldens. Protocol compares complete JSON-RPC trees before/after opening a URL-encoded Chinese/space/percent private root; service checks canonical identities. Negative/recovery/state/editor and other syntax cells stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-declarations.md. Independently authored complete 19-root/33-node declaration tree pins every name, kind, detail, full range, identifier or impl-header selection and ancestry. Public/private const, VM/extern state, typed/default/zero/untyped/async function, struct fields/defaults, enum unit/tuple/record fields, required/default trait and inherent/trait impl methods preserve source ownership; imports, parameters, locals and constructors never add outline declarations. Attribute-name decoys expose source-search errors. LF/CRLF use literal same-line Chinese/non-BMP UTF-16 and byte-column goldens. Protocol compares complete JSON-RPC trees before/after opening a URL-encoded Chinese/space/percent private root; service checks canonical identities. Negative/recovery/state/editor and other syntax cells stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-declarations.md. Independently authored complete 19-root/33-node declaration tree pins every name, kind, detail, full range, identifier or impl-header selection and ancestry. Public/private const, VM/extern state, typed/default/zero/untyped/async function, struct fields/defaults, enum unit/tuple/record fields, required/default trait and inherent/trait impl methods preserve source ownership; imports, parameters, locals and constructors never add outline declarations. Attribute-name decoys expose source-search errors. LF/CRLF use literal same-line Chinese/non-BMP UTF-16 and byte-column goldens. Protocol compares complete JSON-RPC trees before/after opening a URL-encoded Chinese/space/percent private root; service checks canonical identities. Negative/recovery/state/editor and other syntax cells stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "document-symbol/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/document-symbol-declarations.md. Independently authored complete 19-root/33-node declaration tree pins every name, kind, detail, full range, identifier or impl-header selection and ancestry. Public/private const, VM/extern state, typed/default/zero/untyped/async function, struct fields/defaults, enum unit/tuple/record fields, required/default trait and inherent/trait impl methods preserve source ownership; imports, parameters, locals and constructors never add outline declarations. Attribute-name decoys expose source-search errors. LF/CRLF use literal same-line Chinese/non-BMP UTF-16 and byte-column goldens. Protocol compares complete JSON-RPC trees before/after opening a URL-encoded Chinese/space/percent private root; service checks canonical identities. Negative/recovery/state/editor and other syntax cells stay unreviewed.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
+        }
+      ]
     }
   ],
   "featureFiles": [

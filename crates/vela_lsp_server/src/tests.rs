@@ -219,6 +219,7 @@ mod completion;
 mod completion_analysis;
 mod completion_authoring_surface;
 mod definition;
+mod document_symbol_matrix;
 mod file_watching_coalescing;
 mod folding;
 mod hover;

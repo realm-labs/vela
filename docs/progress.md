@@ -89,6 +89,14 @@ restored dirty-source F12/diagnostics. The targeted Windows run passes; see the
 [trust review](../tests/lsp_matrix/reviews/workspace-trust-workbench.md).
 B09 acceptance requires a fresh complete 50-proof run and strict current-source
 gate. Trust-disabled smoke cannot substitute for the enabled-trust lane.
+Document-symbol declaration coverage now uses independent complete trees with
+names, kinds, details, source identities and nested range/selection containment.
+Outline extents come from the cached CST while existing HIR ownership remains
+unchanged. Actual identifier/header selections ignore duplicate names inside
+attributes. Both layers cover LF/CRLF and the protocol uses encoded private roots;
+see the [declaration review](../tests/lsp_matrix/reviews/document-symbol-declarations.md).
+Negative recovery, remaining symbol partitions, lifecycle and other B10 features
+remain open under the execution checkpoint.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

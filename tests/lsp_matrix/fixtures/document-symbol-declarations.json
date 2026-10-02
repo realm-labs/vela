@@ -1,0 +1,386 @@
+{
+  "version": 1,
+  "id": "document-symbol-declarations",
+  "files": {
+    "scripts/api.vela": "use helper::external as imported; pub use helper::Widget as Row;\n[[limit-range:start]]pub const [[limit-name:start]]LIMIT[[limit-name:end]]: i64 = 3;[[limit-range:end]]\n[[label-range:start]]const [[label-name:start]]LABEL[[label-name:end]] = \"中😀\";[[label-range:end]]\n[[counter-range:start]]pub state [[counter-name:start]]counter[[counter-name:end]]: i64 = 0;[[counter-range:end]]\n[[state-range:start]]state [[state-name:start]]local_state[[state-name:end]]: String = \"text\";[[state-range:end]]\n[[external-range:start]]pub extern state [[external-name:start]]live[[external-name:end]]: Widget;[[external-range:end]]\n[[hidden-range:start]]extern state [[hidden-name:start]]hidden[[hidden-name:end]]: bool;[[hidden-range:end]]\n[[choose-range:start]]#[doc(\"中😀 choose before its identifier\")]\npub fn [[choose-name:start]]choose[[choose-name:end]](value: i64, amount: i64 = 2) -> i64 {\n let shadow = amount;\n return value + shadow;\n}[[choose-range:end]]\n[[private-range:start]]fn [[private-name:start]]private_fn[[private-name:end]](value) { return value; }[[private-range:end]]\n[[zero-range:start]]fn [[zero-name:start]]zero[[zero-name:end]]() {}[[zero-range:end]]\n[[async-range:start]]pub async fn [[async-name:start]]worker[[async-name:end]](value: i64) -> i64 { return value; }[[async-range:end]]\n[[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] {\n [[value-range:start]][[value-name:start]]value[[value-name:end]]: i64 = 1[[value-range:end]]\n [[misc-range:start]][[misc-name:start]]misc[[misc-name:end]]: Any[[misc-range:end]]\n}[[widget-range:end]]\n[[private-struct-range:start]]struct [[private-struct-name:start]]Private[[private-struct-name:end]] { [[private-field-range:start]][[private-field-name:start]]flag[[private-field-name:end]]: bool[[private-field-range:end]] }[[private-struct-range:end]]\n[[choice-range:start]]pub enum [[choice-name:start]]Choice[[choice-name:end]] {\n [[unit-range:start]][[unit-name:start]]Empty[[unit-name:end]][[unit-range:end]]\n [[tuple-range:start]][[tuple-name:start]]Pair[[tuple-name:end]]([[count-range:start]][[count-name:start]]count[[count-name:end]]: i64 = 2[[count-range:end]], [[reason-range:start]][[reason-name:start]]reason[[reason-name:end]]: String[[reason-range:end]])[[tuple-range:end]]\n [[record-range:start]][[record-name:start]]Named[[record-name:end]] { [[key-range:start]][[key-name:start]]key[[key-name:end]]: String[[key-range:end]] }[[record-range:end]]\n}[[choice-range:end]]\n[[private-enum-range:start]]enum [[private-enum-name:start]]HiddenChoice[[private-enum-name:end]] {}[[private-enum-range:end]]\n[[readable-range:start]]pub trait [[readable-name:start]]Readable[[readable-name:end]] {\n [[required-range:start]]#[doc(\"中😀 read misleading name\")] fn [[required-name:start]]read[[required-name:end]](self, amount: i64 = 1) -> i64;[[required-range:end]]\n [[default-range:start]]fn [[default-name:start]]preview[[default-name:end]](self, amount: i64 = 2) -> bool { return amount > 0; }[[default-range:end]]\n}[[readable-range:end]]\n[[private-trait-range:start]]trait [[private-trait-name:start]]HiddenTrait[[private-trait-name:end]] {}[[private-trait-range:end]]\n[[impl-range:start]]#[doc(\"impl Widget before actual header\")]\n[[impl-name:start]]impl Widget[[impl-name:end]] {\n [[inherent-range:start]]#[doc(\"中😀 accept decoy\")] pub fn [[inherent-name:start]]accept[[inherent-name:end]](self, amount: i64 = 2) -> bool { return amount > 0; }[[inherent-range:end]]\n [[async-method-range:start]]pub async fn [[async-method-name:start]]process[[async-method-name:end]](self, value: i64) -> String { return \"done\"; }[[async-method-range:end]]\n}[[impl-range:end]]\n[[trait-impl-range:start]][[trait-impl-name:start]]impl Readable for Widget[[trait-impl-name:end]] {\n [[override-range:start]]fn [[override-name:start]]read[[override-name:end]](self, amount: i64) -> i64 { return amount; }[[override-range:end]]\n}[[trait-impl-range:end]]\n[[uses-range:start]]fn [[uses-name:start]]uses[[uses-name:end]]() {\n let value = 1;\n let alias = Row { value: true };\n let row = Widget { value, misc: 2 };\n row.value += 1; row.accept(1); imported();\n Choice::Empty; Choice::Pair(1, \"text\"); Choice::Named { key: \"text\" };\n}[[uses-range:end]]\n",
+    "scripts/helper.vela": "pub fn external() {}\npub struct Widget { value: bool }\n",
+    "scripts/imports.vela": "use api::Widget as Row;\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/api.vela",
+    "symbols": [
+      {
+        "id": "limit",
+        "name": "LIMIT",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "detail": "i64",
+        "identity": "api::LIMIT",
+        "range": "limit-range",
+        "selection": "limit-name",
+        "children": []
+      },
+      {
+        "id": "label",
+        "name": "LABEL",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "detail": null,
+        "identity": "api::LABEL",
+        "range": "label-range",
+        "selection": "label-name",
+        "children": []
+      },
+      {
+        "id": "counter",
+        "name": "counter",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "detail": "i64",
+        "identity": "api::counter",
+        "range": "counter-range",
+        "selection": "counter-name",
+        "children": []
+      },
+      {
+        "id": "state",
+        "name": "local_state",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "detail": "String",
+        "identity": "api::local_state",
+        "range": "state-range",
+        "selection": "state-name",
+        "children": []
+      },
+      {
+        "id": "external",
+        "name": "live",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "detail": "Widget",
+        "identity": "api::live",
+        "range": "external-range",
+        "selection": "external-name",
+        "children": []
+      },
+      {
+        "id": "hidden",
+        "name": "hidden",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "detail": "bool",
+        "identity": "api::hidden",
+        "range": "hidden-range",
+        "selection": "hidden-name",
+        "children": []
+      },
+      {
+        "id": "choose",
+        "name": "choose",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "(value: i64, amount: i64) -> i64",
+        "identity": "api::choose",
+        "range": "choose-range",
+        "selection": "choose-name",
+        "children": []
+      },
+      {
+        "id": "private",
+        "name": "private_fn",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "(value)",
+        "identity": "api::private_fn",
+        "range": "private-range",
+        "selection": "private-name",
+        "children": []
+      },
+      {
+        "id": "zero",
+        "name": "zero",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "()",
+        "identity": "api::zero",
+        "range": "zero-range",
+        "selection": "zero-name",
+        "children": []
+      },
+      {
+        "id": "async",
+        "name": "worker",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "async (value: i64) -> i64",
+        "identity": "api::worker",
+        "range": "async-range",
+        "selection": "async-name",
+        "children": []
+      },
+      {
+        "id": "widget",
+        "name": "Widget",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "detail": null,
+        "identity": "api::Widget",
+        "range": "widget-range",
+        "selection": "widget-name",
+        "children": [
+          {
+            "id": "value",
+            "name": "value",
+            "kind": "Field",
+            "protocolKind": 8,
+            "detail": "i64",
+            "identity": "api::Widget.value",
+            "range": "value-range",
+            "selection": "value-name",
+            "children": []
+          },
+          {
+            "id": "misc",
+            "name": "misc",
+            "kind": "Field",
+            "protocolKind": 8,
+            "detail": "Any",
+            "identity": "api::Widget.misc",
+            "range": "misc-range",
+            "selection": "misc-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "private-struct",
+        "name": "Private",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "detail": null,
+        "identity": "api::Private",
+        "range": "private-struct-range",
+        "selection": "private-struct-name",
+        "children": [
+          {
+            "id": "private-field",
+            "name": "flag",
+            "kind": "Field",
+            "protocolKind": 8,
+            "detail": "bool",
+            "identity": "api::Private.flag",
+            "range": "private-field-range",
+            "selection": "private-field-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "choice",
+        "name": "Choice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "detail": null,
+        "identity": "api::Choice",
+        "range": "choice-range",
+        "selection": "choice-name",
+        "children": [
+          {
+            "id": "unit",
+            "name": "Empty",
+            "kind": "EnumMember",
+            "protocolKind": 22,
+            "detail": null,
+            "identity": "api::Choice::Empty",
+            "range": "unit-range",
+            "selection": "unit-name",
+            "children": []
+          },
+          {
+            "id": "tuple",
+            "name": "Pair",
+            "kind": "EnumMember",
+            "protocolKind": 22,
+            "detail": null,
+            "identity": "api::Choice::Pair",
+            "range": "tuple-range",
+            "selection": "tuple-name",
+            "children": [
+              {
+                "id": "count",
+                "name": "count",
+                "kind": "Field",
+                "protocolKind": 8,
+                "detail": "i64",
+                "identity": "api::Choice::Pair.count",
+                "range": "count-range",
+                "selection": "count-name",
+                "children": []
+              },
+              {
+                "id": "reason",
+                "name": "reason",
+                "kind": "Field",
+                "protocolKind": 8,
+                "detail": "String",
+                "identity": "api::Choice::Pair.reason",
+                "range": "reason-range",
+                "selection": "reason-name",
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "record",
+            "name": "Named",
+            "kind": "EnumMember",
+            "protocolKind": 22,
+            "detail": null,
+            "identity": "api::Choice::Named",
+            "range": "record-range",
+            "selection": "record-name",
+            "children": [
+              {
+                "id": "key",
+                "name": "key",
+                "kind": "Field",
+                "protocolKind": 8,
+                "detail": "String",
+                "identity": "api::Choice::Named.key",
+                "range": "key-range",
+                "selection": "key-name",
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "private-enum",
+        "name": "HiddenChoice",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "detail": null,
+        "identity": "api::HiddenChoice",
+        "range": "private-enum-range",
+        "selection": "private-enum-name",
+        "children": []
+      },
+      {
+        "id": "readable",
+        "name": "Readable",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "detail": null,
+        "identity": "api::Readable",
+        "range": "readable-range",
+        "selection": "readable-name",
+        "children": [
+          {
+            "id": "required",
+            "name": "read",
+            "kind": "Method",
+            "protocolKind": 6,
+            "detail": "(self, amount: i64) -> i64",
+            "identity": "api::Readable.read",
+            "range": "required-range",
+            "selection": "required-name",
+            "children": []
+          },
+          {
+            "id": "default",
+            "name": "preview",
+            "kind": "Method",
+            "protocolKind": 6,
+            "detail": "(self, amount: i64) -> bool",
+            "identity": "api::Readable.preview",
+            "range": "default-range",
+            "selection": "default-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "private-trait",
+        "name": "HiddenTrait",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "detail": null,
+        "identity": "api::HiddenTrait",
+        "range": "private-trait-range",
+        "selection": "private-trait-name",
+        "children": []
+      },
+      {
+        "id": "impl",
+        "name": "impl Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "detail": null,
+        "identity": "api::impl Widget",
+        "range": "impl-range",
+        "selection": "impl-name",
+        "children": [
+          {
+            "id": "inherent",
+            "name": "accept",
+            "kind": "Method",
+            "protocolKind": 6,
+            "detail": "(self, amount: i64) -> bool",
+            "identity": "api::Widget.accept",
+            "range": "inherent-range",
+            "selection": "inherent-name",
+            "children": []
+          },
+          {
+            "id": "async-method",
+            "name": "process",
+            "kind": "Method",
+            "protocolKind": 6,
+            "detail": "async (self, value: i64) -> String",
+            "identity": "api::Widget.process",
+            "range": "async-method-range",
+            "selection": "async-method-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "trait-impl",
+        "name": "impl Readable for Widget",
+        "kind": "Object",
+        "protocolKind": 19,
+        "detail": null,
+        "identity": "api::impl Readable for Widget",
+        "range": "trait-impl-range",
+        "selection": "trait-impl-name",
+        "children": [
+          {
+            "id": "override",
+            "name": "read",
+            "kind": "Method",
+            "protocolKind": 6,
+            "detail": "(self, amount: i64) -> i64",
+            "identity": "Readable for Widget.read",
+            "range": "override-range",
+            "selection": "override-name",
+            "children": []
+          }
+        ]
+      },
+      {
+        "id": "uses",
+        "name": "uses",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "()",
+        "identity": "api::uses",
+        "range": "uses-range",
+        "selection": "uses-name",
+        "children": []
+      }
+    ]
+  }
+}

@@ -8281,10 +8281,22 @@
         "vscode/UX21/grant-trust/render/local"
       ],
       "summary": "Close four UX21 untrusted-open/grant-trust Input/Render requirements and accept whole B09. Explicit unsupported trust policy preserves the pinned native launcher default. A separate sequential normal installed window enables Workspace Trust, refuses startup through real pointer input, retains dirty Unicode caller/F12 no-jump and visible disabled policy, then grants trust through the real Trust button. Exact dirty ownership, full provider and independent F12 wire/target caret, complete diagnostic clears and one owned configured binary/server session restore. Read-only private observer supports Restricted Mode without trust/document/configuration mutation. Preserve all 48 previous native contract hashes, nine accepted snapshots and 201 previous children. Node140; fmt; fresh Windows VSIX20/native50; strict B09 service746+2 historical ignores/protocol793/stdio10, core870/455/2/zero failed, B09 46 verified/2 N/A/zero open. Next B10 symbols/folding/selection. macOS requires independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-0PrhPQ/results.json; native editors/vscode/test-results/input-DrEuoU/results.json; audit target/lsp-matrix/run-9rSq1e/report.json. Find commit through LSP-Batch trailer."
+    },
+    {
+      "id": "B10.1",
+      "revision": null,
+      "requirements": [
+        "document-symbol/syntax/S1/positive/service",
+        "document-symbol/syntax/S1/positive/protocol",
+        "document-symbol/environments/utf16/protocol",
+        "document-symbol/environments/crlf/protocol",
+        "document-symbol/environments/encoded_uri/protocol"
+      ],
+      "summary": "Close five document-symbol S1 positive service/protocol and UTF-16/CRLF/encoded-URI requirements. Independently authored 19-root/33-node whole tree pins public/private const, VM/extern state, typed/default/zero/untyped/async functions, struct fields/defaults, enum unit/tuple/record variants, required/default trait and inherent/trait impl methods, exact names/kinds/details, full ranges, actual identifier/header selections, ancestry and source ownership. Imports, locals and constructor uses do not create outline declarations. Attribute name decoys expose substring selection errors. Join existing HIR owners to cached CST extents by exact offsets without mutating semantic spans. Recursively project both ranges through current source UTF-16 instead of copied byte columns. LF/CRLF literal Unicode goldens and complete disk/open JSON-RPC trees retain one encoded source identity. Service red test reproduces wrong extents; protocol red tree reproduces byte-column projection. Focused service2/protocol5; Node140; fmt; service/server all-target Clippy; fresh Windows VSIX20/native50; strict B09 service747+2 historical ignores/protocol794/stdio10, core875/450/2/zero failed, B10 five verified/171 pending. Scope invalid-config rendered observations to language/marker widgets so an unrelated tab tooltip cannot collide; retain the first failed native bundle and unchanged actions/full expected hover facts. Preserve ten accepted snapshots, prior202 children and all50 native contract hashes. Next B10.2 document-symbol recovery and remaining syntax partitions. macOS needs independent fresh captures; B16 deferred. VSIX editors/vscode/test-results/run-iFDxDJ/results.json; native editors/vscode/test-results/input-joZcUx/results.json; audit target/lsp-matrix/run-nwoCAw/report.json. Find commit through LSP-Batch trailer."
     }
   ],
-  "activeChild": null,
-  "nextTask": "B10",
+  "activeChild": "B10.2",
+  "nextTask": "B10.2",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10383,7 +10395,22 @@
     "target/b09-6-trust-input-2.log",
     "target/b09-6-trust-input-3.log",
     "target/b09-6-trust-input-4.log",
-    "target/b09-6-trust-input-5.log"
+    "target/b09-6-trust-input-5.log",
+    "target/lsp-matrix/run-nwoCAw/report.json",
+    "editors/vscode/test-results/run-iFDxDJ/results.json",
+    "editors/vscode/test-results/input-joZcUx/results.json",
+    "editors/vscode/test-results/input-V0H35q/results.json",
+    "target/b10-1-input-attempt-1.log",
+    "target/b10-1-node-final.log",
+    "target/b10-1-format.log",
+    "target/b10-1-clippy-final.log",
+    "target/b10-1-input-final.log",
+    "target/b10-1-editor-final.log",
+    "target/b10-1-scoped.log",
+    "target/b10-1-service-red.log",
+    "target/b10-1-service-final.log",
+    "target/b10-1-protocol-green-2.log",
+    "target/b10-1-protocol-final.log"
   ],
   "openIssues": [
     {
@@ -14311,8 +14338,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "2f73f412cd9b0796c4da7748ec0889cd036fa6bb",
-          "treeSha256": "4273dc39702dc87005144045caa5c7de6f8c2b9aabe582acead35fdde0fd2792"
+          "revision": "53f2841f9dc8ef35b68a4ef3c58cf8f9c88a56d1",
+          "treeSha256": "3b86f69944eb2cefaba5972b5fd8a8c8108cfa29b82782c09dc787677ec5d3d0"
         },
         "profile": {
           "platform": "win32",
@@ -14320,11 +14347,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-9rSq1e/report.json"
+          "target/lsp-matrix/run-nwoCAw/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-0PrhPQ/results.json --local-results editors/vscode/test-results/input-DrEuoU/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-iFDxDJ/results.json --local-results editors/vscode/test-results/input-joZcUx/results.json",
             "exitCode": 0
           }
         ]

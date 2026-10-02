@@ -5,7 +5,7 @@ use vela_language_service::{
     CallHierarchyItem as ServiceCallHierarchyItem, CodeAction as ServiceCodeAction,
     CodeActionKind as ServiceCodeActionKind, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
-    DiagnosticRange, DocumentDiagnostics, DocumentHighlight, DocumentHighlightKind, DocumentSymbol,
+    DiagnosticRange, DocumentDiagnostics, DocumentHighlight, DocumentHighlightKind,
     DocumentSymbolKind, DocumentTextEdit, FoldingRange as ServiceFoldingRange,
     FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall,
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
@@ -15,7 +15,9 @@ use vela_language_service::{
     WorkspaceSymbolLocation,
 };
 
+mod symbols;
 mod tokens;
+pub(crate) use symbols::document_symbols;
 pub(crate) use tokens::{
     delta as semantic_tokens_delta, full as semantic_tokens, range as semantic_tokens_range,
 };
@@ -170,10 +172,6 @@ pub(crate) fn document_highlights(
             kind: document_highlight_kind(highlight.kind()),
         })
         .collect()
-}
-
-pub(crate) fn document_symbols(symbols: &[DocumentSymbol]) -> lsp_types::DocumentSymbolResponse {
-    lsp_types::DocumentSymbolResponse::Nested(symbols.iter().map(document_symbol).collect())
 }
 
 pub(crate) fn workspace_symbols(symbols: &[WorkspaceSymbol]) -> lsp_types::WorkspaceSymbolResponse {
@@ -410,21 +408,6 @@ const fn document_highlight_kind(
         }
         DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
         DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
-    }
-}
-
-fn document_symbol(symbol: &DocumentSymbol) -> lsp_types::DocumentSymbol {
-    #[allow(deprecated)]
-    lsp_types::DocumentSymbol {
-        name: symbol.name().to_owned(),
-        detail: symbol.detail().map(str::to_owned),
-        kind: symbol_kind(symbol.kind()),
-        tags: None,
-        deprecated: None,
-        range: diagnostic_range(symbol.range()),
-        selection_range: diagnostic_range(symbol.selection_range()),
-        children: (!symbol.children().is_empty())
-            .then(|| symbol.children().iter().map(document_symbol).collect()),
     }
 }
 

@@ -4318,6 +4318,13 @@ rg -n '^\s*pub use\b' crates --glob '*.rs'
 
 ### Shared Local LSP Fixture Oracles
 
+Document outlines join existing HIR symbol ownership to the current cached CST
+using exact item/name offsets. Full CST extents define outline ranges; actual
+identifier tokens or impl headers define selections. Outline queries do not
+rewrite semantic name spans or search attribute text for a matching name.
+Nested outline ranges convert through the current document's UTF-16 index at
+the protocol boundary; service positions retain byte columns.
+
 B01's shared JSON corpus is consumed by test-only Rust modules and the installed
 VSIX runner. Markers provide absolute UTF-8 offsets and UTF-16 positions; the
 service consumer derives byte columns independently. Hand-authored golden ranges
