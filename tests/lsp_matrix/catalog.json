@@ -17475,6 +17475,38 @@
           "name": "tests::workspace_symbol_lifecycle::lsp_workspace_symbol_lifecycle_pins_whole_utf16_sets_and_frozen_snapshots_with_fresh_parity"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/states/stale_version/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-worker.md. Reuse complete independently authored nineteen-phase source/schema lifecycle sets and27 ordered query/range oracles, with literal worker contract IDs, equal/lower versions, malformed cancel params and exact errors. Equal1/lower0/-1/i32::MIN changes emit no publications or generation mutation; queued/completed workspace tasks stay publishable with the current whole set, and newer2 changes names/ranges with fresh-server parity and immutable prior facts. Cancel integer boundaries/zero, Unicode/empty strings/string20 across whole/schema/no-match queries before completion or after held completion; repeated cancellation emits exactly one RequestCancelled and no symbols, changes no source/schema/physical state, and IDs immediately/after late cancels remain reusable. Numeric20/string20, unknown and malformed params cannot poison unrelated pending/future results. Real queue/receive/publish drives every subsequent source/schema phase with two jobs: cancelled numeric20 wins over stale generation; string20 emits no old result and receives exactly one retry which publishes only the current authored whole set. A second mutation while holding that retry yields one ContentModified without another retry; cancelling the exhausted retry still wins. All historic snapshots retain source/schema/outline facts and whole workspace ownership; fresh coordinators, LF/CRLF/two Unicode shifts, encoded private roots and current complete UTF16 JSON-RPC envelopes/omitted fields remain independently checked. Existing five-second bounds and no timing sleeps; established one-retry production policy unchanged. S0/S11 completeness and installed/native picker remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_stale_versions_keep_current_whole_sets_and_pending_workers_publishable"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/states/cancellation/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-worker.md. Reuse complete independently authored nineteen-phase source/schema lifecycle sets and27 ordered query/range oracles, with literal worker contract IDs, equal/lower versions, malformed cancel params and exact errors. Equal1/lower0/-1/i32::MIN changes emit no publications or generation mutation; queued/completed workspace tasks stay publishable with the current whole set, and newer2 changes names/ranges with fresh-server parity and immutable prior facts. Cancel integer boundaries/zero, Unicode/empty strings/string20 across whole/schema/no-match queries before completion or after held completion; repeated cancellation emits exactly one RequestCancelled and no symbols, changes no source/schema/physical state, and IDs immediately/after late cancels remain reusable. Numeric20/string20, unknown and malformed params cannot poison unrelated pending/future results. Real queue/receive/publish drives every subsequent source/schema phase with two jobs: cancelled numeric20 wins over stale generation; string20 emits no old result and receives exactly one retry which publishes only the current authored whole set. A second mutation while holding that retry yields one ContentModified without another retry; cancelling the exhausted retry still wins. All historic snapshots retain source/schema/outline facts and whole workspace ownership; fresh coordinators, LF/CRLF/two Unicode shifts, encoded private roots and current complete UTF16 JSON-RPC envelopes/omitted fields remain independently checked. Existing five-second bounds and no timing sleeps; established one-retry production policy unchanged. S0/S11 completeness and installed/native picker remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_cancellation_discards_queued_and_completed_workers_without_mutation_or_id_poisoning"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_unknown_malformed_and_different_typed_cancel_ids_preserve_pending_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_cancel_priority_and_bounded_retry_cover_all_source_schema_lifecycle_mutations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_retry_exhaustion_returns_one_exact_error_and_cancellation_still_wins"
+        }
+      ]
     }
   ],
   "featureFiles": [

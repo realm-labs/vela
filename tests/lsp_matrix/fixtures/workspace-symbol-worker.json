@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-worker",
+  "ids": [-2147483648, 0, 2147483647, "cancel 中😀", "20", ""],
+  "queries": ["", "host::Box", "not_a_workspace_symbol_94"],
+  "retryLimit": 1,
+  "ignoredVersions": [-2147483648, -1, 0, 1],
+  "ignoredCancelParams": [
+    {},
+    {"id": null},
+    {"id": true},
+    {"id": []},
+    {"id": {}},
+    {"id": 1.5},
+    {"id": 2147483648},
+    {"id": -2147483649}
+  ],
+  "errors": {
+    "cancelled": {"code": -32800, "message": "request was cancelled before processing"},
+    "stale": {"code": -32801, "message": "request result is stale because the document was modified"}
+  }
+}

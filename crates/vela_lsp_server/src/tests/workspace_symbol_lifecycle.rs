@@ -6,7 +6,7 @@ use crate::matrix_fixture::{
 use lsp_types::request as r;
 use serde_json::{Value, json};
 
-fn check(harness: &mut Harness, fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) {
+pub(crate) fn check(harness: &mut Harness, fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) {
     // Keep the original whole-outline, physical disk and bound schema assertions.
     harness.check(fixture, spec, phase);
     let mut effective = fixture.clone();

@@ -8412,10 +8412,19 @@
         "workspace-symbol/states/dependency_delete/protocol"
       ],
       "summary": "Close six workspace-symbol protocol dirty/close_restore/missing_schema/stale_schema/dependency_change/dependency_delete requirements with19 independently authored finite phases, eight variants/three source files and27 ordered query sets. Whole current file/module/source declaration/Object-impl/schema Class/Field rows retain exact identities, kinds, optional details/containers and complete source ranges versus URI-only vela-schema metadata despite bound origins. Two dirty/close cycles, disk replacement beneath overlay, reopen/final restoration, dependency replacement/deletion/recreation and genuinely loaded schema replacement/invalid format99/deletion/restoration reject stale rows/locations. main::impl Row remains owned by main across imported api::Widget changes/deletion, with no member/alias/local/unknown inventions. Loaded value:i64, replaced:String and new_value:bool names/details/identities and bound locations remain checked; invalid/missing schema removes every metadata row/location with accepted diagnostic/Any fallback. Source declarations retain authored syntax facts. Every query repeats three times across LF/CRLF and two Unicode prefix lines against incrementally replayed and independently fresh databases/protocol coordinators; typed open/change/close/watched messages, complete JSON-RPC envelopes, encoded private Chinese/space/percent roots, literal main function line1/3 UTF16 columns13..16 versus byte17, separate disk/overlay maps and unchanged input/schema bytes. Every prior immutable snapshot is rechecked after every later phase for complete source/schema/outline facts and whole workspace ownership. Original cfg(test) lifecycle helpers now have crate-local visibility to retain the same real dispatch, physical disk, bound schema and complete outline assertions; no production/runtime changes. All focused runs pass on first attempt. Rust1.97.0 process-local baseline10, focused service11/protocol15, original document-symbol lifecycle service1/protocol1, Node161, fmt and relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full audit and strict B09 service755+2 historical ignored/protocol803/stdio10. Core931 verified/394 open/2NA/zero failed; B10 sixty-one verified/115 pending, parent open. Preserve ten accepted snapshots, prior211 completed children, all50 native contracts and historical independent macOS audit. S0/S11 completeness, stale versions, cancellation and installed/native picker remain open; next B10.11, fresh independent macOS proof required when used and B16 deferred. VSIX editors/vscode/test-results/run-2mzNkr/results.json; native editors/vscode/test-results/input-bvA8Fv/results.json; audit target/lsp-matrix/run-INkEBM/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.11",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/states/stale_version/protocol",
+        "workspace-symbol/states/cancellation/protocol"
+      ],
+      "summary": "Close two workspace-symbol protocol stale_version/cancellation requirements with five real worker tests, complete independently authored19-phase source/schema lifecycle query/range sets and literal worker IDs/versions/params/errors. Equal/lower document versions emit no publications or generation mutation; queued/completed tasks remain publishable with complete current rows, and newer2 changes names/ranges with fresh parity and immutable prior facts. Cancel integer boundaries/zero, Unicode/empty/string20 IDs across whole/schema/no-match queries before worker completion or after held completion; repeated cancellation emits exactly one RequestCancelled with no symbols/state mutation, and immediate/late ID reuse succeeds. Numeric20/string20 isolation, unknown/malformed params and late cancels cannot poison unrelated pending/future results. Every subsequent lifecycle phase advances generation with two old tasks: numeric20 cancellation wins; string20 old output stays unpublished, receives exactly one retry and publishes only the current complete authored workspace rows. Two successive source changes exhaust that retry with one ContentModified and no further retry; cancelling that retried/stale result still wins. Real queue/receive/publish uses existing five-second bounds and no sleeps. LF/CRLF/two Unicode shifts, encoded private roots, current complete UTF16 JSON-RPC envelopes, unchanged physical/source/schema bytes, all prior source/schema/outline snapshots and whole workspace ownership remain checked against fresh coordinators. Retain initial incorrect TaskOutcome::Published compile and immediate-stale-error assumption failure; pin the established Completed and one-retry production policy without production changes. Lifecycle checker gains cfg(test) crate visibility only. Rust1.97.0 protocol baseline15, focused service11/protocol20, worker5, original cancellation3, Node163, fmt/relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full audit and strict B09 service755+2 historical ignored/protocol808/stdio10. Core933 verified/392 open/2NA/zero failed; B10 sixty-three verified/113 pending, parent open. Preserve ten accepted snapshots, prior212 completed children, all50 native contracts and historical independent macOS audit. S0/S11 completeness and installed/native picker remain open; next B10.12, fresh independent macOS required when used and B16 deferred. VSIX editors/vscode/test-results/run-VqUAXw/results.json; native editors/vscode/test-results/input-iGZiaz/results.json; audit target/lsp-matrix/run-LaF4pF/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.11",
-  "nextTask": "B10.11",
+  "activeChild": "B10.12",
+  "nextTask": "B10.12",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10773,7 +10782,27 @@
     "target/b10-10-node.log",
     "target/b10-10-format.log",
     "target/b10-10-clippy.log",
-    "target/b10-10-checkpoint.log"
+    "target/b10-10-checkpoint.log",
+    "target/lsp-matrix/run-LaF4pF/report.json",
+    "target/lsp-matrix/run-DA0S2v/report.json",
+    "editors/vscode/test-results/run-VqUAXw/results.json",
+    "editors/vscode/test-results/input-iGZiaz/results.json",
+    "target/b10-11-toolchain.log",
+    "target/b10-11-input.log",
+    "target/b10-11-editor.log",
+    "target/b10-11-scoped.log",
+    "target/b10-11-baseline.log",
+    "target/b10-11-service-final.log",
+    "target/b10-11-protocol-first.log",
+    "target/b10-11-protocol-second.log",
+    "target/b10-11-protocol-third.log",
+    "target/b10-11-protocol-final.log",
+    "target/b10-11-original-cancel.log",
+    "target/b10-11-node-first.log",
+    "target/b10-11-node.log",
+    "target/b10-11-format.log",
+    "target/b10-11-clippy.log",
+    "target/b10-11-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14701,8 +14730,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9e6dbc9e77af8a7174d3fe6f4e197ec26212b48d",
-          "treeSha256": "ad728431f0d51a604e9a8bb6cc7a355ff9971dd7b4ea8ce6ad5735990277b3ef"
+          "revision": "604095b9aa85777f16186bfd04e1b20e16880cd3",
+          "treeSha256": "11626ffcef53025d016c0429d6571c2c1173e34befad81064e5bb171fed3241a"
         },
         "profile": {
           "platform": "win32",
@@ -14710,11 +14739,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-INkEBM/report.json"
+          "target/lsp-matrix/run-LaF4pF/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-2mzNkr/results.json --local-results editors/vscode/test-results/input-bvA8Fv/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-VqUAXw/results.json --local-results editors/vscode/test-results/input-iGZiaz/results.json",
             "exitCode": 0
           }
         ]
