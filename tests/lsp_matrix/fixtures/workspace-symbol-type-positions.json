@@ -1,0 +1,2041 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-type-positions",
+  "files": {
+    "scripts/models.vela": "[[file:start]]/*中😀*/ [[row-range:start]]pub struct Row { count: i64 }[[row-range:end]]\n[[kind-range:start]]pub enum Kind { Ready(code: i64), Empty }[[kind-range:end]]\n[[preview-range:start]]pub trait Preview { fn check(self, value: i64) -> bool; }[[preview-range:end]]\n[[file:end]]",
+    "scripts/types.vela": "[[file:start]]use models::Row as SourceRow; use models::Kind as SourceKind; use models::Preview as SourcePreview;\nuse host::Row as HostRow; use host::Kind as HostKind; use host::Preview as HostPreview;\n/*中😀*/ [[unit-range:start]]pub fn accept_unit_case(value: ()) -> () { return value; }[[unit-range:end]]\n/*中😀*/ [[bool-range:start]]pub fn accept_bool_case(value: bool) -> bool { return value; }[[bool-range:end]]\n/*中😀*/ [[char-range:start]]pub fn accept_char_case(value: char) -> char { return value; }[[char-range:end]]\n/*中😀*/ [[i8-range:start]]pub fn accept_i8_case(value: i8) -> i8 { return value; }[[i8-range:end]]\n/*中😀*/ [[i16-range:start]]pub fn accept_i16_case(value: i16) -> i16 { return value; }[[i16-range:end]]\n/*中😀*/ [[i32-range:start]]pub fn accept_i32_case(value: i32) -> i32 { return value; }[[i32-range:end]]\n/*中😀*/ [[i64-range:start]]pub fn accept_i64_case(value: i64) -> i64 { return value; }[[i64-range:end]]\n/*中😀*/ [[u8-range:start]]pub fn accept_u8_case(value: u8) -> u8 { return value; }[[u8-range:end]]\n/*中😀*/ [[u16-range:start]]pub fn accept_u16_case(value: u16) -> u16 { return value; }[[u16-range:end]]\n/*中😀*/ [[u32-range:start]]pub fn accept_u32_case(value: u32) -> u32 { return value; }[[u32-range:end]]\n/*中😀*/ [[u64-range:start]]pub fn accept_u64_case(value: u64) -> u64 { return value; }[[u64-range:end]]\n/*中😀*/ [[f32-range:start]]pub fn accept_f32_case(value: f32) -> f32 { return value; }[[f32-range:end]]\n/*中😀*/ [[f64-range:start]]pub fn accept_f64_case(value: f64) -> f64 { return value; }[[f64-range:end]]\n/*中😀*/ [[text-range:start]]pub fn accept_text_case(value: String) -> String { return value; }[[text-range:end]]\n/*中😀*/ [[bytes-range:start]]pub fn accept_bytes_case(value: Bytes) -> Bytes { return value; }[[bytes-range:end]]\n/*中😀*/ [[any-range:start]]pub fn accept_any_case(value: Any) -> Any { return value; }[[any-range:end]]\n/*中😀*/ [[array-range:start]]pub fn accept_array_case(value: Array) -> Array { return value; }[[array-range:end]]\n/*中😀*/ [[map-range:start]]pub fn accept_map_case(value: Map) -> Map { return value; }[[map-range:end]]\n/*中😀*/ [[set-range:start]]pub fn accept_set_case(value: Set) -> Set { return value; }[[set-range:end]]\n/*中😀*/ [[iterator-range:start]]pub fn accept_iterator_case(value: Iterator) -> Iterator { return value; }[[iterator-range:end]]\n/*中😀*/ [[range-range:start]]pub fn accept_range_case(value: Range) -> Range { return value; }[[range-range:end]]\n/*中😀*/ [[function-range:start]]pub fn accept_function_case(value: Function) -> Function { return value; }[[function-range:end]]\n/*中😀*/ [[closure-range:start]]pub fn accept_closure_case(value: Closure) -> Closure { return value; }[[closure-range:end]]\n/*中😀*/ [[tuple-range:start]]pub fn accept_tuple_case(value: (i64,bool, String)) -> (i64,bool, String) { return value; }[[tuple-range:end]]\n/*中😀*/ [[array-typed-range:start]]pub fn accept_array_typed_case(value: Array<i64>) -> Array<i64> { return value; }[[array-typed-range:end]]\n/*中😀*/ [[map-typed-range:start]]pub fn accept_map_typed_case(value: Map<String,SourceRow>) -> Map<String,SourceRow> { return value; }[[map-typed-range:end]]\n/*中😀*/ [[set-typed-range:start]]pub fn accept_set_typed_case(value: Set<SourceRow>) -> Set<SourceRow> { return value; }[[set-typed-range:end]]\n/*中😀*/ [[iterator-typed-range:start]]pub fn accept_iterator_typed_case(value: Iterator<SourceRow>) -> Iterator<SourceRow> { return value; }[[iterator-typed-range:end]]\n/*中😀*/ [[option-range:start]]pub fn accept_option_case(value: Option<SourceRow>) -> Option<SourceRow> { return value; }[[option-range:end]]\n/*中😀*/ [[result-range:start]]pub fn accept_result_case(value: Result<SourceRow,String>) -> Result<SourceRow,String> { return value; }[[result-range:end]]\n/*中😀*/ [[nested-range:start]]pub fn accept_nested_case(value: Map<String,Array<Option<Result<models::Row,Bytes>>>>) -> Map<String,Array<Option<Result<models::Row,Bytes>>>> { return value; }[[nested-range:end]]\n/*中😀*/ [[array-view-range:start]]pub fn accept_array_view_case(value: ArrayView<i64>) -> ArrayView<i64> { return value; }[[array-view-range:end]]\n/*中😀*/ [[array-mut-range:start]]pub fn accept_array_mut_case(value: ArrayMut<i64>) -> ArrayMut<i64> { return value; }[[array-mut-range:end]]\n/*中😀*/ [[map-view-range:start]]pub fn accept_map_view_case(value: MapView<String,SourceRow>) -> MapView<String,SourceRow> { return value; }[[map-view-range:end]]\n/*中😀*/ [[map-mut-range:start]]pub fn accept_map_mut_case(value: MapMut<String,SourceRow>) -> MapMut<String,SourceRow> { return value; }[[map-mut-range:end]]\n/*中😀*/ [[set-view-range:start]]pub fn accept_set_view_case(value: SetView<SourceRow>) -> SetView<SourceRow> { return value; }[[set-view-range:end]]\n/*中😀*/ [[set-mut-range:start]]pub fn accept_set_mut_case(value: SetMut<SourceRow>) -> SetMut<SourceRow> { return value; }[[set-mut-range:end]]\n/*中😀*/ [[source-range:start]]pub fn accept_source_case(value: SourceRow) -> SourceRow { return value; }[[source-range:end]]\n/*中😀*/ [[source-qualified-range:start]]pub fn accept_source_qualified_case(value: models::Row) -> models::Row { return value; }[[source-qualified-range:end]]\n/*中😀*/ [[source-enum-range:start]]pub fn accept_source_enum_case(value: SourceKind) -> SourceKind { return value; }[[source-enum-range:end]]\n/*中😀*/ [[source-trait-range:start]]pub fn accept_source_trait_case(value: SourcePreview) -> SourcePreview { return value; }[[source-trait-range:end]]\n/*中😀*/ [[schema-range:start]]pub fn accept_schema_case(value: HostRow) -> HostRow { return value; }[[schema-range:end]]\n/*中😀*/ [[schema-qualified-range:start]]pub fn accept_schema_qualified_case(value: host::Row) -> host::Row { return value; }[[schema-qualified-range:end]]\n/*中😀*/ [[schema-enum-range:start]]pub fn accept_schema_enum_case(value: HostKind) -> HostKind { return value; }[[schema-enum-range:end]]\n/*中😀*/ [[schema-trait-range:start]]pub fn accept_schema_trait_case(value: HostPreview) -> HostPreview { return value; }[[schema-trait-range:end]]\n/*中😀*/ [[missing-range:start]]pub fn accept_missing_case(value: MissingType) -> MissingType { return value; }[[missing-range:end]]\n/*中😀*/ [[missing-nested-range:start]]pub fn accept_missing_nested_case(value: Array<Option<MissingType>>) -> Array<Option<MissingType>> { return value; }[[missing-nested-range:end]]\n[[untyped-range:start]]fn untyped(value) { return value; }[[untyped-range:end]]\n[[owned-range:start]]fn owned(param: i64) { let local = param; let callback = |captured| { local + param + captured }; callback(1); let Row = param; Row; unknown.field; unknown.read(); Option::Some(local); std::array::new(); print(local); }[[owned-range:end]]\n[[constant-range:start]]pub const CHOICE: Option<SourceRow> = Option::None;[[constant-range:end]]\n[[state-range:start]]pub state CACHE: Map<String, Array<HostRow>> = Map::new();[[state-range:end]]\n[[extern-range:start]]pub extern state LIVE: Result<HostRow, String>;[[extern-range:end]]\n[[file:end]]",
+    "scripts/imports.vela": "[[file:start]]use models::Row as Alias; use models::Preview as TraitAlias; use host::Row as HostAlias; use missing::Row as MissingAlias; use std::array as BuiltinAlias;\n[[file:end]]",
+    "schema.json": "{\"formatVersion\":1,\"facts\":{}}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "cases": [
+      {
+        "id": "unit",
+        "raw": "()",
+        "display": "()"
+      },
+      {
+        "id": "bool",
+        "raw": "bool",
+        "display": "bool"
+      },
+      {
+        "id": "char",
+        "raw": "char",
+        "display": "char"
+      },
+      {
+        "id": "i8",
+        "raw": "i8",
+        "display": "i8"
+      },
+      {
+        "id": "i16",
+        "raw": "i16",
+        "display": "i16"
+      },
+      {
+        "id": "i32",
+        "raw": "i32",
+        "display": "i32"
+      },
+      {
+        "id": "i64",
+        "raw": "i64",
+        "display": "i64"
+      },
+      {
+        "id": "u8",
+        "raw": "u8",
+        "display": "u8"
+      },
+      {
+        "id": "u16",
+        "raw": "u16",
+        "display": "u16"
+      },
+      {
+        "id": "u32",
+        "raw": "u32",
+        "display": "u32"
+      },
+      {
+        "id": "u64",
+        "raw": "u64",
+        "display": "u64"
+      },
+      {
+        "id": "f32",
+        "raw": "f32",
+        "display": "f32"
+      },
+      {
+        "id": "f64",
+        "raw": "f64",
+        "display": "f64"
+      },
+      {
+        "id": "text",
+        "raw": "String",
+        "display": "String"
+      },
+      {
+        "id": "bytes",
+        "raw": "Bytes",
+        "display": "Bytes"
+      },
+      {
+        "id": "any",
+        "raw": "Any",
+        "display": "Any"
+      },
+      {
+        "id": "array",
+        "raw": "Array",
+        "display": "Array"
+      },
+      {
+        "id": "map",
+        "raw": "Map",
+        "display": "Map"
+      },
+      {
+        "id": "set",
+        "raw": "Set",
+        "display": "Set"
+      },
+      {
+        "id": "iterator",
+        "raw": "Iterator",
+        "display": "Iterator"
+      },
+      {
+        "id": "range",
+        "raw": "Range",
+        "display": "Range"
+      },
+      {
+        "id": "function",
+        "raw": "Function",
+        "display": "Function"
+      },
+      {
+        "id": "closure",
+        "raw": "Closure",
+        "display": "Closure"
+      },
+      {
+        "id": "tuple",
+        "raw": "(i64,bool, String)",
+        "display": "(i64, bool, String)"
+      },
+      {
+        "id": "array-typed",
+        "raw": "Array<i64>",
+        "display": "Array<i64>"
+      },
+      {
+        "id": "map-typed",
+        "raw": "Map<String,SourceRow>",
+        "display": "Map<String, SourceRow>"
+      },
+      {
+        "id": "set-typed",
+        "raw": "Set<SourceRow>",
+        "display": "Set<SourceRow>"
+      },
+      {
+        "id": "iterator-typed",
+        "raw": "Iterator<SourceRow>",
+        "display": "Iterator<SourceRow>"
+      },
+      {
+        "id": "option",
+        "raw": "Option<SourceRow>",
+        "display": "Option<SourceRow>"
+      },
+      {
+        "id": "result",
+        "raw": "Result<SourceRow,String>",
+        "display": "Result<SourceRow, String>"
+      },
+      {
+        "id": "nested",
+        "raw": "Map<String,Array<Option<Result<models::Row,Bytes>>>>",
+        "display": "Map<String, Array<Option<Result<models::Row, Bytes>>>>"
+      },
+      {
+        "id": "array-view",
+        "raw": "ArrayView<i64>",
+        "display": "ArrayView<i64>"
+      },
+      {
+        "id": "array-mut",
+        "raw": "ArrayMut<i64>",
+        "display": "ArrayMut<i64>"
+      },
+      {
+        "id": "map-view",
+        "raw": "MapView<String,SourceRow>",
+        "display": "MapView<String, SourceRow>"
+      },
+      {
+        "id": "map-mut",
+        "raw": "MapMut<String,SourceRow>",
+        "display": "MapMut<String, SourceRow>"
+      },
+      {
+        "id": "set-view",
+        "raw": "SetView<SourceRow>",
+        "display": "SetView<SourceRow>"
+      },
+      {
+        "id": "set-mut",
+        "raw": "SetMut<SourceRow>",
+        "display": "SetMut<SourceRow>"
+      },
+      {
+        "id": "source",
+        "raw": "SourceRow",
+        "display": "SourceRow"
+      },
+      {
+        "id": "source-qualified",
+        "raw": "models::Row",
+        "display": "models::Row"
+      },
+      {
+        "id": "source-enum",
+        "raw": "SourceKind",
+        "display": "SourceKind"
+      },
+      {
+        "id": "source-trait",
+        "raw": "SourcePreview",
+        "display": "SourcePreview"
+      },
+      {
+        "id": "schema",
+        "raw": "HostRow",
+        "display": "HostRow"
+      },
+      {
+        "id": "schema-qualified",
+        "raw": "host::Row",
+        "display": "host::Row"
+      },
+      {
+        "id": "schema-enum",
+        "raw": "HostKind",
+        "display": "HostKind"
+      },
+      {
+        "id": "schema-trait",
+        "raw": "HostPreview",
+        "display": "HostPreview"
+      },
+      {
+        "id": "missing",
+        "raw": "MissingType",
+        "display": "MissingType"
+      },
+      {
+        "id": "missing-nested",
+        "raw": "Array<Option<MissingType>>",
+        "display": "Array<Option<MissingType>>"
+      }
+    ],
+    "symbols": [
+      {
+        "id": "schema-dynamic",
+        "name": "fact::Dynamic",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "detail": "Any",
+        "container": null,
+        "identity": "fact::Dynamic",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-unknown",
+        "name": "fact::Unknown",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "detail": "unknown",
+        "container": null,
+        "identity": "fact::Unknown",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-kind",
+        "name": "host::Kind",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "detail": "host::Kind",
+        "container": null,
+        "identity": "host::Kind",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-ready",
+        "name": "host::Kind::Ready",
+        "kind": "EnumMember",
+        "protocolKind": 22,
+        "detail": "host::Kind::Ready",
+        "container": "host::Kind",
+        "identity": "host::Kind::Ready",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-preview",
+        "name": "host::Preview",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "detail": "host::Preview",
+        "container": null,
+        "identity": "host::Preview",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-check",
+        "name": "host::Preview::check",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function(host::Row) -> bool",
+        "container": "host::Preview",
+        "identity": "host::Preview.check",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-row",
+        "name": "host::Row",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "host::Row",
+        "container": null,
+        "identity": "host::Row",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-read",
+        "name": "host::Row::read",
+        "kind": "Method",
+        "protocolKind": 6,
+        "detail": "Function(Any) -> unknown",
+        "container": "host::Row",
+        "identity": "host::Row.read",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-values",
+        "name": "host::Row::values",
+        "kind": "Field",
+        "protocolKind": 8,
+        "detail": "Map(String, Array(host::Row))",
+        "container": "host::Row",
+        "identity": "host::Row.values",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-dynamic",
+        "name": "host::dynamic",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> Any",
+        "container": null,
+        "identity": "host::dynamic",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-array",
+        "name": "host::items",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> Array(host::Row)",
+        "container": null,
+        "identity": "host::items",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-option",
+        "name": "host::maybe",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> Option(host::Row)",
+        "container": null,
+        "identity": "host::maybe",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-result",
+        "name": "host::outcome",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> Result(host::Row, String)",
+        "container": null,
+        "identity": "host::outcome",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-unknown",
+        "name": "host::unknown",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> unknown",
+        "container": null,
+        "identity": "host::unknown",
+        "ownership": "Schema"
+      },
+      {
+        "id": "schema-function-nested-unknown",
+        "name": "host::unknown_items",
+        "kind": "Function",
+        "protocolKind": 12,
+        "detail": "Function() -> Array(Option(unknown))",
+        "container": null,
+        "identity": "host::unknown_items",
+        "ownership": "Schema"
+      },
+      {
+        "id": "imports-module",
+        "name": "imports",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::imports",
+        "ownership": "Source"
+      },
+      {
+        "id": "imports-file",
+        "name": "imports.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/imports.vela",
+        "range": "file",
+        "detail": "imports",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-metadata",
+        "name": "metadata::Row",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "metadata::Row",
+        "container": null,
+        "identity": "metadata::Row",
+        "ownership": "Schema"
+      },
+      {
+        "id": "models-module",
+        "name": "models",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/models.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::models",
+        "ownership": "Source"
+      },
+      {
+        "id": "models-file",
+        "name": "models.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/models.vela",
+        "range": "file",
+        "detail": "models",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "model-kind",
+        "name": "models::Kind",
+        "kind": "Enum",
+        "protocolKind": 10,
+        "file": "scripts/models.vela",
+        "range": "kind-range",
+        "detail": null,
+        "container": "models",
+        "identity": "models::Kind",
+        "ownership": "Source"
+      },
+      {
+        "id": "model-preview",
+        "name": "models::Preview",
+        "kind": "Interface",
+        "protocolKind": 11,
+        "file": "scripts/models.vela",
+        "range": "preview-range",
+        "detail": null,
+        "container": "models",
+        "identity": "models::Preview",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-collision",
+        "name": "models::Row",
+        "kind": "Class",
+        "protocolKind": 5,
+        "detail": "models::Row",
+        "container": null,
+        "identity": "models::Row",
+        "ownership": "Schema"
+      },
+      {
+        "id": "model-row",
+        "name": "models::Row",
+        "kind": "Struct",
+        "protocolKind": 23,
+        "file": "scripts/models.vela",
+        "range": "row-range",
+        "detail": null,
+        "container": "models",
+        "identity": "models::Row",
+        "ownership": "Source"
+      },
+      {
+        "id": "types-module",
+        "name": "types",
+        "kind": "Module",
+        "protocolKind": 2,
+        "file": "scripts/types.vela",
+        "range": "file",
+        "detail": null,
+        "container": null,
+        "identity": "dev.vela.anonymous::types",
+        "ownership": "Source"
+      },
+      {
+        "id": "types-file",
+        "name": "types.vela",
+        "kind": "File",
+        "protocolKind": 1,
+        "file": "scripts/types.vela",
+        "range": "file",
+        "detail": "types",
+        "container": null,
+        "fileIdentity": true,
+        "ownership": "Source"
+      },
+      {
+        "id": "state",
+        "name": "types::CACHE",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/types.vela",
+        "range": "state-range",
+        "detail": "Map<String, Array<HostRow>>",
+        "container": "types",
+        "identity": "types::CACHE",
+        "ownership": "Source"
+      },
+      {
+        "id": "constant",
+        "name": "types::CHOICE",
+        "kind": "Constant",
+        "protocolKind": 14,
+        "file": "scripts/types.vela",
+        "range": "constant-range",
+        "detail": "Option<SourceRow>",
+        "container": "types",
+        "identity": "types::CHOICE",
+        "ownership": "Source"
+      },
+      {
+        "id": "extern",
+        "name": "types::LIVE",
+        "kind": "Variable",
+        "protocolKind": 13,
+        "file": "scripts/types.vela",
+        "range": "extern-range",
+        "detail": "Result<HostRow, String>",
+        "container": "types",
+        "identity": "types::LIVE",
+        "ownership": "Source"
+      },
+      {
+        "id": "any",
+        "name": "types::accept_any_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "any-range",
+        "detail": "(value: Any) -> Any",
+        "container": "types",
+        "identity": "types::accept_any_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "array",
+        "name": "types::accept_array_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "array-range",
+        "detail": "(value: Array) -> Array",
+        "container": "types",
+        "identity": "types::accept_array_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "array-mut",
+        "name": "types::accept_array_mut_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "array-mut-range",
+        "detail": "(value: ArrayMut<i64>) -> ArrayMut<i64>",
+        "container": "types",
+        "identity": "types::accept_array_mut_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "array-typed",
+        "name": "types::accept_array_typed_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "array-typed-range",
+        "detail": "(value: Array<i64>) -> Array<i64>",
+        "container": "types",
+        "identity": "types::accept_array_typed_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "array-view",
+        "name": "types::accept_array_view_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "array-view-range",
+        "detail": "(value: ArrayView<i64>) -> ArrayView<i64>",
+        "container": "types",
+        "identity": "types::accept_array_view_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "bool",
+        "name": "types::accept_bool_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "bool-range",
+        "detail": "(value: bool) -> bool",
+        "container": "types",
+        "identity": "types::accept_bool_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "bytes",
+        "name": "types::accept_bytes_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "bytes-range",
+        "detail": "(value: Bytes) -> Bytes",
+        "container": "types",
+        "identity": "types::accept_bytes_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "char",
+        "name": "types::accept_char_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "char-range",
+        "detail": "(value: char) -> char",
+        "container": "types",
+        "identity": "types::accept_char_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "closure",
+        "name": "types::accept_closure_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "closure-range",
+        "detail": "(value: Closure) -> Closure",
+        "container": "types",
+        "identity": "types::accept_closure_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "f32",
+        "name": "types::accept_f32_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "f32-range",
+        "detail": "(value: f32) -> f32",
+        "container": "types",
+        "identity": "types::accept_f32_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "f64",
+        "name": "types::accept_f64_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "f64-range",
+        "detail": "(value: f64) -> f64",
+        "container": "types",
+        "identity": "types::accept_f64_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "function",
+        "name": "types::accept_function_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "function-range",
+        "detail": "(value: Function) -> Function",
+        "container": "types",
+        "identity": "types::accept_function_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "i16",
+        "name": "types::accept_i16_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "i16-range",
+        "detail": "(value: i16) -> i16",
+        "container": "types",
+        "identity": "types::accept_i16_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "i32",
+        "name": "types::accept_i32_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "i32-range",
+        "detail": "(value: i32) -> i32",
+        "container": "types",
+        "identity": "types::accept_i32_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "i64",
+        "name": "types::accept_i64_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "i64-range",
+        "detail": "(value: i64) -> i64",
+        "container": "types",
+        "identity": "types::accept_i64_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "i8",
+        "name": "types::accept_i8_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "i8-range",
+        "detail": "(value: i8) -> i8",
+        "container": "types",
+        "identity": "types::accept_i8_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "iterator",
+        "name": "types::accept_iterator_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "iterator-range",
+        "detail": "(value: Iterator) -> Iterator",
+        "container": "types",
+        "identity": "types::accept_iterator_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "iterator-typed",
+        "name": "types::accept_iterator_typed_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "iterator-typed-range",
+        "detail": "(value: Iterator<SourceRow>) -> Iterator<SourceRow>",
+        "container": "types",
+        "identity": "types::accept_iterator_typed_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "map",
+        "name": "types::accept_map_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "map-range",
+        "detail": "(value: Map) -> Map",
+        "container": "types",
+        "identity": "types::accept_map_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "map-mut",
+        "name": "types::accept_map_mut_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "map-mut-range",
+        "detail": "(value: MapMut<String, SourceRow>) -> MapMut<String, SourceRow>",
+        "container": "types",
+        "identity": "types::accept_map_mut_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "map-typed",
+        "name": "types::accept_map_typed_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "map-typed-range",
+        "detail": "(value: Map<String, SourceRow>) -> Map<String, SourceRow>",
+        "container": "types",
+        "identity": "types::accept_map_typed_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "map-view",
+        "name": "types::accept_map_view_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "map-view-range",
+        "detail": "(value: MapView<String, SourceRow>) -> MapView<String, SourceRow>",
+        "container": "types",
+        "identity": "types::accept_map_view_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "missing",
+        "name": "types::accept_missing_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "missing-range",
+        "detail": "(value: MissingType) -> MissingType",
+        "container": "types",
+        "identity": "types::accept_missing_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "missing-nested",
+        "name": "types::accept_missing_nested_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "missing-nested-range",
+        "detail": "(value: Array<Option<MissingType>>) -> Array<Option<MissingType>>",
+        "container": "types",
+        "identity": "types::accept_missing_nested_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "nested",
+        "name": "types::accept_nested_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "nested-range",
+        "detail": "(value: Map<String, Array<Option<Result<models::Row, Bytes>>>>) -> Map<String, Array<Option<Result<models::Row, Bytes>>>>",
+        "container": "types",
+        "identity": "types::accept_nested_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "option",
+        "name": "types::accept_option_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "option-range",
+        "detail": "(value: Option<SourceRow>) -> Option<SourceRow>",
+        "container": "types",
+        "identity": "types::accept_option_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "range",
+        "name": "types::accept_range_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "range-range",
+        "detail": "(value: Range) -> Range",
+        "container": "types",
+        "identity": "types::accept_range_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "result",
+        "name": "types::accept_result_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "result-range",
+        "detail": "(value: Result<SourceRow, String>) -> Result<SourceRow, String>",
+        "container": "types",
+        "identity": "types::accept_result_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema",
+        "name": "types::accept_schema_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "schema-range",
+        "detail": "(value: HostRow) -> HostRow",
+        "container": "types",
+        "identity": "types::accept_schema_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-enum",
+        "name": "types::accept_schema_enum_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "schema-enum-range",
+        "detail": "(value: HostKind) -> HostKind",
+        "container": "types",
+        "identity": "types::accept_schema_enum_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-qualified",
+        "name": "types::accept_schema_qualified_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "schema-qualified-range",
+        "detail": "(value: host::Row) -> host::Row",
+        "container": "types",
+        "identity": "types::accept_schema_qualified_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "schema-trait",
+        "name": "types::accept_schema_trait_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "schema-trait-range",
+        "detail": "(value: HostPreview) -> HostPreview",
+        "container": "types",
+        "identity": "types::accept_schema_trait_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "set",
+        "name": "types::accept_set_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "set-range",
+        "detail": "(value: Set) -> Set",
+        "container": "types",
+        "identity": "types::accept_set_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "set-mut",
+        "name": "types::accept_set_mut_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "set-mut-range",
+        "detail": "(value: SetMut<SourceRow>) -> SetMut<SourceRow>",
+        "container": "types",
+        "identity": "types::accept_set_mut_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "set-typed",
+        "name": "types::accept_set_typed_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "set-typed-range",
+        "detail": "(value: Set<SourceRow>) -> Set<SourceRow>",
+        "container": "types",
+        "identity": "types::accept_set_typed_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "set-view",
+        "name": "types::accept_set_view_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "set-view-range",
+        "detail": "(value: SetView<SourceRow>) -> SetView<SourceRow>",
+        "container": "types",
+        "identity": "types::accept_set_view_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "source",
+        "name": "types::accept_source_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "source-range",
+        "detail": "(value: SourceRow) -> SourceRow",
+        "container": "types",
+        "identity": "types::accept_source_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-enum",
+        "name": "types::accept_source_enum_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "source-enum-range",
+        "detail": "(value: SourceKind) -> SourceKind",
+        "container": "types",
+        "identity": "types::accept_source_enum_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-qualified",
+        "name": "types::accept_source_qualified_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "source-qualified-range",
+        "detail": "(value: models::Row) -> models::Row",
+        "container": "types",
+        "identity": "types::accept_source_qualified_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "source-trait",
+        "name": "types::accept_source_trait_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "source-trait-range",
+        "detail": "(value: SourcePreview) -> SourcePreview",
+        "container": "types",
+        "identity": "types::accept_source_trait_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "text",
+        "name": "types::accept_text_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "text-range",
+        "detail": "(value: String) -> String",
+        "container": "types",
+        "identity": "types::accept_text_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "tuple",
+        "name": "types::accept_tuple_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "tuple-range",
+        "detail": "(value: (i64, bool, String)) -> (i64, bool, String)",
+        "container": "types",
+        "identity": "types::accept_tuple_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "u16",
+        "name": "types::accept_u16_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "u16-range",
+        "detail": "(value: u16) -> u16",
+        "container": "types",
+        "identity": "types::accept_u16_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "u32",
+        "name": "types::accept_u32_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "u32-range",
+        "detail": "(value: u32) -> u32",
+        "container": "types",
+        "identity": "types::accept_u32_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "u64",
+        "name": "types::accept_u64_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "u64-range",
+        "detail": "(value: u64) -> u64",
+        "container": "types",
+        "identity": "types::accept_u64_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "u8",
+        "name": "types::accept_u8_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "u8-range",
+        "detail": "(value: u8) -> u8",
+        "container": "types",
+        "identity": "types::accept_u8_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "unit",
+        "name": "types::accept_unit_case",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "unit-range",
+        "detail": "(value: ()) -> ()",
+        "container": "types",
+        "identity": "types::accept_unit_case",
+        "ownership": "Source"
+      },
+      {
+        "id": "owned",
+        "name": "types::owned",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "owned-range",
+        "detail": "(param: i64)",
+        "container": "types",
+        "identity": "types::owned",
+        "ownership": "Source"
+      },
+      {
+        "id": "untyped",
+        "name": "types::untyped",
+        "kind": "Function",
+        "protocolKind": 12,
+        "file": "scripts/types.vela",
+        "range": "untyped-range",
+        "detail": "(value)",
+        "container": "types",
+        "identity": "types::untyped",
+        "ownership": "Source"
+      }
+    ],
+    "queries": [
+      {
+        "id": "all",
+        "query": "",
+        "symbols": [
+          "schema-dynamic",
+          "schema-unknown",
+          "schema-kind",
+          "schema-ready",
+          "schema-preview",
+          "schema-check",
+          "schema-row",
+          "schema-read",
+          "schema-values",
+          "schema-function-dynamic",
+          "schema-function-array",
+          "schema-function-option",
+          "schema-function-result",
+          "schema-function-unknown",
+          "schema-function-nested-unknown",
+          "imports-module",
+          "imports-file",
+          "schema-metadata",
+          "models-module",
+          "models-file",
+          "model-kind",
+          "model-preview",
+          "schema-collision",
+          "model-row",
+          "types-module",
+          "types-file",
+          "state",
+          "constant",
+          "extern",
+          "any",
+          "array",
+          "array-mut",
+          "array-typed",
+          "array-view",
+          "bool",
+          "bytes",
+          "char",
+          "closure",
+          "f32",
+          "f64",
+          "function",
+          "i16",
+          "i32",
+          "i64",
+          "i8",
+          "iterator",
+          "iterator-typed",
+          "map",
+          "map-mut",
+          "map-typed",
+          "map-view",
+          "missing",
+          "missing-nested",
+          "nested",
+          "option",
+          "range",
+          "result",
+          "schema",
+          "schema-enum",
+          "schema-qualified",
+          "schema-trait",
+          "set",
+          "set-mut",
+          "set-typed",
+          "set-view",
+          "source",
+          "source-enum",
+          "source-qualified",
+          "source-trait",
+          "text",
+          "tuple",
+          "u16",
+          "u32",
+          "u64",
+          "u8",
+          "unit",
+          "owned",
+          "untyped"
+        ]
+      },
+      {
+        "id": "trim-empty",
+        "query": " \t\n",
+        "symbols": [
+          "schema-dynamic",
+          "schema-unknown",
+          "schema-kind",
+          "schema-ready",
+          "schema-preview",
+          "schema-check",
+          "schema-row",
+          "schema-read",
+          "schema-values",
+          "schema-function-dynamic",
+          "schema-function-array",
+          "schema-function-option",
+          "schema-function-result",
+          "schema-function-unknown",
+          "schema-function-nested-unknown",
+          "imports-module",
+          "imports-file",
+          "schema-metadata",
+          "models-module",
+          "models-file",
+          "model-kind",
+          "model-preview",
+          "schema-collision",
+          "model-row",
+          "types-module",
+          "types-file",
+          "state",
+          "constant",
+          "extern",
+          "any",
+          "array",
+          "array-mut",
+          "array-typed",
+          "array-view",
+          "bool",
+          "bytes",
+          "char",
+          "closure",
+          "f32",
+          "f64",
+          "function",
+          "i16",
+          "i32",
+          "i64",
+          "i8",
+          "iterator",
+          "iterator-typed",
+          "map",
+          "map-mut",
+          "map-typed",
+          "map-view",
+          "missing",
+          "missing-nested",
+          "nested",
+          "option",
+          "range",
+          "result",
+          "schema",
+          "schema-enum",
+          "schema-qualified",
+          "schema-trait",
+          "set",
+          "set-mut",
+          "set-typed",
+          "set-view",
+          "source",
+          "source-enum",
+          "source-qualified",
+          "source-trait",
+          "text",
+          "tuple",
+          "u16",
+          "u32",
+          "u64",
+          "u8",
+          "unit",
+          "owned",
+          "untyped"
+        ]
+      },
+      {
+        "id": "function-unit",
+        "query": "types::accept_unit_case",
+        "symbols": [
+          "unit"
+        ]
+      },
+      {
+        "id": "function-bool",
+        "query": "types::accept_bool_case",
+        "symbols": [
+          "bool"
+        ]
+      },
+      {
+        "id": "function-char",
+        "query": "types::accept_char_case",
+        "symbols": [
+          "char"
+        ]
+      },
+      {
+        "id": "function-i8",
+        "query": "types::accept_i8_case",
+        "symbols": [
+          "i8"
+        ]
+      },
+      {
+        "id": "function-i16",
+        "query": "types::accept_i16_case",
+        "symbols": [
+          "i16"
+        ]
+      },
+      {
+        "id": "function-i32",
+        "query": "types::accept_i32_case",
+        "symbols": [
+          "i32"
+        ]
+      },
+      {
+        "id": "function-i64",
+        "query": "types::accept_i64_case",
+        "symbols": [
+          "i64"
+        ]
+      },
+      {
+        "id": "function-u8",
+        "query": "types::accept_u8_case",
+        "symbols": [
+          "u8"
+        ]
+      },
+      {
+        "id": "function-u16",
+        "query": "types::accept_u16_case",
+        "symbols": [
+          "u16"
+        ]
+      },
+      {
+        "id": "function-u32",
+        "query": "types::accept_u32_case",
+        "symbols": [
+          "u32"
+        ]
+      },
+      {
+        "id": "function-u64",
+        "query": "types::accept_u64_case",
+        "symbols": [
+          "u64"
+        ]
+      },
+      {
+        "id": "function-f32",
+        "query": "types::accept_f32_case",
+        "symbols": [
+          "f32"
+        ]
+      },
+      {
+        "id": "function-f64",
+        "query": "types::accept_f64_case",
+        "symbols": [
+          "f64"
+        ]
+      },
+      {
+        "id": "function-text",
+        "query": "types::accept_text_case",
+        "symbols": [
+          "text"
+        ]
+      },
+      {
+        "id": "function-bytes",
+        "query": "types::accept_bytes_case",
+        "symbols": [
+          "bytes"
+        ]
+      },
+      {
+        "id": "function-any",
+        "query": "types::accept_any_case",
+        "symbols": [
+          "any"
+        ]
+      },
+      {
+        "id": "function-array",
+        "query": "types::accept_array_case",
+        "symbols": [
+          "array"
+        ]
+      },
+      {
+        "id": "function-map",
+        "query": "types::accept_map_case",
+        "symbols": [
+          "map"
+        ]
+      },
+      {
+        "id": "function-set",
+        "query": "types::accept_set_case",
+        "symbols": [
+          "set"
+        ]
+      },
+      {
+        "id": "function-iterator",
+        "query": "types::accept_iterator_case",
+        "symbols": [
+          "iterator"
+        ]
+      },
+      {
+        "id": "function-range",
+        "query": "types::accept_range_case",
+        "symbols": [
+          "range"
+        ]
+      },
+      {
+        "id": "function-function",
+        "query": "types::accept_function_case",
+        "symbols": [
+          "function"
+        ]
+      },
+      {
+        "id": "function-closure",
+        "query": "types::accept_closure_case",
+        "symbols": [
+          "closure"
+        ]
+      },
+      {
+        "id": "function-tuple",
+        "query": "types::accept_tuple_case",
+        "symbols": [
+          "tuple"
+        ]
+      },
+      {
+        "id": "function-array-typed",
+        "query": "types::accept_array_typed_case",
+        "symbols": [
+          "array-typed"
+        ]
+      },
+      {
+        "id": "function-map-typed",
+        "query": "types::accept_map_typed_case",
+        "symbols": [
+          "map-typed"
+        ]
+      },
+      {
+        "id": "function-set-typed",
+        "query": "types::accept_set_typed_case",
+        "symbols": [
+          "set-typed"
+        ]
+      },
+      {
+        "id": "function-iterator-typed",
+        "query": "types::accept_iterator_typed_case",
+        "symbols": [
+          "iterator-typed"
+        ]
+      },
+      {
+        "id": "function-option",
+        "query": "types::accept_option_case",
+        "symbols": [
+          "option"
+        ]
+      },
+      {
+        "id": "function-result",
+        "query": "types::accept_result_case",
+        "symbols": [
+          "result"
+        ]
+      },
+      {
+        "id": "function-nested",
+        "query": "types::accept_nested_case",
+        "symbols": [
+          "nested"
+        ]
+      },
+      {
+        "id": "function-array-view",
+        "query": "types::accept_array_view_case",
+        "symbols": [
+          "array-view"
+        ]
+      },
+      {
+        "id": "function-array-mut",
+        "query": "types::accept_array_mut_case",
+        "symbols": [
+          "array-mut"
+        ]
+      },
+      {
+        "id": "function-map-view",
+        "query": "types::accept_map_view_case",
+        "symbols": [
+          "map-view"
+        ]
+      },
+      {
+        "id": "function-map-mut",
+        "query": "types::accept_map_mut_case",
+        "symbols": [
+          "map-mut"
+        ]
+      },
+      {
+        "id": "function-set-view",
+        "query": "types::accept_set_view_case",
+        "symbols": [
+          "set-view"
+        ]
+      },
+      {
+        "id": "function-set-mut",
+        "query": "types::accept_set_mut_case",
+        "symbols": [
+          "set-mut"
+        ]
+      },
+      {
+        "id": "function-source",
+        "query": "types::accept_source_case",
+        "symbols": [
+          "source"
+        ]
+      },
+      {
+        "id": "function-source-qualified",
+        "query": "types::accept_source_qualified_case",
+        "symbols": [
+          "source-qualified"
+        ]
+      },
+      {
+        "id": "function-source-enum",
+        "query": "types::accept_source_enum_case",
+        "symbols": [
+          "source-enum"
+        ]
+      },
+      {
+        "id": "function-source-trait",
+        "query": "types::accept_source_trait_case",
+        "symbols": [
+          "source-trait"
+        ]
+      },
+      {
+        "id": "function-schema",
+        "query": "types::accept_schema_case",
+        "symbols": [
+          "schema"
+        ]
+      },
+      {
+        "id": "function-schema-qualified",
+        "query": "types::accept_schema_qualified_case",
+        "symbols": [
+          "schema-qualified"
+        ]
+      },
+      {
+        "id": "function-schema-enum",
+        "query": "types::accept_schema_enum_case",
+        "symbols": [
+          "schema-enum"
+        ]
+      },
+      {
+        "id": "function-schema-trait",
+        "query": "types::accept_schema_trait_case",
+        "symbols": [
+          "schema-trait"
+        ]
+      },
+      {
+        "id": "function-missing",
+        "query": "types::accept_missing_case",
+        "symbols": [
+          "missing"
+        ]
+      },
+      {
+        "id": "function-missing-nested",
+        "query": "types::accept_missing_nested_case",
+        "symbols": [
+          "missing-nested"
+        ]
+      },
+      {
+        "id": "source-schema-collision",
+        "query": "models::Row",
+        "symbols": [
+          "schema-collision",
+          "model-row"
+        ]
+      },
+      {
+        "id": "source-private",
+        "query": "untyped",
+        "symbols": [
+          "untyped"
+        ]
+      },
+      {
+        "id": "source-owned",
+        "query": "owned",
+        "symbols": [
+          "owned"
+        ]
+      },
+      {
+        "id": "constant",
+        "query": "CHOICE",
+        "symbols": [
+          "constant"
+        ]
+      },
+      {
+        "id": "state",
+        "query": "CACHE",
+        "symbols": [
+          "state"
+        ]
+      },
+      {
+        "id": "extern",
+        "query": "LIVE",
+        "symbols": [
+          "extern"
+        ]
+      },
+      {
+        "id": "imports-only",
+        "query": "imports",
+        "symbols": [
+          "imports-module",
+          "imports-file"
+        ]
+      },
+      {
+        "id": "unknown-metadata",
+        "query": "fact::Unknown",
+        "symbols": [
+          "schema-unknown"
+        ]
+      },
+      {
+        "id": "dynamic-metadata",
+        "query": "fact::Dynamic",
+        "symbols": [
+          "schema-dynamic"
+        ]
+      },
+      {
+        "id": "metadata-functions",
+        "query": "host::unknown",
+        "symbols": [
+          "schema-function-unknown",
+          "schema-function-nested-unknown"
+        ]
+      },
+      {
+        "id": "source-alias",
+        "query": "SourceRow",
+        "symbols": []
+      },
+      {
+        "id": "schema-alias",
+        "query": "HostRow",
+        "symbols": []
+      },
+      {
+        "id": "trait-alias",
+        "query": "SourcePreview",
+        "symbols": []
+      },
+      {
+        "id": "unknown-hint",
+        "query": "MissingType",
+        "symbols": []
+      },
+      {
+        "id": "dynamic-hint",
+        "query": "Any",
+        "symbols": [
+          "any"
+        ]
+      },
+      {
+        "id": "primitive-hint",
+        "query": "i64",
+        "symbols": [
+          "i64"
+        ]
+      },
+      {
+        "id": "builtin-hint",
+        "query": "String",
+        "symbols": []
+      },
+      {
+        "id": "typed-container-hint",
+        "query": "Array<",
+        "symbols": []
+      },
+      {
+        "id": "parameter",
+        "query": "value",
+        "symbols": [
+          "schema-values"
+        ]
+      },
+      {
+        "id": "local",
+        "query": "local",
+        "symbols": []
+      },
+      {
+        "id": "capture",
+        "query": "captured",
+        "symbols": []
+      },
+      {
+        "id": "callback",
+        "query": "callback",
+        "symbols": []
+      },
+      {
+        "id": "unknown-owner",
+        "query": "unknown::",
+        "symbols": []
+      },
+      {
+        "id": "builtin-function",
+        "query": "std::array",
+        "symbols": []
+      },
+      {
+        "id": "builtin-variant",
+        "query": "Option::Some",
+        "symbols": []
+      },
+      {
+        "id": "constructor-field",
+        "query": "count",
+        "symbols": []
+      },
+      {
+        "id": "source-trait-member",
+        "query": "models::Preview::check",
+        "symbols": []
+      },
+      {
+        "id": "builtin-import-alias",
+        "query": "BuiltinAlias",
+        "symbols": []
+      },
+      {
+        "id": "missing-import-alias",
+        "query": "MissingAlias",
+        "symbols": []
+      },
+      {
+        "id": "unicode-trivia",
+        "query": "中😀",
+        "symbols": []
+      },
+      {
+        "id": "no-match",
+        "query": "not_a_symbol_833",
+        "symbols": []
+      }
+    ],
+    "schema": {
+      "types": [
+        {
+          "name": "host::Row",
+          "fact": {
+            "kind": "host",
+            "name": "host::Row"
+          }
+        },
+        {
+          "name": "host::Kind",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Kind"
+          }
+        },
+        {
+          "name": "models::Row",
+          "fact": {
+            "kind": "host",
+            "name": "models::Row"
+          }
+        },
+        {
+          "name": "metadata::Row",
+          "fact": {
+            "kind": "host",
+            "name": "metadata::Row"
+          }
+        },
+        {
+          "name": "fact::Dynamic",
+          "fact": {
+            "kind": "any"
+          }
+        },
+        {
+          "name": "fact::Unknown",
+          "fact": {
+            "kind": "unknown"
+          }
+        }
+      ],
+      "traits": [
+        {
+          "name": "host::Preview",
+          "fact": {
+            "kind": "trait",
+            "name": "host::Preview"
+          }
+        }
+      ],
+      "functions": [
+        {
+          "name": "host::items",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "array",
+              "element": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            }
+          }
+        },
+        {
+          "name": "host::maybe",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "option",
+              "some": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            }
+          }
+        },
+        {
+          "name": "host::outcome",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "result",
+              "ok": {
+                "kind": "host",
+                "name": "host::Row"
+              },
+              "err": {
+                "kind": "primitive",
+                "name": "string"
+              }
+            }
+          }
+        },
+        {
+          "name": "host::dynamic",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "any"
+            }
+          }
+        },
+        {
+          "name": "host::unknown",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "unknown"
+            }
+          }
+        },
+        {
+          "name": "host::unknown_items",
+          "fact": {
+            "kind": "function",
+            "params": [],
+            "returns": {
+              "kind": "array",
+              "element": {
+                "kind": "option",
+                "some": {
+                  "kind": "unknown"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "fields": [
+        {
+          "owner": "host::Row",
+          "name": "values",
+          "fact": {
+            "kind": "map",
+            "key": {
+              "kind": "primitive",
+              "name": "string"
+            },
+            "value": {
+              "kind": "array",
+              "element": {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            }
+          }
+        }
+      ],
+      "methods": [
+        {
+          "owner": "host::Row",
+          "name": "read",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "any"
+              }
+            ],
+            "returns": {
+              "kind": "unknown"
+            }
+          }
+        }
+      ],
+      "traitMethods": [
+        {
+          "owner": "host::Preview",
+          "name": "check",
+          "fact": {
+            "kind": "function",
+            "params": [
+              {
+                "kind": "host",
+                "name": "host::Row"
+              }
+            ],
+            "returns": {
+              "kind": "primitive",
+              "name": "bool"
+            }
+          }
+        }
+      ],
+      "variants": [
+        {
+          "owner": "host::Kind",
+          "name": "Ready",
+          "fact": {
+            "kind": "enum",
+            "name": "host::Kind",
+            "variant": "Ready"
+          }
+        }
+      ]
+    }
+  }
+}

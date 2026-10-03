@@ -110,6 +110,50 @@ pub(crate) fn ownership(crlf: bool, shifted: bool) -> (FixtureWorkspace, Value) 
     (fixture, spec.oracle)
 }
 
+pub(crate) fn type_positions(crlf: bool, shifted: bool) -> (FixtureWorkspace, Value) {
+    let mut spec = load("workspace-symbol-type-positions");
+    for (file, source) in &mut spec.files {
+        if file.ends_with(".vela") {
+            if shifted {
+                *source = source.replace(
+                    "[[file:start]]",
+                    "[[file:start]]// shifted 中😀\n/* extra 😀 */\n",
+                );
+            }
+            if crlf {
+                *source = source.replace('\n', "\r\n");
+            }
+        }
+    }
+    let fixture = FixtureWorkspace::new(&spec).expect("authored workspace symbol type positions");
+    let source = &fixture.disk["scripts/types.vela"];
+    let unit = source.markers["unit-range"];
+    assert_eq!(
+        (unit.start.line, unit.start.character),
+        (2 + usize::from(shifted) * 2, 8)
+    );
+    assert_eq!(
+        unit.start.byte - source.text[..unit.start.byte].rfind('\n').expect("line") - 1,
+        12
+    );
+    assert_eq!(
+        spec.oracle["cases"]
+            .as_array()
+            .expect("type partitions")
+            .len(),
+        47
+    );
+    assert_eq!(
+        spec.oracle["symbols"].as_array().expect("whole rows").len(),
+        78
+    );
+    assert_eq!(
+        spec.oracle["queries"].as_array().expect("query sets").len(),
+        80
+    );
+    (fixture, spec.oracle)
+}
+
 fn range(document: &Document, marker: &str, protocol: bool) -> Value {
     let marker = document.markers[marker];
     let point = |p: Point| json!({"line":p.line,"character":if protocol {p.character} else {p.byte - document.text[..p.byte].rfind('\n').map_or(0,|i|i+1)}});

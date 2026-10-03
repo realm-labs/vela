@@ -108,7 +108,7 @@ fn workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_set
     }
 }
 
-fn project(symbol: &WorkspaceSymbol) -> Value {
+pub(crate) fn project(symbol: &WorkspaceSymbol) -> Value {
     match (symbol.symbol(), symbol.location()) {
         (SymbolRef::Source(_), WorkspaceSymbolLocation::Source { .. }) => {
             let mut row = crate::workspace_symbol_matrix_tests::project(symbol);

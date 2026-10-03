@@ -17289,6 +17289,102 @@
           "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S3/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S3/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S3/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S3/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S10/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S10/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S10/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_ownership_tests::workspace_symbol_members_and_imports_pin_complete_source_and_schema_query_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S10/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-type-positions.md. Compare independently authored complete78-row sets and80 literal ordered query memberships across47 hint partitions: all scalar primitives, erased builtin/Any contracts, tuple, typed and nested Array/Map/Set/Iterator/Option/Result, six collection views, aliased/qualified source/schema structs/enums/traits, direct/nested missing names and static Any/unknown/nested-unknown facts. Complete61 source rows and17 metadata rows retain canonical Source/Schema identities, kinds, optional details/containers and full source extents or URI-only schema locations. Same models::Row Class/Struct retain distinct ownership. Parameters, locals, closure parameters/captures, builtin/stdlib uses, aliases, source members and dynamic/unresolved names cannot invent global declarations; exact i64/Any/value sets contain only declared matching function/metadata field rows. S10 additionally retains the complete B10.7 member/import corpus60-row proof with source/host-target impls, members/variants/defaults, qualified/imported/private/builtin ownership and all10 bound metadata source origins. Every query repeats three times through LF/CRLF and two Unicode prefix lines, first function line2/4 UTF16 column8 versus byte12; whole JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparison and unchanged physical source/schema bytes. Recovery, lifecycle and installed/native picker scope remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_ownership::lsp_workspace_symbol_members_and_imports_pin_complete_utf16_source_and_metadata_query_sets"
+        }
+      ]
     }
   ],
   "featureFiles": [

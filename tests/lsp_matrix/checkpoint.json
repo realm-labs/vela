@@ -8374,10 +8374,25 @@
         "workspace-symbol/syntax/S8/negative/protocol"
       ],
       "summary": "Close eight workspace-symbol S4/S8 positive/negative service/protocol requirements with independently authored whole60-row sets and49 literal ordered query memberships. Eight sources pin eight files/eight modules/25 top-level declarations under source/schema collisions, public/private source imports, aliases, nested modules, source/host-target impls, member writes, shorthand/record constructors, unit/tuple/record variants, trait/default methods and builtin/unresolved/dynamic uses. Nineteen static schema rows pin four types/one trait/two functions/five fields/three methods/one trait method/three variants; all10 marked metadata source origins are bound and checked, metadata-only origins absent. Canonical Source/Schema identities, kinds, optional details/containers and whole declaration/file/module ranges remain exact. Same source::Widget Class/Struct and source::make Function rows remain distinct; every metadata location uses URI-only vela-schema even for source-backed metadata. Aliases, constructor/field labels, source members/defaults/variants, builtin imports, unknown owners, dynamic uses and signature/type details cannot invent global names. All49 queries repeat three times through LF/CRLF and two Unicode prefix shifts; literal UTF16 column10 versus byte14, full JSON-RPC envelopes, encoded private Chinese/space/percent roots, fresh immutable service comparisons and unchanged source/schema physical bytes. Retain exploratory test setup compile failure (missing &str borrow), independent golden mismatch due two extra comment spaces, and source:: query membership error that included module name source without trailing separator; correct these from literal authored source/query contract, no production defect or behavior change inferred. Three Node partition/query/golden checks; focused service8/protocol12, Node154, fmt and relevant all-target Clippy; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service752+2 historical ignored/protocol800/stdio10. Core914 verified/411 open/2NA/zero failed; B10 forty-four verified/132 pending, parent open. Preserve ten accepted snapshots, prior208 completed children, all50 native contracts and independent historical macOS audit. Type hints, recovery, lifecycle and installed/native Outline/picker remain open; next B10.8; macOS requires fresh independent proof when used and B16 stays deferred. VSIX editors/vscode/test-results/run-jniCVW/results.json; native editors/vscode/test-results/input-hBX8YJ/results.json; audit target/lsp-matrix/run-bajIyB/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.8",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/syntax/S3/positive/service",
+        "workspace-symbol/syntax/S3/positive/protocol",
+        "workspace-symbol/syntax/S3/negative/service",
+        "workspace-symbol/syntax/S3/negative/protocol",
+        "workspace-symbol/syntax/S10/positive/service",
+        "workspace-symbol/syntax/S10/positive/protocol",
+        "workspace-symbol/syntax/S10/negative/service",
+        "workspace-symbol/syntax/S10/negative/protocol"
+      ],
+      "summary": "Close eight workspace-symbol S3/S10 positive/negative service/protocol requirements with47 independently authored hint partitions, whole78-row sets and80 literal ordered queries. Three source files retain61 source rows and17 schema rows; scalar primitives, erased builtin/Any hints, tuples, typed/nested containers/Option/Result, six collection views, source/schema structs/enums/traits and direct/nested missing types preserve complete authored signatures and source ranges. Static metadata carries Any, unknown and nested unknown facts with exact detail/kind/identity/container and URI-only schema locations; same models::Row Class/Struct rows remain distinct. Parameters, locals, closure parameters/captures, aliases, source members, builtin/stdlib uses and dynamic/unresolved owners cannot invent names; i64/Any/value queries return only explicitly declared matching rows. S10 also runs prior complete B10.7 source/member/variant/host/import/builtin ownership proof. Every query repeats three times through LF/CRLF and two Unicode shifts, literal first-function line2/4 UTF16 column8 versus byte12, full typed JSON-RPC envelopes and encoded private Chinese/space/percent roots, fresh immutable service comparisons and unchanged source/schema bytes. Retain two exploratory failures caused by old null initializers in new valid-source fixture; use current Option::None and Map::new syntax without changing production semantics. Default Rust1.99 baseline8 passes with existing fetch_update deprecation; final Rust, VSIX, input and audits use process-local installed Rust1.97.0 consistent with prior acceptance/macOS baseline, without changing global defaults or suppressing warnings. Three Node fixture/query/golden checks; focused service9/protocol13, Node157, fmt and relevant all-target Clippy; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service753+2 historical ignored/protocol801/stdio10. Core922 verified/403 open/2NA/zero failed; B10 fifty-two verified/124 pending, parent open. Preserve ten accepted snapshots, prior209 completed children, all50 native contracts and independent historical macOS audit. Recovery, lifecycle and installed/native Outline/picker remain open; next B10.9; fresh independent macOS proof required when used and B16 remains deferred. VSIX editors/vscode/test-results/run-iSD5ar/results.json; native editors/vscode/test-results/input-5PkAhZ/results.json; audit target/lsp-matrix/run-oimiqc/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.8",
-  "nextTask": "B10.8",
+  "activeChild": "B10.9",
+  "nextTask": "B10.9",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10672,7 +10687,28 @@
     "target/b10-7-node.log",
     "target/b10-7-format.log",
     "target/b10-7-clippy.log",
-    "target/b10-7-checkpoint.log"
+    "target/b10-7-checkpoint.log",
+    "target/lsp-matrix/run-oimiqc/report.json",
+    "target/b10-8-toolchain.log",
+    "target/lsp-matrix/run-Js9JDg/report.json",
+    "editors/vscode/test-results/run-iSD5ar/results.json",
+    "editors/vscode/test-results/input-5PkAhZ/results.json",
+    "target/b10-8-input.log",
+    "target/b10-8-editor.log",
+    "target/b10-8-scoped.log",
+    "target/b10-8-baseline.log",
+    "target/b10-8-service-first.log",
+    "target/b10-8-service-second.log",
+    "target/b10-8-service-third.log",
+    "target/b10-8-service-final.log",
+    "target/b10-8-protocol-first-pass.log",
+    "target/b10-8-protocol-final.log",
+    "target/b10-8-node-first.log",
+    "target/b10-8-node-final.log",
+    "target/b10-8-node.log",
+    "target/b10-8-format.log",
+    "target/b10-8-clippy.log",
+    "target/b10-8-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14600,8 +14636,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "6bb941dbf5fb09de4bc51d66d5a5bdd05f821c23",
-          "treeSha256": "9970a5b789cbc473a5a85f1b1274f8ab901ec965daf2b580c76ed4a6aac670c9"
+          "revision": "6fa0680b005487ae512bffd7882b3f6aef779102",
+          "treeSha256": "c9e57b6570e6d17f4a299687da6c3d5d01c725255b31dae911046e71f40c3506"
         },
         "profile": {
           "platform": "win32",
@@ -14609,11 +14645,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-bajIyB/report.json"
+          "target/lsp-matrix/run-oimiqc/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-jniCVW/results.json --local-results editors/vscode/test-results/input-hBX8YJ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-iSD5ar/results.json --local-results editors/vscode/test-results/input-5PkAhZ/results.json",
             "exitCode": 0
           }
         ]
