@@ -275,6 +275,15 @@ impl LanguageServiceDatabases {
         graph
             .declarations()
             .filter_map(|declaration| {
+                // Recovery keeps nameless impl nodes in HIR for diagnostics,
+                // but a missing target is not a workspace declaration owner.
+                if declaration.kind == DeclarationKind::Impl
+                    && graph
+                        .impl_metadata(declaration.id)
+                        .is_none_or(|metadata| metadata.target_path.is_empty())
+                {
+                    return None;
+                }
                 let module_path = graph.module_path(declaration.module)?;
                 let module = module_path.join();
                 let name = if module.is_empty() {

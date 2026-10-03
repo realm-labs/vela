@@ -154,6 +154,58 @@ pub(crate) fn type_positions(crlf: bool, shifted: bool) -> (FixtureWorkspace, Va
     (fixture, spec.oracle)
 }
 
+pub(crate) fn recovery(crlf: bool, shifted: bool) -> (FixtureWorkspace, Value) {
+    let mut spec = load("workspace-symbol-recovery");
+    let transform = |text: &str| {
+        let text = if shifted {
+            // Shebangs retain their first-line grammar position.
+            if text.starts_with("[[file:start]]#!") {
+                text.replacen('\n', "\n// shifted 中😀\n/* extra 😀 */\n", 1)
+            } else {
+                text.replace(
+                    "[[file:start]]",
+                    "[[file:start]]// shifted 中😀\n/* extra 😀 */\n",
+                )
+            }
+        } else {
+            text.to_owned()
+        };
+        if crlf {
+            text.replace('\n', "\r\n")
+        } else {
+            text
+        }
+    };
+    for (file, source) in &mut spec.files {
+        if file.ends_with(".vela") {
+            *source = transform(source);
+        }
+    }
+    for case in spec.oracle["cases"].as_array_mut().expect("cases") {
+        case["source"] = Value::String(transform(case["source"].as_str().expect("source")));
+    }
+    let fixture = FixtureWorkspace::new(&spec).expect("workspace symbol recovery");
+    let before = fixture.disk["scripts/main.vela"].markers["before-name"];
+    assert_eq!(
+        (
+            before.start.line,
+            before.start.character,
+            before.end.character
+        ),
+        (usize::from(shifted) * 2, 13, 19)
+    );
+    assert_eq!(
+        &fixture.disk["scripts/main.vela"].text[before.start.byte..before.end.byte],
+        "before"
+    );
+    assert_eq!(spec.oracle["cases"].as_array().expect("cases").len(), 56);
+    assert_eq!(
+        spec.oracle["queries"].as_array().expect("queries").len(),
+        19
+    );
+    (fixture, spec.oracle)
+}
+
 fn range(document: &Document, marker: &str, protocol: bool) -> Value {
     let marker = document.markers[marker];
     let point = |p: Point| json!({"line":p.line,"character":if protocol {p.character} else {p.byte - document.text[..p.byte].rfind('\n').map_or(0,|i|i+1)}});

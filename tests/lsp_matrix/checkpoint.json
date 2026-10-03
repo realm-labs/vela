@@ -8389,10 +8389,20 @@
         "workspace-symbol/syntax/S10/negative/protocol"
       ],
       "summary": "Close eight workspace-symbol S3/S10 positive/negative service/protocol requirements with47 independently authored hint partitions, whole78-row sets and80 literal ordered queries. Three source files retain61 source rows and17 schema rows; scalar primitives, erased builtin/Any hints, tuples, typed/nested containers/Option/Result, six collection views, source/schema structs/enums/traits and direct/nested missing types preserve complete authored signatures and source ranges. Static metadata carries Any, unknown and nested unknown facts with exact detail/kind/identity/container and URI-only schema locations; same models::Row Class/Struct rows remain distinct. Parameters, locals, closure parameters/captures, aliases, source members, builtin/stdlib uses and dynamic/unresolved owners cannot invent names; i64/Any/value queries return only explicitly declared matching rows. S10 also runs prior complete B10.7 source/member/variant/host/import/builtin ownership proof. Every query repeats three times through LF/CRLF and two Unicode shifts, literal first-function line2/4 UTF16 column8 versus byte12, full typed JSON-RPC envelopes and encoded private Chinese/space/percent roots, fresh immutable service comparisons and unchanged source/schema bytes. Retain two exploratory failures caused by old null initializers in new valid-source fixture; use current Option::None and Map::new syntax without changing production semantics. Default Rust1.99 baseline8 passes with existing fetch_update deprecation; final Rust, VSIX, input and audits use process-local installed Rust1.97.0 consistent with prior acceptance/macOS baseline, without changing global defaults or suppressing warnings. Three Node fixture/query/golden checks; focused service9/protocol13, Node157, fmt and relevant all-target Clippy; final frozen Windows VSIX23/native50, automatic full audit and strict B09 service753+2 historical ignored/protocol801/stdio10. Core922 verified/403 open/2NA/zero failed; B10 fifty-two verified/124 pending, parent open. Preserve ten accepted snapshots, prior209 completed children, all50 native contracts and independent historical macOS audit. Recovery, lifecycle and installed/native Outline/picker remain open; next B10.9; fresh independent macOS proof required when used and B16 remains deferred. VSIX editors/vscode/test-results/run-iSD5ar/results.json; native editors/vscode/test-results/input-5PkAhZ/results.json; audit target/lsp-matrix/run-oimiqc/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.9",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/syntax/S1/negative/service",
+        "workspace-symbol/syntax/S1/negative/protocol",
+        "workspace-symbol/states/recovery/protocol"
+      ],
+      "summary": "Close three workspace-symbol S1 negative service/protocol and protocol recovery requirements with56 independently authored damaged sources/declaration facts and19 ordered whole-workspace queries. Both files/modules, healthy helper declarations, named partial main owners and persistent same-name main::Broken schema function retain exact Source/Schema identity, kind, optional detail/container and full HIR/CST source extents versus URI-only schema location. Named impl Object groupings survive without their methods/children becoming global names; missing/punctuation-separated declaration names and missing impl targets cannot invent owners. The second exploratory red run exposed main::impl for targetless impl; workspace projection now excludes impl records with absent/empty target metadata, retaining HIR diagnostics, named unresolved/partial targets and runtime behavior. Damage -> repair -> same damage repeats every query three times across LF/CRLF and two Unicode prefix lines against incremental and fresh databases/coordinators; typed didOpen/didChange, monotonically increasing versions, full JSON-RPC envelopes, encoded private Chinese/space/percent roots, exact parse-error/quiet-partial policy, first-name line0/2 UTF16 columns13..19 versus bytes17..23, unchanged source/schema bytes and clean disk. Retain initial EOF expectation failure, genuine targetless-impl red run, shifted shebang failure and Node member-query grouping failure; fixture EOF markers now honor full workspace declaration trivia, shifts follow first-line shebang and member query uses ::read. Rust1.97.0 process-local baseline9, focused service10/protocol14, Node159, fmt and relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full audit and strict B09 service754+2 historical ignored/protocol802/stdio10. Core925 verified/400 open/2NA/zero failed; B10 fifty-five verified/121 pending, parent open. Preserve ten accepted snapshots, prior210 completed children, all50 native contracts and historical independent macOS audit. Disk/schema lifecycle, stale versions, cancellation and installed/native picker remain open; next B10.10, fresh independent macOS proof required when used and B16 deferred. VSIX editors/vscode/test-results/run-5uzQAO/results.json; native editors/vscode/test-results/input-enOOBr/results.json; audit target/lsp-matrix/run-vytGe8/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.9",
-  "nextTask": "B10.9",
+  "activeChild": "B10.10",
+  "nextTask": "B10.10",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10708,7 +10718,29 @@
     "target/b10-8-node.log",
     "target/b10-8-format.log",
     "target/b10-8-clippy.log",
-    "target/b10-8-checkpoint.log"
+    "target/b10-8-checkpoint.log",
+    "target/lsp-matrix/run-vytGe8/report.json",
+    "target/lsp-matrix/run-p60rlw/report.json",
+    "editors/vscode/test-results/run-5uzQAO/results.json",
+    "editors/vscode/test-results/input-enOOBr/results.json",
+    "target/b10-9-toolchain.log",
+    "target/b10-9-input.log",
+    "target/b10-9-editor.log",
+    "target/b10-9-scoped.log",
+    "target/b10-9-baseline.log",
+    "target/b10-9-service-first.log",
+    "target/b10-9-service-second.log",
+    "target/b10-9-service-third.log",
+    "target/b10-9-service-fourth.log",
+    "target/b10-9-service-final.log",
+    "target/b10-9-protocol-first.log",
+    "target/b10-9-protocol-final.log",
+    "target/b10-9-node-first.log",
+    "target/b10-9-node-second.log",
+    "target/b10-9-node.log",
+    "target/b10-9-format.log",
+    "target/b10-9-clippy.log",
+    "target/b10-9-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14636,8 +14668,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "6fa0680b005487ae512bffd7882b3f6aef779102",
-          "treeSha256": "c9e57b6570e6d17f4a299687da6c3d5d01c725255b31dae911046e71f40c3506"
+          "revision": "11441c74cd9d8e32bdc68b207d43932d09616f92",
+          "treeSha256": "523943057191b3772c3f729a296e3297ee5fc52e7cb5832b3abffc9526f7c3c6"
         },
         "profile": {
           "platform": "win32",
@@ -14645,11 +14677,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-oimiqc/report.json"
+          "target/lsp-matrix/run-vytGe8/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-iSD5ar/results.json --local-results editors/vscode/test-results/input-5PkAhZ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-5uzQAO/results.json --local-results editors/vscode/test-results/input-enOOBr/results.json",
             "exitCode": 0
           }
         ]
