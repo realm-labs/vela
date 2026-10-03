@@ -8,11 +8,11 @@ use crate::{
 };
 use serde_json::Value;
 
-fn uri(file: &str) -> DocumentId {
+pub(crate) fn uri(file: &str) -> DocumentId {
     DocumentId::from(format!("/workspace/中文 % outline lifecycle/{file}"))
 }
 
-fn update(db: &mut LanguageServiceDatabases, fixture: &FixtureWorkspace, version: u64) {
+pub(crate) fn update(db: &mut LanguageServiceDatabases, fixture: &FixtureWorkspace, version: u64) {
     let sources = fixture
         .disk
         .iter()
@@ -35,7 +35,7 @@ fn update(db: &mut LanguageServiceDatabases, fixture: &FixtureWorkspace, version
     );
 }
 
-fn schema(
+pub(crate) fn schema(
     db: &mut LanguageServiceDatabases,
     fixture: &FixtureWorkspace,
     spec: &Spec,
@@ -59,7 +59,7 @@ fn schema(
     }
 }
 
-fn check_schema(db: &LanguageServiceDatabases, spec: &Spec, state: &Value) {
+pub(crate) fn check_schema(db: &LanguageServiceDatabases, spec: &Spec, state: &Value) {
     let facts = db.schema_db().facts();
     match state["mode"].as_str().expect("schema mode") {
         "valid" => {

@@ -8,15 +8,15 @@ use serde_json::{Value, json};
 use std::path::PathBuf;
 use vela_language_service::DocumentId;
 
-struct Harness {
+pub(crate) struct Harness {
     owner: PathBuf,
-    root: PathBuf,
-    test_server: TestServer,
-    id: i32,
+    pub(crate) root: PathBuf,
+    pub(crate) test_server: TestServer,
+    pub(crate) id: i32,
 }
 
 impl Harness {
-    fn new(fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) -> Self {
+    pub(crate) fn new(fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) -> Self {
         let owner = super::support::unique_temp_root("中文 % outline lifecycle");
         let root = owner.join("workspace");
         fixture.materialize(&root).expect("owned fixture root");
@@ -55,13 +55,13 @@ impl Harness {
         current
     }
 
-    fn uri(&self, file: &str) -> String {
+    pub(crate) fn uri(&self, file: &str) -> String {
         lsp_types::Url::from_file_path(self.root.join(file))
             .expect("encoded URI")
             .to_string()
     }
 
-    fn schema(&mut self, fixture: &FixtureWorkspace, spec: &Spec, state: &Value) {
+    pub(crate) fn schema(&mut self, fixture: &FixtureWorkspace, spec: &Spec, state: &Value) {
         let path = self.root.join("schema.json");
         let existed = path.exists();
         match state["mode"].as_str().expect("mode") {
@@ -102,7 +102,7 @@ impl Harness {
         );
     }
 
-    fn apply(&mut self, fixture: &FixtureWorkspace, action: &Action, version: i32) {
+    pub(crate) fn apply(&mut self, fixture: &FixtureWorkspace, action: &Action, version: i32) {
         let uri = self.uri(&action.file);
         match action.op.as_str() {
             "open" => {
@@ -141,7 +141,7 @@ impl Harness {
         }
     }
 
-    fn check(&mut self, fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) {
+    pub(crate) fn check(&mut self, fixture: &FixtureWorkspace, spec: &Spec, phase: &Value) {
         oracle::assert_state(fixture, spec, phase);
         for (file, variant) in phase["views"].as_object().expect("views") {
             let uri = self.uri(file);
@@ -194,7 +194,7 @@ fn expected(spec: &Spec, variant: &Value) -> Value {
     )
 }
 
-fn check_snapshot(
+pub(crate) fn check_snapshot(
     snapshot: &crate::global_state::GlobalStateSnapshot,
     harness: &Harness,
     spec: &Spec,

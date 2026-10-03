@@ -206,6 +206,49 @@ pub(crate) fn recovery(crlf: bool, shifted: bool) -> (FixtureWorkspace, Value) {
     (fixture, spec.oracle)
 }
 
+pub(crate) fn lifecycle(crlf: bool, shifted: bool) -> super::Spec {
+    let mut spec = load("workspace-symbol-lifecycle");
+    let transform = |text: &str| {
+        let text = if shifted {
+            text.replace(
+                "[[file:start]]",
+                "[[file:start]]// shifted 中😀\n/* extra 😀 */\n",
+            )
+        } else {
+            text.to_owned()
+        };
+        if crlf {
+            text.replace('\n', "\r\n")
+        } else {
+            text
+        }
+    };
+    for (file, source) in &mut spec.files {
+        if file.ends_with(".vela") {
+            *source = transform(source);
+        }
+    }
+    for variant in spec.oracle["variants"]
+        .as_object_mut()
+        .expect("variants")
+        .values_mut()
+    {
+        variant["source"] = Value::String(transform(variant["source"].as_str().expect("source")));
+    }
+    let doc = super::document_symbol_lifecycle::document(&spec, "main-base");
+    let name = doc.markers["main-fn-name"];
+    assert_eq!(
+        (name.start.line, name.start.character, name.end.character),
+        (1 + usize::from(shifted) * 2, 13, 16)
+    );
+    assert_eq!(
+        name.start.byte - doc.text[..name.start.byte].rfind('\n').expect("line") - 1,
+        17
+    );
+    assert_eq!(spec.oracle["phases"].as_array().expect("phases").len(), 19);
+    spec
+}
+
 fn range(document: &Document, marker: &str, protocol: bool) -> Value {
     let marker = document.markers[marker];
     let point = |p: Point| json!({"line":p.line,"character":if protocol {p.character} else {p.byte - document.text[..p.byte].rfind('\n').map_or(0,|i|i+1)}});
