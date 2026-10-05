@@ -1,0 +1,486 @@
+{
+  "version": 1,
+  "id": "folding-trivia",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n // fake }; use ghost::name;\n let count = value;\n return count;\n}[[body:end]][[item:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "body-line-comment-decoys",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n // fake }; use ghost::name;\n let count = value;\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "leading-line-comment-decoys",
+        "source": "// fn fake() {\n// struct Fake { 中😀\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "leading-block-comment-decoys",
+        "source": "/* fn fake() {\n struct Fake { count: i64 }\n } */\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "nested-block-comment-decoys",
+        "source": "/* outer 中😀\n /* inner fn fake() {} */\n tail */\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "documentation-comment-decoys",
+        "source": "/// fn fake() {\n/// struct Fake {}\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "trailing-line-and-block-decoys",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n// fn fake() {\n/* use fake::name;\n enum Fake { Item } */\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "blank-lines-inside-body",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n\n\n let count = value;\n \t\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "empty-body-comment-trivia",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n // fake declaration\n /* multi 中😀\n text */\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "nested-block-comment-trivia",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n [[nested:start]]{\n /* fn fake() {\n } */\n let count = value;\n}[[nested:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "nested"
+          }
+        ]
+      },
+      {
+        "id": "if-else-comment-boundaries",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n if value > 0 /* fake } */ [[then:start]]{\n // fake { \n return value;\n}[[then:end]] else /* fake { */ [[else:start]]{\n /* trivia\n 中😀 */\n return 0;\n}[[else:end]]\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "record-field-comment-trivia",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let row = [[record:start]]Row {\n /* fake { field } */\n count: value,\n // fake constructor\n other: 2\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          }
+        ]
+      },
+      {
+        "id": "array-comment-and-blank-trivia",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[array:start]][\n // fake ]\n 1,\n\n /* fake [ 中😀 */ 2\n][[array:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "lambda-comment-trivia",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let callback = [[lambda:start]]|item| [[lambda-body:start]]{\n // fake fn()\n return item + value;\n}[[lambda-body:end]][[lambda:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "plain-string-comment-decoys",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]\"\"\"// use ghost::name;\n /* fn fake() {\n } */\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          }
+        ]
+      },
+      {
+        "id": "formatted-string-trivia-decoys",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]f\"\"\"// fake {{ }}\n value {value}\n /* text */\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          }
+        ]
+      },
+      {
+        "id": "tab-indented-body",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n\tlet count = value;\n\t// fake fn 中😀\n\treturn count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "comment-in-function-header",
+        "source": "/*中😀*/ [[item:start]]fn /* fake {\n } 中😀 */ main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "comment-in-parameter-type",
+        "source": "/*中😀*/ [[item:start]]fn main(value: /* fake\n 中😀 */ i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "attribute-and-intervening-comment",
+        "source": "/*中😀*/ [[item:start]]#[doc(\"fake fn / use / 中😀\")]\n/* fake {\n } */\nfn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "shebang-with-function",
+        "source": "#!/usr/bin/env vela\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "shebang-fake-source",
+        "source": "#!fn fake() { use ghost::name; } 中😀\n// next trivia\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "impl-method-comment-spans",
+        "source": "/*中😀*/ [[item:start]]impl Row {\n /// fake fn other() {}\n fn read(self, value) [[body:start]]{\n // fake field\n return value;\n}[[body:end]]\n /* after method 中😀 */\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "trait-signature-comment-spans",
+        "source": "/*中😀*/ [[item:start]]trait Reader {\n /* fn fake() {} */\n fn first(self);\n // next method\n fn second(self);\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "struct-member-comment-spans",
+        "source": "/*中😀*/ [[item:start]]struct Row {\n // fake declaration\n count: i64 = 1\n /* multiline 中😀\n fake field */\n values: Array<i64> = [\n 1,\n 2\n ]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "enum-member-comment-spans",
+        "source": "/*中😀*/ [[item:start]]enum Choice {\n // fake variant\n Empty\n /* nested /* inner */ text */\n Named { count: i64 }\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "import-comment-blank-group",
+        "source": "/*中😀*/ [[imports:start]]use helper::helper;\n\n/* fake fn() {\n } 中😀 */\n// next import\nuse missing::name;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "shebang-import-comment-group",
+        "source": "#!/usr/bin/env vela\n/*中😀*/ [[imports:start]]use helper::helper;\n\n/* fake fn() {\n } 中😀 */\n// next import\nuse missing::name;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "no-fold-line-comments",
+        "source": "// fn fake() {\n// use fake::name;\n// }\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-nested-block-comments",
+        "source": "/* outer {\n /* inner fn fake() {} */\n use ghost::name;\n } */\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-documentation-comments",
+        "source": "/// struct Fake {\n/// fn fake() { }\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-shebang",
+        "source": "#!fn fake() { use ghost::name; } 中😀\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-whitespace",
+        "source": " \t\n\n \t \n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-single-line-items-with-trivia",
+        "source": "// fake fn\nfn first() {}\n\n/* fake struct {\n } */\nfn second() {}\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-single-line-members-with-trivia",
+        "source": "struct Row {}\n// fake impl\nimpl Row { fn read(self) {} }\n/* fake trait {\n } */\ntrait Reader { fn read(self); }\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-const-string-and-comment-decoys",
+        "source": "const TEXT = \"/* fn fake() {} */ use ghost::name; 中😀\";\n/* fake enum {\n Item } */\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-declaration-separated-imports",
+        "source": "use helper::helper;\n// fake import\nconst COUNT = 1;\n/* gap\n text */\nuse missing::name;\n",
+        "ranges": []
+      },
+      {
+        "id": "valid-function-before-unclosed-comment",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n[[error:start]]/* unterminated 中😀\n fake fn() {\n[[error:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ],
+        "parseRange": "error",
+        "parseCodes": [
+          "E_LEX_BLOCK_COMMENT"
+        ],
+        "parseMessages": [
+          "unterminated block comment"
+        ]
+      },
+      {
+        "id": "no-fold-unclosed-comment",
+        "source": "[[error:start]]/* unterminated 中😀\n fn fake() {\n[[error:end]]",
+        "ranges": [],
+        "parseRange": "error",
+        "parseCodes": [
+          "E_LEX_BLOCK_COMMENT"
+        ],
+        "parseMessages": [
+          "unterminated block comment"
+        ]
+      }
+    ]
+  }
+}

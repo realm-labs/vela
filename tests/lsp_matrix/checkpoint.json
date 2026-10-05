@@ -8570,10 +8570,21 @@
         "folding/syntax/S4/negative/protocol"
       ],
       "summary": "Close only four folding S4 positive/negative service/protocol cells. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight true single-line empties. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, named/positional arguments, chained record receivers/call/index values, all six field assignment operators and field/index writes preserve every receiver/index/value region. Scalar constructor/call/path/paren wrappers and unresolved members cannot invent folds; block-valued shorthand retains distinct value block and record. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body without synthetic method item regions; struct field/enum payload defaults remain enclosed by declarations and required signatures by traits. Existing declaration tests explicitly remain linked for attributes/public/private/default/async/member negatives. After two single-line declarations, first constructor pins item line2 UTF16 8 versus byte12, body35 versus39 through line8 column1, record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve service byte and strict immutable-source protocol policy. Actual bounded stdio passes original120 comparisons (96 positives/24 empties), retained raw original corpus; coverage review adds every field/index write and unresolved-member negatives before freezing, expanded156 comparisons (124 positives/32 empties) all pass. No provider-derived oracle or production defect claim. Both layers check disk/every dirty case/close restoration, current/fresh state and every earlier immutable source/parse/query snapshot, whole main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two source records, absent schema, typed complete initialize/open/change/close/query envelopes, encoded owned roots and unchanged physical bytes. Three meaningful Node tests pin full memberships/counts/literal coordinates and member/default/constructor/write ownership; Node203 total. Rust1.97 process-local baseline service6/protocol10, new1+1, final service7/protocol11/architecture3, fmt/relevant all-target Clippy/package. No production/runtime/syntax/ownership/capability change or host mutation execution. Preserve all prior folding tests/catalog layout/evidence,24 installed checks,50 native contracts, ten accepted snapshots/prior225 children, independent macOS history and B16 deferral. Fresh frozen Windows VSIX24/native50 with observer health and automaticfull/strictB09 service766+2 historical ignored/protocol819/stdio10. Core973 verified/352 pending/2NA/zero failed; B10 one hundred three verified/73 pending. Next B10.21 folding trivia partitions; recovery/selection/native UX11/UX12 remain open, no parent acceptance claimed. VSIX editors/vscode/test-results/run-SuTZxX/results.json; native editors/vscode/test-results/input-cpx1oW/results.json; audit target/lsp-matrix/run-ENSwSz/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.21",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S12/positive/service",
+        "folding/syntax/S12/positive/protocol",
+        "folding/syntax/S12/negative/service",
+        "folding/syntax/S12/negative/protocol"
+      ],
+      "summary": "Four S12 folding service/protocol cells.38 independently authored complete trivia sets:28 positives/60 spans/10 true empties. Leading/trailing/line/documentation/nested block comments, blanks/tabs, header/type comments and attributes preserve full item/body/branch/record/array/lambda ownership without fabricated declarations/imports. Plain/formatted multiline literal comment decoys retain literal spans; impl methods versus enclosing declarations and required/member signatures preserve existing folding policy. Consecutive imports group across trivia; declaration-separated imports stay empty. File-start shebang preserved under two Unicode shift lines inserted after its first line. Standalone trivia/single-line declarations and constant literal decoys own true empties. Valid function before unclosed block comment retains exactly item/body; standalone unclosed comment stays empty. Both cases pin exact E_LEX_BLOCK_COMMENT message, severity, full byte bounds and source ownership, actual UTF16 notification bounds; close restoration clears parse diagnostics. First item8 UTF16 versus12byte and body35/39 through line4col1, lexical bounds line3..5 and0..2 col0 independently pinned. All152 actual LF/CRLF/shift stdio forms pass,112 positive/40 empty with real diagnostics receipts; original code/message-only corpus/raw152 retained, added independent error markers preserve every source byte/fold set. Current/fresh/every immutable source/parse/query snapshot/disk/dirty/close compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counts, two sources/absent schema. Protocol verifies full typed folding envelopes, encoded private physical roots, unchanged actual disk and notification publication/clearing. Node3 meaningful independent checks;206 total. Process-local Rust1.97 baseline service7/protocol11/Node203; new1+1; final folding service8/protocol12/architecture3, fmt/relevant all-target Clippy/package. Test-only type-reference compilation issues fixed without dependency/production change before source freeze. Frozen Windows VSIX24/native50 and automatic full/strictB09 service767+2 historical ignored/protocol820/stdio10. Preserve ten accepted snapshots/prior226 children, original catalog/evidence/native contracts, independent macOS history and B16 deferral. Core977 verified/348 pending/2NA/zero failed; B10 107 verified/69 pending. Next B10.22 folding S9 recovery; installed folding/selection/UX11/UX12 remain open; no parent acceptance. VSIX editors/vscode/test-results/run-bafPrI/results.json; native editors/vscode/test-results/input-ypzdTx/results.json; audit target/lsp-matrix/run-P5638p/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.21",
-  "nextTask": "B10.21",
+  "activeChild": "B10.22",
+  "nextTask": "B10.22",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11271,7 +11282,43 @@
     "target/b10-20-members-prototype-30.json",
     "target/b10-20-folding-members-first.json",
     "target/b10-20-folding-members-30.json",
-    "target/b10-20-checkpoint.log"
+    "target/b10-20-checkpoint.log",
+    "target/lsp-matrix/run-P5638p/report.json",
+    "editors/vscode/test-results/run-bafPrI/results.json",
+    "editors/vscode/test-results/input-ypzdTx/results.json",
+    "target/lsp-matrix/run-8RHeyq/report.json",
+    "editors/vscode/test-results/run-bafPrI/base-results.json",
+    "editors/vscode/test-results/run-bafPrI/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-bafPrI/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-bafPrI/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-bafPrI/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-21-toolchain.log",
+    "target/b10-21-input.log",
+    "target/b10-21-editor.log",
+    "target/b10-21-scoped.log",
+    "target/b10-21-automatic.log",
+    "target/b10-21-baseline-service.log",
+    "target/b10-21-baseline-protocol.log",
+    "target/b10-21-baseline-node.log",
+    "target/b10-21-service-first.log",
+    "target/b10-21-protocol-first.log",
+    "target/b10-21-service-final.log",
+    "target/b10-21-protocol-final.log",
+    "target/b10-21-architecture.log",
+    "target/b10-21-node-first.log",
+    "target/b10-21-node.log",
+    "target/b10-21-format.log",
+    "target/b10-21-format-apply.log",
+    "target/b10-21-clippy.log",
+    "target/b10-21-package.log",
+    "target/b10-21-node-prototype-first.log",
+    "target/b10-21-trivia-prototype-first.log",
+    "target/b10-21-trivia-prototype-spans.log",
+    "target/b10-21-trivia-prototype.json",
+    "target/b10-21-trivia-prototype-before-spans.json",
+    "target/b10-21-folding-trivia-first.json",
+    "target/b10-21-frozen-source.json",
+    "target/b10-21-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15199,8 +15246,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "3a57758994e0fa513c9140a852de5822ad9568f9",
-          "treeSha256": "83588154238daa1dd7303cc1c3759fe9f42da6228bd8a9fac26938b09bab3ac5"
+          "revision": "eaea13f929ee8c8ed6e548ac29fb8b673db1553f",
+          "treeSha256": "a9e31f9f7f1297c278bded4215175d8c444205cf501cdd87be6f234d525bd1f1"
         },
         "profile": {
           "platform": "win32",
@@ -15208,11 +15255,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ENSwSz/report.json"
+          "target/lsp-matrix/run-P5638p/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-SuTZxX/results.json --local-results editors/vscode/test-results/input-cpx1oW/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-bafPrI/results.json --local-results editors/vscode/test-results/input-ypzdTx/results.json",
             "exitCode": 0
           }
         ]
