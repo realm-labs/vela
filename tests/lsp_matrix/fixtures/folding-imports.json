@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "id": "folding-imports",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[imports:start]]use missing::One as Alias;\n/*界😀*/ pub use other::Two as Choice;[[imports:end]]\n",
+    "scripts/helper.vela": "pub struct Known {}\npub fn known() {}\n"
+  },
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "unresolved-pair",
+        "source": "/*中😀*/ [[imports:start]]use missing::One as Alias;\n/*界😀*/ pub use other::Two as Choice;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "resolved-and-stdlib",
+        "source": "/*中😀*/ [[imports:start]]use helper::known as call;\n/*界😀*/ use std::print as output;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "pub-and-private-aliases",
+        "source": "/*中😀*/ [[imports:start]]pub use helper::Known as Row;\n/*界😀*/ use helper::known as call;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "blank-comment-group",
+        "source": "/*中😀*/ [[imports:start]]use helper::known;\n\n// use fake::{\n/* pub fn fake() {\n use fake::x;\n} */\n/*界😀*/ use missing::Two as Another;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "constant-splits-groups",
+        "source": "/*中😀*/ [[first:start]]use helper::known;\n/*界😀*/ use missing::One;[[first:end]]\nconst LABEL = \"use fake::x; { } 中😀\";\n/*中😀*/ [[second:start]]use std::print;\n/*界😀*/ pub use other::Two as Choice;[[second:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "first"
+          },
+          {
+            "kind": "imports",
+            "range": "second"
+          }
+        ]
+      },
+      {
+        "id": "function-splits-groups",
+        "source": "/*中😀*/ [[first:start]]use helper::known;\n/*界😀*/ use missing::One;[[first:end]]\nfn separator() {}\n/*中😀*/ [[second:start]]pub use helper::Known as Row;\n/*界😀*/ use std::print as output;[[second:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "first"
+          },
+          {
+            "kind": "imports",
+            "range": "second"
+          }
+        ]
+      },
+      {
+        "id": "single-line-import",
+        "source": "/*中😀*/ use missing::One as Alias;\n",
+        "ranges": []
+      },
+      {
+        "id": "same-line-pair",
+        "source": "/*中😀*/ use helper::known; use missing::One as Alias;\n",
+        "ranges": []
+      },
+      {
+        "id": "singletons-across-const",
+        "source": "/*中😀*/ use helper::known;\nconst LABEL = \"use fake::x; 中😀\";\n/*界😀*/ use missing::One;\n",
+        "ranges": []
+      },
+      {
+        "id": "singletons-across-state",
+        "source": "/*中😀*/ use helper::known;\nstate COUNT: i64 = 0;\n/*界😀*/ pub use missing::One;\n",
+        "ranges": []
+      },
+      {
+        "id": "singletons-across-function",
+        "source": "/*中😀*/ use helper::known;\nfn separator() {}\n/*界😀*/ use missing::One;\n",
+        "ranges": []
+      },
+      {
+        "id": "comment-only-imports",
+        "source": "// use helper::known;\n/* use missing::One;\n pub use fake::Two; { } */\n",
+        "ranges": []
+      },
+      {
+        "id": "string-only-imports",
+        "source": "const LABEL = \"use helper::known; pub use fake::Two; 中😀\";\n",
+        "ranges": []
+      },
+      {
+        "id": "empty-file",
+        "source": "",
+        "ranges": []
+      }
+    ]
+  },
+  "actions": []
+}

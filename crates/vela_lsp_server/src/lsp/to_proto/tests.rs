@@ -539,7 +539,7 @@ pub fn main() {
     databases.update(&project);
     let ranges = databases.folding_ranges(&document);
 
-    let ranges = folding_ranges(&ranges);
+    let ranges = folding_ranges(&ranges, source).expect("valid source folding positions");
 
     assert!(ranges.iter().any(|range| {
         range.kind == Some(lsp_types::FoldingRangeKind::Imports)

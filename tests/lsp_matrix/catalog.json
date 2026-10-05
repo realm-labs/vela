@@ -17677,6 +17677,100 @@
           "name": "workspace symbol provider preserves complete source and schema sets through Unicode dirty close restoration"
         }
       ]
+    },
+    {
+      "requirement": "folding/syntax/S8/positive/service",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S8/positive/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S8/negative/service",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S8/negative/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/states/dirty/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/states/repeat/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/environments/utf16/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "lsp::to_proto::folding::tests::folding_projection_uses_utf16_and_rejects_split_outside_or_reversed_byte_positions"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/environments/crlf/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/environments/encoded_uri/protocol",
+      "assertion": "Reviewed in reviews/folding-imports.md. Fourteen independent complete authored import cases over main/helper sources pin six positive sets/eight empty sets: unresolved/source/stdlib imports, private/public aliases/reexports, multiline comment/blank gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment-only/string-only/empty sources cannot fabricate a fold. LF/CRLF and two Unicode prefix lines retain literal UTF16 8/37 versus byte12/41. Service preserves byte columns; typed protocol folding projection converts both endpoints against actual immutable document text through the existing strict index and error boundary, rejecting split/outside/reversed/empty positions. Actual failed pre-fix stdio corpus has56 shapes with24 positive Unicode failures and32 exact empties; failed independent Rust protocol envelope preserves the same defect. Disk, every dirty variant, close restoration, three repeated whole main/helper/missing sets, independent fresh databases/coordinators and every prior immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks complete JSON-RPC envelopes, real private encoded roots, exact two current records, absent schema and unchanged physical main/helper bytes. Node independently pins all marker memberships, case counts, separated group/trivia geometry and literal UTF16/byte profiles. Existing folding tests remain active; no service coordinate, runtime, syntax, ownership, client capability or selection projection change. Other folding partitions, installed smoke and native UX12 stay open; platform evidence remains independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [

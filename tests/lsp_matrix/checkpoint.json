@@ -8495,10 +8495,26 @@
         "vscode/UX21/grant-trust/render/local"
       ],
       "summary": "Repair a confirmed installed observer cleanup regression exposed during B10.16 frozen native validation: both normal/trust bridges still called identity.dispose after B09.7 extraction had returned only a directory string, producing real ReferenceError logs. The failed full capture retains50 feature proofs and outer exit0 but trust clean-exit timed out15s; timeout causality is not established by this cleanup error alone. Return an owned ready channel handle with logDirectory/dispose, retain it in both observers, and dispose the created channel on readiness failure. Preserve128-bit invocation identity and10s/25ms readiness and all450s/210s/15s native budgets/contracts. Reject retained bridge-failure.log during and after normal/trust clean-exit so an observer error cannot be concealed by driver quit and exit0. Three independent new tests pin ready-channel ownership until disposal, original readiness failure plus channel cleanup, and refusal of error-marked zero-exit runs; allsix focused observer tests and Node188 with pending B10.16 source pass (three directly owned additions). Actual fresh native focused14 has11 driver/navigation prerequisites plus UX17 roots-settings and UX21 untrusted-open/grant-trust; complete source/binary/platform/action/check/artifact contracts verified, no normal/trust observer error files and real clean exits. All50 native contracts unchanged. First full automatic matrix had service762+2 ignored/stdio10 pass but protocol809pass/6 failures at unmodified five-second task wait limits; no semantic assertion mismatch shown, failed audit retained, source causality not claimed. B10.16 must recapture complete evidence after this prerequisite; no new semantic cell or parent acceptance claimed. Preserve ten accepted snapshots/profile audits, prior219 children, independent macOS history, B16 deferral and active B10.16. Pending folding fix remains outside this commit. editors/vscode/test-results/input-X9IKpy/results.json; formal LSP-Batch trailer locates commit. Final checkpoint tests15 pass; source identity and formal trailer checked after commit."
+    },
+    {
+      "id": "B10.16",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S8/positive/service",
+        "folding/syntax/S8/positive/protocol",
+        "folding/syntax/S8/negative/service",
+        "folding/syntax/S8/negative/protocol",
+        "folding/states/dirty/protocol",
+        "folding/states/repeat/protocol",
+        "folding/environments/utf16/protocol",
+        "folding/environments/crlf/protocol",
+        "folding/environments/encoded_uri/protocol"
+      ],
+      "summary": "Close only nine folding import S8 positive/negative service/protocol, dirty/repeat and UTF16/CRLF/encoded-URI protocol cells. Fourteen independent literal whole cases over two main/helper sources have six positive sets/eight exact empty sets (eight import groups): unresolved/source/stdlib imports, aliases and public/private reexports, blank/comment gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment/string/empty documents do not fabricate multiline folds. Four LF/CRLF/two-Unicode-prefix profiles pin UTF16 columns8/37 versus byte12/41. Service byte coordinates remain unchanged. Actual pre-fix stdio corpus retains56 authored shapes,24 Unicode coordinate failures and32 empties; new typed Rust protocol test fails the same12/41 versus8/37 full envelope. Extract focused typed folding projection using existing strict byte-to-UTF16 index against the same immutable snapshot document text and existing projection error boundary, rejecting split/outside/reversed/empty positions. No syntax, ownership, runtime, client capability or selection change. Actual post-fix stdio corpus passes all56 unchanged authored shapes,24 positive Unicode comparisons and32 empty sets. Both layers compare complete current/fresh sets, all prior immutable source/parse/query snapshots, disk/every dirty case/close restoration, repeated main/helper/missing queries3times and unchanged generation/parse/project/HIR counters; typed initialize/open/change/close dispatch, exact two current sources, absent schema, private encoded owned roots and unchanged real disk bytes. Initial service test caught missing required fixture actions member; fix fixture metadata only, preserve failed log. Earlier stdio draft harness failures reflect exit/oracle plumbing, final meaningful before and after captures are separately retained. Node3 new independent tests pin all complete case memberships and literal coordinate/trivia/separated group geometry; Node188 total. Rust1.97 process-local service3/protocol7/architecture3, fmt/relevant all-target Clippy/package. Preserve all original folding tests, entire original catalog evidence semantics, all50 native contracts, all24 installed assertions and ten accepted snapshots/prior220 children. Fresh frozen Windows VSIX24/native50 and automaticfull/strictB09 service762+2 historical ignored/protocol815/stdio10. Core953 verified/372 pending/2NA/zero failed; B10 eighty-three verified/93 pending. Independent macOS evidence unchanged; B16 deferred. Next B10.17 folding declaration regions, then remaining folding/selection/native UX11/UX12; no parent acceptance claimed. First full automatic audit run-gKIUv2 failed six existing protocol tasks at unchanged five-second wait bounds while native validation also ran; cause is not established. Allsix pass individual ordinary focused runs with unchanged support/deadlines, and final fresh full audits run separately from native/GUI capture. Failed report and observer-error native50 input-WdPBng remain retained through separately committed B09.8, which adds three observer ownership/health tests and strengthens clean-exit checks. Recapture all final evidence at B09.8 source; no failed first artifact closes a cell. VSIX editors/vscode/test-results/run-yU6NL4/results.json; native editors/vscode/test-results/input-QGSGtx/results.json; audit target/lsp-matrix/run-Dx3ckG/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.16",
-  "nextTask": "B10.16",
+  "activeChild": "B10.17",
+  "nextTask": "B10.17",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10999,7 +11015,47 @@
     "target/b09-8-node-first.log",
     "target/b09-8-node.log",
     "target/b09-8-frozen-source.json",
-    "target/b09-8-checkpoint.log"
+    "target/b09-8-checkpoint.log",
+    "target/lsp-matrix/run-Dx3ckG/report.json",
+    "editors/vscode/test-results/run-yU6NL4/results.json",
+    "editors/vscode/test-results/input-QGSGtx/results.json",
+    "target/lsp-matrix/run-3H3rJy/report.json",
+    "editors/vscode/test-results/run-yU6NL4/base-results.json",
+    "editors/vscode/test-results/run-yU6NL4/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-yU6NL4/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-yU6NL4/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-yU6NL4/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-16-toolchain.log",
+    "target/b10-16-input.log",
+    "target/b10-16-editor.log",
+    "target/b10-16-scoped.log",
+    "target/b10-16-automatic.log",
+    "target/b10-16-baseline-service.log",
+    "target/b10-16-baseline-protocol.log",
+    "target/b10-16-baseline-node.log",
+    "target/b10-16-service-first.log",
+    "target/b10-16-service-second.log",
+    "target/b10-16-protocol-first.log",
+    "target/b10-16-service-final.log",
+    "target/b10-16-protocol-final.log",
+    "target/b10-16-architecture.log",
+    "target/b10-16-node-first.log",
+    "target/b10-16-node.log",
+    "target/b10-16-format.log",
+    "target/b10-16-clippy.log",
+    "target/b10-16-package.log",
+    "target/b10-16-build.log",
+    "target/b10-16-folding-baseline.log",
+    "target/b10-16-corpus-baseline.log",
+    "target/b10-16-corpus-baseline-second.log",
+    "target/b10-16-corpus-baseline-third.log",
+    "target/b10-16-corpus-postfix.log",
+    "target/b10-16-prototype-node.log",
+    "target/b10-16-folding-wire-repro.json",
+    "target/b10-16-folding-corpus-repro.json",
+    "target/b10-16-folding-corpus-postfix.json",
+    "target/b10-16-failed-cases-repro.log",
+    "target/b10-16-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14927,8 +14983,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "185536fa3918f2a3244e8c64b0939b03457ae6df",
-          "treeSha256": "3887f7647d7b0d1c13ead1e028db7a325b309e2dde96f4308168b29ebb845dd4"
+          "revision": "4ad44d7a6deee3e2862522dc8f06f595a1f4a20f",
+          "treeSha256": "c42113a2607b11782b1c4211b32ec2b8e70148d7237c99f315b99abdc4131fba"
         },
         "profile": {
           "platform": "win32",
@@ -14936,11 +14992,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-rGBIQn/report.json"
+          "target/lsp-matrix/run-Dx3ckG/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ejwvA0/results.json --local-results editors/vscode/test-results/input-hcbwgv/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-yU6NL4/results.json --local-results editors/vscode/test-results/input-QGSGtx/results.json",
             "exitCode": 0
           }
         ]

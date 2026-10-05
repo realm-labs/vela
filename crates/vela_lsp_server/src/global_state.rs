@@ -540,10 +540,11 @@ impl GlobalStateSnapshot {
     ) -> Vec<Message> {
         let document_id = from_proto::folding_range_params(&params);
         let ranges = self.databases.folding_ranges(&document_id);
+        let text = snapshot_document_text(&self, &document_id);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::folding_ranges(&ranges),
+            to_proto::folding_ranges(&ranges, &text),
             "typed foldingRange response",
         )
     }

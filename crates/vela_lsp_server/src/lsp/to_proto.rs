@@ -6,16 +6,17 @@ use vela_language_service::{
     CodeActionKind as ServiceCodeActionKind, CompletionInsertFormat, CompletionKind,
     CompletionLabelDetails, CompletionList, CompletionResolvePayload, CompletionSymbol, Definition,
     DiagnosticRange, DocumentDiagnostics, DocumentHighlight, DocumentHighlightKind,
-    DocumentSymbolKind, DocumentTextEdit, FoldingRange as ServiceFoldingRange,
-    FoldingRangeKind as ServiceFoldingRangeKind, Hover, HoverKind, IncomingCall,
+    DocumentSymbolKind, DocumentTextEdit, Hover, HoverKind, IncomingCall,
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
     PrepareRename, ProjectDiagnostic, Reference, RenameRiskKind, SchemaDiagnostic,
     SelectionRange as ServiceSelectionRange, ServiceDiagnostic, ServiceDiagnosticSeverity,
     SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
 };
 
+mod folding;
 mod symbols;
 mod tokens;
+pub(crate) use folding::folding_ranges;
 pub(crate) use symbols::{document_symbols, workspace_symbols};
 pub(crate) use tokens::{
     delta as semantic_tokens_delta, full as semantic_tokens, range as semantic_tokens_range,
@@ -171,10 +172,6 @@ pub(crate) fn document_highlights(
             kind: document_highlight_kind(highlight.kind()),
         })
         .collect()
-}
-
-pub(crate) fn folding_ranges(ranges: &[ServiceFoldingRange]) -> Vec<lsp_types::FoldingRange> {
-    ranges.iter().map(folding_range).collect()
 }
 
 pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_types::SelectionRange> {
@@ -403,28 +400,6 @@ const fn document_highlight_kind(
         }
         DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
         DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
-    }
-}
-
-fn folding_range(range: &ServiceFoldingRange) -> lsp_types::FoldingRange {
-    lsp_types::FoldingRange {
-        start_line: u32::try_from(range.start().line).expect("line should fit in LSP u32"),
-        start_character: Some(
-            u32::try_from(range.start().character).expect("character should fit in LSP u32"),
-        ),
-        end_line: u32::try_from(range.end().line).expect("line should fit in LSP u32"),
-        end_character: Some(
-            u32::try_from(range.end().character).expect("character should fit in LSP u32"),
-        ),
-        kind: Some(folding_range_kind(range.kind())),
-        collapsed_text: None,
-    }
-}
-
-const fn folding_range_kind(kind: ServiceFoldingRangeKind) -> lsp_types::FoldingRangeKind {
-    match kind {
-        ServiceFoldingRangeKind::Imports => lsp_types::FoldingRangeKind::Imports,
-        ServiceFoldingRangeKind::Region => lsp_types::FoldingRangeKind::Region,
     }
 }
 
