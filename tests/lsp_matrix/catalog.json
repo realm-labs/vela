@@ -17667,6 +17667,16 @@
           "name": "tests::workspace_symbol_lifecycle::lsp_workspace_symbol_lifecycle_pins_whole_utf16_sets_and_frozen_snapshots_with_fresh_parity"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/editor/smoke",
+      "assertion": "Reviewed in reviews/workspace-symbol-editor.md. A second real VS Code session uses the same installed VSIX with fresh private user-data, fixed manifest-free Unicode/space/percent workspace and only literal authored fallback roots/schema. Original declaration/ownership corpora retain four/eight sources, 31/60 whole rows and 32/49 independent queries under LF/CRLF. Every positive/collision/alias/detail-only/builtin/unresolved/dynamic/no-match query repeats three times through disk, all-source dirty two-line Unicode prefix and close-restored disk; complete editor multisets preserve all names/kinds/containers/URIs/ranges and same-name source/schema duplicates without filtering/deduplication. Actual public executeWorkspaceSymbolProvider and one fresh paired client request/response per query retain exact parameters, complete ordered wire fields/details/absences and explicit [] for negatives. Only equivalent Windows drive URI spelling is normalized through the actual client URI type; raw responses stay retained. Static ownership schema is metadata-only without mutating source-bound fixture: actual wire URI-only vela-schema: and client zero placeholder Location are asserted without a source jump claim. Actual main-loop configuration/open/change/close completion, owned documents closed before global root/schema switches, exact physical source/schema retention and finite deadlines; only startup readiness retries, no forged request/provider or feature retry. Both raw suite results and query/client/server artifacts remain retained; merge demands identical current source/server/platform/pinned version and rejects duplicate checks while preserving failures. Node pins literal UTF16 versus byte extents, dirty whole-file boundaries, complete memberships, schema collisions, multiset multiplicity, raw URI field preservation, incomplete/stale/null/error wire pairs and merge failure modes. No production/runtime/ownership change or cross-platform evidence mixing; native UX11 Input/Render stays open.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "workspace symbol provider preserves complete source and schema sets through Unicode dirty close restoration"
+        }
+      ]
     }
   ],
   "featureFiles": [

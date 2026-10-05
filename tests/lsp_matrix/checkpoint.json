@@ -8474,10 +8474,18 @@
         "vscode/UX21/grant-trust/render/local"
       ],
       "summary": "Repair installed native observer log ownership when Windows reuses an extension-host PID across reloads. The actual failed B10.15 full input capture retained46 proofs before UX17 first-folder removal: PID4172 had an old outer-root output log at04:28:23.335 and a new correct right-root server at04:28:41.707, but the shared PID-only identity marker selected the former before the latter flushed. Pin both physical identity files and exact failed removed-folders assertion. A fresh128-bit per-invocation nonce is now in the output channel filename and complete newline-terminated identity marker. Both normal and restricted/trust observers share the same bounded10s/25ms readiness helper; retain PID, installed-mode, owned-profile/log paths and all native actions/expected states. Three independent regression tests simulate same PID with retained prior logs and delayed/current flush, wrong/incomplete marker, duplicate current channel and invalid PID/nonce. Actual native focused14 proofs include all11 existing driver/navigation prerequisites plus complete UX17 roots-settings and UX21 untrusted-open/grant-trust; source/provenance/exit/artifact contracts verified, all50 contracts unchanged. Node182 with pending B10.15 source present (three directly owned new tests), existing current Rust/extension behavior unchanged. This is a test driver prerequisite, no new semantic cell or parent acceptance claimed; preserve ten accepted batch snapshots/profile audits, prior217 children and active B10.15. Pending B10.15 installed smoke changes remain outside this small commit and must recapture all source-bound evidence after commit. Artifacts editors/vscode/test-results/input-8GkXe0/results.json; failed input-tnHnm1 preserved; formal LSP-Batch trailer locates commit."
+    },
+    {
+      "id": "B10.15",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/editor/smoke"
+      ],
+      "summary": "Close only workspace-symbol installed editor smoke using an independently isolated second real VS Code session with the same installed VSIX, fresh user-data, fixed Unicode/space/percent manifest-free workspace and exact fallback scripts roots/static schema. Main suite retains all23 original assertions; merged suite has24 checks and identical source/server/platform/pinned-version provenance, preserving raw results/failures and rejecting duplicates. Reuse literal declaration/ownership corpora (four/eight source files,31/60 whole rows,32/49 authored queries). LF/CRLF disk/all-source two-Unicode-prefix dirty/closed-restored phases repeat every query three times:486 complete query observations and1458 distinct fresh public executeWorkspaceSymbolProvider request/response pairs. Exact complete editor multisets preserve all names/kinds/containers/locations/ranges and duplicate source/schema names without response filtering/deduplication; wire comparison preserves entire authored ordered fields/details/absences and exact queries, explicit[] for negatives. Normalize equivalent Windows drive URI spelling only through actual client URI type and preserve all original raw rows. Literal static schema removes sourceSpan setup without mutating source-bound fixture; actual URI-only vela-schema: has no source range, client zero placeholder does not claim a metadata jump. Completed actual main-loop configuration/open/change/close, no owned or foreign open Vela docs across global root switches, exact unchanged physical files/schema and finite bounds; only startup retries. Development prototypes exposed retained model references with direct openTextDocument and equivalent Rust/Code drive encoding; use actual vscode.open editors and URI normalization, retain both failed prototypes and final1458-pair passing run, no feature retry/range weakening or production change. Test-only focused modules and eight meaningful Node tests pin independent UTF16/byte full extents, dirty EOF geometry, membership/collisions/multiplicity, null/stale/incomplete/error wire responses and provenance merge failures; all182 Node checks pass. Rust1.97 process-local focused service17/protocol25, fmt, relevant all-target Clippy/package validation; fresh frozen Windows VSIX24/native50 and automaticfull/strictB09 service761+2 historical ignored/protocol813/stdio10. Core944 verified/381 pending/2NA/zero failed; B10 seventy-four verified/102 pending. Preserve ten accepted snapshots, all prior218 child records and50 native contracts, independent macOS history and B16 deferral. Workspace-symbol core is complete; native UX11 stays open independently. Next B10.16 (folding imported source partitions), selection/UX12/folding remaining; fresh macOS when used. VSIX editors/vscode/test-results/run-ejwvA0/results.json; native editors/vscode/test-results/input-hcbwgv/results.json; audit target/lsp-matrix/run-rGBIQn/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.15",
-  "nextTask": "B10.15",
+  "activeChild": "B10.16",
+  "nextTask": "B10.16",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10939,7 +10947,33 @@
     "target/b10-15-prerequisite-input.log",
     "target/b10-15-prerequisite-node-first.log",
     "target/b10-15-prerequisite-node.log",
-    "target/b10-15-prerequisite-frozen-source.json"
+    "target/b10-15-prerequisite-frozen-source.json",
+    "target/lsp-matrix/run-rGBIQn/report.json",
+    "editors/vscode/test-results/run-ejwvA0/results.json",
+    "editors/vscode/test-results/input-hcbwgv/results.json",
+    "target/lsp-matrix/run-3uhz8a/report.json",
+    "editors/vscode/test-results/run-ejwvA0/base-results.json",
+    "editors/vscode/test-results/run-ejwvA0/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-ejwvA0/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-ejwvA0/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-ejwvA0/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-15-toolchain.log",
+    "target/b10-15-input.log",
+    "target/b10-15-editor.log",
+    "target/b10-15-scoped.log",
+    "target/b10-15-baseline-node.log",
+    "target/b10-15-service.log",
+    "target/b10-15-protocol.log",
+    "target/b10-15-node-first.log",
+    "target/b10-15-node.log",
+    "target/b10-15-format.log",
+    "target/b10-15-clippy.log",
+    "target/b10-15-package.log",
+    "target/b10-15-prototype-editor.log",
+    "target/b10-15-prototype-editor-second.log",
+    "target/b10-15-prototype-editor-third.log",
+    "target/b10-15-prototype-node-final.log",
+    "target/b10-15-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14867,8 +14901,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4d05c7a16218d5aaf4dd55f4c5f2201a3afa2365",
-          "treeSha256": "484fecf99b347afbbeb6a0facf5b97cc385b5cbac9d01ce9beeb02d0d95637ed"
+          "revision": "185536fa3918f2a3244e8c64b0939b03457ae6df",
+          "treeSha256": "3887f7647d7b0d1c13ead1e028db7a325b309e2dde96f4308168b29ebb845dd4"
         },
         "profile": {
           "platform": "win32",
@@ -14876,11 +14910,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-cyMHb2/report.json"
+          "target/lsp-matrix/run-rGBIQn/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ecEGSP/results.json --local-results editors/vscode/test-results/input-iSj6gl/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ejwvA0/results.json --local-results editors/vscode/test-results/input-hcbwgv/results.json",
             "exitCode": 0
           }
         ]

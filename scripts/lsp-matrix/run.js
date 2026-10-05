@@ -126,7 +126,7 @@ async function main() {
     }
     appendSuite(suite, listed.stdout, executed?.stdout, available, results);
   }
-  available.editor = [...read("editors/vscode/test/suite.js").matchAll(/await check\("([^"]+)"/g)].map((match) => match[1]);
+  available.editor = require("./editor-results").editorTests(root);
   const built = cargo(["build", "-p", "vela_lsp_server"], "build.log");
   if (built.status !== 0) throw new Error(`LSP build failed; see ${output}`);
   const metadata = cargo(["metadata", "--no-deps", "--format-version", "1"], "metadata.log");

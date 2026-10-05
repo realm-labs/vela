@@ -97,6 +97,32 @@ async function main() {
     editorFailure = error;
   }
   const resultFile = path.join(resultRoot, "results.json");
+  if (!editorFailure) {
+    // Workspace symbols own a global set. The main suite's root manifest and
+    // unrelated open documents require a separate installed-editor session.
+    const symbolRoot = path.join(resultRoot, "workspace-symbol-editor");
+    fs.mkdirSync(symbolRoot);
+    const symbolWorkspace = require("./workspace-symbol-provider").materializeWorkspaceSymbols(symbolRoot);
+    const rawBase = path.join(resultRoot, "base-results.json");
+    fs.copyFileSync(resultFile, rawBase);
+    try {
+      await runTests({ vscodeExecutablePath,
+        extensionDevelopmentPath: path.join(__dirname, "driver"),
+        extensionTestsPath: path.join(__dirname, "workspace-symbol-suite.js"),
+        extensionTestsEnv: { ELECTRON_RUN_AS_NODE: undefined,
+          VELA_TEST_EXTENSIONS_DIR: extensionsDir, VELA_TEST_RESULT_DIR: symbolRoot },
+        launchArgs: [symbolWorkspace, "--extensions-dir", extensionsDir,
+          "--user-data-dir", path.join(symbolRoot, "user-data"),
+          "--skip-welcome", "--skip-release-notes", "--disable-workspace-trust",
+          "--disable-updates", "--disable-gpu", "--no-sandbox"] });
+    } catch (error) { editorFailure = error; }
+    const rawSymbols = path.join(symbolRoot, "results.json");
+    if (fs.existsSync(rawSymbols)) {
+      const merged = require("../../../scripts/lsp-matrix/editor-results").mergeEditorResults(
+        JSON.parse(fs.readFileSync(rawBase, "utf8")), JSON.parse(fs.readFileSync(rawSymbols, "utf8")));
+      fs.writeFileSync(resultFile, JSON.stringify(merged, null, 2));
+    } else if (!editorFailure) { throw new Error("missing isolated workspace symbol editor results"); }
+  }
   const audit = spawnSync(process.execPath, [path.join(extensionRoot, "../../scripts/lsp-matrix/run.js"),
     "--run", ...(fs.existsSync(resultFile) ? ["--editor-results", resultFile] : [])], {
     // Each Rust suite retains its ten-minute budget; allow bounded
