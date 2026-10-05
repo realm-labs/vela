@@ -11,6 +11,7 @@ pub(crate) mod document_symbols;
 pub(crate) mod folding_bodies;
 pub(crate) mod folding_declarations;
 pub(crate) mod folding_imports;
+pub(crate) mod folding_literals;
 mod schema;
 pub(crate) mod workspace_symbol_incremental;
 pub(crate) mod workspace_symbol_sources;

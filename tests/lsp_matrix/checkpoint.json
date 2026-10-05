@@ -8548,10 +8548,21 @@
         "vscode/UX01/install-open/command/local"
       ],
       "summary": "Repair a confirmed native installation Quick Open driver failure during frozen B10.19: the basename-only main.vela locator matched stale/sibling scripts and scripts/game rows while the authored query was settling, producing an actual strict-mode error before Enter. Retain failed result with one unrelated-file proof, source identity, original log, PNG/ARIA/trace; later ARIA contains intended scripts/installation/main.vela. Match exact complete authored directory plus basename, require the unique visible native row to have focus before unchanged Enter, and retain observed name/directory/path/focus. Never select an arbitrary first row or issue extra actions. Three independent tests pin same-basename isolation for both slash profiles, Unicode/space/percent/regex literal escaping and rejection of ambiguous/escaping paths; two existing installation contract tests and Node200 with pending B10.19 pass (three directly owned additions). Actual fresh native11 passes both installation routes plus driver/eight navigation prerequisites; exact raw path/focus observations, complete source/binary/platform/action/check/artifact contracts and healthy clean exit verified. All50 contracts and existing deadlines unchanged. No new semantic cell, production change or parent acceptance. Preserve ten accepted snapshots/profile audits, prior223 children, independent macOS history/B16 deferral and active B10.19. Pending folding tests remain outside this commit and must recapture complete fresh evidence after repair. editors/vscode/test-results/input-tJp2IC/results.json; formal LSP-Batch trailer locates commit. Final checkpoint tests15 pass; post-commit tree identity, formal trailer and isolated pending folding files checked separately."
+    },
+    {
+      "id": "B10.19",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S7/positive/service",
+        "folding/syntax/S7/positive/protocol",
+        "folding/syntax/S7/negative/service",
+        "folding/syntax/S7/negative/protocol"
+      ],
+      "summary": "Close only four folding S7 positive/negative service/protocol cells. Fifty-nine independently authored whole literal/operator sets have47 positives/164 region spans and12 true single-line empties. Arrays/nested arrays, tuples, maps with expression keys/values, records/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays preserve full outer/inner ownership; plain literal fake-code text cannot invent folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receivers, call callee/arguments, index receiver/index, try and await traverse children without operator/wrapper folds. Multiline scalar operators/calls/index/parenthesized scalars, unit/numeric radix/exponent/suffix/character/byte/boolean/ordinary strings retain only enclosing item/body regions; parens containing arrays retain the array. Every single-line example yields[]. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. First full native capture failed before the install-open Enter because the old basename-only locator matched two stale/sibling main.vela rows; B09.9 separately fixes complete path and native focus ownership, retains failed source/log/PNG/ARIA/trace and passes actual native11 with unchanged50 contracts. Recapture all final Windows evidence from the repaired source, no reuse of failed native acceptance. Real bounded stdio prototype passes236 authored UTF16/parse cases,188 positives/48 empties; retain original source and raw responses, no production defect or provider-derived oracle. Both layers check disk/every dirty case/close restoration, current/fresh state and every earlier immutable source/parse/query snapshot, whole main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two source records, absent schema, typed complete initialize/open/change/close/query envelopes, encoded owned roots and unchanged physical bytes. Three meaningful Node tests pin full memberships/counts/literal coordinates and nested versus wrapper ownership; Node200 total. Rust1.97 process-local baseline service5/protocol9, new1+1, final service6/protocol10/architecture3, fmt/relevant all-target Clippy/package. No production/runtime/syntax/ownership/capability change. Preserve all prior folding tests/catalog formatting/evidence,24 installed checks,50 native contracts, ten accepted snapshots/prior224 children, independent macOS history and B16 deferral. Fresh frozen Windows VSIX24/native50 with observer health and automaticfull/strictB09 service765+2 historical ignored/protocol818/stdio10. Core969 verified/356 pending/2NA/zero failed; B10 ninety-nine verified/77 pending. Next B10.20 folding member and constructor partitions; recovery/trivia/selection/native UX11/UX12 remain open, no parent acceptance claimed. VSIX editors/vscode/test-results/run-jT8oDZ/results.json; native editors/vscode/test-results/input-I7OhZv/results.json; audit target/lsp-matrix/run-jIOLI8/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.19",
-  "nextTask": "B10.19",
+  "activeChild": "B10.20",
+  "nextTask": "B10.20",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11176,7 +11187,42 @@
     "target/b09-9-node-first.log",
     "target/b09-9-node.log",
     "target/b09-9-frozen-source.json",
-    "target/b09-9-checkpoint.log"
+    "target/b09-9-checkpoint.log",
+    "target/lsp-matrix/run-jIOLI8/report.json",
+    "editors/vscode/test-results/run-jT8oDZ/results.json",
+    "editors/vscode/test-results/input-I7OhZv/results.json",
+    "target/lsp-matrix/run-n1HHEv/report.json",
+    "editors/vscode/test-results/run-jT8oDZ/base-results.json",
+    "editors/vscode/test-results/run-jT8oDZ/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-jT8oDZ/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-jT8oDZ/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-jT8oDZ/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-19-toolchain.log",
+    "target/b10-19-input.log",
+    "target/b10-19-editor.log",
+    "target/b10-19-scoped.log",
+    "target/b10-19-automatic.log",
+    "target/b10-19-baseline-service.log",
+    "target/b10-19-baseline-protocol.log",
+    "target/b10-19-baseline-node.log",
+    "target/b10-19-service-first.log",
+    "target/b10-19-protocol-first.log",
+    "target/b10-19-service-final.log",
+    "target/b10-19-protocol-final.log",
+    "target/b10-19-architecture.log",
+    "target/b10-19-node-first.log",
+    "target/b10-19-node.log",
+    "target/b10-19-format.log",
+    "target/b10-19-clippy.log",
+    "target/b10-19-package.log",
+    "target/b10-19-node-prototype-first.log",
+    "target/b10-19-literals-prototype-first.log",
+    "target/b10-19-draft-format.log",
+    "target/b10-19-format-apply.log",
+    "target/b10-19-literals-prototype.json",
+    "target/b10-19-folding-literals-first.json",
+    "target/b10-19-node-before-prerequisite.log",
+    "target/b10-19-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15104,8 +15150,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9b94b14c86c3c6c86db470589832e87c67c9acc9",
-          "treeSha256": "828bfb1dfb09cb05403c479e9f2dae9d4fb8b675d79d2e738360fc453071f185"
+          "revision": "63236b721e1dbea0b3f32974481688ad1599a4f1",
+          "treeSha256": "ed1756cf081b32ca1127d42f0b2d95cd37cd8b6ad60151ee380a2faeb5526a3e"
         },
         "profile": {
           "platform": "win32",
@@ -15113,11 +15159,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-vIxFgD/report.json"
+          "target/lsp-matrix/run-jIOLI8/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-7NsuIP/results.json --local-results editors/vscode/test-results/input-OVsMdw/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-jT8oDZ/results.json --local-results editors/vscode/test-results/input-I7OhZv/results.json",
             "exitCode": 0
           }
         ]

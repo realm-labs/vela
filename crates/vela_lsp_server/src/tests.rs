@@ -228,6 +228,7 @@ mod folding;
 mod folding_bodies;
 mod folding_declarations;
 mod folding_imports;
+mod folding_literals;
 mod hover;
 mod references;
 mod rename;

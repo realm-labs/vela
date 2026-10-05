@@ -1,0 +1,1012 @@
+{
+  "version": 1,
+  "id": "folding-literals",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[array:start]][\n 1,\n 2\n][[array:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "array-literal",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[array:start]][\n 1,\n 2\n][[array:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "nested-array-literal",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[outer:start]][\n [[inner:start]][\n 1,\n 2\n][[inner:end]],\n [3, 4]\n][[outer:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "outer"
+          },
+          {
+            "kind": "region",
+            "range": "inner"
+          }
+        ]
+      },
+      {
+        "id": "tuple-literal",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[tuple:start]](\n value,\n 2\n)[[tuple:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "tuple"
+          }
+        ]
+      },
+      {
+        "id": "nested-tuple-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[tuple:start]](\n [[array:start]][\n 1,\n 2\n][[array:end]],\n value\n)[[tuple:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "tuple"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "map-literal",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[map:start]]{\n \"one\": 1,\n \"two\": 2\n}[[map:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "map"
+          }
+        ]
+      },
+      {
+        "id": "map-key-and-value-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[map:start]]{\n [[key:start]][\n 1,\n 2\n][[key:end]]: [[value:start]][\n 1,\n 2\n][[value:end]]\n}[[map:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "map"
+          },
+          {
+            "kind": "region",
+            "range": "key"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "record-literal",
+        "source": "struct Row { count: i64, other: i64 }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let row = [[record:start]]Row {\n count: value,\n other: 2\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          }
+        ]
+      },
+      {
+        "id": "record-shorthand-and-array",
+        "source": "struct Row { count: i64, values: Array<i64> }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count = value; let row = [[record:start]]Row {\n count,\n values: [[array:start]][\n 1,\n 2\n][[array:end]]\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "multiline-string-literal",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]\"\"\"first 中😀\n second { [ ignored ] }\n third\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          }
+        ]
+      },
+      {
+        "id": "multiline-string-fake-code",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]\"\"\"fn fake() {\n use ghost::name;\n [1, 2] }\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          }
+        ]
+      },
+      {
+        "id": "multiline-interpolated-string",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]f\"\"\"first {value}\n second {{literal}}\n third\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          }
+        ]
+      },
+      {
+        "id": "interpolation-array-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let text = [[string:start]]f\"\"\"first {[[array:start]][\n 1,\n 2\n][[array:end]]}\n last\"\"\"[[string:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "string"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = (\n [[array:start]][\n 1,\n 2\n][[array:end]]\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-scalar",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = (\n value\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "unit-scalar-literal-families",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = (); let number = 0x_FF; let binary = 0b1010; let fraction = 1.25e2; let typed = 12i8; let typed_float = 12.0f32;\n let text = \"中😀\\n\"; let marker = '中'; let bytes = b\"\\x00\\xff\"; let yes = true; let no = false;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "unary-negative-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = -[[array:start]][\n 1,\n 2\n][[array:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "unary-logical-not-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = ![[array:start]][\n 1,\n 2\n][[array:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "binary-add-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n + [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-subtract-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n - [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-multiply-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n * [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-divide-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n / [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-remainder-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n % [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-equal-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n == [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-not-equal-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n != [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-identity-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n === [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-not-identity-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n !== [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-less-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n < [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-less-equal-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n <= [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-greater-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n > [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-greater-equal-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n >= [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-and-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n && [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-or-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n || [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-range-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n .. [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "binary-range-inclusive-both-arrays",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[left:start]][\n 1,\n 2\n][[left:end]]\n ..= [[right:start]][\n 1,\n 2\n][[right:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "left"
+          },
+          {
+            "kind": "region",
+            "range": "right"
+          }
+        ]
+      },
+      {
+        "id": "assignment-target-and-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n [[target:start]][\n 1,\n 2\n][[target:end]][0] = [[value:start]][\n 1,\n 2\n][[value:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "target"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-add-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let total = 1; total += [[array:start]][\n 1,\n 2\n][[array:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-subtract-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let total = 1; total -= [[array:start]][\n 1,\n 2\n][[array:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-multiply-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let total = 1; total *= [[array:start]][\n 1,\n 2\n][[array:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-divide-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let total = 1; total /= [[array:start]][\n 1,\n 2\n][[array:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-remainder-value",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let total = 1; total %= [[array:start]][\n 1,\n 2\n][[array:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "field-receiver-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[array:start]][\n 1,\n 2\n][[array:end]].count;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "call-callee-and-arguments",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = ([[callee:start]][\n 1,\n 2\n][[callee:end]][0])(first = [[first:start]][\n 1,\n 2\n][[first:end]], [[second:start]][\n 1,\n 2\n][[second:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "callee"
+          },
+          {
+            "kind": "region",
+            "range": "first"
+          },
+          {
+            "kind": "region",
+            "range": "second"
+          }
+        ]
+      },
+      {
+        "id": "index-receiver-and-index",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[receiver:start]][\n 1,\n 2\n][[receiver:end]][ [[index:start]][\n 1,\n 2\n][[index:end]][0] ];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "index"
+          }
+        ]
+      },
+      {
+        "id": "try-array-call",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = consume([[array:start]][\n 1,\n 2\n][[array:end]])?;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "await-array-call",
+        "source": "/*中😀*/ [[item:start]]async fn main(value: i64) -> i64 [[body:start]]{\n let values = consume([[array:start]][\n 1,\n 2\n][[array:end]]).await;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "scalar-operators-multiline",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = value\n + 1\n * 2;\n let range = 1\n ..= 3;\n let assignment = value\n = 2;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "scalar-call-index-field-multiline",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = consume(\n value\n);\n let indexed = values[\n value\n];\n let field = value\n .count;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "single-line-array",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let values = [1, 2]; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-tuple",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let values = (1, 2); return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-map",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let values = {\"one\": 1}; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-record",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let row = Row { count: value }; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-string",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let text = \"{ fake [ braces ] }\"; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-bytes",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let bytes = b\"\\x00\\xff\"; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-multiline-token",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let text = \"\"\"one\"\"\"; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-interpolation",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let text = f\"hello {value} {{literal}}\"; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-numeric-bool-unit",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let a = 0xFF; let b = 0b10; let c = 1.25e2; let d = true; let e = false; let f = (); let marker = '中'; let typed = 12i8; let typed_float = 12.0f32; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-operators",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let result = -value + 1 * 2; let yes = !false && true || value === 1; let range = 1..=3; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-calls-members-index",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let result = consume(first = [1, 2], value).count[0]; return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-try",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let result = consume([1, 2])?; return value; }\n",
+        "ranges": []
+      }
+    ]
+  }
+}

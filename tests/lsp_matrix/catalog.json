@@ -17923,6 +17923,46 @@
           "name": "tests::folding_bodies::lsp_folding_bodies_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "folding/syntax/S7/positive/service",
+      "assertion": "Reviewed in reviews/folding-literals.md. Fifty-nine independently authored whole literal/operator sets pin47 positives/164 region spans and12 exact single-line empties: arrays/nested arrays, tuples, maps with expression keys/values, record literals/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays. Plain literal text cannot invent code folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receiver, call callee/arguments, index receiver/index, try and await traverse child literals without fabricated wrapper regions. Multiline scalar operators/call/index/parenthesized scalars and numeric radix/exponent/suffix, character/byte/boolean/unit/ordinary strings retain only enclosing item/body regions; parenthesized arrays retain their array. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. Bounded real stdio compares236 authored UTF16/parse cases,188 positives/48 genuine empty sets. Disk/every dirty case/close restoration, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed complete envelopes, encoded owned roots and unchanged physical bytes. Independent Node checks pin every whole membership/count, literal geometry and nested versus wrapper ownership. Prior declarations/bodies/imports, original catalog layout/evidence, installed/native contracts and independent platform history remain active. No script execution, runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; other folding/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_literal_tests::folding_literals_pin_complete_literal_operator_and_empty_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S7/positive/protocol",
+      "assertion": "Reviewed in reviews/folding-literals.md. Fifty-nine independently authored whole literal/operator sets pin47 positives/164 region spans and12 exact single-line empties: arrays/nested arrays, tuples, maps with expression keys/values, record literals/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays. Plain literal text cannot invent code folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receiver, call callee/arguments, index receiver/index, try and await traverse child literals without fabricated wrapper regions. Multiline scalar operators/call/index/parenthesized scalars and numeric radix/exponent/suffix, character/byte/boolean/unit/ordinary strings retain only enclosing item/body regions; parenthesized arrays retain their array. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. Bounded real stdio compares236 authored UTF16/parse cases,188 positives/48 genuine empty sets. Disk/every dirty case/close restoration, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed complete envelopes, encoded owned roots and unchanged physical bytes. Independent Node checks pin every whole membership/count, literal geometry and nested versus wrapper ownership. Prior declarations/bodies/imports, original catalog layout/evidence, installed/native contracts and independent platform history remain active. No script execution, runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; other folding/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_literals::lsp_folding_literals_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S7/negative/service",
+      "assertion": "Reviewed in reviews/folding-literals.md. Fifty-nine independently authored whole literal/operator sets pin47 positives/164 region spans and12 exact single-line empties: arrays/nested arrays, tuples, maps with expression keys/values, record literals/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays. Plain literal text cannot invent code folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receiver, call callee/arguments, index receiver/index, try and await traverse child literals without fabricated wrapper regions. Multiline scalar operators/call/index/parenthesized scalars and numeric radix/exponent/suffix, character/byte/boolean/unit/ordinary strings retain only enclosing item/body regions; parenthesized arrays retain their array. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. Bounded real stdio compares236 authored UTF16/parse cases,188 positives/48 genuine empty sets. Disk/every dirty case/close restoration, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed complete envelopes, encoded owned roots and unchanged physical bytes. Independent Node checks pin every whole membership/count, literal geometry and nested versus wrapper ownership. Prior declarations/bodies/imports, original catalog layout/evidence, installed/native contracts and independent platform history remain active. No script execution, runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; other folding/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_literal_tests::folding_literals_pin_complete_literal_operator_and_empty_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S7/negative/protocol",
+      "assertion": "Reviewed in reviews/folding-literals.md. Fifty-nine independently authored whole literal/operator sets pin47 positives/164 region spans and12 exact single-line empties: arrays/nested arrays, tuples, maps with expression keys/values, record literals/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays. Plain literal text cannot invent code folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receiver, call callee/arguments, index receiver/index, try and await traverse child literals without fabricated wrapper regions. Multiline scalar operators/call/index/parenthesized scalars and numeric radix/exponent/suffix, character/byte/boolean/unit/ordinary strings retain only enclosing item/body regions; parenthesized arrays retain their array. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. Bounded real stdio compares236 authored UTF16/parse cases,188 positives/48 genuine empty sets. Disk/every dirty case/close restoration, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed complete envelopes, encoded owned roots and unchanged physical bytes. Independent Node checks pin every whole membership/count, literal geometry and nested versus wrapper ownership. Prior declarations/bodies/imports, original catalog layout/evidence, installed/native contracts and independent platform history remain active. No script execution, runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; other folding/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_literals::lsp_folding_literals_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -121,6 +121,8 @@ mod folding_declaration_tests;
 #[cfg(test)]
 mod folding_import_tests;
 #[cfg(test)]
+mod folding_literal_tests;
+#[cfg(test)]
 mod provider_tooling_tests;
 
 #[cfg(test)]
