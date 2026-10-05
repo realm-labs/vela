@@ -1,0 +1,624 @@
+{
+  "version": 1,
+  "id": "folding-bodies",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count: i64 = value;\n count += 1; count = count + 2;\n return count;\n}[[body:end]][[item:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "locals-types-assignments-return",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count: i64 = value;\n count += 1; count = count + 2;\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "nested-shadow-block",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n [[nested:start]]{\n let value = 2;\n value += 1;\n}[[nested:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "nested"
+          }
+        ]
+      },
+      {
+        "id": "if-statement-branches",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n if value > 0 [[then:start]]{\n return value;\n}[[then:end]] else [[else:start]]{\n return 0;\n}[[else:end]]\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "else-if-chain",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n if value > 2 [[then:start]]{\n return 2;\n}[[then:end]] else if value > 1 [[second:start]]{\n return 1;\n}[[second:end]] else [[else:start]]{\n return 0;\n}[[else:end]]\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "second"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "if-expression-in-local",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let selected = if value > 0 [[then:start]]{\n value\n}[[then:end]] else [[else:start]]{\n 0\n}[[else:end]];\n return selected;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "if-expression-in-return",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return if value > 0 [[then:start]]{\n value\n}[[then:end]] else [[else:start]]{\n 0\n}[[else:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "for-break-continue",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n for item in [1, 2] [[loop:start]]{\n if item == 1 { continue; }\n break;\n}[[loop:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "loop"
+          }
+        ]
+      },
+      {
+        "id": "for-multiline-iterable-and-conditional",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n for item in [[iter:start]][\n 1,\n 2\n][[iter:end]] [[loop:start]]{\n if item > 0 [[then:start]]{\n continue;\n}[[then:end]]\n break;\n}[[loop:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "iter"
+          },
+          {
+            "kind": "region",
+            "range": "loop"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          }
+        ]
+      },
+      {
+        "id": "for-tuple-pattern",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n for (index, item) in [(1, 2)] [[loop:start]]{\n let count = index + item;\n if count > 0 { break; }\n}[[loop:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "loop"
+          }
+        ]
+      },
+      {
+        "id": "for-two-binding-pattern",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n for index, item in [(1, 2)] [[loop:start]]{\n let count = index + item;\n if count > 0 { continue; }\n}[[loop:end]]\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "loop"
+          }
+        ]
+      },
+      {
+        "id": "match-scalar-arms",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[match:start]]match value {\n 1 => 2,\n _ => 0\n}[[match:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "match"
+          }
+        ]
+      },
+      {
+        "id": "match-block-arms",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[match:start]]match value {\n 1 => [[first:start]]{\n return 2;\n}[[first:end]],\n _ => [[second:start]]{\n return 0;\n}[[second:end]]\n}[[match:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "match"
+          },
+          {
+            "kind": "region",
+            "range": "first"
+          },
+          {
+            "kind": "region",
+            "range": "second"
+          }
+        ]
+      },
+      {
+        "id": "match-enum-patterns-and-multiline-guard",
+        "source": "enum Choice { Empty, Pair(value: i64), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[match:start]]match Choice::Pair(value) {\n Choice::Empty => 0,\n Choice::Pair(value) if (\n value > 0\n ) => [[pair:start]]{\n return value;\n}[[pair:end]],\n Choice::Named { count: renamed } => renamed,\n _ => 0\n}[[match:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "match"
+          },
+          {
+            "kind": "region",
+            "range": "pair"
+          }
+        ]
+      },
+      {
+        "id": "match-record-pattern-alias-shorthand-and-multiline-fields",
+        "source": "enum Choice { Empty, Pair(value: i64), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[match:start]]match value {\n Choice::Named {\n count: renamed\n } if renamed > 0 => renamed,\n Choice::Named { count } => count,\n _ => 0\n}[[match:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "match"
+          }
+        ]
+      },
+      {
+        "id": "match-expression-arm-if",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[match:start]]match value {\n _ => [[arm:start]]if value > 0 [[then:start]]{\n value\n}[[then:end]] else [[else:start]]{\n 0\n}[[else:end]][[arm:end]]\n}[[match:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "match"
+          },
+          {
+            "kind": "region",
+            "range": "arm"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "lambda-block-body",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let callback = [[lambda:start]]|item: i64| [[lambda-body:start]]{\n return item + 1;\n}[[lambda-body:end]][[lambda:end]];\n return callback(value);\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "closure-captures-local",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let captured = value;\n let callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return captured + item;\n}[[lambda-body:end]][[lambda:end]];\n return callback(1);\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "named-callback-argument",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "lambda-expression-array",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let callback = [[lambda:start]]|item| [[array:start]][\n item,\n value\n][[array:end]][[lambda:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "return-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return [[value:start]]{\n let count = value;\n count + 1\n}[[value:end]];\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "assignment-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count = 0;\n count = [[value:start]]{\n value + 1\n}[[value:end]];\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-receiver-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count = ([[value:start]]{\n Row { count: value }\n}[[value:end]]).count;\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "index-receiver-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let count = ([[value:start]]{\n [value, 2]\n}[[value:end]])[0];\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "index-argument-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [1, 2];\n let count = values[ [[value:start]]{\n 0\n}[[value:end]] ];\n return count;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "call-argument-block-expression",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n consume([[value:start]]{\n value + 1\n}[[value:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "async-await-callback",
+        "source": "/*中😀*/ [[item:start]]async fn main(value: i64) -> i64 [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]).await;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "inherent-method-nested-loop",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n fn main(self, value: i64) -> i64 [[body:start]]{\n for item in [1, 2] [[loop:start]]{\n if item > 0 [[then:start]]{\n continue;\n}[[then:end]]\n break;\n}[[loop:end]]\n return value;\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "loop"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          }
+        ]
+      },
+      {
+        "id": "trait-default-closure-body",
+        "source": "/*中😀*/ [[item:start]]trait Reader {\n fn read(self, value: i64) -> i64 [[body:start]]{\n let callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]];\n return callback(1);\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "single-line-locals",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let count: i64 = value; count += 1; return count; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-nested-block",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { { let value = 2; } return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-if-else",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { if value > 0 { return value; } else { return 0; } }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-for",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { for item in [1, 2] { if item > 0 { continue; } break; } return value; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-match",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { return match value { 1 => 2, _ => 0 }; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-closure-callback",
+        "source": "/*中😀*/ fn main(value: i64) -> i64 { let callback = |item| item + value; consume(callback = |item| { return item; }); return value; }\n",
+        "ranges": []
+      }
+    ]
+  }
+}

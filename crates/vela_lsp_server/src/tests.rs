@@ -225,6 +225,7 @@ mod document_symbol_ownership;
 mod document_symbol_recovery;
 mod file_watching_coalescing;
 mod folding;
+mod folding_bodies;
 mod folding_declarations;
 mod folding_imports;
 mod hover;
