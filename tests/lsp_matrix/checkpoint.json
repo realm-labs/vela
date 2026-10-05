@@ -8537,6 +8537,17 @@
         "folding/syntax/S6/negative/protocol"
       ],
       "summary": "Close only eight folding S2/S6 positive/negative service/protocol cells. Thirty-four independently authored complete body/control-flow sets have28 positives/103 region spans and six genuine empty cases across locals/types/assignments/compound writes/returns/shadow blocks; statement/expression/return if/else/else-if; for tuple/two bindings/multiline iterable/nested break/continue; match scalar/block/expression arms, enum unit/tuple/record patterns/aliases/shorthand/multiline fields/guards; closures/captures/named callbacks/lambda array expressions; block values through assignment/return/field/index/call; async await callbacks and inherent/default-trait method bodies. Normal if/for have only nested block/value folds, match expression arms retain whole expressions and branch blocks, multiline patterns/parenthesized guards cannot invent ranges, lambda/body ranges remain distinct and repeated traversal cannot duplicate ranges. Existing declaration tests explicitly retain defaults and single-line method negatives. LF/CRLF/two Unicode shifts pin item UTF16 column8 versus byte12 and body35 versus39 with literal end line4 column1. Service byte coordinates and strict immutable-snapshot protocol projection unchanged. Actual ignored stdio prototype compares136 authored whole UTF16/parse combinations,112 positive sets/24 empties. Initial ignored marker adjacency was corrected before corpus capture; first actual prototype used wrong named-call colon syntax and failed expected whole shapes, preserve its log and reconstructed original source, correct to documented name=value rather than relax expected sets. Subsequent120/128/136 expanded corpora pass, no production defect claim or provider-derived oracle. Formal layers check disk/every dirty case/close restoration, current/fresh databases/coordinators and all earlier immutable source/parse/query snapshots, complete main/helper/missing sets repeated3times, fixed generation/parse/project/HIR counters, typed initialize/open/change/close/query envelopes, exact two sources, absent schema, encoded owned roots and unchanged physical bytes. Three meaningful independent Node tests pin complete memberships/counts, literal byte/UTF16 geometry and branch/loop/pattern/lambda ownership; Node194 total. Rust1.97 process-local baseline service4/protocol8, new1+1, final service5/protocol9/architecture3; fmt/relevant all-target Clippy/package. No production/runtime/syntax/ownership/client-capability change. Preserve all previous folding tests/catalog formatting/evidence,24 installed checks,50 native contracts, ten accepted snapshots/prior222 children, independent macOS history and B16 deferral. Fresh frozen Windows VSIX24/native50 with normal/trust observer health and automaticfull/strictB09 service764+2 historical ignored/protocol817/stdio10. Core965 verified/360 pending/2NA/zero failed; B10 ninety-five verified/81 pending. Next B10.19 folding literal/operator partitions; remaining folding/selection/native UX11/UX12 stay open, no parent acceptance claimed. VSIX editors/vscode/test-results/run-7NsuIP/results.json; native editors/vscode/test-results/input-OVsMdw/results.json; audit target/lsp-matrix/run-vIxFgD/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B09.9",
+      "revision": null,
+      "requirements": [
+        "vscode/UX01/unrelated-file/input/local",
+        "vscode/UX01/unrelated-file/command/local",
+        "vscode/UX01/install-open/input/local",
+        "vscode/UX01/install-open/command/local"
+      ],
+      "summary": "Repair a confirmed native installation Quick Open driver failure during frozen B10.19: the basename-only main.vela locator matched stale/sibling scripts and scripts/game rows while the authored query was settling, producing an actual strict-mode error before Enter. Retain failed result with one unrelated-file proof, source identity, original log, PNG/ARIA/trace; later ARIA contains intended scripts/installation/main.vela. Match exact complete authored directory plus basename, require the unique visible native row to have focus before unchanged Enter, and retain observed name/directory/path/focus. Never select an arbitrary first row or issue extra actions. Three independent tests pin same-basename isolation for both slash profiles, Unicode/space/percent/regex literal escaping and rejection of ambiguous/escaping paths; two existing installation contract tests and Node200 with pending B10.19 pass (three directly owned additions). Actual fresh native11 passes both installation routes plus driver/eight navigation prerequisites; exact raw path/focus observations, complete source/binary/platform/action/check/artifact contracts and healthy clean exit verified. All50 contracts and existing deadlines unchanged. No new semantic cell, production change or parent acceptance. Preserve ten accepted snapshots/profile audits, prior223 children, independent macOS history/B16 deferral and active B10.19. Pending folding tests remain outside this commit and must recapture complete fresh evidence after repair. editors/vscode/test-results/input-tJp2IC/results.json; formal LSP-Batch trailer locates commit. Final checkpoint tests15 pass; post-commit tree identity, formal trailer and isolated pending folding files checked separately."
     }
   ],
   "activeChild": "B10.19",
@@ -11153,7 +11164,19 @@
     "target/b10-18-folding-bodies-32.json",
     "target/b10-18-body-prototype-30.json",
     "target/b10-18-body-prototype-32.json",
-    "target/b10-18-checkpoint.log"
+    "target/b10-18-checkpoint.log",
+    "editors/vscode/test-results/input-tJp2IC/results.json",
+    "editors/vscode/test-results/input-uJLIxg/results.json",
+    "editors/vscode/test-results/input-uJLIxg/failure.png",
+    "editors/vscode/test-results/input-uJLIxg/failure.aria.txt",
+    "editors/vscode/test-results/input-uJLIxg/trace.json",
+    "target/b10-19-input-first.log",
+    "target/b10-19-frozen-source-first.json",
+    "target/b09-9-input.log",
+    "target/b09-9-node-first.log",
+    "target/b09-9-node.log",
+    "target/b09-9-frozen-source.json",
+    "target/b09-9-checkpoint.log"
   ],
   "openIssues": [
     {

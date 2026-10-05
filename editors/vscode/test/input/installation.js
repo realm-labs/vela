@@ -6,6 +6,7 @@ const { navigationResponses } = require("../../../../scripts/lsp-matrix/navigati
 const { installationModel } = require("../../../../scripts/lsp-matrix/installation-contracts");
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { findLog } = require("./logs");
+const { quickOpenFileLabels } = require("./quick-open");
 
 async function runInstallation({ page, bridge, record, root, workspace, contracts, until, onProof }) {
   const m = installationModel();
@@ -53,9 +54,18 @@ async function runInstallation({ page, bridge, record, root, workspace, contract
     await picker.waitFor({ state: "visible" });
     await action("file-name");
     const file = contract.actions.find(a => a.id === "file-name").text;
-    const candidate = picker.locator(".label-name").filter({ hasText: new RegExp(`^${path.basename(file).replaceAll(".", "\\.")}$`) });
+    const labels = quickOpenFileLabels(file);
+    const candidate = picker.locator(".monaco-list-row")
+      .filter({ has: page.locator(".label-name").filter({ hasText: labels.name }) })
+      .filter({ has: page.locator(".label-description").filter({ hasText: labels.directory }) });
     await candidate.waitFor({ state: "visible" });
     assert.equal(await candidate.count(), 1, "native open must select the authored file unambiguously");
+    await until("authored Quick Open file focus", async () =>
+      await candidate.count() === 1 && await candidate.evaluate(row => row.classList.contains("focused")));
+    receipt("observation", "native-picker-file", {
+      file, name: await candidate.locator(".label-name").innerText(),
+      directory: await candidate.locator(".label-description").innerText(), focused: true,
+    });
     await action("open-file");
     await picker.waitFor({ state: "hidden" });
     await until("native file open", async () => (await state())?.file === file);
