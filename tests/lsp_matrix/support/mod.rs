@@ -13,6 +13,7 @@ pub(crate) mod folding_declarations;
 pub(crate) mod folding_imports;
 pub(crate) mod folding_literals;
 pub(crate) mod folding_members;
+pub(crate) mod folding_recovery;
 pub(crate) mod folding_trivia;
 mod schema;
 pub(crate) mod workspace_symbol_incremental;

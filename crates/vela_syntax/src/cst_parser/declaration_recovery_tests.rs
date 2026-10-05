@@ -4,6 +4,65 @@ use crate::{
 };
 
 #[test]
+fn bodyless_function_headers_do_not_borrow_following_declaration_bodies() {
+    for newline in ["\n", "\r\n"] {
+        for neighbor in [
+            "#[doc(\"中😀\")] pub fn intact(value: i64) {\n return value;\n}",
+            "pub async fn intact() {\n}",
+            "struct Intact {\n value: i64\n}",
+            "enum Intact {\n Empty\n}",
+            "trait Intact {\n fn read(self);\n}",
+            "impl Intact {\n fn read(self) {}\n}",
+            "use helper::helper;",
+            "const LIMIT = 1;",
+            "state value: i64 = 1;",
+            "extern state value: i64;",
+        ] {
+            let header = "fn broken(\n value: i64\n)".replace('\n', newline);
+            let neighbor = neighbor.replace('\n', newline);
+            let source =
+                format!("/* 中😀 */ {header}{newline}// boundary 中😀{newline}{neighbor}{newline}");
+            let parsed = parse_source(&source);
+            assert_eq!(parsed.tree().syntax().to_string(), source);
+            let items = parsed.tree().items().collect::<Vec<_>>();
+            assert_eq!(items.len(), 2, "neighbor {neighbor}");
+            let broken = SyntaxFunctionItem::cast(items[0].syntax().clone())
+                .expect("partial function stays a function");
+            assert_eq!(broken.syntax().to_string(), header);
+            assert!(broken.body().is_none());
+            assert_eq!(items[1].syntax().to_string(), neighbor);
+            assert_eq!(
+                u32::from(items[1].syntax().text_range().start()) as usize,
+                source.find(&neighbor).expect("literal neighbor start")
+            );
+            let diagnostics = parsed.diagnostics();
+            assert_eq!(diagnostics.len(), 1);
+            assert_eq!(diagnostics[0].code.as_deref(), Some("E_PARSE"));
+            assert_eq!(diagnostics[0].message, "expected function body");
+        }
+    }
+}
+
+#[test]
+fn contextual_state_return_types_keep_their_function_body() {
+    for newline in ["\n", "\r\n"] {
+        for hint in ["state", "Option<state>", "state::Value"] {
+            let source = format!("/* 中😀 */ fn state() -> {hint} {{\n return 0;\n}}")
+                .replace('\n', newline);
+            let parsed = parse_source(&source);
+            assert_eq!(parsed.tree().syntax().to_string(), source);
+            assert!(parsed.diagnostics().is_empty(), "{hint}");
+            let items = parsed.tree().items().collect::<Vec<_>>();
+            assert_eq!(items.len(), 1);
+            let function = SyntaxFunctionItem::cast(items[0].syntax().clone())
+                .expect("function owns contextual type spelling");
+            assert!(function.body().is_some());
+            assert_eq!(function.name_text().as_deref(), Some("state"));
+        }
+    }
+}
+
+#[test]
 fn unnamed_type_owners_are_diagnosed_without_consuming_neighbor_functions() {
     for (item, name) in [
         ("pub struct { field: i64 }", "struct"),

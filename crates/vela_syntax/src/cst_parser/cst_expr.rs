@@ -54,7 +54,11 @@ impl CstParser<'_, '_> {
 
     pub(super) fn statement_expression_end(&self, start: usize, end: usize) -> usize {
         let trimmed = self.trim_trailing_trivia(start, end);
-        if trimmed > start && self.at_kind(trimmed - 1, SyntaxKind::Semicolon) {
+        if trimmed > start
+            && self.at_kind(trimmed - 1, SyntaxKind::Semicolon)
+            && self.find_root_kind_before(SyntaxKind::Semicolon, start, trimmed)
+                == Some(trimmed - 1)
+        {
             self.trim_trailing_trivia(start, trimmed - 1)
         } else {
             trimmed

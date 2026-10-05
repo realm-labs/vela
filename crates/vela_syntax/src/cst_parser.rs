@@ -6,6 +6,7 @@ use crate::{SyntaxKind, SyntaxTreeBuilder};
 
 mod cst_expr;
 mod cst_items;
+mod function_boundaries;
 
 pub(crate) fn build_source_tree(lexed: &Lexed, builder: &mut SyntaxTreeBuilder) -> Vec<Diagnostic> {
     let mut parser = CstParser::new(&lexed.lossless_tokens, builder);
@@ -666,22 +667,6 @@ impl<'tokens, 'builder> CstParser<'tokens, 'builder> {
         self.tokens.len()
     }
 
-    fn find_function_item_end(&self, start: usize) -> usize {
-        let parameters = self.find_first_kind_before(SyntaxKind::LParen, start, self.tokens.len());
-        if parameters.is_some_and(|open| {
-            self.find_matching_delimiter_end(open, SyntaxKind::LParen, SyntaxKind::RParen)
-                .is_none()
-        }) && let Some(body) =
-            self.find_first_kind_before(SyntaxKind::LBrace, start, self.tokens.len())
-        {
-            // function_item already uses this brace as the recovered body when
-            // parameters have no closing delimiter. Its unclosed paren must not
-            // hide that body boundary and consume later source declarations.
-            return self.find_matching_brace_end(body);
-        }
-        self.find_braced_item_end(start)
-    }
-
     fn find_matching_brace_end(&self, open_brace: usize) -> usize {
         let mut cursor = open_brace;
         let mut depth = 0_u32;
@@ -1180,6 +1165,8 @@ impl MemberDelimiterDepth {
 
 #[cfg(test)]
 mod declaration_recovery_tests;
+#[cfg(test)]
+mod expression_recovery_tests;
 #[cfg(test)]
 mod map_recovery_tests;
 #[cfg(test)]

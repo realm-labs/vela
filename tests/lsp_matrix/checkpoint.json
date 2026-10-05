@@ -8581,10 +8581,22 @@
         "folding/syntax/S12/negative/protocol"
       ],
       "summary": "Four S12 folding service/protocol cells.38 independently authored complete trivia sets:28 positives/60 spans/10 true empties. Leading/trailing/line/documentation/nested block comments, blanks/tabs, header/type comments and attributes preserve full item/body/branch/record/array/lambda ownership without fabricated declarations/imports. Plain/formatted multiline literal comment decoys retain literal spans; impl methods versus enclosing declarations and required/member signatures preserve existing folding policy. Consecutive imports group across trivia; declaration-separated imports stay empty. File-start shebang preserved under two Unicode shift lines inserted after its first line. Standalone trivia/single-line declarations and constant literal decoys own true empties. Valid function before unclosed block comment retains exactly item/body; standalone unclosed comment stays empty. Both cases pin exact E_LEX_BLOCK_COMMENT message, severity, full byte bounds and source ownership, actual UTF16 notification bounds; close restoration clears parse diagnostics. First item8 UTF16 versus12byte and body35/39 through line4col1, lexical bounds line3..5 and0..2 col0 independently pinned. All152 actual LF/CRLF/shift stdio forms pass,112 positive/40 empty with real diagnostics receipts; original code/message-only corpus/raw152 retained, added independent error markers preserve every source byte/fold set. Current/fresh/every immutable source/parse/query snapshot/disk/dirty/close compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counts, two sources/absent schema. Protocol verifies full typed folding envelopes, encoded private physical roots, unchanged actual disk and notification publication/clearing. Node3 meaningful independent checks;206 total. Process-local Rust1.97 baseline service7/protocol11/Node203; new1+1; final folding service8/protocol12/architecture3, fmt/relevant all-target Clippy/package. Test-only type-reference compilation issues fixed without dependency/production change before source freeze. Frozen Windows VSIX24/native50 and automatic full/strictB09 service767+2 historical ignored/protocol820/stdio10. Preserve ten accepted snapshots/prior226 children, original catalog/evidence/native contracts, independent macOS history and B16 deferral. Core977 verified/348 pending/2NA/zero failed; B10 107 verified/69 pending. Next B10.22 folding S9 recovery; installed folding/selection/UX11/UX12 remain open; no parent acceptance. VSIX editors/vscode/test-results/run-bafPrI/results.json; native editors/vscode/test-results/input-ypzdTx/results.json; audit target/lsp-matrix/run-P5638p/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.22",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S9/positive/service",
+        "folding/syntax/S9/positive/protocol",
+        "folding/syntax/S9/negative/service",
+        "folding/syntax/S9/negative/protocol",
+        "folding/states/recovery/protocol"
+      ],
+      "summary": "Five folding S9 service/protocol and protocol recovery cells.54 independently authored complete sets:49 positives/264 spans/five true empties;43 diagnosed/11 valid or accepted quiet. Missing declaration/member names, hints, values/defaults and body parts retain healthy neighbors; EOF function/array/map/record/block/lambda/parameters/default arrays/types/variants/trait/impl retain all available folds. Quiet partial member/argument/constructor/pattern/initializer and dynamic/unresolved owners preserve existing parse policy; unfinished use retains one imports group without new errors. Unknown parenthesized-list and lexical multiline-string shapes pin exact authored PathExpr cached CST extents and no guessed tuple/literal folds. All states damage/clean repair/same damage:162 per LF/CRLF/two Unicode shift form, exact main/helper/missing sets3times on disk/dirty/close/current/fresh/every immutable source/parse/query snapshot; fixed generation/parse/project/HIR counters, two records/absent schema, owned bounded parse spans and whole current/fresh metadata. Protocol actual diagnostic appearance/clearing/redamage/close, whole typed envelopes, encoded owned roots and unchanged physical bytes. Literal first neighbor item8 UTF16/12byte and body20/24 through line2col1. Actual initial172 comparisons preserve four failing lambda spans:inner semicolon mistaken for outer terminator, fixed with root-depth trimming. Direct lambda red/green tests cover let/return/expression damage/repair/redamage. Expanded bodyless header swallows next function body and missing-body diagnostic; bounded focused header module restores source declaration boundaries, including attributed/pub/async functions/types/imports/const/state/extern. Direct state-neighbor red/green test and state function/type/Option/qualified-hint safeguards preserve valid spelling and prior unclosed-parameter recovery. Draft tuple/literal guesses and unfinished-use error were corrected against primary CST/lexer/use policy, with original texts/raw failed expectations retained; no production defect claimed for those or existing accepted assertions weakened. Final actual216 shapes (196 positive/20 empty),648 damage/repair/redamage shapes (608 positive/40 empty) and parse receipts all pass. Process-local Rust1.97 baseline service8/Node206; existing protocol12 regression ran after initial lambda fix; final folding service9/protocol13/architecture3, full syntax122+fixture1, Node209, fmt/relevant three-crate all-target Clippy/package. Frozen Windows VSIX24/native50 and automatic full/strictB09 service768+2 historical ignored/protocol821/stdio10. Preserve ten accepted snapshots/prior227 children, original catalog/evidence/50 native contracts, independent macOS history and B16 deferral. Core982 verified/343 pending/2NA/zero failed; B10 112 verified/64 pending. Next B10.23 installed folding coverage; selection/UX11/UX12 remain open, no parent acceptance. VSIX editors/vscode/test-results/run-4wfPaB/results.json; native editors/vscode/test-results/input-LrCDr4/results.json; audit target/lsp-matrix/run-TXAUky/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.22",
-  "nextTask": "B10.22",
+  "activeChild": "B10.23",
+  "nextTask": "B10.23",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11318,7 +11330,63 @@
     "target/b10-21-trivia-prototype-before-spans.json",
     "target/b10-21-folding-trivia-first.json",
     "target/b10-21-frozen-source.json",
-    "target/b10-21-checkpoint.log"
+    "target/b10-21-checkpoint.log",
+    "target/lsp-matrix/run-TXAUky/report.json",
+    "editors/vscode/test-results/run-4wfPaB/results.json",
+    "editors/vscode/test-results/input-LrCDr4/results.json",
+    "target/lsp-matrix/run-Eoptvl/report.json",
+    "editors/vscode/test-results/run-4wfPaB/base-results.json",
+    "editors/vscode/test-results/run-4wfPaB/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-4wfPaB/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-4wfPaB/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-4wfPaB/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-22-toolchain.log",
+    "target/b10-22-input.log",
+    "target/b10-22-editor.log",
+    "target/b10-22-scoped.log",
+    "target/b10-22-automatic.log",
+    "target/b10-22-baseline-service.log",
+    "target/b10-22-baseline-protocol.log",
+    "target/b10-22-baseline-node.log",
+    "target/b10-22-service-first.log",
+    "target/b10-22-protocol-first.log",
+    "target/b10-22-service-final.log",
+    "target/b10-22-protocol-final.log",
+    "target/b10-22-architecture.log",
+    "target/b10-22-node-first.log",
+    "target/b10-22-node.log",
+    "target/b10-22-node-prototype.log",
+    "target/b10-22-format.log",
+    "target/b10-22-format-apply.log",
+    "target/b10-22-clippy.log",
+    "target/b10-22-package.log",
+    "target/b10-22-syntax-red.log",
+    "target/b10-22-syntax-first.log",
+    "target/b10-22-syntax-full.log",
+    "target/b10-22-syntax-final.log",
+    "target/b10-22-neighbor-red.log",
+    "target/b10-22-neighbor-first.log",
+    "target/b10-22-state-neighbor-red.log",
+    "target/b10-22-build-first.log",
+    "target/b10-22-build-expanded.log",
+    "target/b10-22-build-final.log",
+    "target/b10-22-recovery-prototype-first.log",
+    "target/b10-22-recovery-red.log",
+    "target/b10-22-recovery-expanded-defects.log",
+    "target/b10-22-recovery-prototype-after-fix.log",
+    "target/b10-22-recovery-prototype-expanded.log",
+    "target/b10-22-recovery-prototype-final.log",
+    "target/b10-22-state-prototype.log",
+    "target/b10-22-recovery-prototype.json",
+    "target/b10-22-recovery-state-prototype.json",
+    "target/b10-22-recovery-pre-fix.json",
+    "target/b10-22-recovery-post-fix-43.json",
+    "target/b10-22-recovery-red-defects.json",
+    "target/b10-22-recovery-red-defects-43.json",
+    "target/b10-22-recovery-expanded-before-neighbor-fix.json",
+    "target/b10-22-folding-recovery-before-cst-review.json",
+    "target/b10-22-frozen-source.json",
+    "target/b10-22-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15246,8 +15314,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "eaea13f929ee8c8ed6e548ac29fb8b673db1553f",
-          "treeSha256": "a9e31f9f7f1297c278bded4215175d8c444205cf501cdd87be6f234d525bd1f1"
+          "revision": "9a7d52c75117bcbfa17e8a797f289b96eb42c2d7",
+          "treeSha256": "513b24b36f8456885859c6d94b5cfb8f006ed00c74e8330145bc5caf4586ea48"
         },
         "profile": {
           "platform": "win32",
@@ -15255,11 +15323,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-P5638p/report.json"
+          "target/lsp-matrix/run-TXAUky/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-bafPrI/results.json --local-results editors/vscode/test-results/input-ypzdTx/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-4wfPaB/results.json --local-results editors/vscode/test-results/input-LrCDr4/results.json",
             "exitCode": 0
           }
         ]

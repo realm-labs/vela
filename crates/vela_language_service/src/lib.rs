@@ -125,6 +125,8 @@ mod folding_literal_tests;
 #[cfg(test)]
 mod folding_member_tests;
 #[cfg(test)]
+mod folding_recovery_tests;
+#[cfg(test)]
 mod folding_trivia_tests;
 #[cfg(test)]
 mod provider_tooling_tests;

@@ -1,0 +1,1455 @@
+{
+  "version": 1,
+  "id": "folding-recovery",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "clean-repair",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn main(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "const-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nconst = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "const-no-value",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nconst Broken: i64 = ;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "const-no-type",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nconst Broken: = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "state-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nstate : i64 = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "state-no-type",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nstate Broken = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "state-no-value",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nstate Broken: i64 = ;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "extern-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nextern state : i64;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "extern-no-type",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nextern state Broken;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "extern-forbidden-value",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nextern state Broken: i64 = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "function-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn () [[body:start]]{\n return 0;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "function-no-parameter-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(: i64, value: i64) [[body:start]]{\n return 0;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "function-no-parameter-default",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value: i64 = ) [[body:start]]{\n return 0;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "function-no-return-type",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken() -> [[body:start]]{\n return 0;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "struct-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]struct {\n value: i64\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "struct-no-field-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]struct Broken {\n : i64,\n value: i64\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "struct-no-field-default",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]struct Broken {\n value: i64 =\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "enum-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]enum {\n Empty\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "enum-no-payload-default",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]enum Broken {\n Pair(value: i64 = )\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "trait-no-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]trait {\n fn read(self);\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "trait-no-method-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]trait Broken {\n fn (self);\n fn read(self);\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "trait-no-parameter-default",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]trait Broken {\n fn read(self, value: i64 = );\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "impl-no-target",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]impl {\n fn read(self) {}\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "impl-no-method-name",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]impl Broken {\n fn (self) [[body:start]]{\n return 0;\n}[[body:end]]\n fn read(self) {}\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "impl-no-parameter-default",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]impl Broken {\n fn read(self, value: i64 = ) [[body:start]]{\n return 0;\n}[[body:end]]\n}[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "function-no-body",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(\n value: i64\n)[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "quiet-member",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n value.;\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "quiet-named-argument",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n call(value = );\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "quiet-constructor",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n Unknown { value: };\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "quiet-pattern",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n match value { Unknown { field: } => 1 }\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "quiet-initializer",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n let value = ;\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "unresolved-owner",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n unknown.call(value);\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "dynamic-owner",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(value) [[body:start]]{\n value.field;\n return value;\n}[[body:end]][[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "unclosed-function",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n return 0;[[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-array",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]][\n 1,\n 2[[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-map",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]]{\n count: 1,\n other: 2[[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-tuple",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]](\n 1,\n 2[[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ],
+        "parseError": true,
+        "syntaxRegions": [
+          {
+            "range": "value",
+            "kind": "PathExpr"
+          }
+        ]
+      },
+      {
+        "id": "unclosed-record",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]]Row {\n count: 1,\n other: 2[[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-block",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n [[value:start]]{\n return 0;[[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-lambda",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]]|item| [[lambda-body:start]]{\n return item;[[lambda-body:end]][[value:end]][[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-parameters",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken(\n value: i64[[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-parameter-array",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken(\n value: Array<i64> = [[value:start]][\n 1,\n 2[[value:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-struct",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]struct Broken {\n value: i64[[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-enum",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]enum Broken {\n Empty[[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-tuple-variant",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]enum Broken {\n Pair(\n value: i64[[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-trait",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]trait Broken {\n fn read(self);[[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-impl",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]impl Broken {\n fn read(self) [[body:start]]{\n return 0;\n}[[body:end]][[broken:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ],
+        "parseError": true
+      },
+      {
+        "id": "unclosed-import-group",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[imports:start]]use helper::helper;\nuse missing::[[imports:end]]",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          },
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": false
+      },
+      {
+        "id": "unclosed-triple-string",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\nconst TEXT = [[value:start]]\"\"\"中😀\n fake fn() {\n }[[value:end]]",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ],
+        "parseError": true,
+        "syntaxRegions": [
+          {
+            "range": "value",
+            "kind": "PathExpr"
+          }
+        ]
+      },
+      {
+        "id": "no-fold-empty",
+        "source": "",
+        "ranges": [],
+        "parseError": false
+      },
+      {
+        "id": "no-fold-trivia",
+        "source": "/* fake fn() {\n} */\n",
+        "ranges": [],
+        "parseError": false
+      },
+      {
+        "id": "no-fold-stray-semicolon",
+        "source": ";\n",
+        "ranges": [],
+        "parseError": true
+      },
+      {
+        "id": "no-fold-partial-function",
+        "source": "fn Broken(",
+        "ranges": [],
+        "parseError": true
+      },
+      {
+        "id": "no-fold-partial-const",
+        "source": "const Broken =",
+        "ranges": [],
+        "parseError": true
+      }
+    ]
+  }
+}
