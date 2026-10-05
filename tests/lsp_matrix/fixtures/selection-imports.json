@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "id": "selection-imports",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]][[kw:start]]u[[kw-cursor]]se[[kw:end]] [[path:start]][[module:start]]abs[[module-cursor]]ent[[module:end]][[colon:start]]:[[colon-cursor]]:[[colon:end]][[token:start]][[token-start]]Th[[cursor]]ing[[token-end]][[token:end]][[path:end]] [[as:start]]a[[as-cursor]]s[[as:end]] [[alias:start]][[alias-start]]Ali[[alias-cursor]]as[[alias-end]][[alias:end]][[semi:start]][[semi-cursor]];[[semi:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]use [[path:start]][[name:start]]hel[[cursor]]per[[name:end]]::helper[[path:end]];[[item:end]]\n[[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "cursor",
+        "chain": [
+          "name",
+          "path",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "qualified-unresolved-alias",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[kw:start]]u[[kw-cursor]]se[[kw:end]] [[path:start]][[module:start]]abs[[module-cursor]]ent[[module:end]][[colon:start]]:[[colon-cursor]]:[[colon:end]][[token:start]][[token-start]]Th[[cursor]]ing[[token-end]][[token:end]][[path:end]] [[as:start]]a[[as-cursor]]s[[as:end]] [[alias:start]][[alias-start]]Ali[[alias-cursor]]as[[alias-end]][[alias:end]][[semi:start]][[semi-cursor]];[[semi:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "chain": [
+              "token",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "token-start",
+            "chain": [
+              "token",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "token-end",
+            "chain": [
+              "token",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "colon-cursor",
+            "chain": [
+              "colon",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "kw-cursor",
+            "chain": [
+              "kw",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "as-cursor",
+            "chain": [
+              "as",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "semi-cursor",
+            "chain": [
+              "semi",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-start",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-end",
+            "chain": [
+              "semi",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "source-and-stdlib",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]use [[first-path:start]]helper::[[first-name:start]]hel[[first-cursor]]per[[first-name:end]][[first-path:end]];[[first:end]]\n[[second:start]]use [[second-path:start]][[std:start]]s[[std-cursor]]td[[std:end]]::[[print:start]]pr[[print-cursor]]int[[print:end]][[second-path:end]] as [[output:start]]out[[output-cursor]]put[[output:end]];[[second:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "output-cursor",
+            "chain": [
+              "output",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first-name",
+              "first-path",
+              "first",
+              "file"
+            ]
+          },
+          {
+            "position": "print-cursor",
+            "chain": [
+              "print",
+              "second-path",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "std-cursor",
+            "chain": [
+              "std",
+              "second-path",
+              "second",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "module-alias-pub-reexport",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]use [[module:start]]hel[[module-cursor]]per[[module:end]] as [[mod:start]]M[[mod-cursor]]od[[mod:end]];[[first:end]]\n[[second:start]][[pub:start]]p[[pub-cursor]]ub[[pub:end]] use [[second-path:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[second-path:end]] as [[row:start]]R[[row-cursor]]ow[[row:end]];[[second:end]]\n[[third:start]]pub use [[third-path:start]]helper::[[helper:start]]hel[[helper-cursor]]per[[helper:end]][[third-path:end]];[[third:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "first",
+              "file"
+            ]
+          },
+          {
+            "position": "mod-cursor",
+            "chain": [
+              "mod",
+              "first",
+              "file"
+            ]
+          },
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "second-path",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "row-cursor",
+            "chain": [
+              "row",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "pub-cursor",
+            "chain": [
+              "pub",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "helper-cursor",
+            "chain": [
+              "helper",
+              "third-path",
+              "third",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "single-segment-dedup",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]use [[name:start]]hel[[cursor]]per[[name:end]];[[item:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "deep-qualified-path",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]use [[path:start]][[first:start]]un[[first-cursor]]known[[first:end]]::[[second:start]]de[[second-cursor]]eper[[second:end]]::[[third:start]]Na[[third-cursor]]me[[third:end]][[path:end]] as [[alias:start]]A[[alias-cursor]]lias[[alias:end]];[[item:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "third-cursor",
+            "chain": [
+              "third",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-cursor",
+            "chain": [
+              "second",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "multiline-path-and-alias",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub use [[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::\n /* fake use{} 中😀 */ [[name:start]]Kn[[name-cursor]]own[[name:end]][[path:end]]\n as [[alias:start]]R[[alias-cursor]]ow[[alias:end]];[[item:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "semicolonless-import",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]use [[path:start]]helper::[[name:start]]Kn[[name-cursor]]own[[name:end]][[path:end]] as [[alias:start]]Ro[[alias-cursor]]w[[alias-end]][[alias:end]]\n[[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-end",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "same-line-neighbors",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]use [[first-path:start]]helper::[[first-name:start]]he[[first-cursor]]lper[[first-name:end]][[first-path:end]];[[first:end]] [[second:start]]use [[second-path:start]]missing::[[second-name:start]]Ot[[second-cursor]]her[[second-name:end]][[second-path:end]];[[second:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "second-cursor",
+            "chain": [
+              "second-name",
+              "second-path",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first-name",
+              "first-path",
+              "first",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "comments-between-imports",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]use [[first-path:start]]helper::[[first-name:start]]he[[first-cursor]]lper[[first-name:end]][[first-path:end]];[[first:end]]\n\n// use fake::{ h[[comment-cursor]]idden }\n/* second misleading pub use Middle; */\n[[second:start]]pub use [[second-path:start]]missing::[[second-name:start]]Ot[[second-cursor]]her[[second-name:end]][[second-path:end]];[[second:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first-name",
+              "first-path",
+              "first",
+              "file"
+            ]
+          },
+          {
+            "position": "comment-cursor",
+            "chain": []
+          },
+          {
+            "position": "second-cursor",
+            "chain": [
+              "second-name",
+              "second-path",
+              "second",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "attributed-reexport",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]#[tag]\npub use [[path:start]]helper::[[name:start]]Kn[[cursor]]own[[name:end]][[path:end]] as [[alias:start]]R[[alias-cursor]]ow[[alias:end]];[[item:end]]\n[[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trailing-unicode-comment-eof",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]use [[path:start]]missing::[[name:start]]Th[[cursor]]ing[[name:end]][[path:end]];[[item:end]] // fake use{} 中[[comment-cursor]]😀[[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment-cursor",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-position-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[kw:start]]u[[kw-cursor]]se[[kw:end]] [[path:start]][[module:start]]abs[[module-cursor]]ent[[module:end]][[colon:start]]:[[colon-cursor]]:[[colon:end]][[token:start]][[token-start]]Th[[cursor]]ing[[token-end]][[token:end]][[path:end]] [[as:start]]a[[as-cursor]]s[[as:end]] [[alias:start]][[alias-start]]Ali[[alias-cursor]]as[[alias-end]][[alias:end]][[semi:start]][[semi-cursor]];[[semi:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// use fake::Th[[cursor]]ing;\n/* pub use bogus::{ braces } 中😀 */\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[cursor]] \n\t[[tab-cursor]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": []
+          },
+          {
+            "position": "tab-cursor",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[cursor]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "semicolon-at-eof",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]use [[path:start]]helper::[[name:start]]he[[cursor]]lper[[name:end]][[path:end]][[semi:start]];[[eof]][[semi:end]][[item:end]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": [
+              "semi",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

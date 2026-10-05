@@ -9,14 +9,16 @@ use vela_language_service::{
     DocumentSymbolKind, DocumentTextEdit, Hover, HoverKind, IncomingCall,
     InlayHint as ServiceInlayHint, InlayHintKind as ServiceInlayHintKind, LineIndex, OutgoingCall,
     PrepareRename, ProjectDiagnostic, Reference, RenameRiskKind, SchemaDiagnostic,
-    SelectionRange as ServiceSelectionRange, ServiceDiagnostic, ServiceDiagnosticSeverity,
-    SignatureHelp, TextEdit as ServiceTextEdit, TextRange, WorkspaceEdit,
+    ServiceDiagnostic, ServiceDiagnosticSeverity, SignatureHelp, TextEdit as ServiceTextEdit,
+    TextRange, WorkspaceEdit,
 };
 
 mod folding;
+mod selection;
 mod symbols;
 mod tokens;
 pub(crate) use folding::folding_ranges;
+pub(crate) use selection::selection_ranges;
 pub(crate) use symbols::{document_symbols, workspace_symbols};
 pub(crate) use tokens::{
     delta as semantic_tokens_delta, full as semantic_tokens, range as semantic_tokens_range,
@@ -172,10 +174,6 @@ pub(crate) fn document_highlights(
             kind: document_highlight_kind(highlight.kind()),
         })
         .collect()
-}
-
-pub(crate) fn selection_ranges(ranges: &[ServiceSelectionRange]) -> Vec<lsp_types::SelectionRange> {
-    ranges.iter().map(selection_range).collect()
 }
 
 pub(crate) fn text_edits(edits: &[ServiceTextEdit]) -> Vec<lsp_types::TextEdit> {
@@ -400,13 +398,6 @@ const fn document_highlight_kind(
         }
         DocumentHighlightKind::Read => Some(lsp_types::DocumentHighlightKind::READ),
         DocumentHighlightKind::Write => Some(lsp_types::DocumentHighlightKind::WRITE),
-    }
-}
-
-fn selection_range(range: &ServiceSelectionRange) -> lsp_types::SelectionRange {
-    lsp_types::SelectionRange {
-        range: diagnostic_range(range.range()),
-        parent: range.parent().map(selection_range).map(Box::new),
     }
 }
 

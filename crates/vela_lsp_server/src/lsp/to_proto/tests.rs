@@ -569,7 +569,7 @@ pub fn main(player: Player) -> i64 {
     databases.update(&project);
     let ranges = databases.selection_ranges(&document, &[Position::new(1, 22)]);
 
-    let ranges = selection_ranges(&ranges);
+    let ranges = selection_ranges(&ranges, source).expect("source-owned selection chain");
 
     assert_eq!(ranges.len(), 1);
     let mut chain = Vec::new();

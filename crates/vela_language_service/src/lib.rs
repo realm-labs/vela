@@ -130,6 +130,8 @@ mod folding_recovery_tests;
 mod folding_trivia_tests;
 #[cfg(test)]
 mod provider_tooling_tests;
+#[cfg(test)]
+mod selection_import_tests;
 
 #[cfg(test)]
 #[path = "../../../tests/lsp_matrix/support/mod.rs"]

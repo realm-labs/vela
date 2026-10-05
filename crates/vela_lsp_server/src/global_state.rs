@@ -570,9 +570,9 @@ impl GlobalStateSnapshot {
             .databases
             .selection_ranges(&input.document_id, &input.positions);
 
-        response_ok_typed_messages(
+        responses::projected(
             id,
-            to_proto::selection_ranges(&ranges),
+            to_proto::selection_ranges(&ranges, &text),
             "typed selectionRange response",
         )
     }

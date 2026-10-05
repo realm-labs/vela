@@ -8601,10 +8601,26 @@
         "folding/editor/smoke"
       ],
       "summary": "Installed folding editor smoke only. Eight unchanged independently marked imports/bodies/literals/members/trivia/recovery sets: six positive/19 raw folds/two true empties; primary VS Code folding-model stable start-line sanitizer yields14 independently pinned public line ranges. Raw ordered wire preserves coincident item/body starts and every UTF16 endpoint/kind; import8/37 UTF16 versus12/41 bytes. Four fresh physical Unicode/space/percent roots with unique packages, LF/CRLF and two Unicode shifts preserve first-line shebang. On-disk prefix makes all eight variants dirty; disk/every variant/actual close reopen/helper empties repeated3times give80 full observations/240 public commands,192 observed public ranges. Every complete fresh owned matched client pair after each invocation boundary checked, including coincident background requests, unique IDs/exact params/actual wire[] distinct from null/fallback/error. Actual finite open/change/close/workspace mutations and quiet settling; enabled/auto folding and exact text/EOL/model version/physical bytes retained. Shared owned document lifecycle extracted without changing symbol assertions/cleanup. Four new independent Node fixture/coordinate/materialization/trace tests; existing editor discovery now25 retains all23 old basechecks plus isolated global check. First focused Node draft only failed an overbroad CRLF assertion for an unshifted no-newline EOF case; corrected newline-presence predicate without changing source/goldens/provider behavior, original failed log retained. Rust unchanged; folding service9/protocol13/architecture3, Node213/fmt/package, frozen Windows native50/VSIX25 and automatic full/strictB09 service768+2 historical ignored/protocol821/stdio10. Preserve10 accepted snapshots/prior228 children/catalog/50 native contracts and independent macOS history; B16 deferred. Core983 verified/342 pending/2NA/zero failed; B10 113 verified/63 pending. Next B10.24 selection backend; selection outgoing byte projection still unreviewed/unfixed, native UX11/UX12 remain open; no parent acceptance. First installed run-nwxAxz exposes a test-side public API kind mapping mistake (.value on numeric enum): imports lines correct, projected kind undefined; actual primary VS Code enum Imports2/Region3 and command/client conversions reviewed, explicit numeric mapping rejects missing/object/string/unsupported kinds, raw public rows preserved before assertions. Original failed installed results/client trace/automatic full report retained; its Rust768+2/821/10 pass did not close editor smoke. Corrected source receives fresh native50/VSIX25/full/strict evidence. VSIX editors/vscode/test-results/run-8WmGOA/results.json; native editors/vscode/test-results/input-sbdRtX/results.json; audit target/lsp-matrix/run-pRLzR9/report.json. Find commit through formal LSP-Batch trailer. A second native run input-9hHk32 timed out clicking the previously visible rename_observer Quick Open label in UX17 Explorer rename; original screenshot/ARIA/trace/result/15s log retained. Existing driver already waited actual disk rename/textbox close; cause remains unestablished, no assertion/action/deadline or native harness was changed. Original catalog formatting restored to a single evidence append before final source freeze; final fresh full native gate independently rechecks all50 contracts. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.24",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S8/positive/service",
+        "selection/syntax/S8/positive/protocol",
+        "selection/syntax/S8/negative/service",
+        "selection/syntax/S8/negative/protocol",
+        "selection/states/dirty/protocol",
+        "selection/states/repeat/protocol",
+        "selection/environments/utf16/protocol",
+        "selection/environments/crlf/protocol",
+        "selection/environments/encoded_uri/protocol"
+      ],
+      "summary": "Selection imports and coordinate boundary only: nine S8 positive/negative service/protocol, dirty/repeat protocol and UTF16/CRLF/encoded URI protocol cells. Sixteen independently marked cases/52 positions (42 complete chains,10 point-only;12 positive documents,3 point-only documents,1 actual empty request vector), four LF/CRLF Unicode forms/64 response vectors/208 positions. Preserve query order and duplicates, exact complete token/path/item/file ancestry, coincident-span dedup, alias and token-end boundaries, EOF/trivia points, independent positive helper and missing-source zero/empty responses. Disk/every dirty state/close restoration, fresh/incremental and all retained immutable snapshots repeat three times; exact source/CST/quiet parse/no schema/two record and generation/parse/project/HIR facts stay fixed. Actual protocol lifecycle uses fresh encoded physical roots and unchanged disk bytes; invalid UTF16 half/out-of-line/document/mixed vectors retain exact atomic error envelopes. Initial four-form stdio reproduction and formal new protocol test fail while the independent service test passes. Expanded pre-fix corpus matches all byte chains but fails UTF16 in48 whole vectors/140 individual positions. Focused outgoing projector uses same immutable document text and strict existing byte-to-UTF16 index for every recursive parent; no language/parser/service-coordinate change. All64 post-fix vectors/208 positions match independently authored complete UTF16 results; malformed child/parent projection rejects and valid zero points survive. Preserve test-authoring drafts: byte-zero predecessor lookup fixed with explicit zero guard; semicolonless item marker moved after EOF newline based on primary CST contract, identical source bytes retained; two initial protocol compile errors corrected before freeze. Baseline service4/protocol6/Node213; final service5/protocol8/architecture3/Node216/fmt/Clippy/package. Frozen Windows native50/VSIX25/automatic full and strict B09 service769+2 historical ignored/protocol823/stdio10. Existing folding80 observations/240 public queries/192 public ranges and workspace-symbol486 observations/1458 fresh wire pairs remain fully verified. Preserve10 accepted snapshots/prior229 children/50 native contracts and independent macOS history; B16 deferred. Core992 verified/333 pending/2NA/zero failed; B10 122 verified/54 pending. Next B10.25 selection declaration/body partitions; installed selection smoke and native UX11/UX12 remain open, no parent acceptance. VSIX editors/vscode/test-results/run-kASJ3H/results.json; native editors/vscode/test-results/input-afN4LF/results.json; audit target/lsp-matrix/run-EVfRO4/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.24",
-  "nextTask": "B10.24",
+  "activeChild": "B10.25",
+  "nextTask": "B10.25",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11441,7 +11457,60 @@
     "editors/vscode/test-results/input-9hHk32/failure.png",
     "editors/vscode/test-results/input-9hHk32/failure.aria.txt",
     "editors/vscode/test-results/input-9hHk32/trace.json",
-    "target/b10-23-checkpoint.log"
+    "target/b10-23-checkpoint.log",
+    "target/lsp-matrix/run-EVfRO4/report.json",
+    "editors/vscode/test-results/run-kASJ3H/results.json",
+    "editors/vscode/test-results/input-afN4LF/results.json",
+    "target/lsp-matrix/run-k1FduD/report.json",
+    "editors/vscode/test-results/run-kASJ3H/base-results.json",
+    "editors/vscode/test-results/run-kASJ3H/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-kASJ3H/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-kASJ3H/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-kASJ3H/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-kASJ3H/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-kASJ3H/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-kASJ3H/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-kASJ3H/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-kASJ3H/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-kASJ3H/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-kASJ3H/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-kASJ3H/folding-crlf-shifted-client.log",
+    "target/b10-24-toolchain.log",
+    "target/b10-24-input.log",
+    "target/b10-24-editor.log",
+    "target/b10-24-scoped.log",
+    "target/b10-24-automatic.log",
+    "target/b10-24-baseline-node.log",
+    "target/b10-24-baseline-service.log",
+    "target/b10-24-baseline-protocol.log",
+    "target/b10-24-service-first.log",
+    "target/b10-24-service-final.log",
+    "target/b10-24-protocol-first.log",
+    "target/b10-24-protocol-final.log",
+    "target/b10-24-protocol-invalid.log",
+    "target/b10-24-protocol-red.log",
+    "target/b10-24-protocol-initial-compile.log",
+    "target/b10-24-protocol-invalid-compile.log",
+    "target/b10-24-architecture.log",
+    "target/b10-24-node-first.log",
+    "target/b10-24-node.log",
+    "target/b10-24-format.log",
+    "target/b10-24-package.log",
+    "target/b10-24-clippy.log",
+    "target/b10-24-coordinate-red.log",
+    "target/b10-24-coordinate-green.log",
+    "target/b10-24-coordinate-before-zero-byte-guard.log",
+    "target/b10-24-import-prototype-before.log",
+    "target/b10-24-import-prototype-after.log",
+    "target/b10-24-frozen-source.json",
+    "target/b10-24-coordinate-pre-fix.json",
+    "target/b10-24-coordinate-prototype.json",
+    "target/b10-24-coordinate-before-zero-byte-guard.json",
+    "target/b10-24-import-pre-fix.json",
+    "target/b10-24-import-prototype.json",
+    "target/b10-24-import-before-item-terminator-review.json",
+    "target/b10-24-selection-imports-before-item-terminator-review.json",
+    "target/b10-24-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15369,8 +15438,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "ad1ee74273447e828e43d2771754581367d54cab",
-          "treeSha256": "068708cd831991da2c7c356f97406827517bb0c5dad9524eda80af03407e107e"
+          "revision": "863729658d5959c046e8378da372f9424267bc0e",
+          "treeSha256": "e667299de7ad2b2fd1b5b6426b426c576eb890cd74a1d14c41cf16b9ac3fe672"
         },
         "profile": {
           "platform": "win32",
@@ -15378,11 +15447,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-pRLzR9/report.json"
+          "target/lsp-matrix/run-EVfRO4/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-8WmGOA/results.json --local-results editors/vscode/test-results/input-sbdRtX/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-kASJ3H/results.json --local-results editors/vscode/test-results/input-afN4LF/results.json",
             "exitCode": 0
           }
         ]

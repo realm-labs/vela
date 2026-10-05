@@ -16,6 +16,7 @@ pub(crate) mod folding_members;
 pub(crate) mod folding_recovery;
 pub(crate) mod folding_trivia;
 mod schema;
+pub(crate) mod selection_imports;
 pub(crate) mod workspace_symbol_incremental;
 pub(crate) mod workspace_symbol_sources;
 pub(crate) mod workspace_symbol_states;
