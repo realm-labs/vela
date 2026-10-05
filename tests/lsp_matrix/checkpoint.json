@@ -8559,10 +8559,21 @@
         "folding/syntax/S7/negative/protocol"
       ],
       "summary": "Close only four folding S7 positive/negative service/protocol cells. Fifty-nine independently authored whole literal/operator sets have47 positives/164 region spans and12 true single-line empties. Arrays/nested arrays, tuples, maps with expression keys/values, records/shorthand fields, triple-quoted plain/interpolated strings and embedded multiline arrays preserve full outer/inner ownership; plain literal fake-code text cannot invent folds. Both unary and all17 binary operators, assignment target/value, all5 compound writes, field receivers, call callee/arguments, index receiver/index, try and await traverse children without operator/wrapper folds. Multiline scalar operators/calls/index/parenthesized scalars, unit/numeric radix/exponent/suffix/character/byte/boolean/ordinary strings retain only enclosing item/body regions; parens containing arrays retain the array. Every single-line example yields[]. LF/CRLF/two Unicode shifts independently pin item UTF16 8 versus byte12, body35 versus39 through line6 column1, array line1 column14 through line4 column1. Strict immutable-source protocol projection and service byte policy unchanged. First full native capture failed before the install-open Enter because the old basename-only locator matched two stale/sibling main.vela rows; B09.9 separately fixes complete path and native focus ownership, retains failed source/log/PNG/ARIA/trace and passes actual native11 with unchanged50 contracts. Recapture all final Windows evidence from the repaired source, no reuse of failed native acceptance. Real bounded stdio prototype passes236 authored UTF16/parse cases,188 positives/48 empties; retain original source and raw responses, no production defect or provider-derived oracle. Both layers check disk/every dirty case/close restoration, current/fresh state and every earlier immutable source/parse/query snapshot, whole main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two source records, absent schema, typed complete initialize/open/change/close/query envelopes, encoded owned roots and unchanged physical bytes. Three meaningful Node tests pin full memberships/counts/literal coordinates and nested versus wrapper ownership; Node200 total. Rust1.97 process-local baseline service5/protocol9, new1+1, final service6/protocol10/architecture3, fmt/relevant all-target Clippy/package. No production/runtime/syntax/ownership/capability change. Preserve all prior folding tests/catalog formatting/evidence,24 installed checks,50 native contracts, ten accepted snapshots/prior224 children, independent macOS history and B16 deferral. Fresh frozen Windows VSIX24/native50 with observer health and automaticfull/strictB09 service765+2 historical ignored/protocol818/stdio10. Core969 verified/356 pending/2NA/zero failed; B10 ninety-nine verified/77 pending. Next B10.20 folding member and constructor partitions; recovery/trivia/selection/native UX11/UX12 remain open, no parent acceptance claimed. VSIX editors/vscode/test-results/run-jT8oDZ/results.json; native editors/vscode/test-results/input-I7OhZv/results.json; audit target/lsp-matrix/run-jIOLI8/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.20",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S4/positive/service",
+        "folding/syntax/S4/positive/protocol",
+        "folding/syntax/S4/negative/service",
+        "folding/syntax/S4/negative/protocol"
+      ],
+      "summary": "Close only four folding S4 positive/negative service/protocol cells. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight true single-line empties. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, named/positional arguments, chained record receivers/call/index values, all six field assignment operators and field/index writes preserve every receiver/index/value region. Scalar constructor/call/path/paren wrappers and unresolved members cannot invent folds; block-valued shorthand retains distinct value block and record. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body without synthetic method item regions; struct field/enum payload defaults remain enclosed by declarations and required signatures by traits. Existing declaration tests explicitly remain linked for attributes/public/private/default/async/member negatives. After two single-line declarations, first constructor pins item line2 UTF16 8 versus byte12, body35 versus39 through line8 column1, record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve service byte and strict immutable-source protocol policy. Actual bounded stdio passes original120 comparisons (96 positives/24 empties), retained raw original corpus; coverage review adds every field/index write and unresolved-member negatives before freezing, expanded156 comparisons (124 positives/32 empties) all pass. No provider-derived oracle or production defect claim. Both layers check disk/every dirty case/close restoration, current/fresh state and every earlier immutable source/parse/query snapshot, whole main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two source records, absent schema, typed complete initialize/open/change/close/query envelopes, encoded owned roots and unchanged physical bytes. Three meaningful Node tests pin full memberships/counts/literal coordinates and member/default/constructor/write ownership; Node203 total. Rust1.97 process-local baseline service6/protocol10, new1+1, final service7/protocol11/architecture3, fmt/relevant all-target Clippy/package. No production/runtime/syntax/ownership/capability change or host mutation execution. Preserve all prior folding tests/catalog layout/evidence,24 installed checks,50 native contracts, ten accepted snapshots/prior225 children, independent macOS history and B16 deferral. Fresh frozen Windows VSIX24/native50 with observer health and automaticfull/strictB09 service766+2 historical ignored/protocol819/stdio10. Core973 verified/352 pending/2NA/zero failed; B10 one hundred three verified/73 pending. Next B10.21 folding trivia partitions; recovery/selection/native UX11/UX12 remain open, no parent acceptance claimed. VSIX editors/vscode/test-results/run-SuTZxX/results.json; native editors/vscode/test-results/input-cpx1oW/results.json; audit target/lsp-matrix/run-ENSwSz/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.20",
-  "nextTask": "B10.20",
+  "activeChild": "B10.21",
+  "nextTask": "B10.21",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11222,7 +11233,45 @@
     "target/b10-19-literals-prototype.json",
     "target/b10-19-folding-literals-first.json",
     "target/b10-19-node-before-prerequisite.log",
-    "target/b10-19-checkpoint.log"
+    "target/b10-19-checkpoint.log",
+    "target/lsp-matrix/run-ENSwSz/report.json",
+    "editors/vscode/test-results/run-SuTZxX/results.json",
+    "editors/vscode/test-results/input-cpx1oW/results.json",
+    "target/lsp-matrix/run-vN6fdM/report.json",
+    "editors/vscode/test-results/run-SuTZxX/base-results.json",
+    "editors/vscode/test-results/run-SuTZxX/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-SuTZxX/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-SuTZxX/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-SuTZxX/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-20-toolchain.log",
+    "target/b10-20-input.log",
+    "target/b10-20-editor.log",
+    "target/b10-20-scoped.log",
+    "target/b10-20-automatic.log",
+    "target/b10-20-baseline-service.log",
+    "target/b10-20-baseline-protocol.log",
+    "target/b10-20-baseline-node.log",
+    "target/b10-20-service-first.log",
+    "target/b10-20-protocol-first.log",
+    "target/b10-20-service-final.log",
+    "target/b10-20-protocol-final.log",
+    "target/b10-20-architecture.log",
+    "target/b10-20-node-first.log",
+    "target/b10-20-node-final.log",
+    "target/b10-20-node.log",
+    "target/b10-20-format.log",
+    "target/b10-20-clippy.log",
+    "target/b10-20-package.log",
+    "target/b10-20-node-prototype-first.log",
+    "target/b10-20-members-prototype-first.log",
+    "target/b10-20-members-prototype-second.log",
+    "target/b10-20-draft-format.log",
+    "target/b10-20-format-apply.log",
+    "target/b10-20-members-prototype.json",
+    "target/b10-20-members-prototype-30.json",
+    "target/b10-20-folding-members-first.json",
+    "target/b10-20-folding-members-30.json",
+    "target/b10-20-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15150,8 +15199,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "63236b721e1dbea0b3f32974481688ad1599a4f1",
-          "treeSha256": "ed1756cf081b32ca1127d42f0b2d95cd37cd8b6ad60151ee380a2faeb5526a3e"
+          "revision": "3a57758994e0fa513c9140a852de5822ad9568f9",
+          "treeSha256": "83588154238daa1dd7303cc1c3759fe9f42da6228bd8a9fac26938b09bab3ac5"
         },
         "profile": {
           "platform": "win32",
@@ -15159,11 +15208,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-jIOLI8/report.json"
+          "target/lsp-matrix/run-ENSwSz/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-jT8oDZ/results.json --local-results editors/vscode/test-results/input-I7OhZv/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-SuTZxX/results.json --local-results editors/vscode/test-results/input-cpx1oW/results.json",
             "exitCode": 0
           }
         ]

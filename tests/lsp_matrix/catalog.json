@@ -17963,6 +17963,62 @@
           "name": "tests::folding_literals::lsp_folding_literals_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "folding/syntax/S4/positive/service",
+      "assertion": "Reviewed in reviews/folding-members.md. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight exact single-line empties, including all six field assignment operators, field/index target values and unresolved-member negatives. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, positional/named arguments, chained record receivers and call/index values pin all nested regions; scalar constructor/call/path/paren wrappers cannot invent folds. Shorthand block values retain distinct block/record ranges. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body folds without synthetic method item regions. Struct field and enum payload default literals remain enclosed by the declaration, required trait signatures only by the trait unless multiline parameter defaults exist. Existing declaration tests explicitly preserve attributes/public/private/default/async/member negatives. First constructor literal geometry after two single-line declarations pins item line2 UTF16 8 versus byte12 and body35 versus39 through line8 column1; record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve byte and strict immutable-source UTF16 policy. Bounded real stdio compares156 authored UTF16/parse cases,124 positives/32 true empties. Disk/every dirty case/close, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed full envelopes, encoded owned roots and unchanged physical bytes. Independent Node tests pin full memberships/counts/coordinates and member/default/constructor ownership. All prior tests/catalog formatting/evidence, installed/native contracts and independent platform history remain preserved. No production/runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; recovery/trivia/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_member_tests::folding_members_pin_complete_member_constructor_and_empty_sets"
+        },
+        {
+          "layer": "service",
+          "name": "folding_declaration_tests::folding_declarations_pin_complete_function_parameter_struct_enum_trait_impl_and_empty_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S4/positive/protocol",
+      "assertion": "Reviewed in reviews/folding-members.md. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight exact single-line empties, including all six field assignment operators, field/index target values and unresolved-member negatives. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, positional/named arguments, chained record receivers and call/index values pin all nested regions; scalar constructor/call/path/paren wrappers cannot invent folds. Shorthand block values retain distinct block/record ranges. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body folds without synthetic method item regions. Struct field and enum payload default literals remain enclosed by the declaration, required trait signatures only by the trait unless multiline parameter defaults exist. Existing declaration tests explicitly preserve attributes/public/private/default/async/member negatives. First constructor literal geometry after two single-line declarations pins item line2 UTF16 8 versus byte12 and body35 versus39 through line8 column1; record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve byte and strict immutable-source UTF16 policy. Bounded real stdio compares156 authored UTF16/parse cases,124 positives/32 true empties. Disk/every dirty case/close, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed full envelopes, encoded owned roots and unchanged physical bytes. Independent Node tests pin full memberships/counts/coordinates and member/default/constructor ownership. All prior tests/catalog formatting/evidence, installed/native contracts and independent platform history remain preserved. No production/runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; recovery/trivia/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_members::lsp_folding_members_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::folding_declarations::lsp_folding_declarations_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S4/negative/service",
+      "assertion": "Reviewed in reviews/folding-members.md. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight exact single-line empties, including all six field assignment operators, field/index target values and unresolved-member negatives. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, positional/named arguments, chained record receivers and call/index values pin all nested regions; scalar constructor/call/path/paren wrappers cannot invent folds. Shorthand block values retain distinct block/record ranges. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body folds without synthetic method item regions. Struct field and enum payload default literals remain enclosed by the declaration, required trait signatures only by the trait unless multiline parameter defaults exist. Existing declaration tests explicitly preserve attributes/public/private/default/async/member negatives. First constructor literal geometry after two single-line declarations pins item line2 UTF16 8 versus byte12 and body35 versus39 through line8 column1; record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve byte and strict immutable-source UTF16 policy. Bounded real stdio compares156 authored UTF16/parse cases,124 positives/32 true empties. Disk/every dirty case/close, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed full envelopes, encoded owned roots and unchanged physical bytes. Independent Node tests pin full memberships/counts/coordinates and member/default/constructor ownership. All prior tests/catalog formatting/evidence, installed/native contracts and independent platform history remain preserved. No production/runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; recovery/trivia/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_member_tests::folding_members_pin_complete_member_constructor_and_empty_sets"
+        },
+        {
+          "layer": "service",
+          "name": "folding_declaration_tests::folding_declarations_pin_complete_function_parameter_struct_enum_trait_impl_and_empty_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S4/negative/protocol",
+      "assertion": "Reviewed in reviews/folding-members.md. Thirty-nine independently authored whole member/constructor sets have31 positives/94 region spans and eight exact single-line empties, including all six field assignment operators, field/index target values and unresolved-member negatives. Record/shorthand/nested constructors, tuple/unit/named variants, static/instance calls, positional/named arguments, chained record receivers and call/index values pin all nested regions; scalar constructor/call/path/paren wrappers cannot invent folds. Shorthand block values retain distinct block/record ranges. Inherent static/instance/default/header-only/async methods, required/default trait methods and trait implementations distinguish enclosing item, parameter default and body folds without synthetic method item regions. Struct field and enum payload default literals remain enclosed by the declaration, required trait signatures only by the trait unless multiline parameter defaults exist. Existing declaration tests explicitly preserve attributes/public/private/default/async/member negatives. First constructor literal geometry after two single-line declarations pins item line2 UTF16 8 versus byte12 and body35 versus39 through line8 column1; record line3 column14 through line6 column1. LF/CRLF/two Unicode shifts preserve byte and strict immutable-source UTF16 policy. Bounded real stdio compares156 authored UTF16/parse cases,124 positives/32 true empties. Disk/every dirty case/close, independently fresh state and all earlier immutable source/parse/query snapshots compare complete main/helper/missing sets3times with fixed generation/parse/project/HIR counters, two records, absent schema, typed full envelopes, encoded owned roots and unchanged physical bytes. Independent Node tests pin full memberships/counts/coordinates and member/default/constructor ownership. All prior tests/catalog formatting/evidence, installed/native contracts and independent platform history remain preserved. No production/runtime/syntax/ownership/capability change, parent acceptance or cross-platform evidence mixing; recovery/trivia/selection/native UX11/UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_members::lsp_folding_members_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::folding_declarations::lsp_folding_declarations_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [

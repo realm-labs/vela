@@ -1,0 +1,616 @@
+{
+  "version": 1,
+  "id": "folding-members",
+  "files": {
+    "scripts/main.vela": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[record:start]]Row {\n count: value,\n values: [1, 2]\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "record-constructor-fields",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[record:start]]Row {\n count: value,\n values: [1, 2]\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          }
+        ]
+      },
+      {
+        "id": "record-constructor-array-field",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[record:start]]Row {\n count: value,\n values: [[array:start]][\n 1,\n 2\n][[array:end]]\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "record-shorthand-constructor",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[value:start]]{ let count = value; let values = [1, 2]; [[record:start]]Row {\n count,\n values\n}[[record:end]] }[[value:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          }
+        ]
+      },
+      {
+        "id": "nested-record-constructor",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[outer:start]]Row {\n count: [[inner:start]]Row {\n count: value,\n values: [1, 2]\n}[[inner:end]].count,\n values: [3]\n}[[outer:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "outer"
+          },
+          {
+            "kind": "region",
+            "range": "inner"
+          }
+        ]
+      },
+      {
+        "id": "tuple-variant-multiline-scalars",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = Choice::Pair(\n value\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "tuple-variant-array-argument",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = Choice::Pair([[array:start]][\n 1,\n 2\n][[array:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "named-variant-constructor",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[variant:start]]Choice::Named {\n count: value\n}[[variant:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "variant"
+          }
+        ]
+      },
+      {
+        "id": "unit-variant-parenthesized",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = (\n Choice::Empty\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "static-constructor-multiline-scalars",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = Row::new(\n value\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "static-constructor-array-argument",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = Row::new(values = [[array:start]][\n 1,\n 2\n][[array:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "instance-method-multiline-scalars",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = value.read(\n value\n);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "instance-method-record-receiver",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = ([[record:start]]Row {\n count: value,\n values: [1, 2]\n}[[record:end]]).read(value);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          }
+        ]
+      },
+      {
+        "id": "method-positional-named-arrays",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = value.read([[positional:start]][\n 1,\n 2\n][[positional:end]], extra = [[named:start]][\n 1,\n 2\n][[named:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "positional"
+          },
+          {
+            "kind": "region",
+            "range": "named"
+          }
+        ]
+      },
+      {
+        "id": "chained-record-call-index",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = ([[record:start]]Row {\n count: value,\n values: [1, 2]\n}[[record:end]]).read([[argument:start]][\n 1,\n 2\n][[argument:end]])[ [[index:start]][\n 1,\n 2\n][[index:end]][0] ].count;\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          },
+          {
+            "kind": "region",
+            "range": "argument"
+          },
+          {
+            "kind": "region",
+            "range": "index"
+          }
+        ]
+      },
+      {
+        "id": "field-write-set",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count = [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-write-add",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count += [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-write-subtract",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count -= [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-write-multiply",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count *= [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-write-divide",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count /= [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-write-remainder",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).count %= [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "field-index-write",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n ([[receiver:start]]Row {\n count: value,\n values: [1, 2]\n}[[receiver:end]]).values[ [[index:start]][\n 1,\n 2\n][[index:end]][0] ] = [[value:start]][\n 1,\n 2\n][[value:end]][0];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "receiver"
+          },
+          {
+            "kind": "region",
+            "range": "index"
+          },
+          {
+            "kind": "region",
+            "range": "value"
+          }
+        ]
+      },
+      {
+        "id": "inherent-method-default-array",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n fn read(self, values: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]) {}\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          }
+        ]
+      },
+      {
+        "id": "inherent-static-and-instance-bodies",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n pub fn new(value) [[static-body:start]]{\n return Row {};\n}[[static-body:end]]\n fn read(self, value) [[method-body:start]]{\n return value;\n}[[method-body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "static-body"
+          },
+          {
+            "kind": "region",
+            "range": "method-body"
+          }
+        ]
+      },
+      {
+        "id": "inherent-method-header-only",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n fn read(\n self,\n value: i64\n) { return value; }\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "trait-required-method-default-array",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]trait Reader {\n fn read(self, values: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]);\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          }
+        ]
+      },
+      {
+        "id": "trait-default-method-array-body",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]trait Reader {\n fn read(self, value) [[body:start]]{\n return [[array:start]][\n 1,\n 2\n][[array:end]];\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-method-default-and-body",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Reader for Row {\n fn read(self, values: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]) [[body:start]]{\n return values;\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "async-method-named-callback",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n async fn read(self, value) [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]).await;\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "lambda"
+          },
+          {
+            "kind": "region",
+            "range": "lambda-body"
+          }
+        ]
+      },
+      {
+        "id": "struct-field-initializers-stay-enclosed",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]struct Fields {\n values: Array<i64> = [\n 1,\n 2\n ]\n count: i64 = consume(\n 3\n )\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "enum-payload-defaults-stay-enclosed",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]enum Payload {\n Tuple(values: Array<i64> = [\n 1,\n 2\n ])\n Named {\n values: Array<i64> = [\n 3\n ]\n }\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "trait-multiple-required-methods",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]trait Reader {\n fn first(self);\n fn second(self, value);\n async fn third(self);\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "single-line-record-constructor",
+        "source": "/*中😀*/ fn main(value) { let row = Row { count: value, values: [1, 2] }; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-variant-constructors",
+        "source": "/*中😀*/ fn main(value) { Choice::Empty; Choice::Pair([1, 2]); Choice::Named { count: value }; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-static-instance-chains",
+        "source": "/*中😀*/ fn main(value) { Row::new(value).read(extra = [1, 2])[0].count; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-inherent-members",
+        "source": "/*中😀*/ struct Row {} impl Row { pub fn new(value) { return value; } fn read(self, value = 1) {} async fn worker(self) {} }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-trait-impl-members",
+        "source": "/*中😀*/ struct Row {} trait Reader { fn read(self); fn preview(self) {} } impl Reader for Row { fn read(self) {} }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-field-variant-defaults",
+        "source": "/*中😀*/ struct Row { values: Array<i64> = [1, 2] } enum Choice { Empty, Pair(value: i64 = 1), Named { count: i64 = 2 } }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-field-writes",
+        "source": "/*中😀*/ fn main(value) { value.count = 1; value.count += 2; value.values[0] = 3; }\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-unresolved-members",
+        "source": "/*中😀*/ fn main(value) { host::Missing(value).unknown(extra = [1, 2]).absent; value.missing = 2; }\n",
+        "ranges": []
+      }
+    ]
+  }
+}
