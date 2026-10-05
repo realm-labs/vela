@@ -8511,10 +8511,21 @@
         "folding/environments/encoded_uri/protocol"
       ],
       "summary": "Close only nine folding import S8 positive/negative service/protocol, dirty/repeat and UTF16/CRLF/encoded-URI protocol cells. Fourteen independent literal whole cases over two main/helper sources have six positive sets/eight exact empty sets (eight import groups): unresolved/source/stdlib imports, aliases and public/private reexports, blank/comment gaps and const/function-separated groups; singleton/same-line/declaration-separated/comment/string/empty documents do not fabricate multiline folds. Four LF/CRLF/two-Unicode-prefix profiles pin UTF16 columns8/37 versus byte12/41. Service byte coordinates remain unchanged. Actual pre-fix stdio corpus retains56 authored shapes,24 Unicode coordinate failures and32 empties; new typed Rust protocol test fails the same12/41 versus8/37 full envelope. Extract focused typed folding projection using existing strict byte-to-UTF16 index against the same immutable snapshot document text and existing projection error boundary, rejecting split/outside/reversed/empty positions. No syntax, ownership, runtime, client capability or selection change. Actual post-fix stdio corpus passes all56 unchanged authored shapes,24 positive Unicode comparisons and32 empty sets. Both layers compare complete current/fresh sets, all prior immutable source/parse/query snapshots, disk/every dirty case/close restoration, repeated main/helper/missing queries3times and unchanged generation/parse/project/HIR counters; typed initialize/open/change/close dispatch, exact two current sources, absent schema, private encoded owned roots and unchanged real disk bytes. Initial service test caught missing required fixture actions member; fix fixture metadata only, preserve failed log. Earlier stdio draft harness failures reflect exit/oracle plumbing, final meaningful before and after captures are separately retained. Node3 new independent tests pin all complete case memberships and literal coordinate/trivia/separated group geometry; Node188 total. Rust1.97 process-local service3/protocol7/architecture3, fmt/relevant all-target Clippy/package. Preserve all original folding tests, entire original catalog evidence semantics, all50 native contracts, all24 installed assertions and ten accepted snapshots/prior220 children. Fresh frozen Windows VSIX24/native50 and automaticfull/strictB09 service762+2 historical ignored/protocol815/stdio10. Core953 verified/372 pending/2NA/zero failed; B10 eighty-three verified/93 pending. Independent macOS evidence unchanged; B16 deferred. Next B10.17 folding declaration regions, then remaining folding/selection/native UX11/UX12; no parent acceptance claimed. First full automatic audit run-gKIUv2 failed six existing protocol tasks at unchanged five-second wait bounds while native validation also ran; cause is not established. Allsix pass individual ordinary focused runs with unchanged support/deadlines, and final fresh full audits run separately from native/GUI capture. Failed report and observer-error native50 input-WdPBng remain retained through separately committed B09.8, which adds three observer ownership/health tests and strengthens clean-exit checks. Recapture all final evidence at B09.8 source; no failed first artifact closes a cell. VSIX editors/vscode/test-results/run-yU6NL4/results.json; native editors/vscode/test-results/input-QGSGtx/results.json; audit target/lsp-matrix/run-Dx3ckG/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.17",
+      "revision": null,
+      "requirements": [
+        "folding/syntax/S1/positive/service",
+        "folding/syntax/S1/positive/protocol",
+        "folding/syntax/S1/negative/service",
+        "folding/syntax/S1/negative/protocol"
+      ],
+      "summary": "Close only four folding S1 top-level declaration positive/negative service/protocol cells. Twenty-two independent literal whole sets contain16 positive cases/25 region spans and six exact empty cases across public/private/defaulted/untyped/async functions, multiline parameter headers and default arrays, attributes, structs/field defaults, enum unit/tuple/record forms, required/default/async trait methods, inherent/trait implementations and method defaults, and constant arrays. Function item/body ranges remain distinct; trait/impl methods retain body/default folds without fabricated method-item folds. Multiline field/variant internals retain the existing enclosing-only declaration policy; multiline state initializers and extern-state type hints, single-line declarations, comment/string decoys and empty documents yield[]. Existing complete14-case import tests are explicitly linked to retain all top-level use groups/aliases/reexports/negatives. Four LF/CRLF/two-Unicode-prefix profiles pin item UTF16 column8 versus byte12 and body45 versus49, literal common end line2 column1. Service byte coordinates unchanged; protocol uses strict snapshot projection established in B10.16. Actual ignored stdio prototype compares all88 unchanged authored UTF16/parse shapes,64 positive sets/24 empties; no response-derived oracle. Formal Rust layers check disk/every dirty case/close restoration, current/fresh databases/coordinators and every prior immutable source/parse/query snapshot, repeated whole main/helper/missing sets3times and fixed read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch pins whole JSON-RPC envelopes, exact two current sources, absent schema, private encoded roots and unchanged real disk. Three meaningful independent Node assertions pin complete memberships/counts, literal marker geometry and inclusion/exclusion policy; Node191 total. Rust1.97 process-local baseline service3/protocol7, new1+1 and final service4/protocol8/architecture3; fmt/relevant all-target Clippy/package. No production, syntax, runtime, ownership or client capability change; all previous catalog formatting/evidence and folding tests,24 installed assertions,50 native contracts, ten accepted snapshots/prior221 children, independent macOS history and B16 deferral preserved. Fresh frozen Windows VSIX24/native50 with normal/trust observer health and automaticfull/strictB09 service763+2 historical ignored/protocol816/stdio10. Core957 verified/368 pending/2NA/zero failed; B10 eighty-seven verified/89 pending. Next B10.18 folding body/control-flow partitions; remaining folding/selection/native UX11/UX12 stay open and no parent acceptance claimed. VSIX editors/vscode/test-results/run-9AxUOV/results.json; native editors/vscode/test-results/input-upYSVM/results.json; audit target/lsp-matrix/run-d9widz/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.17",
-  "nextTask": "B10.17",
+  "activeChild": "B10.18",
+  "nextTask": "B10.18",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11055,7 +11066,39 @@
     "target/b10-16-folding-corpus-repro.json",
     "target/b10-16-folding-corpus-postfix.json",
     "target/b10-16-failed-cases-repro.log",
-    "target/b10-16-checkpoint.log"
+    "target/b10-16-checkpoint.log",
+    "target/lsp-matrix/run-d9widz/report.json",
+    "editors/vscode/test-results/run-9AxUOV/results.json",
+    "editors/vscode/test-results/input-upYSVM/results.json",
+    "target/lsp-matrix/run-fx1KGz/report.json",
+    "editors/vscode/test-results/run-9AxUOV/base-results.json",
+    "editors/vscode/test-results/run-9AxUOV/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-9AxUOV/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-9AxUOV/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-9AxUOV/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "target/b10-17-toolchain.log",
+    "target/b10-17-input.log",
+    "target/b10-17-editor.log",
+    "target/b10-17-scoped.log",
+    "target/b10-17-automatic.log",
+    "target/b10-17-baseline-service.log",
+    "target/b10-17-baseline-protocol.log",
+    "target/b10-17-baseline-node.log",
+    "target/b10-17-service-first.log",
+    "target/b10-17-protocol-first.log",
+    "target/b10-17-service-final.log",
+    "target/b10-17-protocol-final.log",
+    "target/b10-17-architecture.log",
+    "target/b10-17-node-first.log",
+    "target/b10-17-node.log",
+    "target/b10-17-format.log",
+    "target/b10-17-clippy.log",
+    "target/b10-17-package.log",
+    "target/b10-17-node-prototype.log",
+    "target/b10-17-declarations-prototype.log",
+    "target/b10-17-draft-format.log",
+    "target/b10-17-declarations-prototype.json",
+    "target/b10-17-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14983,8 +15026,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "4ad44d7a6deee3e2862522dc8f06f595a1f4a20f",
-          "treeSha256": "c42113a2607b11782b1c4211b32ec2b8e70148d7237c99f315b99abdc4131fba"
+          "revision": "60a22489b946045aae806dd4b3e6586edae44c73",
+          "treeSha256": "8e48fb47789f8987bf56876842509bc978bf316906853c9b595be565c3bdc077"
         },
         "profile": {
           "platform": "win32",
@@ -14992,11 +15035,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-Dx3ckG/report.json"
+          "target/lsp-matrix/run-d9widz/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-yU6NL4/results.json --local-results editors/vscode/test-results/input-QGSGtx/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-9AxUOV/results.json --local-results editors/vscode/test-results/input-upYSVM/results.json",
             "exitCode": 0
           }
         ]

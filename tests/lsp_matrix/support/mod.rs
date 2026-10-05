@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) mod document_open;
 pub(crate) mod document_symbol_lifecycle;
 pub(crate) mod document_symbols;
+pub(crate) mod folding_declarations;
 pub(crate) mod folding_imports;
 mod schema;
 pub(crate) mod workspace_symbol_incremental;

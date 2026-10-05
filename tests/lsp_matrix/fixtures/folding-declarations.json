@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "id": "folding-declarations",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[item:start]]pub fn choose(value: i64 = 2) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "public-defaulted-function",
+        "source": "/*中😀*/ [[item:start]]pub fn choose(value: i64 = 2) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "private-untyped-function",
+        "source": "/*中😀*/ [[item:start]]fn choose(value) [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "async-function",
+        "source": "/*中😀*/ [[item:start]]pub async fn worker(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "multiline-parameters-single-body",
+        "source": "/*中😀*/ [[item:start]]fn choose(\n value: i64,\n amount: i64 = 2\n) { return value; }[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "multiline-default-array",
+        "source": "/*中😀*/ [[item:start]]fn choose(value: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]) { return value; }[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          }
+        ]
+      },
+      {
+        "id": "attribute-with-single-body",
+        "source": "/*中😀*/ [[item:start]]#[doc(\"fake fn / struct / use 中😀\")]\npub fn choose() {}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "public-struct-default-members",
+        "source": "/*中😀*/ [[item:start]]pub struct Row {\n #[doc(\"中😀 member\")] count: i64 = 1\n label: String = \"中😀\"\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "private-struct-multiline-default",
+        "source": "/*中😀*/ [[item:start]]struct Row {\n values: Array<i64> = [\n 1,\n 2\n ]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "public-enum-all-forms",
+        "source": "/*中😀*/ [[item:start]]pub enum Choice {\n Empty\n Pair(count: i64 = 2, label: String)\n Named {\n count: i64 = 1\n label: String\n }\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "private-empty-enum",
+        "source": "/*中😀*/ [[item:start]]enum Choice {\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          }
+        ]
+      },
+      {
+        "id": "public-trait-required-default-async",
+        "source": "/*中😀*/ [[item:start]]pub trait Readable {\n fn read(self, value: i64 = 1) -> i64;\n fn preview(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n async fn work(self);\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "inherent-impl-private-public-async",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n pub fn choose(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n async fn work(self) {}\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "trait-impl",
+        "source": "struct Row {}\ntrait Readable { fn read(self, value: i64) -> i64; }\n/*中😀*/ [[item:start]]impl Readable for Row {\n fn read(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          }
+        ]
+      },
+      {
+        "id": "trait-parameter-default",
+        "source": "/*中😀*/ [[item:start]]trait Readable {\n fn read(self, values: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]);\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          }
+        ]
+      },
+      {
+        "id": "impl-parameter-default",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n fn read(self, values: Array<i64> = [[default:start]][\n 1,\n 2\n][[default:end]]) {}\n}[[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "default"
+          }
+        ]
+      },
+      {
+        "id": "const-multiline-array",
+        "source": "/*中😀*/ const VALUES: Array<i64> = [[array:start]][\n 1,\n 2\n][[array:end]];\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "single-line-all-declarations",
+        "source": "pub const LIMIT: i64 = 1;\nconst LABEL = \"中😀\";\npub state COUNT: i64 = 0;\nextern state HOST: Row;\nfn choose(value) { return value; }\npub async fn work() {}\nstruct Row { count: i64 = 1 }\nenum Choice { Empty, Pair(count: i64), Named { count: i64 } }\ntrait Readable { fn read(self); fn preview(self) {} }\nimpl Row { pub fn read(self) {} }\nimpl Readable for Row { fn read(self) {} }\n",
+        "ranges": []
+      },
+      {
+        "id": "multiline-state-array-remains-no-fold",
+        "source": "state VALUES: Array<i64> = [\n 1,\n 2\n];\n",
+        "ranges": []
+      },
+      {
+        "id": "multiline-extern-state-hint-remains-no-fold",
+        "source": "pub extern state HOST:\n Row;\n",
+        "ranges": []
+      },
+      {
+        "id": "comment-declarations-remain-no-fold",
+        "source": "// fn fake() {\n/* struct Fake {\n field: i64\n } enum Choice { Item } */\n",
+        "ranges": []
+      },
+      {
+        "id": "single-line-const-string-decoys",
+        "source": "const LABEL = \"trait T { fn f(); } impl T for Row { fn f() {} } 中😀\";\n",
+        "ranges": []
+      },
+      {
+        "id": "empty-file",
+        "source": "",
+        "ranges": []
+      }
+    ]
+  }
+}

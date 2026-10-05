@@ -17771,6 +17771,62 @@
           "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "folding/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/folding-declarations.md. Twenty-two independently authored complete sets pin16 positive cases/25 region spans and six exact empty sets across public/private/defaulted/untyped/async functions, multiline parameter headers/default arrays, attributes, public/private structs and field defaults, all enum forms, required/default/async traits, inherent/trait implementations and method defaults, constant arrays versus ignored multiline state/extern hints, single-line declarations, comment/string decoys and empty documents. Function item/body ranges remain distinct; trait/impl method bodies/defaults have no invented method-item region; multiline field/record-variant internals retain enclosing-only declaration policy. Existing fourteen import cases pin all source/stdlib/unresolved/public/private alias/reexport groups and exact negatives, completing top-level use proof. LF/CRLF/two Unicode shifts pin item UTF16 8 versus byte12 and body45 versus49 with literal common end line2 column1; strict protocol projection retains byte service coordinates. Actual bounded stdio draft compares all88 declaration shapes/parse validity with64 positive sets/24 empties, no response-derived oracle. Disk/every dirty variant/close restoration, repeated complete main/helper/missing sets3times, independent fresh databases/coordinators and every previous immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks whole envelopes, two current records, absent schema, private encoded roots and unchanged real disk. Node pins every marker membership/count, literal byte/UTF16 extents and inclusion/exclusion policy. Existing folding/import tests and native/editor contracts remain active and separate; no production/runtime/ownership/capability change or cross-platform evidence mixing. Other folding partitions and UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_declaration_tests::folding_declarations_pin_complete_function_parameter_struct_enum_trait_impl_and_empty_sets"
+        },
+        {
+          "layer": "service",
+          "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/folding-declarations.md. Twenty-two independently authored complete sets pin16 positive cases/25 region spans and six exact empty sets across public/private/defaulted/untyped/async functions, multiline parameter headers/default arrays, attributes, public/private structs and field defaults, all enum forms, required/default/async traits, inherent/trait implementations and method defaults, constant arrays versus ignored multiline state/extern hints, single-line declarations, comment/string decoys and empty documents. Function item/body ranges remain distinct; trait/impl method bodies/defaults have no invented method-item region; multiline field/record-variant internals retain enclosing-only declaration policy. Existing fourteen import cases pin all source/stdlib/unresolved/public/private alias/reexport groups and exact negatives, completing top-level use proof. LF/CRLF/two Unicode shifts pin item UTF16 8 versus byte12 and body45 versus49 with literal common end line2 column1; strict protocol projection retains byte service coordinates. Actual bounded stdio draft compares all88 declaration shapes/parse validity with64 positive sets/24 empties, no response-derived oracle. Disk/every dirty variant/close restoration, repeated complete main/helper/missing sets3times, independent fresh databases/coordinators and every previous immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks whole envelopes, two current records, absent schema, private encoded roots and unchanged real disk. Node pins every marker membership/count, literal byte/UTF16 extents and inclusion/exclusion policy. Existing folding/import tests and native/editor contracts remain active and separate; no production/runtime/ownership/capability change or cross-platform evidence mixing. Other folding partitions and UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_declarations::lsp_folding_declarations_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/folding-declarations.md. Twenty-two independently authored complete sets pin16 positive cases/25 region spans and six exact empty sets across public/private/defaulted/untyped/async functions, multiline parameter headers/default arrays, attributes, public/private structs and field defaults, all enum forms, required/default/async traits, inherent/trait implementations and method defaults, constant arrays versus ignored multiline state/extern hints, single-line declarations, comment/string decoys and empty documents. Function item/body ranges remain distinct; trait/impl method bodies/defaults have no invented method-item region; multiline field/record-variant internals retain enclosing-only declaration policy. Existing fourteen import cases pin all source/stdlib/unresolved/public/private alias/reexport groups and exact negatives, completing top-level use proof. LF/CRLF/two Unicode shifts pin item UTF16 8 versus byte12 and body45 versus49 with literal common end line2 column1; strict protocol projection retains byte service coordinates. Actual bounded stdio draft compares all88 declaration shapes/parse validity with64 positive sets/24 empties, no response-derived oracle. Disk/every dirty variant/close restoration, repeated complete main/helper/missing sets3times, independent fresh databases/coordinators and every previous immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks whole envelopes, two current records, absent schema, private encoded roots and unchanged real disk. Node pins every marker membership/count, literal byte/UTF16 extents and inclusion/exclusion policy. Existing folding/import tests and native/editor contracts remain active and separate; no production/runtime/ownership/capability change or cross-platform evidence mixing. Other folding partitions and UX12 remain open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "folding_declaration_tests::folding_declarations_pin_complete_function_parameter_struct_enum_trait_impl_and_empty_sets"
+        },
+        {
+          "layer": "service",
+          "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
+        }
+      ]
+    },
+    {
+      "requirement": "folding/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/folding-declarations.md. Twenty-two independently authored complete sets pin16 positive cases/25 region spans and six exact empty sets across public/private/defaulted/untyped/async functions, multiline parameter headers/default arrays, attributes, public/private structs and field defaults, all enum forms, required/default/async traits, inherent/trait implementations and method defaults, constant arrays versus ignored multiline state/extern hints, single-line declarations, comment/string decoys and empty documents. Function item/body ranges remain distinct; trait/impl method bodies/defaults have no invented method-item region; multiline field/record-variant internals retain enclosing-only declaration policy. Existing fourteen import cases pin all source/stdlib/unresolved/public/private alias/reexport groups and exact negatives, completing top-level use proof. LF/CRLF/two Unicode shifts pin item UTF16 8 versus byte12 and body45 versus49 with literal common end line2 column1; strict protocol projection retains byte service coordinates. Actual bounded stdio draft compares all88 declaration shapes/parse validity with64 positive sets/24 empties, no response-derived oracle. Disk/every dirty variant/close restoration, repeated complete main/helper/missing sets3times, independent fresh databases/coordinators and every previous immutable source/parse/query snapshot retain exact facts and read-only generation/parse/project/HIR counters. Typed initialize/open/change/close/query dispatch checks whole envelopes, two current records, absent schema, private encoded roots and unchanged real disk. Node pins every marker membership/count, literal byte/UTF16 extents and inclusion/exclusion policy. Existing folding/import tests and native/editor contracts remain active and separate; no production/runtime/ownership/capability change or cross-platform evidence mixing. Other folding partitions and UX12 remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::folding_declarations::lsp_folding_declarations_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [
