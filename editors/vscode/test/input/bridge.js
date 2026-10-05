@@ -18,7 +18,8 @@ async function run() {
   const observerRelative = path.relative(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR), path.resolve(host.extensionPath));
   if (host.mode !== vscode.ExtensionMode.Production || !observerRelative || observerRelative.startsWith("..") || path.isAbsolute(observerRelative))
     throw Error("native recovery requires an installed observer and a normal workbench");
-  const logDirectory = await require("./host-identity").observeHostLogs(vscode, host);
+  const identity = await require("./host-identity").observeHostLogs(vscode, host);
+  const logDirectory = identity.logDirectory;
   const session = { pid: host.pid, logDirectory, hostLogDirectory: host.logDirectory, mode: host.mode };
   const logRelative = path.relative(path.resolve(root, "user-data/logs"), path.resolve(session.logDirectory));
   if (session.pid !== process.pid || !logRelative || logRelative.startsWith("..") || path.isAbsolute(logRelative))

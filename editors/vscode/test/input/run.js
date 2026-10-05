@@ -552,7 +552,8 @@ async function run() {
     });
     restoreKeyboard();
     await bridge("finish");
-    const completed = await until("workbench exit", () => exit, 15000);
+    const completed = await until("workbench exit", () => { require("./observer-health").assertObserverHealthy(root); return exit; }, 15000);
+    require("./observer-health").assertObserverHealthy(root);
     assert.equal(completed.code, 0);
     assert.equal(completed.signal, null);
     record("assertion", "clean-exit", { observed: completed });

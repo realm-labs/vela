@@ -8482,6 +8482,19 @@
         "workspace-symbol/editor/smoke"
       ],
       "summary": "Close only workspace-symbol installed editor smoke using an independently isolated second real VS Code session with the same installed VSIX, fresh user-data, fixed Unicode/space/percent manifest-free workspace and exact fallback scripts roots/static schema. Main suite retains all23 original assertions; merged suite has24 checks and identical source/server/platform/pinned-version provenance, preserving raw results/failures and rejecting duplicates. Reuse literal declaration/ownership corpora (four/eight source files,31/60 whole rows,32/49 authored queries). LF/CRLF disk/all-source two-Unicode-prefix dirty/closed-restored phases repeat every query three times:486 complete query observations and1458 distinct fresh public executeWorkspaceSymbolProvider request/response pairs. Exact complete editor multisets preserve all names/kinds/containers/locations/ranges and duplicate source/schema names without response filtering/deduplication; wire comparison preserves entire authored ordered fields/details/absences and exact queries, explicit[] for negatives. Normalize equivalent Windows drive URI spelling only through actual client URI type and preserve all original raw rows. Literal static schema removes sourceSpan setup without mutating source-bound fixture; actual URI-only vela-schema: has no source range, client zero placeholder does not claim a metadata jump. Completed actual main-loop configuration/open/change/close, no owned or foreign open Vela docs across global root switches, exact unchanged physical files/schema and finite bounds; only startup retries. Development prototypes exposed retained model references with direct openTextDocument and equivalent Rust/Code drive encoding; use actual vscode.open editors and URI normalization, retain both failed prototypes and final1458-pair passing run, no feature retry/range weakening or production change. Test-only focused modules and eight meaningful Node tests pin independent UTF16/byte full extents, dirty EOF geometry, membership/collisions/multiplicity, null/stale/incomplete/error wire responses and provenance merge failures; all182 Node checks pass. Rust1.97 process-local focused service17/protocol25, fmt, relevant all-target Clippy/package validation; fresh frozen Windows VSIX24/native50 and automaticfull/strictB09 service761+2 historical ignored/protocol813/stdio10. Core944 verified/381 pending/2NA/zero failed; B10 seventy-four verified/102 pending. Preserve ten accepted snapshots, all prior218 child records and50 native contracts, independent macOS history and B16 deferral. Workspace-symbol core is complete; native UX11 stays open independently. Next B10.16 (folding imported source partitions), selection/UX12/folding remaining; fresh macOS when used. VSIX editors/vscode/test-results/run-ejwvA0/results.json; native editors/vscode/test-results/input-hcbwgv/results.json; audit target/lsp-matrix/run-rGBIQn/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B09.8",
+      "revision": null,
+      "requirements": [
+        "vscode/UX17/roots-settings/command/local",
+        "vscode/UX17/roots-settings/input/local",
+        "vscode/UX21/untrusted-open/input/local",
+        "vscode/UX21/untrusted-open/render/local",
+        "vscode/UX21/grant-trust/input/local",
+        "vscode/UX21/grant-trust/render/local"
+      ],
+      "summary": "Repair a confirmed installed observer cleanup regression exposed during B10.16 frozen native validation: both normal/trust bridges still called identity.dispose after B09.7 extraction had returned only a directory string, producing real ReferenceError logs. The failed full capture retains50 feature proofs and outer exit0 but trust clean-exit timed out15s; timeout causality is not established by this cleanup error alone. Return an owned ready channel handle with logDirectory/dispose, retain it in both observers, and dispose the created channel on readiness failure. Preserve128-bit invocation identity and10s/25ms readiness and all450s/210s/15s native budgets/contracts. Reject retained bridge-failure.log during and after normal/trust clean-exit so an observer error cannot be concealed by driver quit and exit0. Three independent new tests pin ready-channel ownership until disposal, original readiness failure plus channel cleanup, and refusal of error-marked zero-exit runs; allsix focused observer tests and Node188 with pending B10.16 source pass (three directly owned additions). Actual fresh native focused14 has11 driver/navigation prerequisites plus UX17 roots-settings and UX21 untrusted-open/grant-trust; complete source/binary/platform/action/check/artifact contracts verified, no normal/trust observer error files and real clean exits. All50 native contracts unchanged. First full automatic matrix had service762+2 ignored/stdio10 pass but protocol809pass/6 failures at unmodified five-second task wait limits; no semantic assertion mismatch shown, failed audit retained, source causality not claimed. B10.16 must recapture complete evidence after this prerequisite; no new semantic cell or parent acceptance claimed. Preserve ten accepted snapshots/profile audits, prior219 children, independent macOS history, B16 deferral and active B10.16. Pending folding fix remains outside this commit. editors/vscode/test-results/input-X9IKpy/results.json; formal LSP-Batch trailer locates commit. Final checkpoint tests15 pass; source identity and formal trailer checked after commit."
     }
   ],
   "activeChild": "B10.16",
@@ -10973,7 +10986,20 @@
     "target/b10-15-prototype-editor-second.log",
     "target/b10-15-prototype-editor-third.log",
     "target/b10-15-prototype-node-final.log",
-    "target/b10-15-checkpoint.log"
+    "target/b10-15-checkpoint.log",
+    "editors/vscode/test-results/input-X9IKpy/results.json",
+    "editors/vscode/test-results/input-WdPBng/results.json",
+    "editors/vscode/test-results/input-WdPBng/bridge-failure.log",
+    "editors/vscode/test-results/input-WdPBng/trust/bridge-failure.log",
+    "target/b10-16-input-first.log",
+    "target/b10-16-frozen-source-first.json",
+    "target/b10-16-automatic-first.log",
+    "target/lsp-matrix/run-gKIUv2/report.json",
+    "target/b09-8-input.log",
+    "target/b09-8-node-first.log",
+    "target/b09-8-node.log",
+    "target/b09-8-frozen-source.json",
+    "target/b09-8-checkpoint.log"
   ],
   "openIssues": [
     {

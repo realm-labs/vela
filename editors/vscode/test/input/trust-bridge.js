@@ -7,7 +7,8 @@ async function run() {
   const host = await vscode.extensions.getExtension("vela-tests.vela-test-driver").activate();
   const installed = path.relative(extensions, host.extensionPath);
   assert(host.mode === vscode.ExtensionMode.Production && installed && !installed.startsWith("..") && !path.isAbsolute(installed));
-  const logDirectory = await require("./host-identity").observeHostLogs(vscode, host);
+  const identity = await require("./host-identity").observeHostLogs(vscode, host);
+  const logDirectory = identity.logDirectory;
   // Restricted Mode omits unsupported runtime extensions from the host API.
   // Read only the already verified installed archive's own manifest; re-query
   // runtime activation on every observation after the user's trust transition.

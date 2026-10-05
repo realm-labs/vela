@@ -68,7 +68,8 @@ async function runWorkspaceTrustSession({ root, profile, executable, extensions,
     };
     await require("./workspace-trust").runWorkspaceTrust({ page, bridge, record, root, owned, workspace, profile, contracts, until, onProof });
     if (keyboardState) { windowsDesktop("restore", child.pid, keyboardState.previous, keyboardState.window); keyboardState = undefined; }
-    await bridge("finish"); const result = await until("trust workbench clean exit", () => exit, 15000); assert.deepEqual(result, { code: 0, signal: null });
+    await bridge("finish"); const result = await until("trust workbench clean exit", () => { require("./observer-health").assertObserverHealthy(owned); return exit; }, 15000);
+    require("./observer-health").assertObserverHealthy(owned); assert.deepEqual(result, { code: 0, signal: null });
     record("assertion", "trust-clean-exit", { observed: result });
   } catch (error) {
     failure = error;

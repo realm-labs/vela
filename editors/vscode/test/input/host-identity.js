@@ -22,13 +22,18 @@ function hostLogDirectory(root, identity) {
 async function observeHostLogs(vscode, host) {
   const identity = hostIdentity(host.pid, crypto.randomBytes(16).toString("hex"));
   const channel = vscode.window.createOutputChannel(identity.name);
-  channel.appendLine(identity.marker);
-  const deadline = Date.now() + 10000;
-  while (Date.now() < deadline) {
-    const directory = hostLogDirectory(host.logDirectory, identity);
-    if (directory) return directory;
-    await new Promise(resolve => setTimeout(resolve, 25));
+  try {
+    channel.appendLine(identity.marker);
+    const deadline = Date.now() + 10000;
+    while (Date.now() < deadline) {
+      const directory = hostLogDirectory(host.logDirectory, identity);
+      if (directory) return { logDirectory: directory, dispose: () => channel.dispose() };
+      await new Promise(resolve => setTimeout(resolve, 25));
+    }
+    throw Error("current installed observer identity log did not become ready");
+  } catch (error) {
+    channel.dispose();
+    throw error;
   }
-  throw Error("current installed observer identity log did not become ready");
 }
 module.exports = { hostIdentity, hostLogDirectory, observeHostLogs };
