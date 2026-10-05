@@ -1,0 +1,1432 @@
+{
+  "version": 1,
+  "id": "selection-declarations",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]][[pub:start]]p[[pub-cursor]]ub[[pub:end]] [[kw:start]]f[[kw-cursor]]n[[kw:end]] [[name:start]]disp[[name-cursor]]atch[[name:end]][[params:start]]([[first:start]][[first-name:start]]fi[[first-name-cursor]]rst[[first-name:end]]: [[first-type:start]]I[[first-type-cursor]]nt[[first-type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[first:end]],[[second:start]] [[second-name:start]]sec[[second-name-cursor]]ond[[second-name:end]]: [[second-type:start]]I[[second-type-cursor]]nt[[second-type:end]] = [[fallback:start]]fi[[fallback-cursor]]rst[[fallback:end]][[second:end]])[[params:end]] -> [[result:start]]I[[result-cursor]]nt[[result:end]] [[body:start]]{ [[return:start]]return [[value:start]]sec[[value-cursor]]ond[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]const [[name:start]]HEL[[name-cursor]]PER[[name:end]] = 42;[[item:end]]\n[[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "name-cursor",
+        "chain": [
+          "name",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "function-default-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[pub:start]]p[[pub-cursor]]ub[[pub:end]] [[kw:start]]f[[kw-cursor]]n[[kw:end]] [[name:start]]disp[[name-cursor]]atch[[name:end]][[params:start]]([[first:start]][[first-name:start]]fi[[first-name-cursor]]rst[[first-name:end]]: [[first-type:start]]I[[first-type-cursor]]nt[[first-type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[first:end]],[[second:start]] [[second-name:start]]sec[[second-name-cursor]]ond[[second-name:end]]: [[second-type:start]]I[[second-type-cursor]]nt[[second-type:end]] = [[fallback:start]]fi[[fallback-cursor]]rst[[fallback:end]][[second:end]])[[params:end]] -> [[result:start]]I[[result-cursor]]nt[[result:end]] [[body:start]]{ [[return:start]]return [[value:start]]sec[[value-cursor]]ond[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-name-cursor",
+            "chain": [
+              "second-name",
+              "second",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-name-cursor",
+            "chain": [
+              "second-name",
+              "second",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-name-cursor",
+            "chain": [
+              "first-name",
+              "first",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "first",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "fallback-cursor",
+            "chain": [
+              "fallback",
+              "second",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-type-cursor",
+            "chain": [
+              "first-type",
+              "first",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-type-cursor",
+            "chain": [
+              "second-type",
+              "second",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-cursor",
+            "chain": [
+              "result",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "pub-cursor",
+            "chain": [
+              "pub",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "kw-cursor",
+            "chain": [
+              "kw",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "private-empty-function",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn [[name:start]]pri[[name-cursor]]vate[[name:end]][[params:start]]([[close:start]][[close-cursor]])[[close:end]][[params:end]] [[body:start]]{[[brace:start]][[brace-cursor]]}[[brace:end]][[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "brace-cursor",
+            "chain": [
+              "brace",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "async-function",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[async:start]]as[[async-cursor]]ync[[async:end]] fn [[name:start]]fe[[name-cursor]]tch[[name:end]]() [[body:start]]{ return; }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "async-cursor",
+            "chain": [
+              "async",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "attributed-function",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]] ][[attribute:end]]\npub fn [[name:start]]mar[[name-cursor]]ked[[name:end]]() {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-parameter-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn [[name:start]]qual[[name-cursor]]ified[[name:end]][[params:start]]([[param:start]][[param-name:start]]va[[param-name-cursor]]lue[[param-name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]][[param:end]])[[params:end]] -> [[result:start]]helper::[[return-type:start]]Kn[[return-type-cursor]]own[[return-type:end]][[result:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "return-type-cursor",
+            "chain": [
+              "return-type",
+              "result",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "param-name-cursor",
+            "chain": [
+              "param-name",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-parameter-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn tuple[[params:start]]([[param:start]]value: [[type:start]]([[int:start]]I[[int-cursor]]nt[[int:end]], [[bool:start]]Bo[[bool-cursor]]ol[[bool:end]])[[type:end]][[param:end]])[[params:end]] -> [[result:start]]([[result-int:start]]I[[result-int-cursor]]nt[[result-int:end]], [[result-bool:start]]Bo[[result-bool-cursor]]ol[[result-bool:end]])[[result:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "int-cursor",
+            "chain": [
+              "int",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "bool-cursor",
+            "chain": [
+              "bool",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-int-cursor",
+            "chain": [
+              "result-int",
+              "result",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-bool-cursor",
+            "chain": [
+              "result-bool",
+              "result",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-parameter-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn option[[params:start]]([[param:start]]value: [[type:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[args:start]]<[[int:start]]I[[int-cursor]]nt[[int:end]]>[[args:end]][[type:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "int-cursor",
+            "chain": [
+              "int",
+              "args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "function-neighbors",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]fn [[left:start]]sa[[left-cursor]]me[[left:end]]() {}[[first:end]] [[second:start]]pub fn [[right:start]]sa[[right-cursor]]me[[right:end]]() {}[[second:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "first",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "function-comment-exclusions",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]fn [[left:start]]le[[left-cursor]]ft[[left:end]]() {}[[first:end]]\n// fn fa[[comment]]ke() {}\n[[second:start]]fn [[right:start]]ri[[right-cursor]]ght[[right:end]]() { /* retur[[body-comment]]n false; */ }[[second:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "body-comment",
+            "chain": []
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "first",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "constant",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]const [[name:start]]LI[[name-cursor]]MIT[[name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[literal:start]]4[[literal-cursor]]2[[literal:end]][[semi:start]][[semi-cursor]];[[semi:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "semi-cursor",
+            "chain": [
+              "semi",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "public-constant",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub const [[name:start]]LI[[name-cursor]]MIT[[name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[literal:start]]4[[literal-cursor]]2[[literal:end]][[semi:start]][[semi-cursor]];[[semi:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "semi-cursor",
+            "chain": [
+              "semi",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "attributed-constant",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]]][[attribute:end]]\nconst [[name:start]]LI[[name-cursor]]MIT[[name:end]] = [[path:start]]helper::[[value:start]]LI[[value-cursor]]MIT[[value:end]][[path:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "path",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "state",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[state:start]]st[[state-cursor]]ate[[state:end]] [[name:start]]to[[name-cursor]]tal[[name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "state-cursor",
+            "chain": [
+              "state",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "public-state",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub [[state:start]]st[[state-cursor]]ate[[state:end]] [[name:start]]to[[name-cursor]]tal[[name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "state-cursor",
+            "chain": [
+              "state",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "extern-state",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]extern state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "type",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "public-extern-state",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub extern state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "type",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "attributed-state",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]]][[attribute:end]]\npub state [[name:start]]ena[[name-cursor]]bled[[name:end]]: [[type:start]]Bo[[type-cursor]]ol[[type:end]] = [[value:start]]tr[[value-cursor]]ue[[value:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-struct",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub struct [[name:start]]Em[[name-cursor]]pty[[name:end]] [[fields:start]]{[[close:start]][[close-cursor]]}[[close:end]][[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "fields",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struct-field-defaults",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub struct [[name:start]]R[[name-cursor]]ow[[name:end]] [[fields:start]]{ [[first:start]][[first-name:start]]co[[first-name-cursor]]unt[[first-name:end]]: [[first-type:start]]I[[first-type-cursor]]nt[[first-type:end]] = [[first-value:start]]4[[first-value-cursor]]2[[first-value:end]][[first:end]], [[second:start]][[second-name:start]]la[[second-name-cursor]]bel[[second-name:end]]: [[second-type:start]]Str[[second-type-cursor]]ing[[second-type:end]] = [[second-value:start]]la[[second-value-cursor]]bel[[second-value:end]][[second:end]] }[[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-name-cursor",
+            "chain": [
+              "second-name",
+              "second",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-name-cursor",
+            "chain": [
+              "first-name",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-type-cursor",
+            "chain": [
+              "first-type",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struct-attributed-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]struct Row [[fields:start]]{ [[field:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]]][[attribute:end]] [[name:start]]co[[name-cursor]]unt[[name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]][[field:end]]; }[[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "field",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "field",
+              "fields",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struct-qualified-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]struct Row [[fields:start]]{ [[field:start]][[name:start]]in[[name-cursor]]ner[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]][[field:end]] }[[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "type",
+              "field",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "field",
+              "fields",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-unit-variants",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub enum [[name:start]]Cho[[name-cursor]]ice[[name:end]] [[variants:start]]{ [[first:start]]Fi[[first-cursor]]rst[[first:end]], [[second:start]]Sec[[second-cursor]]ond[[second:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-cursor",
+            "chain": [
+              "second",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-tuple-defaults",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[variant:start]][[name:start]]So[[name-cursor]]me[[name:end]][[tuple:start]]([[first:start]][[first-name:start]]va[[first-name-cursor]]lue[[first-name:end]]: [[first-type:start]]I[[first-type-cursor]]nt[[first-type:end]] = [[first-value:start]]4[[first-value-cursor]]2[[first-value:end]][[first:end]],[[second:start]] [[second-name:start]]la[[second-name-cursor]]bel[[second-name:end]]: [[second-type:start]]Str[[second-type-cursor]]ing[[second-type:end]][[second:end]])[[tuple:end]][[variant:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-name-cursor",
+            "chain": [
+              "first-name",
+              "first",
+              "tuple",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "first",
+              "tuple",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-type-cursor",
+            "chain": [
+              "second-type",
+              "second",
+              "tuple",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-record-defaults",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[variant:start]][[name:start]]Na[[name-cursor]]med[[name:end]] [[fields:start]]{ [[field:start]][[field-name:start]]va[[field-name-cursor]]lue[[field-name:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[value:start]]4[[value-cursor]]2[[value:end]][[field:end]] }[[fields:end]][[variant:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "field-name-cursor",
+            "chain": [
+              "field-name",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-attributed-variant",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[variant:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]]][[attribute:end]] [[name:start]]Un[[name-cursor]]it[[name:end]][[variant:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-required",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn [[method-name:start]]ap[[method-name-cursor]]ply[[method-name:end]][[method-params:start]]([[method-param:start]][[method-arg:start]]va[[method-arg-cursor]]lue[[method-arg:end]]: [[method-type:start]]I[[method-type-cursor]]nt[[method-type:end]] = [[method-value:start]]se[[method-value-cursor]]ed[[method-value:end]][[method-param:end]])[[method-params:end]] -> [[method-result:start]]I[[method-result-cursor]]nt[[method-result:end]];[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-name-cursor",
+            "chain": [
+              "method-name",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-arg-cursor",
+            "chain": [
+              "method-arg",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-type-cursor",
+            "chain": [
+              "method-type",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-value-cursor",
+            "chain": [
+              "method-value",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-result-cursor",
+            "chain": [
+              "method-result",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-default",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub trait Rule { [[method:start]]fn [[method-name:start]]ap[[method-name-cursor]]ply[[method-name:end]][[method-params:start]]([[method-param:start]][[method-arg:start]]va[[method-arg-cursor]]lue[[method-arg:end]]: [[method-type:start]]I[[method-type-cursor]]nt[[method-type:end]] = [[method-value:start]]se[[method-value-cursor]]ed[[method-value:end]][[method-param:end]])[[method-params:end]] -> [[method-result:start]]I[[method-result-cursor]]nt[[method-result:end]] [[method-body:start]]{ [[method-return:start]]return [[method-use:start]]va[[method-use-cursor]]lue[[method-use:end]];[[method-return:end]] }[[method-body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-name-cursor",
+            "chain": [
+              "method-name",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-arg-cursor",
+            "chain": [
+              "method-arg",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-type-cursor",
+            "chain": [
+              "method-type",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-value-cursor",
+            "chain": [
+              "method-value",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-result-cursor",
+            "chain": [
+              "method-result",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-use-cursor",
+            "chain": [
+              "method-use",
+              "method-return",
+              "method-body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inherent-impl",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Row { [[method:start]]fn [[method-name:start]]ap[[method-name-cursor]]ply[[method-name:end]][[method-params:start]]([[method-param:start]][[method-arg:start]]va[[method-arg-cursor]]lue[[method-arg:end]]: [[method-type:start]]I[[method-type-cursor]]nt[[method-type:end]] = [[method-value:start]]se[[method-value-cursor]]ed[[method-value:end]][[method-param:end]])[[method-params:end]] -> [[method-result:start]]I[[method-result-cursor]]nt[[method-result:end]] [[method-body:start]]{ [[method-return:start]]return [[method-use:start]]va[[method-use-cursor]]lue[[method-use:end]];[[method-return:end]] }[[method-body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-name-cursor",
+            "chain": [
+              "method-name",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-arg-cursor",
+            "chain": [
+              "method-arg",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-type-cursor",
+            "chain": [
+              "method-type",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-value-cursor",
+            "chain": [
+              "method-value",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-result-cursor",
+            "chain": [
+              "method-result",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-use-cursor",
+            "chain": [
+              "method-use",
+              "method-return",
+              "method-body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-impl",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Rule for Row { [[method:start]]fn [[method-name:start]]ap[[method-name-cursor]]ply[[method-name:end]][[method-params:start]]([[method-param:start]][[method-arg:start]]va[[method-arg-cursor]]lue[[method-arg:end]]: [[method-type:start]]I[[method-type-cursor]]nt[[method-type:end]] = [[method-value:start]]se[[method-value-cursor]]ed[[method-value:end]][[method-param:end]])[[method-params:end]] -> [[method-result:start]]I[[method-result-cursor]]nt[[method-result:end]] [[method-body:start]]{ [[method-return:start]]return [[method-use:start]]va[[method-use-cursor]]lue[[method-use:end]];[[method-return:end]] }[[method-body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-name-cursor",
+            "chain": [
+              "method-name",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-arg-cursor",
+            "chain": [
+              "method-arg",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-type-cursor",
+            "chain": [
+              "method-type",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-value-cursor",
+            "chain": [
+              "method-value",
+              "method-param",
+              "method-params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-result-cursor",
+            "chain": [
+              "method-result",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-use-cursor",
+            "chain": [
+              "method-use",
+              "method-return",
+              "method-body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-method-neighbors",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[left:start]]fn [[left-name:start]]ap[[left-name-cursor]]ply[[left-name:end]][[left-params:start]]([[left-param:start]][[left-arg:start]]va[[left-arg-cursor]]lue[[left-arg:end]]: [[left-type:start]]I[[left-type-cursor]]nt[[left-type:end]][[left-param:end]])[[left-params:end]] -> [[left-result:start]]I[[left-result-cursor]]nt[[left-result:end]];[[left:end]] [[right:start]]fn [[right-name:start]]ap[[right-name-cursor]]ply[[right-name:end]][[right-params:start]]([[right-param:start]][[right-arg:start]]va[[right-arg-cursor]]lue[[right-arg:end]]: [[right-type:start]]I[[right-type-cursor]]nt[[right-type:end]][[right-param:end]])[[right-params:end]] -> [[right-result:start]]I[[right-result-cursor]]nt[[right-result:end]] [[right-body:start]]{ [[right-return:start]]return [[right-use:start]]va[[right-use-cursor]]lue[[right-use:end]];[[right-return:end]] }[[right-body:end]][[right:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-name-cursor",
+            "chain": [
+              "right-name",
+              "right",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-name-cursor",
+            "chain": [
+              "left-name",
+              "left",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-arg-cursor",
+            "chain": [
+              "right-arg",
+              "right-param",
+              "right-params",
+              "right",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-arg-cursor",
+            "chain": [
+              "left-arg",
+              "left-param",
+              "left-params",
+              "left",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "impl-self-parameter",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Row { [[method:start]]pub fn [[name:start]]ap[[name-cursor]]ply[[name:end]][[params:start]]([[first:start]][[self:start]]se[[self-cursor]]lf[[self:end]][[first:end]],[[second:start]] [[value:start]]va[[value-cursor]]lue[[value:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]][[second:end]])[[params:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "self-cursor",
+            "chain": [
+              "self",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "second",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "public-use-declaration",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub use [[path:start]]helper::[[name:start]]Kn[[name-cursor]]own[[name:end]][[path:end]] as [[alias:start]]R[[alias-cursor]]ow[[alias:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "path",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "all-declaration-neighbors",
+        "source": "[[file:start]]/*中😀*/ [[constant:start]]const [[constant-name:start]]LI[[constant-name-cursor]]MIT[[constant-name:end]] = 1;[[constant:end]]\n[[state:start]]extern state [[state-name:start]]ro[[state-name-cursor]]ot[[state-name:end]]: Int;[[state:end]]\n[[structure:start]]struct [[struct-name:start]]R[[struct-name-cursor]]ow[[struct-name:end]] {}[[structure:end]]\n[[enumeration:start]]enum [[enum-name:start]]Cho[[enum-name-cursor]]ice[[enum-name:end]] { Unit }[[enumeration:end]]\n[[trait:start]]trait [[trait-name:start]]Ru[[trait-name-cursor]]le[[trait-name:end]] {}[[trait:end]]\n[[implementation:start]]impl [[impl-name:start]]R[[impl-name-cursor]]ow[[impl-name:end]] {}[[implementation:end]]\n[[function:start]]fn [[fn-name:start]]r[[fn-name-cursor]]un[[fn-name:end]]() {}[[function:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "fn-name-cursor",
+            "chain": [
+              "fn-name",
+              "function",
+              "file"
+            ]
+          },
+          {
+            "position": "struct-name-cursor",
+            "chain": [
+              "struct-name",
+              "structure",
+              "file"
+            ]
+          },
+          {
+            "position": "constant-name-cursor",
+            "chain": [
+              "constant-name",
+              "constant",
+              "file"
+            ]
+          },
+          {
+            "position": "enum-name-cursor",
+            "chain": [
+              "enum-name",
+              "enumeration",
+              "file"
+            ]
+          },
+          {
+            "position": "state-name-cursor",
+            "chain": [
+              "state-name",
+              "state",
+              "file"
+            ]
+          },
+          {
+            "position": "trait-name-cursor",
+            "chain": [
+              "trait-name",
+              "trait",
+              "file"
+            ]
+          },
+          {
+            "position": "impl-name-cursor",
+            "chain": [
+              "impl-name",
+              "implementation",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "declaration-comment-only",
+        "source": "[[file:start]]/*中😀*/ // pub fn fa[[comment]]ke() {}\n/* struct Ghost { value:Int } enum Never { Unit } */\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "header-comment-point",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub /* fn [[comment]]fake */ fn [[name:start]]act[[name-cursor]]ual[[name:end]]() {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]][[pub:start]]p[[pub-cursor]]ub[[pub:end]] [[kw:start]]f[[kw-cursor]]n[[kw:end]] [[name:start]]disp[[name-cursor]]atch[[name:end]][[params:start]]([[first:start]][[first-name:start]]fi[[first-name-cursor]]rst[[first-name:end]]: [[first-type:start]]I[[first-type-cursor]]nt[[first-type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[first:end]],[[second:start]] [[second-name:start]]sec[[second-name-cursor]]ond[[second-name:end]]: [[second-type:start]]I[[second-type-cursor]]nt[[second-type:end]] = [[fallback:start]]fi[[fallback-cursor]]rst[[fallback:end]][[second:end]])[[params:end]] -> [[result:start]]I[[result-cursor]]nt[[result:end]] [[body:start]]{ [[return:start]]return [[value:start]]sec[[value-cursor]]ond[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}

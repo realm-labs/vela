@@ -131,6 +131,8 @@ mod folding_trivia_tests;
 #[cfg(test)]
 mod provider_tooling_tests;
 #[cfg(test)]
+mod selection_declaration_tests;
+#[cfg(test)]
 mod selection_import_tests;
 
 #[cfg(test)]

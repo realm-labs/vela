@@ -18209,6 +18209,46 @@
           "name": "tests::selection_imports::lsp_selection_imports_pin_complete_utf16_dirty_close_chains_and_all_immutable_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "selection/syntax/S1/positive/service",
+      "assertion": "Reviewed in reviews/selection-declarations.md.38 independently marked cases/132 inputs:122 complete chains/ten points,34 positive documents/three point-only/one actual empty vector. Public/private/async/attributed functions, parameter defaults/qualified/tuple/allowed builtin hints/return annotations; const/state/extern state; struct fields/defaults; unit/tuple/record variants; required/default trait and inherent/trait impl methods/self parameters; public import and mixed/same-spelled neighbors. Exact token/all CST ancestor chains and span dedup exclude invented method-list/block owners and coincident unit/self spans. Unordered duplicated inputs retain order/cardinality; comments/header/body/standalone/whitespace/empty/EOF newline own only zero-width points. LF/CRLF and Unicode shifts inside file origin0 give152 response vectors/528 inputs matching actual pre-change stdio with no lexical/parse errors. Name15..23 UTF16 versus19..27bytes, item8..89/12..93, second param42..62/46..66, list23..63/27..67; independent helper name14..20/18..24,item8..26/12..30. Disk/every dirty/close restored/current versus independently fresh/all prior immutable sources+CST+vectors repeated3times. Exact quiet parse/source/two-record/no-schema and fixed generation/parse/project/HIR counters; full typed envelopes/encoded physical roots/unchanged disk and atomic invalid half/outside/mixed vectors. Unchanged generic marker projection extracted for reuse, accepted import fixture/assertions retained. Node complete counts/membership/literal chain goldens/strict containment/dedup/point-empty contract. Initial attribute adjacent-bracket marker draft fixed by valid fixture whitespace; failed generator preserved, no product defect or production change. S2/other selection syntax/editor/native UX11/UX12 stay open; profiles and accepted batches preserved; B16 deferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "selection_declaration_tests::selection_declarations_pin_complete_items_defaults_members_and_point_vectors"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S1/positive/protocol",
+      "assertion": "Reviewed in reviews/selection-declarations.md.38 independently marked cases/132 inputs:122 complete chains/ten points,34 positive documents/three point-only/one actual empty vector. Public/private/async/attributed functions, parameter defaults/qualified/tuple/allowed builtin hints/return annotations; const/state/extern state; struct fields/defaults; unit/tuple/record variants; required/default trait and inherent/trait impl methods/self parameters; public import and mixed/same-spelled neighbors. Exact token/all CST ancestor chains and span dedup exclude invented method-list/block owners and coincident unit/self spans. Unordered duplicated inputs retain order/cardinality; comments/header/body/standalone/whitespace/empty/EOF newline own only zero-width points. LF/CRLF and Unicode shifts inside file origin0 give152 response vectors/528 inputs matching actual pre-change stdio with no lexical/parse errors. Name15..23 UTF16 versus19..27bytes, item8..89/12..93, second param42..62/46..66, list23..63/27..67; independent helper name14..20/18..24,item8..26/12..30. Disk/every dirty/close restored/current versus independently fresh/all prior immutable sources+CST+vectors repeated3times. Exact quiet parse/source/two-record/no-schema and fixed generation/parse/project/HIR counters; full typed envelopes/encoded physical roots/unchanged disk and atomic invalid half/outside/mixed vectors. Unchanged generic marker projection extracted for reuse, accepted import fixture/assertions retained. Node complete counts/membership/literal chain goldens/strict containment/dedup/point-empty contract. Initial attribute adjacent-bracket marker draft fixed by valid fixture whitespace; failed generator preserved, no product defect or production change. S2/other selection syntax/editor/native UX11/UX12 stay open; profiles and accepted batches preserved; B16 deferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::selection_declarations::lsp_selection_declarations_pin_complete_utf16_items_defaults_members_and_retained_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S1/negative/service",
+      "assertion": "Reviewed in reviews/selection-declarations.md.38 independently marked cases/132 inputs:122 complete chains/ten points,34 positive documents/three point-only/one actual empty vector. Public/private/async/attributed functions, parameter defaults/qualified/tuple/allowed builtin hints/return annotations; const/state/extern state; struct fields/defaults; unit/tuple/record variants; required/default trait and inherent/trait impl methods/self parameters; public import and mixed/same-spelled neighbors. Exact token/all CST ancestor chains and span dedup exclude invented method-list/block owners and coincident unit/self spans. Unordered duplicated inputs retain order/cardinality; comments/header/body/standalone/whitespace/empty/EOF newline own only zero-width points. LF/CRLF and Unicode shifts inside file origin0 give152 response vectors/528 inputs matching actual pre-change stdio with no lexical/parse errors. Name15..23 UTF16 versus19..27bytes, item8..89/12..93, second param42..62/46..66, list23..63/27..67; independent helper name14..20/18..24,item8..26/12..30. Disk/every dirty/close restored/current versus independently fresh/all prior immutable sources+CST+vectors repeated3times. Exact quiet parse/source/two-record/no-schema and fixed generation/parse/project/HIR counters; full typed envelopes/encoded physical roots/unchanged disk and atomic invalid half/outside/mixed vectors. Unchanged generic marker projection extracted for reuse, accepted import fixture/assertions retained. Node complete counts/membership/literal chain goldens/strict containment/dedup/point-empty contract. Initial attribute adjacent-bracket marker draft fixed by valid fixture whitespace; failed generator preserved, no product defect or production change. S2/other selection syntax/editor/native UX11/UX12 stay open; profiles and accepted batches preserved; B16 deferred.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "selection_declaration_tests::selection_declarations_pin_complete_items_defaults_members_and_point_vectors"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S1/negative/protocol",
+      "assertion": "Reviewed in reviews/selection-declarations.md.38 independently marked cases/132 inputs:122 complete chains/ten points,34 positive documents/three point-only/one actual empty vector. Public/private/async/attributed functions, parameter defaults/qualified/tuple/allowed builtin hints/return annotations; const/state/extern state; struct fields/defaults; unit/tuple/record variants; required/default trait and inherent/trait impl methods/self parameters; public import and mixed/same-spelled neighbors. Exact token/all CST ancestor chains and span dedup exclude invented method-list/block owners and coincident unit/self spans. Unordered duplicated inputs retain order/cardinality; comments/header/body/standalone/whitespace/empty/EOF newline own only zero-width points. LF/CRLF and Unicode shifts inside file origin0 give152 response vectors/528 inputs matching actual pre-change stdio with no lexical/parse errors. Name15..23 UTF16 versus19..27bytes, item8..89/12..93, second param42..62/46..66, list23..63/27..67; independent helper name14..20/18..24,item8..26/12..30. Disk/every dirty/close restored/current versus independently fresh/all prior immutable sources+CST+vectors repeated3times. Exact quiet parse/source/two-record/no-schema and fixed generation/parse/project/HIR counters; full typed envelopes/encoded physical roots/unchanged disk and atomic invalid half/outside/mixed vectors. Unchanged generic marker projection extracted for reuse, accepted import fixture/assertions retained. Node complete counts/membership/literal chain goldens/strict containment/dedup/point-empty contract. Initial attribute adjacent-bracket marker draft fixed by valid fixture whitespace; failed generator preserved, no product defect or production change. S2/other selection syntax/editor/native UX11/UX12 stay open; profiles and accepted batches preserved; B16 deferred.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::selection_declarations::lsp_selection_declarations_pin_complete_utf16_items_defaults_members_and_retained_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [

@@ -8617,10 +8617,21 @@
         "selection/environments/encoded_uri/protocol"
       ],
       "summary": "Selection imports and coordinate boundary only: nine S8 positive/negative service/protocol, dirty/repeat protocol and UTF16/CRLF/encoded URI protocol cells. Sixteen independently marked cases/52 positions (42 complete chains,10 point-only;12 positive documents,3 point-only documents,1 actual empty request vector), four LF/CRLF Unicode forms/64 response vectors/208 positions. Preserve query order and duplicates, exact complete token/path/item/file ancestry, coincident-span dedup, alias and token-end boundaries, EOF/trivia points, independent positive helper and missing-source zero/empty responses. Disk/every dirty state/close restoration, fresh/incremental and all retained immutable snapshots repeat three times; exact source/CST/quiet parse/no schema/two record and generation/parse/project/HIR facts stay fixed. Actual protocol lifecycle uses fresh encoded physical roots and unchanged disk bytes; invalid UTF16 half/out-of-line/document/mixed vectors retain exact atomic error envelopes. Initial four-form stdio reproduction and formal new protocol test fail while the independent service test passes. Expanded pre-fix corpus matches all byte chains but fails UTF16 in48 whole vectors/140 individual positions. Focused outgoing projector uses same immutable document text and strict existing byte-to-UTF16 index for every recursive parent; no language/parser/service-coordinate change. All64 post-fix vectors/208 positions match independently authored complete UTF16 results; malformed child/parent projection rejects and valid zero points survive. Preserve test-authoring drafts: byte-zero predecessor lookup fixed with explicit zero guard; semicolonless item marker moved after EOF newline based on primary CST contract, identical source bytes retained; two initial protocol compile errors corrected before freeze. Baseline service4/protocol6/Node213; final service5/protocol8/architecture3/Node216/fmt/Clippy/package. Frozen Windows native50/VSIX25/automatic full and strict B09 service769+2 historical ignored/protocol823/stdio10. Existing folding80 observations/240 public queries/192 public ranges and workspace-symbol486 observations/1458 fresh wire pairs remain fully verified. Preserve10 accepted snapshots/prior229 children/50 native contracts and independent macOS history; B16 deferred. Core992 verified/333 pending/2NA/zero failed; B10 122 verified/54 pending. Next B10.25 selection declaration/body partitions; installed selection smoke and native UX11/UX12 remain open, no parent acceptance. VSIX editors/vscode/test-results/run-kASJ3H/results.json; native editors/vscode/test-results/input-afN4LF/results.json; audit target/lsp-matrix/run-EVfRO4/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.25",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S1/positive/service",
+        "selection/syntax/S1/positive/protocol",
+        "selection/syntax/S1/negative/service",
+        "selection/syntax/S1/negative/protocol"
+      ],
+      "summary": "Selection S1 declaration ancestry only: four positive/negative service/protocol cells.38 independently marked cases/132 positions (122 complete chains,ten points;34 positive documents,three point-only documents,one actual empty request vector); four LF/CRLF Unicode forms give152 complete actual stdio vectors/528 positions, all match with no lexical/parse diagnostics. Public/private/async/attributed functions/default parameters/qualified/tuple/allowed builtin hints/return annotations; const/state/extern-state; struct fields/defaults; unit/tuple/record variants; required/default trait and inherent/trait impl methods/self params; public imports and mixed/equal-spelled neighbors. Every exact token/CST ancestor span, dedup and complete parent cardinality retained; no phantom method-list/block or coincident unit/self parents. Deliberately reordered duplicated inputs preserve vector index; comments/header/body/standalone/whitespace/empty/EOF newline keep only zero-width points. Independent helper constant and full-file origin0; name15..23 UTF16 versus19..27bytes,item8..89/12..93,second param42..62/46..66,list23..63/27..67; helper14..20/18..24,item8..26/12..30. Disk/every dirty/close restoration, independent fresh/current/all retained immutable snapshots repeated3times; exact source/CST/quiet parse/no-schema/two-record and fixed generation/parse/project/HIR facts. Actual typed complete request/result/error envelopes, fresh encoded physical roots, unchanged disk and atomic invalid half/outside/mixed vectors. Shared generic marker projection extracted without changing any original import fixture bytes/functions/assertions; existing accepted tests and contracts retained. Initial generator adjacent attribute bracket confused marker grammar; valid fixture whitespace fixes test authoring only, original failed generator/log preserved. An initial architecture invocation used a nonexistent integration-test target; corrected to the existing lib architecture_tests and preserved command error, no source or assertion change. No production/parser/language/runtime/capability change or product defect found. Baseline selection service5/protocol8/Node216; final service6/protocol9/architecture3/Node219/fmt/Clippy/package. Frozen Windows native50/VSIX25/automatic full and strict B09 service770+2 historical ignored/protocol824/stdio10. Preserve original complete folding80 observations/240 queries/192 public ranges and workspace-symbol486 observations/1458 fresh wire pairs,10 accepted snapshots/prior230 children and independent macOS history; B16 deferred. Core996 verified/329 pending/2NA/zero failed; B10 126 verified/50 pending. Next B10.26 selection body partitions; other selection syntax/installed selection/native UX11/UX12 remain open, no parent acceptance. VSIX editors/vscode/test-results/run-3QHW7y/results.json; native editors/vscode/test-results/input-NRFaG5/results.json; audit target/lsp-matrix/run-qQcAUs/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.25",
-  "nextTask": "B10.25",
+  "activeChild": "B10.26",
+  "nextTask": "B10.26",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11510,7 +11521,47 @@
     "target/b10-24-import-prototype.json",
     "target/b10-24-import-before-item-terminator-review.json",
     "target/b10-24-selection-imports-before-item-terminator-review.json",
-    "target/b10-24-checkpoint.log"
+    "target/b10-24-checkpoint.log",
+    "target/lsp-matrix/run-qQcAUs/report.json",
+    "editors/vscode/test-results/run-3QHW7y/results.json",
+    "editors/vscode/test-results/input-NRFaG5/results.json",
+    "target/lsp-matrix/run-utxzUU/report.json",
+    "editors/vscode/test-results/run-3QHW7y/base-results.json",
+    "editors/vscode/test-results/run-3QHW7y/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-3QHW7y/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-3QHW7y/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-3QHW7y/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-3QHW7y/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-3QHW7y/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-3QHW7y/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-3QHW7y/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-3QHW7y/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-3QHW7y/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-3QHW7y/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-3QHW7y/folding-crlf-shifted-client.log",
+    "target/b10-25-toolchain.log",
+    "target/b10-25-input.log",
+    "target/b10-25-editor.log",
+    "target/b10-25-scoped.log",
+    "target/b10-25-automatic.log",
+    "target/b10-25-baseline-node.log",
+    "target/b10-25-baseline-service.log",
+    "target/b10-25-baseline-protocol.log",
+    "target/b10-25-service-first.log",
+    "target/b10-25-protocol-first.log",
+    "target/b10-25-architecture.log",
+    "target/b10-25-architecture-wrong-target.log",
+    "target/b10-25-node-first.log",
+    "target/b10-25-node.log",
+    "target/b10-25-format.log",
+    "target/b10-25-package.log",
+    "target/b10-25-clippy.log",
+    "target/b10-25-marker-draft.log",
+    "target/b10-25-declarations-prototype.log",
+    "target/b10-25-frozen-source.json",
+    "target/b10-25-declarations-prototype.json",
+    "target/b10-25-corpus-before-attribute-marker-guard.js",
+    "target/b10-25-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15438,8 +15489,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "863729658d5959c046e8378da372f9424267bc0e",
-          "treeSha256": "e667299de7ad2b2fd1b5b6426b426c576eb890cd74a1d14c41cf16b9ac3fe672"
+          "revision": "9c4d4e90f0a8db041a70dd7ef7cb59f5287a6bce",
+          "treeSha256": "bb40cc827bae569e18c9e74c0a3699d393a6c5f53954da55d567b6ef473c8965"
         },
         "profile": {
           "platform": "win32",
@@ -15447,11 +15498,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-EVfRO4/report.json"
+          "target/lsp-matrix/run-qQcAUs/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-kASJ3H/results.json --local-results editors/vscode/test-results/input-afN4LF/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-3QHW7y/results.json --local-results editors/vscode/test-results/input-NRFaG5/results.json",
             "exitCode": 0
           }
         ]
