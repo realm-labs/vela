@@ -1,20 +1,13 @@
 "use strict";
 // Installed test-only observer. No configuration, document or trust mutation.
 const fs = require("node:fs"), path = require("node:path"), http = require("node:http"), crypto = require("node:crypto"), assert = require("node:assert/strict");
-const vscode = require("vscode"), { fileUri } = require("./paths"), { logFiles } = require("./logs");
+const vscode = require("vscode"), { fileUri } = require("./paths");
 async function run() {
   const root = process.env.VELA_TEST_RESULT_DIR, workspace = process.env.VELA_TEST_WORKSPACE_BASE, extensions = process.env.VELA_TEST_EXTENSIONS_DIR;
   const host = await vscode.extensions.getExtension("vela-tests.vela-test-driver").activate();
   const installed = path.relative(extensions, host.extensionPath);
   assert(host.mode === vscode.ExtensionMode.Production && installed && !installed.startsWith("..") && !path.isAbsolute(installed));
-  const identity = vscode.window.createOutputChannel(`Vela Test Host ${process.pid}`); identity.appendLine(`VELA_INPUT_HOST ${process.pid}`);
-  let logDirectory; const deadline = Date.now() + 10000;
-  while (Date.now() < deadline) {
-    const files = logFiles(host.logDirectory, name => name.endsWith(`-Vela Test Host ${process.pid}.log`));
-    assert(files.length <= 1); if (files.length === 1 && fs.readFileSync(files[0], "utf8").includes(`VELA_INPUT_HOST ${process.pid}`)) { logDirectory = path.dirname(files[0]); break; }
-    await new Promise(resolve => setTimeout(resolve, 25));
-  }
-  assert(logDirectory, "installed trust observer owns one log directory");
+  const logDirectory = await require("./host-identity").observeHostLogs(vscode, host);
   // Restricted Mode omits unsupported runtime extensions from the host API.
   // Read only the already verified installed archive's own manifest; re-query
   // runtime activation on every observation after the user's trust transition.

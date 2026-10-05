@@ -18,19 +18,7 @@ async function run() {
   const observerRelative = path.relative(path.resolve(process.env.VELA_TEST_EXTENSIONS_DIR), path.resolve(host.extensionPath));
   if (host.mode !== vscode.ExtensionMode.Production || !observerRelative || observerRelative.startsWith("..") || path.isAbsolute(observerRelative))
     throw Error("native recovery requires an installed observer and a normal workbench");
-  const identity = vscode.window.createOutputChannel(`Vela Test Host ${process.pid}`);
-  identity.appendLine(`VELA_INPUT_HOST ${process.pid}`);
-  const identityDeadline = Date.now() + 10000;
-  let logDirectory;
-  while (Date.now() < identityDeadline) {
-    const files = require("./logs").logFiles(host.logDirectory, name => name.endsWith(`-Vela Test Host ${process.pid}.log`));
-    if (files.length > 1) throw Error("duplicate test host identity logs");
-    if (files.length === 1 && fs.readFileSync(files[0], "utf8").includes(`VELA_INPUT_HOST ${process.pid}`)) {
-      logDirectory = path.dirname(files[0]); break;
-    }
-    await new Promise(resolve => setTimeout(resolve, 25));
-  }
-  if (!logDirectory) throw Error("test host identity log did not become ready");
+  const logDirectory = await require("./host-identity").observeHostLogs(vscode, host);
   const session = { pid: host.pid, logDirectory, hostLogDirectory: host.logDirectory, mode: host.mode };
   const logRelative = path.relative(path.resolve(root, "user-data/logs"), path.resolve(session.logDirectory));
   if (session.pid !== process.pid || !logRelative || logRelative.startsWith("..") || path.isAbsolute(logRelative))
