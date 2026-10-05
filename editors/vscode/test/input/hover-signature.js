@@ -5,7 +5,7 @@ const { hoverSignatureModel } = require("../../../../scripts/lsp-matrix/hover-si
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { fileUri } = require("./paths");
 const { tokenGeometry } = require("./token-geometry");
-const { readTrace, completedResponse } = require("./readiness");
+const { readTrace, providerWatermark, completedProviderRequest } = require("./readiness");
 
 async function runHoverSignature({ page, bridge, record, root, workspace, contracts, until, onProof }) {
   const m = hoverSignatureModel();
@@ -85,7 +85,8 @@ async function runHoverSignature({ page, bridge, record, root, workspace, contra
       await action("point-target", async () => page.mouse.move(glyph.rect.x + glyph.rect.width / 2, glyph.rect.y + glyph.rect.height / 2));
       return geometry;
     };
-    const request = async (id, method, since) => {
+    const watermark = () => providerWatermark(readTrace(workspace));
+    const request = async (id, method, afterSeq) => {
       await until(`${contract.id}/${method} response`, () => {
         const rows = readTrace(workspace);
         const sameFile = uri => {
@@ -93,8 +94,7 @@ async function runHoverSignature({ page, bridge, record, root, workspace, contra
           const actual = path.resolve(fileURLToPath(uri)), expected = path.resolve(workspace,m.file);
           return process.platform === "win32" ? actual.toLowerCase() === expected.toLowerCase() : actual === expected;
         };
-        const response = rows.find(row => completedResponse(row) && row.method === method && row.timestampMs >= since &&
-          sameFile(row.documentUri));
+        const response = completedProviderRequest(rows, { afterSeq, method, matchesDocument: sameFile });
         if (response) observe(id, response);
         return response;
       });
@@ -115,10 +115,13 @@ async function runHoverSignature({ page, bridge, record, root, workspace, contra
       await state("last-source"); await signature("last-signature");
       await snapshot("open"); await action("dismiss"); await hidden("dismissed", hints);
     } else if (contract.id === "ux10-unknown-receiver") {
-      const hoverAt = Date.now(); await show(); await request("hover-request", "textDocument/hover", hoverAt);
+      const hoverAfter = watermark(); await show(); await request("hover-request", "textDocument/hover", hoverAfter);
       await page.waitForTimeout(350); check("unknown-hover", { visible: await hover.count() !== 0 });
-      await snapshot("open"); await action("enter-call"); await state("argument-source");
-      const signatureAt = Date.now(); await action("show-signature"); await request("signature-request", "textDocument/signatureHelp", signatureAt);
+      await snapshot("open"); const signatureAfter = watermark();
+      await action("enter-call"); await state("argument-source");
+      // Caret movement may already request signature help; explicit invocation
+      // can reuse that result. Require a completed request from this input pair.
+      await action("show-signature"); await request("signature-request", "textDocument/signatureHelp", signatureAfter);
       await page.waitForTimeout(350); check("unknown-signature", { visible: await hints.count() !== 0 });
     } else {
       let geometry;

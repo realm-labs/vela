@@ -1,7 +1,7 @@
 "use strict";
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
-const { readTrace, workspaceReadiness, completedResponse } = require("../../editors/vscode/test/input/readiness");
+const { readTrace, workspaceReadiness, completedResponse, providerWatermark, completedProviderRequest } = require("../../editors/vscode/test/input/readiness");
 const received = (seq, method = "textDocument/didOpen") =>
   ({ event: "message_received", lane: "main", seq, method });
 const finished = (seq, timestampMs, method = "textDocument/didOpen") =>
@@ -57,4 +57,39 @@ test("provider completion rejects empty dispatch acknowledgements, stale results
   assert.equal(completedResponse({ ...result, status: "stale_discarded" }), false);
   assert.equal(completedResponse({ ...result, status: "failed" }), false);
   assert.equal(completedResponse(result), true);
+});
+
+const signatureOrigin = { event:"message_received", lane:"main", kind:"request", seq:651, id:"480",
+  method:"textDocument/signatureHelp", documentUri:"file:///input.vela", timestampMs:1215 };
+const signatureReply = { ...signatureOrigin, event:"response_sent", status:"completed", resultKind:"response", outputMessages:1 };
+const signatureOptions = { afterSeq:650, method:signatureOrigin.method, matchesDocument:uri=>uri===signatureOrigin.documentUri };
+
+test("native provider correlation accepts caret-triggered completion before a cached explicit shortcut", () => {
+  // Recorded failure: response at1215, caret state observation at1215 and
+  // explicit shortcut at1224. The same input pair starts after sequence650.
+  assert.deepEqual(completedProviderRequest([signatureOrigin, signatureReply], signatureOptions), signatureReply);
+  assert.deepEqual(completedProviderRequest([signatureOrigin, {...signatureReply,timestampMs:0}], signatureOptions), {...signatureReply,timestampMs:0});
+  assert.equal(completedProviderRequest([signatureOrigin, signatureReply], {...signatureOptions,afterSeq:651}), undefined);
+  assert.equal(providerWatermark([]), 0);
+  assert.equal(providerWatermark([{event:"session_start"}, signatureOrigin, signatureReply,
+    {...signatureOrigin,lane:"worker",seq:900}, {...signatureReply,seq:901},
+    {...signatureOrigin,seq:undefined}]), 651);
+});
+
+test("native provider correlation rejects stale origins, wrong owners and incomplete or mismatched results", () => {
+  const pair = [signatureOrigin, signatureReply];
+  for (const origin of [{...signatureOrigin,seq:650}, {...signatureOrigin,kind:"notification"},
+    {...signatureOrigin,lane:"worker"}, {...signatureOrigin,method:"textDocument/hover"},
+    {...signatureOrigin,documentUri:"file:///other.vela"}]) {
+    assert.equal(completedProviderRequest([origin,signatureReply],signatureOptions), undefined);
+  }
+  for (const reply of [{...signatureReply,id:"481"}, {...signatureReply,seq:652},
+    {...signatureReply,method:"textDocument/hover"}, {...signatureReply,documentUri:"file:///other.vela"},
+    {...signatureReply,status:"cancelled"}, {...signatureReply,status:"failed"},
+    {...signatureReply,status:"stale_discarded"}, {...signatureReply,resultKind:"none",outputMessages:0}]) {
+    assert.equal(completedProviderRequest([signatureOrigin,reply],signatureOptions), undefined);
+  }
+  assert.equal(completedProviderRequest([signatureReply],signatureOptions),undefined);
+  assert.equal(completedProviderRequest([signatureOrigin],signatureOptions),undefined);
+  assert.equal(completedProviderRequest(pair,{...signatureOptions,afterSeq:652}),undefined);
 });

@@ -43,4 +43,18 @@ function completedResponse(row) {
     row.resultKind === "response" && row.outputMessages > 0;
 }
 
-module.exports = { readTrace, workspaceReadiness, completedResponse };
+function providerWatermark(rows) {
+  return rows.reduce((last, row) => row.event === "message_received" && row.lane === "main" && Number.isSafeInteger(row.seq)
+    ? Math.max(last, row.seq) : last, 0);
+}
+
+function completedProviderRequest(rows, { afterSeq, method, matchesDocument }) {
+  const request = rows.find(row => row.event === "message_received" && row.lane === "main" &&
+    row.kind === "request" && row.seq > afterSeq && row.method === method && matchesDocument(row.documentUri) &&
+    rows.some(result => completedResponse(result) && result.seq === row.seq && result.id === row.id &&
+      result.method === method && result.documentUri === row.documentUri));
+  return request && rows.find(result => completedResponse(result) && result.seq === request.seq &&
+    result.id === request.id && result.method === method && result.documentUri === request.documentUri);
+}
+
+module.exports = { readTrace, workspaceReadiness, completedResponse, providerWatermark, completedProviderRequest };

@@ -8421,6 +8421,15 @@
         "workspace-symbol/states/cancellation/protocol"
       ],
       "summary": "Close two workspace-symbol protocol stale_version/cancellation requirements with five real worker tests, complete independently authored19-phase source/schema lifecycle query/range sets and literal worker IDs/versions/params/errors. Equal/lower document versions emit no publications or generation mutation; queued/completed tasks remain publishable with complete current rows, and newer2 changes names/ranges with fresh parity and immutable prior facts. Cancel integer boundaries/zero, Unicode/empty/string20 IDs across whole/schema/no-match queries before worker completion or after held completion; repeated cancellation emits exactly one RequestCancelled with no symbols/state mutation, and immediate/late ID reuse succeeds. Numeric20/string20 isolation, unknown/malformed params and late cancels cannot poison unrelated pending/future results. Every subsequent lifecycle phase advances generation with two old tasks: numeric20 cancellation wins; string20 old output stays unpublished, receives exactly one retry and publishes only the current complete authored workspace rows. Two successive source changes exhaust that retry with one ContentModified and no further retry; cancelling that retried/stale result still wins. Real queue/receive/publish uses existing five-second bounds and no sleeps. LF/CRLF/two Unicode shifts, encoded private roots, current complete UTF16 JSON-RPC envelopes, unchanged physical/source/schema bytes, all prior source/schema/outline snapshots and whole workspace ownership remain checked against fresh coordinators. Retain initial incorrect TaskOutcome::Published compile and immediate-stale-error assumption failure; pin the established Completed and one-retry production policy without production changes. Lifecycle checker gains cfg(test) crate visibility only. Rust1.97.0 protocol baseline15, focused service11/protocol20, worker5, original cancellation3, Node163, fmt/relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full audit and strict B09 service755+2 historical ignored/protocol808/stdio10. Core933 verified/392 open/2NA/zero failed; B10 sixty-three verified/113 pending, parent open. Preserve ten accepted snapshots, prior212 completed children, all50 native contracts and historical independent macOS audit. S0/S11 completeness and installed/native picker remain open; next B10.12, fresh independent macOS required when used and B16 deferred. VSIX editors/vscode/test-results/run-VqUAXw/results.json; native editors/vscode/test-results/input-iGZiaz/results.json; audit target/lsp-matrix/run-LaF4pF/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B07.19",
+      "revision": null,
+      "requirements": [
+        "vscode/UX10/unknown-receiver/input/local",
+        "vscode/UX10/unknown-receiver/render/local"
+      ],
+      "summary": "Prerequisite repair exposed while validating B10.12; recheck already accepted UX10 unknown-receiver native input/render without changing their contract or batch acceptance. Original full native attempt input-58HWQA timed out while signatureHelp480 had actually returned null in1ms: moving into the call automatically requested hints, and the later Ctrl+Shift+Space reused the cached result. Correlate the complete physical enter-call/show-signature input pair by the last main received sequence, not a wall-clock cutoff after the final shortcut. Require a new main request with matching method/owned URI plus a real completed response with the same seq/ID/method/URI. Reject old origins, missing responses, mismatched owners/IDs/methods, cancellation, stale/failed results and zero-output dispatch; ignore unsequenced session metadata and worker/output records when taking the watermark. Existing finite15s observation/45s proof bounds, input actions, exact source/caret/disk/widget checks,50 native contracts and both profiles remain unchanged. Windows Rust1.97.0 targeted all five UX10 routes plus original prerequisites yields16 passing proofs; input-NNzNrS independently validates package/profile/source/receipts and captures signature248 at1791166037073 after enter-call and before explicit shortcut at1791166037078, proving the failing schedule succeeds. Readiness7 and full Node167 pass. Retain failed58HWQA and passingNNzNrS bundles/logs. No full50 or refreshed strict acceptance claim from this focused capture. Validation source also contains pending uncommitted B10.12 symbol tests; active/next B10.12 remains unchanged, prior213 children/ten accepted snapshots/platform audits remain historical. Complete fresh full native/GUI/strict validation with the pending child; independent fresh macOS required when used and B16 deferred. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; prior accepted/profile/child records independently deep-compared unchanged."
     }
   ],
   "activeChild": "B10.12",
@@ -10802,7 +10811,14 @@
     "target/b10-11-node.log",
     "target/b10-11-format.log",
     "target/b10-11-clippy.log",
-    "target/b10-11-checkpoint.log"
+    "target/b10-11-checkpoint.log",
+    "editors/vscode/test-results/input-58HWQA/results.json",
+    "editors/vscode/test-results/input-NNzNrS/results.json",
+    "target/b10-12-input-first.log",
+    "target/b10-12-hover-repro.log",
+    "target/b10-12-readiness.log",
+    "target/b10-12-prerequisite-node.log",
+    "target/b10-12-prerequisite-checkpoint.log"
   ],
   "openIssues": [
     {
