@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "base": "workspace-symbol-ownership",
+  "file": "scripts/main.vela",
+  "sequences": {
+    "unresolved": [
+      {"id":"baseline","imports":"","body":""},
+      {"id":"missing-import","imports":"use absent_state::Phantom as StateGhost;\n","body":" StateGhost { value: 1 }; absent_state::state_call();\n"},
+      {"id":"missing-calls","imports":"use absent_state::Phantom as StateGhost;\n","body":" unknown_state.state_field += 1; unknown_state.state_method(); state_call(); StateGhost::state_variant;\n"},
+      {"id":"repair","imports":"","body":" row.value += 1; row.read(); host.read(); build(value = 2);\n"},
+      {"id":"redamage","imports":"use absent_state::Phantom as StateGhost;\n","body":" StateGhost { value: 1 }; absent_state::state_call();\n"},
+      {"id":"restore","imports":"","body":""}
+    ],
+    "dynamic": [
+      {"id":"baseline","imports":"","body":""},
+      {"id":"any-members","imports":"","body":" dynamic.state_field += 1; dynamic.state_method(); dynamic.read();\n"},
+      {"id":"any-chain","imports":"","body":" let state_local: Any = dynamic; state_local.state_method().state_field; state_local[0].state_method(); let state_callback = || dynamic.state_method(); state_callback();\n"},
+      {"id":"repair","imports":"","body":" row.value += 1; row.read(); host.read(); build(value = 2);\n"},
+      {"id":"redamage","imports":"","body":" dynamic.state_field += 1; dynamic.state_method(); dynamic.read();\n"},
+      {"id":"restore","imports":"","body":""}
+    ]
+  },
+  "emptyQueries": ["absent_state", "StateGhost", "state_call", "state_variant", "unknown_state", "state_field", "state_method", "state_local", "state_callback"],
+  "rows": 60,
+  "baseQueries": 49
+}

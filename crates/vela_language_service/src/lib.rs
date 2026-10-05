@@ -135,6 +135,8 @@ mod workspace_symbol_ownership_tests;
 #[cfg(test)]
 mod workspace_symbol_recovery_tests;
 #[cfg(test)]
+mod workspace_symbol_state_tests;
+#[cfg(test)]
 mod workspace_symbol_type_tests;
 
 #[cfg(test)]

@@ -8430,10 +8430,19 @@
         "vscode/UX10/unknown-receiver/render/local"
       ],
       "summary": "Prerequisite repair exposed while validating B10.12; recheck already accepted UX10 unknown-receiver native input/render without changing their contract or batch acceptance. Original full native attempt input-58HWQA timed out while signatureHelp480 had actually returned null in1ms: moving into the call automatically requested hints, and the later Ctrl+Shift+Space reused the cached result. Correlate the complete physical enter-call/show-signature input pair by the last main received sequence, not a wall-clock cutoff after the final shortcut. Require a new main request with matching method/owned URI plus a real completed response with the same seq/ID/method/URI. Reject old origins, missing responses, mismatched owners/IDs/methods, cancellation, stale/failed results and zero-output dispatch; ignore unsequenced session metadata and worker/output records when taking the watermark. Existing finite15s observation/45s proof bounds, input actions, exact source/caret/disk/widget checks,50 native contracts and both profiles remain unchanged. Windows Rust1.97.0 targeted all five UX10 routes plus original prerequisites yields16 passing proofs; input-NNzNrS independently validates package/profile/source/receipts and captures signature248 at1791166037073 after enter-call and before explicit shortcut at1791166037078, proving the failing schedule succeeds. Readiness7 and full Node167 pass. Retain failed58HWQA and passingNNzNrS bundles/logs. No full50 or refreshed strict acceptance claim from this focused capture. Validation source also contains pending uncommitted B10.12 symbol tests; active/next B10.12 remains unchanged, prior213 children/ten accepted snapshots/platform audits remain historical. Complete fresh full native/GUI/strict validation with the pending child; independent fresh macOS required when used and B16 deferred. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; prior accepted/profile/child records independently deep-compared unchanged."
+    },
+    {
+      "id": "B10.12",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/states/unresolved/protocol",
+        "workspace-symbol/states/dynamic/protocol"
+      ],
+      "summary": "Close two workspace-symbol protocol unresolved/dynamic state cells with two authored six-phase sequences, eight source files, sixty complete source/schema ownership rows, original forty-nine queries and nine literal empty probes. Missing module/type imports, aliases, constructors, qualified/free calls, unknown receiver fields/methods and variant paths cannot manufacture global symbols. Any parameter/local, compound write, same-spelled schema method, returned/indexed chains and closure calls keep complete current owned symbols. Baseline/two changes/repair/redamage/restore each repeat all58 queries three times across LF/CRLF and two Unicode shifts, independently checking incremental and fresh databases/coordinators and every earlier immutable source/parse/schema/complete workspace snapshot. Real typed open/change, increasing versions, encoded private roots and whole UTF16 JSON-RPC envelopes retain exact names/kinds/identities/details/containers/ranges and URI-only schema metadata despite bound source origins. Physical source/schema bytes remain separate from dirty overlays and unchanged; loaded host type/field/method/function bindings stay asserted. Node pins finite memberships, no-match probes, baseline/restoration identity, Widget line6/7+shift2, UTF16 columns17..23 versus byte21 and full body extents. Existing test-only ownership setup/URI gains crate visibility to retain original schema assertions; no production changes. Retain exploratory new-test incorrect snapshot path and unwrap lint logs; fix annotation and contextual expect under existing lint policy. Rust1.97.0 process-local baseline20, new service2/protocol2, focused service13/protocol22, Node167, fmt/relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full and strict B09 service757+2 historical ignored/protocol810/stdio10. Core935 verified/390 open/2NA/zero failed; B10 sixty-five verified/111 pending. Preserve ten accepted snapshots, prior214 completed children, all50 native contracts and independent macOS history. S0/S11 completeness and installed/native picker remain open; next B10.13, fresh independent macOS when used, B16 deferred. VSIX editors/vscode/test-results/run-uPjMUI/results.json; native editors/vscode/test-results/input-IdRKwQ/results.json; audit target/lsp-matrix/run-keUq0x/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.12",
-  "nextTask": "B10.12",
+  "activeChild": "B10.13",
+  "nextTask": "B10.13",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10818,7 +10827,27 @@
     "target/b10-12-hover-repro.log",
     "target/b10-12-readiness.log",
     "target/b10-12-prerequisite-node.log",
-    "target/b10-12-prerequisite-checkpoint.log"
+    "target/b10-12-prerequisite-checkpoint.log",
+    "target/lsp-matrix/run-keUq0x/report.json",
+    "editors/vscode/test-results/run-uPjMUI/results.json",
+    "editors/vscode/test-results/input-IdRKwQ/results.json",
+    "target/lsp-matrix/run-xbFid8/report.json",
+    "target/b10-12-toolchain.log",
+    "target/b10-12-input.log",
+    "target/b10-12-editor.log",
+    "target/b10-12-scoped.log",
+    "target/b10-12-baseline.log",
+    "target/b10-12-service-first.log",
+    "target/b10-12-protocol-first.log",
+    "target/b10-12-protocol-second.log",
+    "target/b10-12-service-final.log",
+    "target/b10-12-protocol-final.log",
+    "target/b10-12-node-first.log",
+    "target/b10-12-node.log",
+    "target/b10-12-format.log",
+    "target/b10-12-clippy-first.log",
+    "target/b10-12-clippy.log",
+    "target/b10-12-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14746,8 +14775,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "604095b9aa85777f16186bfd04e1b20e16880cd3",
-          "treeSha256": "11626ffcef53025d016c0429d6571c2c1173e34befad81064e5bb171fed3241a"
+          "revision": "3a59dfdb4d30c3fd290b55bce81ad3018abb72d2",
+          "treeSha256": "b64c3a616739cdc16ce41d618b5bfc6f67346eb7dcd5cdd272aa82296fa656c9"
         },
         "profile": {
           "platform": "win32",
@@ -14755,11 +14784,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-LaF4pF/report.json"
+          "target/lsp-matrix/run-keUq0x/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-VqUAXw/results.json --local-results editors/vscode/test-results/input-iGZiaz/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-uPjMUI/results.json --local-results editors/vscode/test-results/input-IdRKwQ/results.json",
             "exitCode": 0
           }
         ]

@@ -17507,6 +17507,26 @@
           "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_retry_exhaustion_returns_one_exact_error_and_cancellation_still_wins"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/states/unresolved/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-states.md. Six finite unresolved phases reuse independently authored60 source/schema ownership rows and49 query sets plus9 literal empty probes. Baseline, two distinct body/import changes, healthy repair, redamage and restoration retain complete current kinds, identities, details/containers and source ranges versus URI-only schema locations. Unknown imports/calls/constructors/variants and Any local/member/returned/indexed/closure accesses cannot invent global symbols or suppress genuine same-spelled schema methods. Typed didOpen/didChange owns dirty text while physical sources and static bound schema bytes stay unchanged. Repeat all58 queries three times across LF/CRLF and two Unicode prefix lines in private encoded roots; compare every phase against independently initialized fresh coordinators and recheck every prior immutable complete snapshot. Eight source records and valid loaded schema bindings remain asserted. Service supplies matching incremental/fresh/frozen parity. S0/S11 completeness and installed/native picker remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_states::lsp_workspace_symbol_unresolved_states_pin_whole_utf16_sets_and_restoration"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/states/dynamic/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-states.md. Six finite dynamic phases reuse independently authored60 source/schema ownership rows and49 query sets plus9 literal empty probes. Baseline, two distinct body/import changes, healthy repair, redamage and restoration retain complete current kinds, identities, details/containers and source ranges versus URI-only schema locations. Unknown imports/calls/constructors/variants and Any local/member/returned/indexed/closure accesses cannot invent global symbols or suppress genuine same-spelled schema methods. Typed didOpen/didChange owns dirty text while physical sources and static bound schema bytes stay unchanged. Repeat all58 queries three times across LF/CRLF and two Unicode prefix lines in private encoded roots; compare every phase against independently initialized fresh coordinators and recheck every prior immutable complete snapshot. Eight source records and valid loaded schema bindings remain asserted. Service supplies matching incremental/fresh/frozen parity. S0/S11 completeness and installed/native picker remain open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_states::lsp_workspace_symbol_dynamic_states_pin_whole_utf16_sets_and_restoration"
+        }
+      ]
     }
   ],
   "featureFiles": [

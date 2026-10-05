@@ -6,11 +6,11 @@ use crate::{
 };
 use serde_json::{Value, json};
 
-fn uri(file: &str) -> String {
+pub(crate) fn uri(file: &str) -> String {
     format!("/workspace/中文 % workspace ownership/{file}")
 }
 
-fn database(fixture: &FixtureWorkspace, facts: &Value) -> LanguageServiceDatabases {
+pub(crate) fn database(fixture: &FixtureWorkspace, facts: &Value) -> LanguageServiceDatabases {
     let sources = fixture
         .disk
         .iter()
