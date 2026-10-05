@@ -17595,6 +17595,78 @@
           "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_retry_exhaustion_returns_one_exact_error_and_cancellation_still_wins"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S0/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-sources.md. Fourteen literal workspace and five no-root scratch phases pin complete ordered file/module/declaration rows and fourteen exact query sets. Scripts/shared configured root add/remove/restore, dirty main versus hidden physical replacement and close-restored newer disk, source deletion/recreation and actual owned api.vela-to-renamed.vela rename retain exact current source counts, canonical names/identities/kinds/details/containers and full source ranges. Closed outside secret remains physical but never becomes a source/global owner; missing outside scratch opens as scratch_0 with roots or main in the scratch package without roots, and dirty/close/reopen never writes a disk file or retains stale rows. All queries repeat three times under LF/CRLF and two Unicode prefix lines, preserving cache counters/generation and comparing independent fresh service/coordinator state and every earlier immutable source/parse/whole symbol snapshot. Typed initialize/folder/open/change/close/watched dispatch, encoded private roots, complete UTF16 JSON-RPC envelopes and actual disk bytes/presence/absence remain independently asserted. Function names start at UTF16 column15 versus byte19; constants18 versus22, main import line plus two-line shift, and full file EOF markers are literal. Explicit original nineteen-phase source/schema workspace lifecycle tests retain all complete authored query sets, dirty/close/dependency replacement/deletion/recreation, genuinely bound schema replacement/invalid format99/missing/restoration, diagnostic/outline/source/schema/physical facts and immutable snapshots. Node pins nineteen state memberships/root actions/genuine rename, missing scratch disk and independent marker geometry. No guessed globals, script execution, ownership or runtime changes, duplicate dispatch, weakened architecture gate or cross-platform evidence mixing. Installed/native workspace picker remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_source_tests::workspace_symbol_configured_roots_disk_rename_and_missing_scratch_pin_whole_owned_sets"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_source_tests::workspace_symbol_no_root_scratch_open_dirty_close_reopen_pin_whole_owned_sets"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_lifecycle_tests::workspace_symbol_lifecycle_pins_current_and_frozen_whole_sets_against_fresh_databases"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S0/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-sources.md. Fourteen literal workspace and five no-root scratch phases pin complete ordered file/module/declaration rows and fourteen exact query sets. Scripts/shared configured root add/remove/restore, dirty main versus hidden physical replacement and close-restored newer disk, source deletion/recreation and actual owned api.vela-to-renamed.vela rename retain exact current source counts, canonical names/identities/kinds/details/containers and full source ranges. Closed outside secret remains physical but never becomes a source/global owner; missing outside scratch opens as scratch_0 with roots or main in the scratch package without roots, and dirty/close/reopen never writes a disk file or retains stale rows. All queries repeat three times under LF/CRLF and two Unicode prefix lines, preserving cache counters/generation and comparing independent fresh service/coordinator state and every earlier immutable source/parse/whole symbol snapshot. Typed initialize/folder/open/change/close/watched dispatch, encoded private roots, complete UTF16 JSON-RPC envelopes and actual disk bytes/presence/absence remain independently asserted. Function names start at UTF16 column15 versus byte19; constants18 versus22, main import line plus two-line shift, and full file EOF markers are literal. Explicit original nineteen-phase source/schema workspace lifecycle tests retain all complete authored query sets, dirty/close/dependency replacement/deletion/recreation, genuinely bound schema replacement/invalid format99/missing/restoration, diagnostic/outline/source/schema/physical facts and immutable snapshots. Node pins nineteen state memberships/root actions/genuine rename, missing scratch disk and independent marker geometry. No guessed globals, script execution, ownership or runtime changes, duplicate dispatch, weakened architecture gate or cross-platform evidence mixing. Installed/native workspace picker remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_sources::lsp_workspace_symbol_configured_roots_disk_rename_and_missing_scratch_pin_whole_owned_sets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_sources::lsp_workspace_symbol_no_root_scratch_open_dirty_close_reopen_pin_whole_owned_sets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_lifecycle::lsp_workspace_symbol_lifecycle_pins_whole_utf16_sets_and_frozen_snapshots_with_fresh_parity"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S0/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-sources.md. Fourteen literal workspace and five no-root scratch phases pin complete ordered file/module/declaration rows and fourteen exact query sets. Scripts/shared configured root add/remove/restore, dirty main versus hidden physical replacement and close-restored newer disk, source deletion/recreation and actual owned api.vela-to-renamed.vela rename retain exact current source counts, canonical names/identities/kinds/details/containers and full source ranges. Closed outside secret remains physical but never becomes a source/global owner; missing outside scratch opens as scratch_0 with roots or main in the scratch package without roots, and dirty/close/reopen never writes a disk file or retains stale rows. All queries repeat three times under LF/CRLF and two Unicode prefix lines, preserving cache counters/generation and comparing independent fresh service/coordinator state and every earlier immutable source/parse/whole symbol snapshot. Typed initialize/folder/open/change/close/watched dispatch, encoded private roots, complete UTF16 JSON-RPC envelopes and actual disk bytes/presence/absence remain independently asserted. Function names start at UTF16 column15 versus byte19; constants18 versus22, main import line plus two-line shift, and full file EOF markers are literal. Explicit original nineteen-phase source/schema workspace lifecycle tests retain all complete authored query sets, dirty/close/dependency replacement/deletion/recreation, genuinely bound schema replacement/invalid format99/missing/restoration, diagnostic/outline/source/schema/physical facts and immutable snapshots. Node pins nineteen state memberships/root actions/genuine rename, missing scratch disk and independent marker geometry. No guessed globals, script execution, ownership or runtime changes, duplicate dispatch, weakened architecture gate or cross-platform evidence mixing. Installed/native workspace picker remains open.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_source_tests::workspace_symbol_configured_roots_disk_rename_and_missing_scratch_pin_whole_owned_sets"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_source_tests::workspace_symbol_no_root_scratch_open_dirty_close_reopen_pin_whole_owned_sets"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_lifecycle_tests::workspace_symbol_lifecycle_pins_current_and_frozen_whole_sets_against_fresh_databases"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S0/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-sources.md. Fourteen literal workspace and five no-root scratch phases pin complete ordered file/module/declaration rows and fourteen exact query sets. Scripts/shared configured root add/remove/restore, dirty main versus hidden physical replacement and close-restored newer disk, source deletion/recreation and actual owned api.vela-to-renamed.vela rename retain exact current source counts, canonical names/identities/kinds/details/containers and full source ranges. Closed outside secret remains physical but never becomes a source/global owner; missing outside scratch opens as scratch_0 with roots or main in the scratch package without roots, and dirty/close/reopen never writes a disk file or retains stale rows. All queries repeat three times under LF/CRLF and two Unicode prefix lines, preserving cache counters/generation and comparing independent fresh service/coordinator state and every earlier immutable source/parse/whole symbol snapshot. Typed initialize/folder/open/change/close/watched dispatch, encoded private roots, complete UTF16 JSON-RPC envelopes and actual disk bytes/presence/absence remain independently asserted. Function names start at UTF16 column15 versus byte19; constants18 versus22, main import line plus two-line shift, and full file EOF markers are literal. Explicit original nineteen-phase source/schema workspace lifecycle tests retain all complete authored query sets, dirty/close/dependency replacement/deletion/recreation, genuinely bound schema replacement/invalid format99/missing/restoration, diagnostic/outline/source/schema/physical facts and immutable snapshots. Node pins nineteen state memberships/root actions/genuine rename, missing scratch disk and independent marker geometry. No guessed globals, script execution, ownership or runtime changes, duplicate dispatch, weakened architecture gate or cross-platform evidence mixing. Installed/native workspace picker remains open.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_sources::lsp_workspace_symbol_configured_roots_disk_rename_and_missing_scratch_pin_whole_owned_sets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_sources::lsp_workspace_symbol_no_root_scratch_open_dirty_close_reopen_pin_whole_owned_sets"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_lifecycle::lsp_workspace_symbol_lifecycle_pins_whole_utf16_sets_and_frozen_snapshots_with_fresh_parity"
+        }
+      ]
     }
   ],
   "featureFiles": [

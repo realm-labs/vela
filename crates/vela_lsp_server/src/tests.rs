@@ -251,6 +251,7 @@ mod workspace_symbol_lifecycle;
 mod workspace_symbol_matrix;
 mod workspace_symbol_ownership;
 mod workspace_symbol_recovery;
+mod workspace_symbol_sources;
 mod workspace_symbol_states;
 mod workspace_symbol_types;
 mod workspace_symbol_worker;

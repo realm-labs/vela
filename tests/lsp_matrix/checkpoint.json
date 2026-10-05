@@ -8450,10 +8450,21 @@
         "workspace-symbol/syntax/S11/negative/protocol"
       ],
       "summary": "Close four workspace-symbol S11 positive/negative service/protocol cells with nine independently authored source-only incremental phases, five files, nineteen complete ordered rows and seventeen literal queries. Body receiver changes/restoration, import owner switch/missing/restoration, changed return declaration and make rename/restoration pin exact names/kinds/canonical identities/details/containers/full declaration and file ranges. Fourth matches the type name only despite function return detail; make_deleted remains a qualified substring match while whole sets forbid stale duplicates; aliases/fields/locals/missing imports invent no global rows. Repeated queries three times across LF/CRLF and two Unicode shifts preserve read-only generation/parse/project/HIR counters. Exact one-document reparse/HIR rebuild, zero/one project rebuild, literal declaration/import fingerprints and authored reverse dependency sets including transitive relay and excluding unrelated are checked independently. Incremental/fresh databases and actual typed open/change coordinators retain complete current facts; every prior immutable source/parse/symbol snapshot is rechecked at every later phase. Encoded private roots, whole UTF16 JSON-RPC envelopes, schema-location absence and immutable physical disk beneath dirty overlays remain asserted. Service rejects old-generation actual symbol results while owning old snapshots accept them, and cancels every phase/query before computation or after completion with fresh result acceptance and no cache mutation. Explicitly mapped original five real worker tests retain old version rejection, queued/completed cancellation, malformed/different typed IDs, cancellation priority, one retry over all source/schema lifecycle changes and exact ContentModified on exhausted retry. No unsupported cancellable computation API, sleeps, extra retry policy or production/runtime change. Node pins literal nine phase/fingerprint/invalidation inventory, nineteen ordered memberships, detail/rename transitions, empty probes and main line1/+2 UTF16 columns15..19 versus byte19. Test-only protocol symbol projection gains crate visibility for reuse without weakening original assertions. Rust1.97 process-local baseline22, new service2/protocol1, focused service15/protocol23, Node169, fmt/relevant all-target Clippy; frozen Windows VSIX23/native50, complete post-GUI recovery audit and strict B09 service759+2 historical ignored/protocol811/stdio10. Core939 verified/386 open/2NA/zero failed; B10 sixty-nine verified/107 pending. Preserve ten accepted snapshots, prior215 completed children, all50 native contracts and independent macOS history. S0 and installed/native picker remain open; next B10.14, fresh independent macOS when used, B16 deferred. Retain initial full-audit single-owner architecture failure triggered by new TestServer field self.server; rename to test_server under the unchanged original architecture gate, run architecture3 and repeat current-source native/GUI/full/strict evidence. Earlier successful native50/GUI23 remain first-source artifacts only, never substitute final recaptures. Retain second audit protocol process STATUS_ACCESS_VIOLATION exit0xc0000005 with partial output and no completed suite result; cause not established. Full nocapture diagnostic rerun811 passes while native CDB monitor records no access exception/dump. Complete ordinary recovery and strict audits must both pass without instrumentation or source changes; no test removal, ignored new tests or weakened architecture gate. VSIX editors/vscode/test-results/run-Wbp1lj/results.json; native editors/vscode/test-results/input-rUbFWJ/results.json; audit target/lsp-matrix/run-sTZFAl/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.14",
+      "revision": null,
+      "requirements": [
+        "workspace-symbol/syntax/S0/positive/service",
+        "workspace-symbol/syntax/S0/positive/protocol",
+        "workspace-symbol/syntax/S0/negative/service",
+        "workspace-symbol/syntax/S0/negative/protocol"
+      ],
+      "summary": "Close four workspace-symbol S0 positive/negative service/protocol cells with independently authored fourteen workspace and five no-root scratch phases, fourteen complete ordered query sets and exact file/module/declaration owners. Scripts/shared root add/remove/restore, main open/dirty/hidden-disk/newer-close restoration, source delete/recreate and actual owned api.vela-to-renamed.vela physical rename preserve literal current identities/kinds/names/details/containers/full source extents. Closed outside secret stays physical but excluded from all source/global sets. Missing outside scratch is scratch_0 with roots or main in the scratch package without roots; dirty/close/reopen never creates a disk file or leaks old owners. Exact database source key sets and bytes, parse validity and absent schema types/functions are independently checked. Repeat every query three times across LF/CRLF and two Unicode shifts, compare independently fresh databases/coordinators and recheck every prior immutable complete source/parse/symbol snapshot while read-only generation/cache counters stay fixed. Actual typed initialization/folder/open/change/close/watched dispatch, encoded private roots, complete UTF16 JSON-RPC envelopes and physical disk presence/absence/bytes remain asserted. Config root changes use the existing reset boundary; no ownership or runtime policy change. Function names have UTF16 column15 versus byte19, constants18 versus22, main import line and full EOF markers; Node pins nineteen phase memberships/roots/true rename/negative probes and transformed geometry. Explicit original complete nineteen-phase workspace source/schema lifecycle tests retain all whole outline/schema/source/diagnostic/physical/immutable assertions and independent sets through bound schema replacement/invalid format99/missing/restoration. Test-only fixture/support/service/protocol/Node/review modules stay below size limits; preserve original catalog formatting/entries. No production/architecture change, script execution, guessed global facts or newly ignored tests. Rust1.97 process-local baseline23 and architecture3, new service2/protocol2, architecture3, focused service17/protocol25, Node171, fmt/relevant all-target Clippy; frozen Windows VSIX23/native50, automatic full and strict B09 service761+2 historical ignored/protocol813/stdio10. Core943 verified/382 pending/2NA/zero failed; B10 seventy-three verified/103 pending. Preserve ten accepted snapshots, prior216 children, all50 native contracts and independent macOS history. Workspace-symbol core now only installed editor smoke remains; native UX11, folding/selection and UX12 remain open. Next B10.15, fresh independent macOS when used, B16 deferred. VSIX editors/vscode/test-results/run-ecEGSP/results.json; native editors/vscode/test-results/input-iSj6gl/results.json; audit target/lsp-matrix/run-cyMHb2/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.14",
-  "nextTask": "B10.14",
+  "activeChild": "B10.15",
+  "nextTask": "B10.15",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -10887,7 +10898,27 @@
     "target/b10-13-format.log",
     "target/b10-13-clippy.log",
     "target/b10-13-architecture.log",
-    "target/b10-13-checkpoint.log"
+    "target/b10-13-checkpoint.log",
+    "target/lsp-matrix/run-cyMHb2/report.json",
+    "editors/vscode/test-results/run-ecEGSP/results.json",
+    "editors/vscode/test-results/input-iSj6gl/results.json",
+    "target/lsp-matrix/run-30cfQm/report.json",
+    "target/b10-14-toolchain.log",
+    "target/b10-14-input.log",
+    "target/b10-14-editor.log",
+    "target/b10-14-scoped.log",
+    "target/b10-14-baseline.log",
+    "target/b10-14-architecture-baseline.log",
+    "target/b10-14-architecture.log",
+    "target/b10-14-service-first.log",
+    "target/b10-14-protocol-first.log",
+    "target/b10-14-service-final.log",
+    "target/b10-14-protocol-final.log",
+    "target/b10-14-node-first.log",
+    "target/b10-14-node.log",
+    "target/b10-14-format.log",
+    "target/b10-14-clippy.log",
+    "target/b10-14-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -14815,8 +14846,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "5ef7d3c2a191730f2ec5199edc2f0463245a24f0",
-          "treeSha256": "4ea8553491b126f039103b0156f7092c319662350614788c447ce5dbbb4dcca1"
+          "revision": "4d05c7a16218d5aaf4dd55f4c5f2201a3afa2365",
+          "treeSha256": "484fecf99b347afbbeb6a0facf5b97cc385b5cbac9d01ce9beeb02d0d95637ed"
         },
         "profile": {
           "platform": "win32",
@@ -14824,11 +14855,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-sTZFAl/report.json"
+          "target/lsp-matrix/run-cyMHb2/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-Wbp1lj/results.json --local-results editors/vscode/test-results/input-rUbFWJ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ecEGSP/results.json --local-results editors/vscode/test-results/input-iSj6gl/results.json",
             "exitCode": 0
           }
         ]

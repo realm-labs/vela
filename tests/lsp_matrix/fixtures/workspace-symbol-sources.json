@@ -1,0 +1,873 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-sources",
+  "files": {
+    "scripts/api.vela": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]alpha[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+    "scripts/main.vela": "[[file:start]]use api::alpha as choose;\n/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]caller[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+    "shared/helper.vela": "[[file:start]]/*中😀*/ [[decl-range:start]]pub const [[decl-name:start]]LIMIT[[decl-name:end]]: i64 = 3;[[decl-range:end]]\n[[file:end]]",
+    "outside/secret.vela": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]secret[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "variants": {
+      "api": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]alpha[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "main": "[[file:start]]use api::alpha as choose;\n/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]caller[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "dirty": "[[file:start]]use api::alpha as choose;\n/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]caller_dirty[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "disk": "[[file:start]]use api::alpha as choose;\n/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]caller_disk[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "helper": "[[file:start]]/*中😀*/ [[decl-range:start]]pub const [[decl-name:start]]LIMIT[[decl-name:end]]: i64 = 3;[[decl-range:end]]\n[[file:end]]",
+      "scratch": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]local[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "scratchDirty": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]local_dirty[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]",
+      "secret": "[[file:start]]/*中😀*/ [[decl-range:start]]pub fn [[decl-name:start]]secret[[decl-name:end]]() {}[[decl-range:end]]\n[[file:end]]"
+    },
+    "sequences": {
+      "workspace": [
+        {
+          "id": "initial",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {},
+          "actions": [],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "open-main",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "scripts/main.vela": "main"
+          },
+          "actions": [
+            {
+              "op": "open",
+              "file": "scripts/main.vela",
+              "variant": "main"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "dirty-main",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "scripts/main.vela": "dirty"
+          },
+          "actions": [
+            {
+              "op": "change",
+              "file": "scripts/main.vela",
+              "variant": "dirty"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_dirty","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_dirty","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":["scripts-main-decl"]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "hidden-disk",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "scripts/main.vela": "dirty"
+          },
+          "actions": [
+            {
+              "op": "write",
+              "file": "scripts/main.vela",
+              "variant": "disk"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_dirty","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_dirty","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":["scripts-main-decl"]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "close-new-disk",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "close",
+              "file": "scripts/main.vela"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "delete-api",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "delete",
+              "file": "scripts/api.vela"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "recreate-api",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/api.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "write",
+              "file": "scripts/api.vela",
+              "variant": "api"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+              {"id":"scripts-api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-api-decl","name":"api::alpha","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"decl-range","detail":"()","container":"api","identity":"api::alpha","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl","scripts-main-module","scripts-main-file","scripts-main-decl"]},
+              {"id":"api","query":"api","symbols":["scripts-api-module","scripts-api-file","scripts-api-decl"]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-api-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "renamed-owner",
+          "roots": [
+            "scripts"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "rename",
+              "file": "scripts/api.vela",
+              "to": "scripts/renamed.vela"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"},
+              {"id":"scripts-renamed-module","name":"renamed","kind":"Module","protocolKind":2,"file":"scripts/renamed.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::renamed","ownership":"Source"},
+              {"id":"scripts-renamed-file","name":"renamed.vela","kind":"File","protocolKind":1,"file":"scripts/renamed.vela","range":"file","detail":"renamed","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-renamed-decl","name":"renamed::alpha","kind":"Function","protocolKind":12,"file":"scripts/renamed.vela","range":"decl-range","detail":"()","container":"renamed","identity":"renamed::alpha","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-renamed-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":["scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "add-shared-root",
+          "roots": [
+            "scripts",
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "roots",
+              "roots": [
+                "scripts",
+                "shared"
+              ]
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"},
+              {"id":"scripts-renamed-module","name":"renamed","kind":"Module","protocolKind":2,"file":"scripts/renamed.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::renamed","ownership":"Source"},
+              {"id":"scripts-renamed-file","name":"renamed.vela","kind":"File","protocolKind":1,"file":"scripts/renamed.vela","range":"file","detail":"renamed","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-renamed-decl","name":"renamed::alpha","kind":"Function","protocolKind":12,"file":"scripts/renamed.vela","range":"decl-range","detail":"()","container":"renamed","identity":"renamed::alpha","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-renamed-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":["scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "remove-scripts-root",
+          "roots": [
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "roots",
+              "roots": [
+                "shared"
+              ]
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "open-missing-scratch",
+          "roots": [
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {
+            "outside/scratch.vela": "scratch"
+          },
+          "actions": [
+            {
+              "op": "open",
+              "file": "outside/scratch.vela",
+              "variant": "scratch"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"},
+              {"id":"outside-scratch-file","name":"scratch.vela","kind":"File","protocolKind":1,"file":"outside/scratch.vela","range":"file","detail":"scratch_0","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"outside-scratch-module","name":"scratch_0","kind":"Module","protocolKind":2,"file":"outside/scratch.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.scratch::scratch_0","ownership":"Source"},
+              {"id":"outside-scratch-decl","name":"scratch_0::local","kind":"Function","protocolKind":12,"file":"outside/scratch.vela","range":"decl-range","detail":"()","container":"scratch_0","identity":"scratch_0::local","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":["outside-scratch-decl"]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":["outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "dirty-missing-scratch",
+          "roots": [
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {
+            "outside/scratch.vela": "scratchDirty"
+          },
+          "actions": [
+            {
+              "op": "change",
+              "file": "outside/scratch.vela",
+              "variant": "scratchDirty"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"},
+              {"id":"outside-scratch-file","name":"scratch.vela","kind":"File","protocolKind":1,"file":"outside/scratch.vela","range":"file","detail":"scratch_0","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"outside-scratch-module","name":"scratch_0","kind":"Module","protocolKind":2,"file":"outside/scratch.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.scratch::scratch_0","ownership":"Source"},
+              {"id":"outside-scratch-decl","name":"scratch_0::local_dirty","kind":"Function","protocolKind":12,"file":"outside/scratch.vela","range":"decl-range","detail":"()","container":"scratch_0","identity":"scratch_0::local_dirty","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":["outside-scratch-decl"]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":["outside-scratch-file","outside-scratch-module","outside-scratch-decl"]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "close-missing-scratch",
+          "roots": [
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "close",
+              "file": "outside/scratch.vela"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "restore-roots",
+          "roots": [
+            "scripts",
+            "shared"
+          ],
+          "disk": {
+            "scripts/main.vela": "disk",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret",
+            "scripts/renamed.vela": "api"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "roots",
+              "roots": [
+                "scripts",
+                "shared"
+              ]
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"shared-helper-module","name":"helper","kind":"Module","protocolKind":2,"file":"shared/helper.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::helper","ownership":"Source"},
+              {"id":"shared-helper-file","name":"helper.vela","kind":"File","protocolKind":1,"file":"shared/helper.vela","range":"file","detail":"helper","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"shared-helper-decl","name":"helper::LIMIT","kind":"Constant","protocolKind":14,"file":"shared/helper.vela","range":"decl-range","detail":"i64","container":"helper","identity":"helper::LIMIT","ownership":"Source"},
+              {"id":"scripts-main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+              {"id":"scripts-main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-main-decl","name":"main::caller_disk","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"decl-range","detail":"()","container":"main","identity":"main::caller_disk","ownership":"Source"},
+              {"id":"scripts-renamed-module","name":"renamed","kind":"Module","protocolKind":2,"file":"scripts/renamed.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::renamed","ownership":"Source"},
+              {"id":"scripts-renamed-file","name":"renamed.vela","kind":"File","protocolKind":1,"file":"scripts/renamed.vela","range":"file","detail":"renamed","container":null,"fileIdentity":true,"ownership":"Source"},
+              {"id":"scripts-renamed-decl","name":"renamed::alpha","kind":"Function","protocolKind":12,"file":"scripts/renamed.vela","range":"decl-range","detail":"()","container":"renamed","identity":"renamed::alpha","ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"trim-empty","query":" \t","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl","scripts-main-module","scripts-main-file","scripts-main-decl","scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":["scripts-renamed-decl"]},
+              {"id":"caller","query":"caller","symbols":["scripts-main-decl"]},
+              {"id":"helper","query":"helper","symbols":["shared-helper-module","shared-helper-file","shared-helper-decl"]},
+              {"id":"LIMIT","query":"LIMIT","symbols":["shared-helper-decl"]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":["scripts-renamed-module","scripts-renamed-file","scripts-renamed-decl"]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        }
+      ],
+      "scratch": [
+        {
+          "id": "cold",
+          "roots": [],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {},
+          "actions": [],
+          "workspace": {
+            "symbols": [],
+            "queries": [
+              {"id":"all","query":"","symbols":[]},
+              {"id":"trim-empty","query":" \t","symbols":[]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "open",
+          "roots": [],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "outside/scratch.vela": "scratch"
+          },
+          "actions": [
+            {
+              "op": "open",
+              "file": "outside/scratch.vela",
+              "variant": "scratch"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"outside-scratch-module","name":"main","kind":"Module","protocolKind":2,"file":"outside/scratch.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.scratch::main","ownership":"Source"},
+              {"id":"outside-scratch-decl","name":"main::local","kind":"Function","protocolKind":12,"file":"outside/scratch.vela","range":"decl-range","detail":"()","container":"main","identity":"main::local","ownership":"Source"},
+              {"id":"outside-scratch-file","name":"scratch.vela","kind":"File","protocolKind":1,"file":"outside/scratch.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"trim-empty","query":" \t","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":["outside-scratch-decl"]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":["outside-scratch-file"]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "dirty",
+          "roots": [],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "outside/scratch.vela": "scratchDirty"
+          },
+          "actions": [
+            {
+              "op": "change",
+              "file": "outside/scratch.vela",
+              "variant": "scratchDirty"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"outside-scratch-module","name":"main","kind":"Module","protocolKind":2,"file":"outside/scratch.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.scratch::main","ownership":"Source"},
+              {"id":"outside-scratch-decl","name":"main::local_dirty","kind":"Function","protocolKind":12,"file":"outside/scratch.vela","range":"decl-range","detail":"()","container":"main","identity":"main::local_dirty","ownership":"Source"},
+              {"id":"outside-scratch-file","name":"scratch.vela","kind":"File","protocolKind":1,"file":"outside/scratch.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"trim-empty","query":" \t","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":["outside-scratch-decl"]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":["outside-scratch-file"]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "close",
+          "roots": [],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {},
+          "actions": [
+            {
+              "op": "close",
+              "file": "outside/scratch.vela"
+            }
+          ],
+          "workspace": {
+            "symbols": [],
+            "queries": [
+              {"id":"all","query":"","symbols":[]},
+              {"id":"trim-empty","query":" \t","symbols":[]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":[]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":[]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        },
+        {
+          "id": "reopen",
+          "roots": [],
+          "disk": {
+            "scripts/api.vela": "api",
+            "scripts/main.vela": "main",
+            "shared/helper.vela": "helper",
+            "outside/secret.vela": "secret"
+          },
+          "open": {
+            "outside/scratch.vela": "scratch"
+          },
+          "actions": [
+            {
+              "op": "open",
+              "file": "outside/scratch.vela",
+              "variant": "scratch"
+            }
+          ],
+          "workspace": {
+            "symbols": [
+              {"id":"outside-scratch-module","name":"main","kind":"Module","protocolKind":2,"file":"outside/scratch.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.scratch::main","ownership":"Source"},
+              {"id":"outside-scratch-decl","name":"main::local","kind":"Function","protocolKind":12,"file":"outside/scratch.vela","range":"decl-range","detail":"()","container":"main","identity":"main::local","ownership":"Source"},
+              {"id":"outside-scratch-file","name":"scratch.vela","kind":"File","protocolKind":1,"file":"outside/scratch.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"}
+            ],
+            "queries": [
+              {"id":"all","query":"","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"trim-empty","query":" \t","symbols":["outside-scratch-module","outside-scratch-decl","outside-scratch-file"]},
+              {"id":"api","query":"api","symbols":[]},
+              {"id":"alpha","query":"alpha","symbols":[]},
+              {"id":"caller","query":"caller","symbols":[]},
+              {"id":"helper","query":"helper","symbols":[]},
+              {"id":"LIMIT","query":"LIMIT","symbols":[]},
+              {"id":"local","query":"local","symbols":["outside-scratch-decl"]},
+              {"id":"renamed","query":"renamed","symbols":[]},
+              {"id":"scratch","query":"scratch","symbols":["outside-scratch-file"]},
+              {"id":"main::caller_dirty","query":"main::caller_dirty","symbols":[]},
+              {"id":"alias","query":"choose","symbols":[]},
+              {"id":"secret","query":"secret","symbols":[]},
+              {"id":"missing","query":"not_a_symbol_911","symbols":[]}
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
