@@ -8593,10 +8593,18 @@
         "folding/states/recovery/protocol"
       ],
       "summary": "Five folding S9 service/protocol and protocol recovery cells.54 independently authored complete sets:49 positives/264 spans/five true empties;43 diagnosed/11 valid or accepted quiet. Missing declaration/member names, hints, values/defaults and body parts retain healthy neighbors; EOF function/array/map/record/block/lambda/parameters/default arrays/types/variants/trait/impl retain all available folds. Quiet partial member/argument/constructor/pattern/initializer and dynamic/unresolved owners preserve existing parse policy; unfinished use retains one imports group without new errors. Unknown parenthesized-list and lexical multiline-string shapes pin exact authored PathExpr cached CST extents and no guessed tuple/literal folds. All states damage/clean repair/same damage:162 per LF/CRLF/two Unicode shift form, exact main/helper/missing sets3times on disk/dirty/close/current/fresh/every immutable source/parse/query snapshot; fixed generation/parse/project/HIR counters, two records/absent schema, owned bounded parse spans and whole current/fresh metadata. Protocol actual diagnostic appearance/clearing/redamage/close, whole typed envelopes, encoded owned roots and unchanged physical bytes. Literal first neighbor item8 UTF16/12byte and body20/24 through line2col1. Actual initial172 comparisons preserve four failing lambda spans:inner semicolon mistaken for outer terminator, fixed with root-depth trimming. Direct lambda red/green tests cover let/return/expression damage/repair/redamage. Expanded bodyless header swallows next function body and missing-body diagnostic; bounded focused header module restores source declaration boundaries, including attributed/pub/async functions/types/imports/const/state/extern. Direct state-neighbor red/green test and state function/type/Option/qualified-hint safeguards preserve valid spelling and prior unclosed-parameter recovery. Draft tuple/literal guesses and unfinished-use error were corrected against primary CST/lexer/use policy, with original texts/raw failed expectations retained; no production defect claimed for those or existing accepted assertions weakened. Final actual216 shapes (196 positive/20 empty),648 damage/repair/redamage shapes (608 positive/40 empty) and parse receipts all pass. Process-local Rust1.97 baseline service8/Node206; existing protocol12 regression ran after initial lambda fix; final folding service9/protocol13/architecture3, full syntax122+fixture1, Node209, fmt/relevant three-crate all-target Clippy/package. Frozen Windows VSIX24/native50 and automatic full/strictB09 service768+2 historical ignored/protocol821/stdio10. Preserve ten accepted snapshots/prior227 children, original catalog/evidence/50 native contracts, independent macOS history and B16 deferral. Core982 verified/343 pending/2NA/zero failed; B10 112 verified/64 pending. Next B10.23 installed folding coverage; selection/UX11/UX12 remain open, no parent acceptance. VSIX editors/vscode/test-results/run-4wfPaB/results.json; native editors/vscode/test-results/input-LrCDr4/results.json; audit target/lsp-matrix/run-TXAUky/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.23",
+      "revision": null,
+      "requirements": [
+        "folding/editor/smoke"
+      ],
+      "summary": "Installed folding editor smoke only. Eight unchanged independently marked imports/bodies/literals/members/trivia/recovery sets: six positive/19 raw folds/two true empties; primary VS Code folding-model stable start-line sanitizer yields14 independently pinned public line ranges. Raw ordered wire preserves coincident item/body starts and every UTF16 endpoint/kind; import8/37 UTF16 versus12/41 bytes. Four fresh physical Unicode/space/percent roots with unique packages, LF/CRLF and two Unicode shifts preserve first-line shebang. On-disk prefix makes all eight variants dirty; disk/every variant/actual close reopen/helper empties repeated3times give80 full observations/240 public commands,192 observed public ranges. Every complete fresh owned matched client pair after each invocation boundary checked, including coincident background requests, unique IDs/exact params/actual wire[] distinct from null/fallback/error. Actual finite open/change/close/workspace mutations and quiet settling; enabled/auto folding and exact text/EOL/model version/physical bytes retained. Shared owned document lifecycle extracted without changing symbol assertions/cleanup. Four new independent Node fixture/coordinate/materialization/trace tests; existing editor discovery now25 retains all23 old basechecks plus isolated global check. First focused Node draft only failed an overbroad CRLF assertion for an unshifted no-newline EOF case; corrected newline-presence predicate without changing source/goldens/provider behavior, original failed log retained. Rust unchanged; folding service9/protocol13/architecture3, Node213/fmt/package, frozen Windows native50/VSIX25 and automatic full/strictB09 service768+2 historical ignored/protocol821/stdio10. Preserve10 accepted snapshots/prior228 children/catalog/50 native contracts and independent macOS history; B16 deferred. Core983 verified/342 pending/2NA/zero failed; B10 113 verified/63 pending. Next B10.24 selection backend; selection outgoing byte projection still unreviewed/unfixed, native UX11/UX12 remain open; no parent acceptance. First installed run-nwxAxz exposes a test-side public API kind mapping mistake (.value on numeric enum): imports lines correct, projected kind undefined; actual primary VS Code enum Imports2/Region3 and command/client conversions reviewed, explicit numeric mapping rejects missing/object/string/unsupported kinds, raw public rows preserved before assertions. Original failed installed results/client trace/automatic full report retained; its Rust768+2/821/10 pass did not close editor smoke. Corrected source receives fresh native50/VSIX25/full/strict evidence. VSIX editors/vscode/test-results/run-8WmGOA/results.json; native editors/vscode/test-results/input-sbdRtX/results.json; audit target/lsp-matrix/run-pRLzR9/report.json. Find commit through formal LSP-Batch trailer. A second native run input-9hHk32 timed out clicking the previously visible rename_observer Quick Open label in UX17 Explorer rename; original screenshot/ARIA/trace/result/15s log retained. Existing driver already waited actual disk rename/textbox close; cause remains unestablished, no assertion/action/deadline or native harness was changed. Original catalog formatting restored to a single evidence append before final source freeze; final fresh full native gate independently rechecks all50 contracts. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.23",
-  "nextTask": "B10.23",
+  "activeChild": "B10.24",
+  "nextTask": "B10.24",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11386,7 +11394,54 @@
     "target/b10-22-recovery-expanded-before-neighbor-fix.json",
     "target/b10-22-folding-recovery-before-cst-review.json",
     "target/b10-22-frozen-source.json",
-    "target/b10-22-checkpoint.log"
+    "target/b10-22-checkpoint.log",
+    "target/lsp-matrix/run-pRLzR9/report.json",
+    "editors/vscode/test-results/run-8WmGOA/results.json",
+    "editors/vscode/test-results/input-sbdRtX/results.json",
+    "target/lsp-matrix/run-MazVYY/report.json",
+    "editors/vscode/test-results/run-8WmGOA/base-results.json",
+    "editors/vscode/test-results/run-8WmGOA/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-8WmGOA/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-8WmGOA/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-8WmGOA/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-8WmGOA/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-8WmGOA/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-8WmGOA/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-8WmGOA/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-8WmGOA/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-8WmGOA/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-8WmGOA/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-8WmGOA/folding-crlf-shifted-client.log",
+    "target/b10-23-toolchain.log",
+    "target/b10-23-input.log",
+    "target/b10-23-editor.log",
+    "target/b10-23-scoped.log",
+    "target/b10-23-automatic.log",
+    "target/b10-23-baseline-node.log",
+    "target/b10-23-service.log",
+    "target/b10-23-protocol.log",
+    "target/b10-23-architecture.log",
+    "target/b10-23-node-first.log",
+    "target/b10-23-node-focused.log",
+    "target/b10-23-node.log",
+    "target/b10-23-format.log",
+    "target/b10-23-package.log",
+    "target/b10-23-frozen-source.json",
+    "target/b10-23-before-api-fix-source.json",
+    "target/b10-23-editor-before-api-fix.log",
+    "target/b10-23-input-before-api-fix.log",
+    "editors/vscode/test-results/input-zmiL0Y/results.json",
+    "editors/vscode/test-results/run-nwxAxz/results.json",
+    "editors/vscode/test-results/run-nwxAxz/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-nwxAxz/folding-lf-original-client.log",
+    "target/lsp-matrix/run-fByeIS/report.json",
+    "target/b10-23-before-catalog-layout-source.json",
+    "target/b10-23-input-rename-visibility-failure.log",
+    "editors/vscode/test-results/input-9hHk32/results.json",
+    "editors/vscode/test-results/input-9hHk32/failure.png",
+    "editors/vscode/test-results/input-9hHk32/failure.aria.txt",
+    "editors/vscode/test-results/input-9hHk32/trace.json",
+    "target/b10-23-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15314,8 +15369,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "9a7d52c75117bcbfa17e8a797f289b96eb42c2d7",
-          "treeSha256": "513b24b36f8456885859c6d94b5cfb8f006ed00c74e8330145bc5caf4586ea48"
+          "revision": "ad1ee74273447e828e43d2771754581367d54cab",
+          "treeSha256": "068708cd831991da2c7c356f97406827517bb0c5dad9524eda80af03407e107e"
         },
         "profile": {
           "platform": "win32",
@@ -15323,11 +15378,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-TXAUky/report.json"
+          "target/lsp-matrix/run-pRLzR9/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-4wfPaB/results.json --local-results editors/vscode/test-results/input-LrCDr4/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-8WmGOA/results.json --local-results editors/vscode/test-results/input-sbdRtX/results.json",
             "exitCode": 0
           }
         ]

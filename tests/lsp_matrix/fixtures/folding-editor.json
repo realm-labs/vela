@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "id": "folding-editor",
+  "files": {
+    "scripts/main.vela": "/*中😀*/ [[imports:start]]use missing::One as Alias;\n/*界😀*/ pub use other::Two as Choice;[[imports:end]]\n",
+    "scripts/helper.vela": "pub struct Helper {}\npub fn helper() {}\n"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "cases": [
+      {
+        "id": "unresolved-pair",
+        "partition": "folding-imports",
+        "source": "/*中😀*/ [[imports:start]]use missing::One as Alias;\n/*界😀*/ pub use other::Two as Choice;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "if-statement-branches",
+        "partition": "folding-bodies",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n if value > 0 [[then:start]]{\n return value;\n}[[then:end]] else [[else:start]]{\n return 0;\n}[[else:end]]\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "then"
+          },
+          {
+            "kind": "region",
+            "range": "else"
+          }
+        ]
+      },
+      {
+        "id": "nested-array-literal",
+        "partition": "folding-literals",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = [[outer:start]][\n [[inner:start]][\n 1,\n 2\n][[inner:end]],\n [3, 4]\n][[outer:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "outer"
+          },
+          {
+            "kind": "region",
+            "range": "inner"
+          }
+        ]
+      },
+      {
+        "id": "record-constructor-array-field",
+        "partition": "folding-members",
+        "source": "struct Row { count: i64, values: Array<i64> }\nenum Choice { Empty, Pair(values: Array<i64>), Named { count: i64 } }\n/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let result = [[record:start]]Row {\n count: value,\n values: [[array:start]][\n 1,\n 2\n][[array:end]]\n}[[record:end]];\n return value;\n}[[body:end]][[item:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "item"
+          },
+          {
+            "kind": "region",
+            "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "record"
+          },
+          {
+            "kind": "region",
+            "range": "array"
+          }
+        ]
+      },
+      {
+        "id": "shebang-import-comment-group",
+        "partition": "folding-trivia",
+        "source": "#!/usr/bin/env vela\n/*中😀*/ [[imports:start]]use helper::helper;\n\n/* fake fn() {\n } 中😀 */\n// next import\nuse missing::name;[[imports:end]]\n",
+        "ranges": [
+          {
+            "kind": "imports",
+            "range": "imports"
+          }
+        ]
+      },
+      {
+        "id": "function-no-body",
+        "partition": "folding-recovery",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[broken:start]]fn Broken(\n value: i64\n)[[broken:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "ranges": [
+          {
+            "kind": "region",
+            "range": "before"
+          },
+          {
+            "kind": "region",
+            "range": "before-body"
+          },
+          {
+            "kind": "region",
+            "range": "broken"
+          },
+          {
+            "kind": "region",
+            "range": "after"
+          },
+          {
+            "kind": "region",
+            "range": "after-body"
+          }
+        ]
+      },
+      {
+        "id": "no-fold-line-comments",
+        "partition": "folding-trivia",
+        "source": "// fn fake() {\n// use fake::name;\n// }\n",
+        "ranges": []
+      },
+      {
+        "id": "no-fold-partial-function",
+        "partition": "folding-recovery",
+        "source": "fn Broken(",
+        "ranges": []
+      }
+    ]
+  }
+}

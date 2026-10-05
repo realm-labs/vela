@@ -181,6 +181,8 @@ async function run() {
       symbols.runRecoverySymbols(vscode, workspace), 120000);
     await check("document symbol provider preserves complete dirty close and dependency lifecycle trees", () =>
       symbols.runLifecycleSymbols(vscode, workspace), 90000);
+    await check("folding provider preserves complete authored public and wire ranges through dirty close Unicode LF CRLF states", () =>
+      require("./folding-provider").runFolding(vscode, workspace), 120000);
     await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
   } finally {
     const extension = vscode.extensions.getExtension("vela-lang.vela-vscode");

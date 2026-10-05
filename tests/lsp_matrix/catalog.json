@@ -18109,6 +18109,16 @@
           "name": "tests::folding_recovery::lsp_folding_recovery_pin_complete_utf16_damage_repair_redamage_close_and_immutable_sets"
         }
       ]
+    },
+    {
+      "requirement": "folding/editor/smoke",
+      "assertion": "Reviewed in reviews/folding-editor.md. Eight unchanged independently marked imports/bodies/literals/members/trivia/recovery sets: six positives/19 raw folds/two true empties; literal public models14 and Unicode import8/37 UTF16 versus12/41 byte endpoints. Installed VSIX public folding command checks complete model and every full fresh owned matched wire pair with exact params/endpoints/kinds; public start-line sanitization independently derived from markers, raw duplicate starts preserved on wire. LF/CRLF and two Unicode shift forms preserve shebang, four fresh encoded physical roots/unique packages, original first folder, disk/eight dirty variants/actual close reopen/helper empties,80 observations/240 public commands. Actual finite open/change/close/workspace mutations, enabled auto folding, exact buffer/EOL/version/disk preservation; explicit wire[] distinct from null/fallback/failure. Background pairs all checked, unique IDs. Preserve old symbol assertions/shared lifecycle cleanup and installed/native contracts. No production/runtime change, no UX12/selection/UX11 or parent acceptance; platform audits remain independent and B16 deferred.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "folding provider preserves complete authored public and wire ranges through dirty close Unicode LF CRLF states"
+        }
+      ]
     }
   ],
   "featureFiles": [
