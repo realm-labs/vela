@@ -127,6 +127,8 @@ mod shared_fixture_tests;
 #[cfg(test)]
 mod document_symbol_matrix_tests;
 #[cfg(test)]
+mod workspace_symbol_incremental_tests;
+#[cfg(test)]
 mod workspace_symbol_lifecycle_tests;
 #[cfg(test)]
 mod workspace_symbol_matrix_tests;

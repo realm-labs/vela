@@ -17527,6 +17527,74 @@
           "name": "tests::workspace_symbol_states::lsp_workspace_symbol_dynamic_states_pin_whole_utf16_sets_and_restoration"
         }
       ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S11/positive/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-incremental.md. Nine independently authored body/import/return/rename/restoration phases over five source files retain nineteen complete ordered workspace rows and seventeen literal queries, repeated three times under LF/CRLF and two Unicode shifts. Exact names/kinds/identities/details/containers/full declaration and file ranges distinguish renamed make_deleted from old make, Fourth type-name from function return detail and actual source declarations from missing imports, aliases, receiver locals and fields. One-document reparses and HIR rebuilds, zero/one project rebuilds, declaration/import fingerprint flags and exact reverse dependency invalidation sets including transitive relay and excluding unrelated are authored, not inferred from output. Incremental/fresh database and actual typed open/change coordinator parity, all previous immutable source/parse/symbol snapshots, read-only counters/generation, encoded private roots, unchanged physical disk beneath overlays and complete UTF16 JSON-RPC envelopes remain asserted. Service rejects old-generation and cancelled actual symbol results before/after completion while old snapshots retain their own results and fresh requests remain publishable. Explicit accepted real worker tests supply ignored old versions, queued/completed cancellation, malformed/different typed IDs, cancellation priority, one current-generation retry over every source/schema lifecycle phase and exact ContentModified after retry exhaustion. No unsupported cancellable query API, sleeps, extra retry policy or production/runtime change. Node pins literal phase/fingerprint/invalidation inventory, nineteen ordered memberships, return/rename changes, empty probes and main line1/+2 UTF16 columns15..19 versus byte19. S0 and installed/native picker remain open; Windows/macOS acceptance evidence stays independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_incremental_tests::workspace_symbol_incremental_body_import_and_declaration_edits_pin_cache_ownership_and_all_old_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S11/negative/service",
+      "assertion": "Reviewed in reviews/workspace-symbol-incremental.md. Nine independently authored body/import/return/rename/restoration phases over five source files retain nineteen complete ordered workspace rows and seventeen literal queries, repeated three times under LF/CRLF and two Unicode shifts. Exact names/kinds/identities/details/containers/full declaration and file ranges distinguish renamed make_deleted from old make, Fourth type-name from function return detail and actual source declarations from missing imports, aliases, receiver locals and fields. One-document reparses and HIR rebuilds, zero/one project rebuilds, declaration/import fingerprint flags and exact reverse dependency invalidation sets including transitive relay and excluding unrelated are authored, not inferred from output. Incremental/fresh database and actual typed open/change coordinator parity, all previous immutable source/parse/symbol snapshots, read-only counters/generation, encoded private roots, unchanged physical disk beneath overlays and complete UTF16 JSON-RPC envelopes remain asserted. Service rejects old-generation and cancelled actual symbol results before/after completion while old snapshots retain their own results and fresh requests remain publishable. Explicit accepted real worker tests supply ignored old versions, queued/completed cancellation, malformed/different typed IDs, cancellation priority, one current-generation retry over every source/schema lifecycle phase and exact ContentModified after retry exhaustion. No unsupported cancellable query API, sleeps, extra retry policy or production/runtime change. Node pins literal phase/fingerprint/invalidation inventory, nineteen ordered memberships, return/rename changes, empty probes and main line1/+2 UTF16 columns15..19 versus byte19. S0 and installed/native picker remain open; Windows/macOS acceptance evidence stays independent.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "workspace_symbol_incremental_tests::workspace_symbol_incremental_body_import_and_declaration_edits_pin_cache_ownership_and_all_old_snapshots"
+        },
+        {
+          "layer": "service",
+          "name": "workspace_symbol_incremental_tests::workspace_symbol_cancelled_publications_never_escape_or_poison_fresh_owned_results"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S11/positive/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-incremental.md. Nine independently authored body/import/return/rename/restoration phases over five source files retain nineteen complete ordered workspace rows and seventeen literal queries, repeated three times under LF/CRLF and two Unicode shifts. Exact names/kinds/identities/details/containers/full declaration and file ranges distinguish renamed make_deleted from old make, Fourth type-name from function return detail and actual source declarations from missing imports, aliases, receiver locals and fields. One-document reparses and HIR rebuilds, zero/one project rebuilds, declaration/import fingerprint flags and exact reverse dependency invalidation sets including transitive relay and excluding unrelated are authored, not inferred from output. Incremental/fresh database and actual typed open/change coordinator parity, all previous immutable source/parse/symbol snapshots, read-only counters/generation, encoded private roots, unchanged physical disk beneath overlays and complete UTF16 JSON-RPC envelopes remain asserted. Service rejects old-generation and cancelled actual symbol results before/after completion while old snapshots retain their own results and fresh requests remain publishable. Explicit accepted real worker tests supply ignored old versions, queued/completed cancellation, malformed/different typed IDs, cancellation priority, one current-generation retry over every source/schema lifecycle phase and exact ContentModified after retry exhaustion. No unsupported cancellable query API, sleeps, extra retry policy or production/runtime change. Node pins literal phase/fingerprint/invalidation inventory, nineteen ordered memberships, return/rename changes, empty probes and main line1/+2 UTF16 columns15..19 versus byte19. S0 and installed/native picker remain open; Windows/macOS acceptance evidence stays independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_incremental::lsp_workspace_symbol_incremental_body_import_and_declaration_edits_pin_cache_ownership_and_all_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_cancel_priority_and_bounded_retry_cover_all_source_schema_lifecycle_mutations"
+        }
+      ]
+    },
+    {
+      "requirement": "workspace-symbol/syntax/S11/negative/protocol",
+      "assertion": "Reviewed in reviews/workspace-symbol-incremental.md. Nine independently authored body/import/return/rename/restoration phases over five source files retain nineteen complete ordered workspace rows and seventeen literal queries, repeated three times under LF/CRLF and two Unicode shifts. Exact names/kinds/identities/details/containers/full declaration and file ranges distinguish renamed make_deleted from old make, Fourth type-name from function return detail and actual source declarations from missing imports, aliases, receiver locals and fields. One-document reparses and HIR rebuilds, zero/one project rebuilds, declaration/import fingerprint flags and exact reverse dependency invalidation sets including transitive relay and excluding unrelated are authored, not inferred from output. Incremental/fresh database and actual typed open/change coordinator parity, all previous immutable source/parse/symbol snapshots, read-only counters/generation, encoded private roots, unchanged physical disk beneath overlays and complete UTF16 JSON-RPC envelopes remain asserted. Service rejects old-generation and cancelled actual symbol results before/after completion while old snapshots retain their own results and fresh requests remain publishable. Explicit accepted real worker tests supply ignored old versions, queued/completed cancellation, malformed/different typed IDs, cancellation priority, one current-generation retry over every source/schema lifecycle phase and exact ContentModified after retry exhaustion. No unsupported cancellable query API, sleeps, extra retry policy or production/runtime change. Node pins literal phase/fingerprint/invalidation inventory, nineteen ordered memberships, return/rename changes, empty probes and main line1/+2 UTF16 columns15..19 versus byte19. S0 and installed/native picker remain open; Windows/macOS acceptance evidence stays independent.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_incremental::lsp_workspace_symbol_incremental_body_import_and_declaration_edits_pin_cache_ownership_and_all_old_snapshots"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_stale_versions_keep_current_whole_sets_and_pending_workers_publishable"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_cancellation_discards_queued_and_completed_workers_without_mutation_or_id_poisoning"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_unknown_malformed_and_different_typed_cancel_ids_preserve_pending_results"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_cancel_priority_and_bounded_retry_cover_all_source_schema_lifecycle_mutations"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::workspace_symbol_worker::lsp_workspace_symbol_retry_exhaustion_returns_one_exact_error_and_cancellation_still_wins"
+        }
+      ]
     }
   ],
   "featureFiles": [

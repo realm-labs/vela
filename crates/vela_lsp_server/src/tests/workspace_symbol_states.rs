@@ -219,7 +219,9 @@ fn run(group: &str) {
     }
 }
 
-fn vela_language_service_project(symbol: &vela_language_service::WorkspaceSymbol) -> Value {
+pub(crate) fn vela_language_service_project(
+    symbol: &vela_language_service::WorkspaceSymbol,
+) -> Value {
     use vela_language_service::{SymbolRef, WorkspaceSymbolLocation};
     let mut row = json!({"name":symbol.name(),"kind":format!("{:?}",symbol.kind())});
     match (symbol.symbol(), symbol.location()) {

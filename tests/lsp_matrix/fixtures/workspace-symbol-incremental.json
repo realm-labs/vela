@@ -1,0 +1,486 @@
+{
+  "version": 1,
+  "id": "workspace-symbol-incremental",
+  "files": {
+    "scripts/api.vela": "[[file:start]][[first-range:start]]pub struct First { [[first:start]]zz_first[[first:end]]: i64 }[[first-range:end]]\n[[second-range:start]]pub struct Second { [[second:start]]zz_second[[second:end]]: bool }[[second-range:end]]\n[[make-range:start]]pub fn make() -> First { First { zz_first: 1 } }[[make-range:end]]\n[[file:end]]",
+    "scripts/other.vela": "[[file:start]][[third-range:start]]pub struct Third { [[third:start]]zz_third[[third:end]]: bool }[[third-range:end]]\n[[fourth-range:start]]pub struct Fourth { [[fourth:start]]zz_fourth[[fourth:end]]: String }[[fourth-range:end]]\n[[make-range:start]]pub fn make() -> Third { Third { zz_third: true } }[[make-range:end]]\n[[file:end]]",
+    "scripts/main.vela": "[[file:start]]use api::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+    "scripts/relay.vela": "[[file:start]]use main::main;\n[[relay-range:start]]pub fn relay() { main(); }[[relay-range:end]]\n[[file:end]]",
+    "scripts/unrelated.vela": "[[file:start]][[anchor-range:start]]pub const anchor: i64 = 1;[[anchor-range:end]]\n[[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "phases": [
+      {
+        "id": "initial",
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Third","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "body_changes_receiver",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]use api::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = api::Second { zz_second: true }; value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+        "declarationChanged": false,
+        "importChanged": false,
+        "invalidated": [
+          "main"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Third","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "body_restores_receiver",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]use api::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+        "declarationChanged": false,
+        "importChanged": false,
+        "invalidated": [
+          "main"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Third","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "import_switches_owner",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]use other::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Third","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "declaration_changes_return",
+        "file": "scripts/other.vela",
+        "source": "[[file:start]][[third-range:start]]pub struct Third { [[third:start]]zz_third[[third:end]]: bool }[[third-range:end]]\n[[fourth-range:start]]pub struct Fourth { [[fourth:start]]zz_fourth[[fourth:end]]: String }[[fourth-range:end]]\n[[make-range:start]]pub fn make() -> Fourth { Fourth { zz_fourth: \"fresh\" } }[[make-range:end]]\n[[file:end]]",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "main",
+          "other",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Fourth","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "missing_import_erases_members",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]use missing::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Fourth","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "import_restores_owner",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]use api::make as choose;\n/*中😀*/ [[main-range:start]]pub fn [[main-name:start]]main[[main-name:end]]() { /* 中😀 */ let value = choose(); value.[[replace:start]]zz_[[cursor]][[replace:end]]; }[[main-range:end]]\n[[file:end]]",
+        "declarationChanged": false,
+        "importChanged": true,
+        "invalidated": [
+          "main",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Fourth","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "removed_declaration_erases_members",
+        "file": "scripts/api.vela",
+        "source": "[[file:start]][[first-range:start]]pub struct First { [[first:start]]zz_first[[first:end]]: i64 }[[first-range:end]]\n[[second-range:start]]pub struct Second { [[second:start]]zz_second[[second:end]]: bool }[[second-range:end]]\n[[make-range:start]]pub fn make_deleted() -> First { First { zz_first: 1 } }[[make-range:end]]\n[[file:end]]",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "api",
+          "main",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make_deleted","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make_deleted","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Fourth","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":["api-make"]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      },
+      {
+        "id": "declaration_restores_owner",
+        "file": "scripts/api.vela",
+        "source": "[[file:start]][[first-range:start]]pub struct First { [[first:start]]zz_first[[first:end]]: i64 }[[first-range:end]]\n[[second-range:start]]pub struct Second { [[second:start]]zz_second[[second:end]]: bool }[[second-range:end]]\n[[make-range:start]]pub fn make() -> First { First { zz_first: 1 } }[[make-range:end]]\n[[file:end]]",
+        "declarationChanged": true,
+        "importChanged": false,
+        "invalidated": [
+          "api",
+          "main",
+          "relay"
+        ],
+        "workspace": {
+          "symbols": [
+            {"id":"api-module","name":"api","kind":"Module","protocolKind":2,"file":"scripts/api.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::api","ownership":"Source"},
+            {"id":"api-file","name":"api.vela","kind":"File","protocolKind":1,"file":"scripts/api.vela","range":"file","detail":"api","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"api-first","name":"api::First","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"first-range","detail":null,"container":"api","identity":"api::First","ownership":"Source"},
+            {"id":"api-second","name":"api::Second","kind":"Struct","protocolKind":23,"file":"scripts/api.vela","range":"second-range","detail":null,"container":"api","identity":"api::Second","ownership":"Source"},
+            {"id":"api-make","name":"api::make","kind":"Function","protocolKind":12,"file":"scripts/api.vela","range":"make-range","detail":"() -> First","container":"api","identity":"api::make","ownership":"Source"},
+            {"id":"main-module","name":"main","kind":"Module","protocolKind":2,"file":"scripts/main.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::main","ownership":"Source"},
+            {"id":"main-file","name":"main.vela","kind":"File","protocolKind":1,"file":"scripts/main.vela","range":"file","detail":"main","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"main-main","name":"main::main","kind":"Function","protocolKind":12,"file":"scripts/main.vela","range":"main-range","detail":"()","container":"main","identity":"main::main","ownership":"Source"},
+            {"id":"other-module","name":"other","kind":"Module","protocolKind":2,"file":"scripts/other.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::other","ownership":"Source"},
+            {"id":"other-file","name":"other.vela","kind":"File","protocolKind":1,"file":"scripts/other.vela","range":"file","detail":"other","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"other-fourth","name":"other::Fourth","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"fourth-range","detail":null,"container":"other","identity":"other::Fourth","ownership":"Source"},
+            {"id":"other-third","name":"other::Third","kind":"Struct","protocolKind":23,"file":"scripts/other.vela","range":"third-range","detail":null,"container":"other","identity":"other::Third","ownership":"Source"},
+            {"id":"other-make","name":"other::make","kind":"Function","protocolKind":12,"file":"scripts/other.vela","range":"make-range","detail":"() -> Fourth","container":"other","identity":"other::make","ownership":"Source"},
+            {"id":"relay-module","name":"relay","kind":"Module","protocolKind":2,"file":"scripts/relay.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::relay","ownership":"Source"},
+            {"id":"relay-file","name":"relay.vela","kind":"File","protocolKind":1,"file":"scripts/relay.vela","range":"file","detail":"relay","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"relay-relay","name":"relay::relay","kind":"Function","protocolKind":12,"file":"scripts/relay.vela","range":"relay-range","detail":"()","container":"relay","identity":"relay::relay","ownership":"Source"},
+            {"id":"unrelated-module","name":"unrelated","kind":"Module","protocolKind":2,"file":"scripts/unrelated.vela","range":"file","detail":null,"container":null,"identity":"dev.vela.anonymous::unrelated","ownership":"Source"},
+            {"id":"unrelated-file","name":"unrelated.vela","kind":"File","protocolKind":1,"file":"scripts/unrelated.vela","range":"file","detail":"unrelated","container":null,"fileIdentity":true,"ownership":"Source"},
+            {"id":"unrelated-anchor","name":"unrelated::anchor","kind":"Constant","protocolKind":14,"file":"scripts/unrelated.vela","range":"anchor-range","detail":"i64","container":"unrelated","identity":"unrelated::anchor","ownership":"Source"}
+          ],
+          "queries": [
+            {"id":"all","query":"","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"trim-empty","query":" \t","symbols":["api-module","api-file","api-first","api-second","api-make","main-module","main-file","main-main","other-module","other-file","other-fourth","other-third","other-make","relay-module","relay-file","relay-relay","unrelated-module","unrelated-file","unrelated-anchor"]},
+            {"id":"api","query":"api","symbols":["api-module","api-file","api-first","api-second","api-make"]},
+            {"id":"main","query":"main","symbols":["main-module","main-file","main-main"]},
+            {"id":"qualified","query":"api::make","symbols":["api-make"]},
+            {"id":"makers","query":"make","symbols":["api-make","other-make"]},
+            {"id":"case-trim","query":"  API::FIRST  ","symbols":["api-first"]},
+            {"id":"type-name-not-detail","query":"Fourth","symbols":["other-fourth"]},
+            {"id":"renamed","query":"make_deleted","symbols":[]},
+            {"id":"choose","query":"choose","symbols":[]},
+            {"id":"zz_","query":"zz_","symbols":[]},
+            {"id":"missing","query":"missing","symbols":[]},
+            {"id":"value","query":"value","symbols":[]},
+            {"id":"Any","query":"Any","symbols":[]},
+            {"id":"Function()","query":"Function()","symbols":[]},
+            {"id":"中😀","query":"中😀","symbols":[]},
+            {"id":"not_a_symbol_473","query":"not_a_symbol_473","symbols":[]}
+          ]
+        }
+      }
+    ]
+  }
+}
