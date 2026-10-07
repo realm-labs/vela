@@ -242,6 +242,7 @@ mod selection;
 mod selection_bodies;
 mod selection_declarations;
 mod selection_imports;
+mod selection_members;
 mod selection_types;
 mod semantic_tokens;
 mod semantic_tokens_degradation;

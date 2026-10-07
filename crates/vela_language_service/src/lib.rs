@@ -137,6 +137,8 @@ mod selection_declaration_tests;
 #[cfg(test)]
 mod selection_import_tests;
 #[cfg(test)]
+mod selection_member_tests;
+#[cfg(test)]
 mod selection_type_tests;
 
 #[cfg(test)]

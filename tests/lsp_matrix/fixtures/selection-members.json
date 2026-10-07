@@ -1,0 +1,2395 @@
+{
+  "version": 1,
+  "id": "selection-members",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[first:start]][[label:start]]fi[[label-cursor]]eld[[label:end]]: [[field:start]][[child:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[child-name:start]]ch[[child-name-cursor]]ild[[child-name:end]][[child:end]].[[value:start]]va[[value-cursor]]lue[[value:end]][[field:end]][[first:end]], [[second:start]][[other-label:start]]ot[[other-label-cursor]]her[[other-label:end]]: [[call:start]][[callee:start]][[method-receiver:start]]r[[method-receiver-cursor]]ow[[method-receiver:end]].[[method:start]]met[[method-cursor]]hod[[method:end]][[callee:end]][[args:start]]([[argument:start]][[argument-label:start]]a[[argument-label-cursor]]rg[[argument-label:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[argument:end]])[[args:end]][[call:end]][[second:end]]}[[fields:end]][[record:end]];[[local:end]] [[return:start]]return [[returned:start]][[made:start]]ma[[made-cursor]]de[[made:end]].[[returned-name:start]]fi[[returned-name-cursor]]eld[[returned-name:end]][[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper(row) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]met[[method-cursor]]hod[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[field:start]][[arg-receiver:start]]r[[arg-receiver-cursor]]ow[[arg-receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]] [[known-item:start]]pub struct Known { value: i64 }[[known-item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "member-cursor",
+        "chain": [
+          "member",
+          "field",
+          "argument",
+          "args",
+          "call",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      },
+      {
+        "position": "label-cursor",
+        "chain": [
+          "label",
+          "argument",
+          "args",
+          "call",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "record-field-and-named-method-ancestry",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[first:start]][[label:start]]fi[[label-cursor]]eld[[label:end]]: [[field:start]][[child:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[child-name:start]]ch[[child-name-cursor]]ild[[child-name:end]][[child:end]].[[value:start]]va[[value-cursor]]lue[[value:end]][[field:end]][[first:end]], [[second:start]][[other-label:start]]ot[[other-label-cursor]]her[[other-label:end]]: [[call:start]][[callee:start]][[method-receiver:start]]r[[method-receiver-cursor]]ow[[method-receiver:end]].[[method:start]]met[[method-cursor]]hod[[method:end]][[callee:end]][[args:start]]([[argument:start]][[argument-label:start]]a[[argument-label-cursor]]rg[[argument-label:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[argument:end]])[[args:end]][[call:end]][[second:end]]}[[fields:end]][[record:end]];[[local:end]] [[return:start]]return [[returned:start]][[made:start]]ma[[made-cursor]]de[[made:end]].[[returned-name:start]]fi[[returned-name-cursor]]eld[[returned-name:end]][[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "child",
+              "field",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "child-name-cursor",
+            "chain": [
+              "child-name",
+              "child",
+              "field",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "argument-label-cursor",
+            "chain": [
+              "argument-label",
+              "argument",
+              "args",
+              "call",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "argument",
+              "args",
+              "call",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-label-cursor",
+            "chain": [
+              "other-label",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "returned-name-cursor",
+            "chain": [
+              "returned-name",
+              "returned",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "made-cursor",
+            "chain": [
+              "made",
+              "returned",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "source-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Record) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: host::Entity) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Rule) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dynamic-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Any) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Missing) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Record) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: host::Entity) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Rule) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dynamic-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Any) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Missing) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-member-chain",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[outer:start]][[field:start]][[child:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[child-name:start]]ch[[child-name-cursor]]ild[[child-name:end]][[child:end]].[[value:start]]va[[value-cursor]]lue[[value:end]][[field:end]].[[last:start]]la[[last-cursor]]st[[last:end]][[outer:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "outer",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "child-name-cursor",
+            "chain": [
+              "child-name",
+              "child",
+              "field",
+              "outer",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "child",
+              "field",
+              "outer",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "last-cursor",
+            "chain": [
+              "last",
+              "outer",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "indexed-receiver-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "index",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-then-index",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fie[[member-cursor]]lds[[member:end]][[field:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "returned-receiver-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ma[[method-cursor]]ke[[method:end]][[callee:end]][[args:start]]()[[args:end]][[call:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "returned-receiver-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[inner-call:start]][[factory:start]]fac[[factory-cursor]]tory[[factory:end]][[inner-args:start]]()[[inner-args:end]][[inner-call:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[argument-field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[argument-field:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "factory-cursor",
+            "chain": [
+              "factory",
+              "inner-call",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "argument-field",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-member-receiver",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[paren:start]]([[inner:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[inner-name:start]]fi[[inner-name-cursor]]eld[[inner-name:end]][[inner:end]])[[paren:end]].[[member:start]]ot[[member-cursor]]her[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "paren",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-index-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]pa[[receiver-cursor]]ir[[receiver:end]].[[member:start]][[member-cursor]]0[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-receiver-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[receiver:start]]va[[receiver-cursor]]lue[[receiver:end]][[path:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "path",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "path",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "method-field-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let value = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[field:start]][[arg-receiver:start]]ot[[arg-receiver-cursor]]her[[arg-receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-write-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[value:start]][[value-receiver:start]]ot[[value-receiver-cursor]]her[[value-receiver:end]].[[value-member:start]]fi[[value-member-cursor]]eld[[value-member:end]][[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-member-cursor",
+            "chain": [
+              "value-member",
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "chained-indexed-member-write",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[index:start]][[collection:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[collection-name:start]]ce[[collection-name-cursor]]lls[[collection-name:end]][[collection:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[field:end]] += [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "collection-name-cursor",
+            "chain": [
+              "collection-name",
+              "collection",
+              "index",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-explicit-and-shorthand-fields",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[explicit:start]][[label:start]]fi[[label-cursor]]eld[[label:end]]: [[value:start]]fi[[value-cursor]]eld[[value:end]][[explicit:end]], [[shorthand:start]]ot[[shorthand-cursor]]her[[shorthand:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "explicit",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "explicit",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "shorthand-cursor",
+            "chain": [
+              "shorthand",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[record:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]][[path:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "path",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "path",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{[[close:start]][[close-cursor]]}[[close:end]][[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[outer:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[field:start]][[label:start]]ch[[label-cursor]]ild[[label:end]]: [[inner:start]][[inner-constructor:start]]Ce[[inner-constructor-cursor]]ll[[inner-constructor:end]] [[inner-fields:start]]{ [[inner-field:start]][[inner-label:start]]va[[inner-label-cursor]]lue[[inner-label:end]]: [[access:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[access:end]][[inner-field:end]]}[[inner-fields:end]][[inner:end]][[field:end]]}[[fields:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "access",
+              "inner-field",
+              "inner-fields",
+              "inner",
+              "field",
+              "fields",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-label-cursor",
+            "chain": [
+              "inner-label",
+              "inner-field",
+              "inner-fields",
+              "inner",
+              "field",
+              "fields",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-constructor-cursor",
+            "chain": [
+              "inner-constructor",
+              "inner",
+              "field",
+              "fields",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "constructed-receiver-field",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[access:start]][[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[access:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "access",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "access",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "access",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unit-variant-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let value = [[path:start]][[owner:start]]Cho[[owner-cursor]]ice[[owner:end]]::[[variant:start]]Em[[variant-cursor]]pty[[variant:end]][[path:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "path",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "owner-cursor",
+            "chain": [
+              "owner",
+              "path",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-variant-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let value = [[call:start]][[path:start]][[owner:start]]Cho[[owner-cursor]]ice[[owner:end]]::[[variant:start]]Pa[[variant-cursor]]ir[[variant:end]][[path:end]][[args:start]]([[first:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]], [[second:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[second:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "owner-cursor",
+            "chain": [
+              "owner",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-variant-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let value = [[record:start]][[path:start]][[owner:start]]Cho[[owner-cursor]]ice[[owner:end]]::[[variant:start]]R[[variant-cursor]]ow[[variant:end]][[path:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[access:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[access:end]][[field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "path",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "access",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-variant-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let value = [[call:start]][[path:start]][[owner:start]]Mis[[owner-cursor]]sing[[owner:end]]::[[variant:start]]Gh[[variant-cursor]]ost[[variant:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "static-trait-method-path",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[call:start]][[path:start]][[trait:start]]Ru[[trait-cursor]]le[[trait:end]]::[[method:start]]ap[[method-cursor]]ply[[method:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]r[[value-cursor]]ow[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "path",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "trait-cursor",
+            "chain": [
+              "trait",
+              "path",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-comments-and-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[access:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]] /* re[[comment]]ceiver */ .[[member:start]]fi[[member-cursor]]eld[[member:end]][[access:end]];[[return:end]]  [[space]]  }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "access",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "multiline-record-fields",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{\n  [[first:start]][[label:start]]fi[[label-cursor]]eld[[label:end]]:\n    [[access:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[access:end]]\n  [[first:end]],\n  [[second:start]][[shorthand:start]]ot[[shorthand-cursor]]her[[shorthand:end]]\n[[second:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "access",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "shorthand-cursor",
+            "chain": [
+              "shorthand",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struct-member-declarations",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub struct Record [[fields:start]]{ [[first:start]][[label:start]]fi[[label-cursor]]eld[[label:end]]: [[type:start]]i[[type-cursor]]64[[type:end]] = [[default:start]][[receiver:start]]se[[receiver-cursor]]ed[[receiver:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[default:end]][[first:end]], [[second:start]][[other-label:start]]ot[[other-label-cursor]]her[[other-label:end]]: [[other-type:start]]bo[[other-type-cursor]]ol[[other-type:end]][[second:end]] }[[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "default",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-label-cursor",
+            "chain": [
+              "other-label",
+              "second",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "enum-all-variant-declarations",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[unit:start]]Em[[unit-cursor]]pty[[unit:end]], [[tuple:start]][[tuple-name:start]]Pa[[tuple-name-cursor]]ir[[tuple-name:end]][[params:start]]([[param:start]][[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]: [[type:start]]i[[type-cursor]]64[[type:end]][[param:end]])[[params:end]][[tuple:end]], [[record:start]][[record-name:start]]R[[record-name-cursor]]ow[[record-name:end]][[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[record-type:start]]bo[[record-type-cursor]]ol[[record-type:end]][[field:end]] }[[fields:end]][[record:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "unit-cursor",
+            "chain": [
+              "unit",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "tuple-name-cursor",
+            "chain": [
+              "tuple-name",
+              "tuple",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "param",
+              "params",
+              "tuple",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "record-name-cursor",
+            "chain": [
+              "record-name",
+              "record",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "required-trait-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method-node:start]]fn [[method:start]]ap[[method-cursor]]ply[[method:end]][[params:start]]([[self:start]]se[[self-cursor]]lf[[self:end]])[[params:end]];[[method-node:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "self-cursor",
+            "chain": [
+              "self",
+              "params",
+              "method-node",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "default-trait-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method-node:start]]fn [[method:start]]ap[[method-cursor]]ply[[method:end]][[params:start]]([[self:start]]se[[self-cursor]]lf[[self:end]])[[params:end]] [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]se[[receiver-cursor]]lf[[receiver:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[field:end]];[[return:end]] }[[body:end]][[method-node:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "self-cursor",
+            "chain": [
+              "self",
+              "params",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "method-node",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inherent-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Record { [[method-node:start]]fn [[method:start]]ap[[method-cursor]]ply[[method:end]][[params:start]]([[self:start]]se[[self-cursor]]lf[[self:end]])[[params:end]] [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]se[[receiver-cursor]]lf[[receiver:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[field:end]];[[return:end]] }[[body:end]][[method-node:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "self-cursor",
+            "chain": [
+              "self",
+              "params",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "method-node",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "implemented-trait-member",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Rule for Record { [[method-node:start]]fn [[method:start]]ap[[method-cursor]]ply[[method:end]][[params:start]]([[self:start]]se[[self-cursor]]lf[[self:end]])[[params:end]] [[body:start]]{ [[return:start]]return [[field:start]][[receiver:start]]se[[receiver-cursor]]lf[[receiver:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[field:end]];[[return:end]] }[[body:end]][[method-node:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "self-cursor",
+            "chain": [
+              "self",
+              "params",
+              "method-node",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "return",
+              "body",
+              "method-node",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-neighbor-members",
+        "source": "[[file:start]]/*中😀*/ [[first-item:start]]struct Record [[first-fields:start]]{ [[first-field:start]][[first-name:start]]fi[[first-name-cursor]]eld[[first-name:end]]: i64[[first-field:end]] }[[first-fields:end]][[first-item:end]] [[second-item:start]]struct Other [[second-fields:start]]{ [[second-field:start]][[second-name:start]]fi[[second-name-cursor]]eld[[second-name:end]]: bool[[second-field:end]] }[[second-fields:end]][[second-item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-name-cursor",
+            "chain": [
+              "second-name",
+              "second-field",
+              "second-fields",
+              "second-item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-name-cursor",
+            "chain": [
+              "first-name",
+              "first-field",
+              "first-fields",
+              "first-item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[path:start]]host::[[constructor:start]]Ent[[constructor-cursor]]ity[[constructor:end]][[path:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "path",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[path:start]]missing::[[constructor:start]]Gh[[constructor-cursor]]ost[[constructor:end]][[path:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "path",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-alias-record-constructor",
+        "source": "[[file:start]]/*中😀*/ [[import:start]]use helper::Known as Alias;[[import:end]] [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let made = [[record:start]][[path:start]][[constructor:start]]Ali[[constructor-cursor]]as[[constructor:end]][[path:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-trailing-comma",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]], /* end[[comment]] */ }[[fields:end]][[record:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "constructed-receiver-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{}[[fields:end]][[record:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]()[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "indexed-receiver-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]][[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]()[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "callee",
+              "call",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "point-only-member-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ /* row.fi[[comment]]eld */  [[space]]  }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[field:start]][[child:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[child-name:start]]ch[[child-name-cursor]]ild[[child-name:end]][[child:end]].[[value:start]]va[[value-cursor]]lue[[value:end]][[field:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// Record { fi[[comment]]eld: row.field }\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}
