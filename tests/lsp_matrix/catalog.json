@@ -18577,6 +18577,20 @@
           "name": "tests::selection_pattern_recovery::lsp_selection_pattern_recovery_preserve_final_children_utf16_damage_repair_and_retained_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "selection/states/recovery/protocol",
+      "assertion": "Reviewed in reviews/selection-lifecycle.md. Eleven literal variants/43 states/46 finite operations in four Unicode LFCRLF/shift forms. Whole main/helper/renamed/decoy/missing vectors three times plus true empty vectors; complete cached CST node sets and token ancestry including equal-span nodes. Dirty main/dependency before/after damage, repair/redamage, hidden damaged disk/overlay priority, close to disk error, watched closed repair, delete with/without overlay, recreate, rename away/back, version-reset reopen, saved damaged/repaired disk and simultaneous errors with separate repairs. Current/fresh/every earlier immutable snapshots retain exact sources/CST/owned parse errors/source counts/no schema/query generation-parse-project-HIR counters. Protocol complete typed envelopes/encoded roots/actual physical disk; exact syntax diagnostic message/code/severity/source/range and per-URI publication cardinality. Independent literal regression red establishes stale published closed-file E_PARSE after watched repair; minimal retained URI ownership publishes current facts/clears after coalesced watcher refresh with overlay priority and source-metadata dedup. Never-opened rename-target writes and save retain no-publication policy; initial overbroad author demand preserved separately. Node fixes counts/state membership/literal whole byte-UTF16 geometry/equal-span ownership/duplicate-boundary-point-empty policies. Prior acceptance/selection partitions/native-editor contracts/macOS history preserved. B10 parent/trivia/installed selection/UX11/UX12 remain pending.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::selection_lifecycle::lsp_selection_lifecycle_preserves_exact_utf16_cst_vectors_and_diagnostic_publications_through_source_dependency_recovery"
+        },
+        {
+          "layer": "protocol",
+          "name": "tests::selection_lifecycle::watched_repair_clears_syntax_diagnostic_previously_published_on_close"
+        }
+      ]
     }
   ],
   "featureFiles": [

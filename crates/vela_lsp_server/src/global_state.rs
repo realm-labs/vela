@@ -1072,6 +1072,17 @@ impl GlobalState {
         self.project.restore_closed_source_from_disk(&uri);
         self.project.refresh_databases();
 
+        if self
+            .project
+            .databases
+            .source_db()
+            .records()
+            .contains_key(&document_id)
+        {
+            self.project
+                .closed_diagnostic_documents
+                .insert(document_id.clone());
+        }
         self.project.publish_sync_diagnostics(&document_id)
     }
 

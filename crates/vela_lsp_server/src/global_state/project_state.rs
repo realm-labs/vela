@@ -41,6 +41,9 @@ pub(super) struct ProjectState {
     pub(super) editor_config: Option<EditorConfiguration>,
     pub(super) disk_sources: BTreeMap<DocumentId, SourceFileSnapshot>,
     pub(super) open_documents: BTreeSet<DocumentId>,
+    // These URIs have received disk diagnostics on close. Watching them must
+    // update that client-owned publication even while their overlays are gone.
+    pub(super) closed_diagnostic_documents: BTreeSet<DocumentId>,
 }
 
 impl ProjectState {

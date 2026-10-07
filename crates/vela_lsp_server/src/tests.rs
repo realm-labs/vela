@@ -244,6 +244,7 @@ mod selection_brackets;
 mod selection_calls;
 mod selection_declarations;
 mod selection_imports;
+mod selection_lifecycle;
 mod selection_literals;
 mod selection_members;
 mod selection_parens;

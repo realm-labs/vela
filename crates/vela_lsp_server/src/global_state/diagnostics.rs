@@ -33,12 +33,22 @@ impl ProjectState {
     }
 
     pub(super) fn publish_open_diagnostics(&self) -> Vec<Message> {
+        self.publish_open_and_changed_diagnostics(&std::collections::BTreeSet::new())
+    }
+
+    pub(super) fn publish_open_and_changed_diagnostics(
+        &self,
+        changed: &std::collections::BTreeSet<DocumentId>,
+    ) -> Vec<Message> {
         let mut notifications = Vec::new();
-        if !self.open_documents.is_empty() {
-            notifications.extend(self.open_documents.iter().map(|document_id| {
-                self.publish_document_diagnostics(document_id.as_str(), document_id)
-            }));
-        }
+        let documents = self
+            .open_documents
+            .iter()
+            .chain(changed)
+            .collect::<std::collections::BTreeSet<_>>();
+        notifications.extend(self.open_documents.iter().map(|document_id| {
+            self.publish_document_diagnostics(document_id.as_str(), document_id)
+        }));
 
         // Metadata errors may belong to an open source or share an owner.
         // Publish each URI once with all its current facts, including clears.
@@ -47,7 +57,7 @@ impl ProjectState {
             .iter()
             .chain(&self.schema_documents)
             .chain(&self.source_documents)
-            .filter(|document| !self.open_documents.contains(*document))
+            .filter(|document| !documents.contains(document))
             .collect::<std::collections::BTreeSet<_>>();
         notifications.extend(metadata_documents.into_iter().map(|document| {
             publish_diagnostics_notification(
@@ -56,6 +66,13 @@ impl ProjectState {
                 None,
             )
         }));
+        // Keep the existing open/metadata publication order, then update prior
+        // closed owners (including removed-source clears) without duplicates.
+        notifications.extend(
+            changed
+                .difference(&self.open_documents)
+                .map(|document| self.publish_document_diagnostics(document.as_str(), document)),
+        );
         notifications
     }
 

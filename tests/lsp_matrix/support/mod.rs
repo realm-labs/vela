@@ -22,6 +22,7 @@ pub(crate) mod selection_brackets;
 pub(crate) mod selection_calls;
 pub(crate) mod selection_declarations;
 pub(crate) mod selection_imports;
+pub(crate) mod selection_lifecycle;
 pub(crate) mod selection_literals;
 pub(crate) mod selection_members;
 pub(crate) mod selection_parens;

@@ -5261,3 +5261,14 @@ This preserves schema-warning ownership and prevents an error clear overwriting
 valid source diagnostics. No workspace/configuration pull is added: unsolicited
 responses cannot change defaults, and its two positive conditional exemptions
 remain unchanged. Net-no-op folder membership preserves held worker generations.
+
+## Closed LSP source publications retain their client owner
+
+Closing an owned disk source publishes its current diagnostics. The project
+retains that URI as a closed publication owner so later watched repairs cannot
+leave stale client diagnostics. Watcher batches read current database facts only
+after coalescing and refresh, publish each open or affected prior owner once,
+and clear removed sources. Source/metadata owners are deduplicated before typed
+publication. The owner set stores URIs only; it does not duplicate analysis facts.
+Never-opened closed source changes retain their existing notification policy,
+and a surviving open overlay retains priority over disk deletion or replacement.

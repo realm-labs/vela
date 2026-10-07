@@ -4,7 +4,7 @@ use lsp_server::Message;
 use lsp_types::{DidChangeWatchedFilesParams, FileChangeType};
 use vela_language_service::DocumentId;
 
-use super::{GlobalState, diagnostics::publish_diagnostics_notification};
+use super::GlobalState;
 use crate::{
     paths::{document_uri_path, workspace_document_uri},
     reload::{ReloadOperation, ReloadTarget, ReloadWork},
@@ -33,11 +33,11 @@ impl GlobalState {
             schema_path.as_deref(),
             &self.project.open_documents,
         );
-        let mut deleted_documents = BTreeSet::new();
+        let mut changed_documents = BTreeSet::new();
         for work in self.reload_scheduler.drain() {
             if let ReloadWork::WatchedFile {
                 uri,
-                operation: ReloadOperation::Remove,
+                operation,
                 target: ReloadTarget::Source,
                 ..
             } = &work
@@ -46,37 +46,26 @@ impl GlobalState {
                     &document_uri_path(uri),
                     &self.project.workspace_roots,
                 ));
-                if self
-                    .project
-                    .databases
-                    .source_db()
-                    .records()
-                    .contains_key(&document)
+                if self.project.closed_diagnostic_documents.contains(&document)
+                    || (*operation == ReloadOperation::Remove
+                        && self
+                            .project
+                            .databases
+                            .source_db()
+                            .records()
+                            .contains_key(&document))
                 {
-                    deleted_documents.insert(document);
+                    changed_documents.insert(document);
                 }
             }
             self.apply_reload_work(work);
         }
         self.project.refresh_databases_after_watched_changes();
-        let mut messages = self.project.publish_open_diagnostics();
-        // Closing a file can leave published disk diagnostics. Clear them only
-        // after the whole batch, when neither disk nor an open overlay survives.
-        for document in deleted_documents {
-            if !self
-                .project
-                .databases
-                .source_db()
-                .records()
-                .contains_key(&document)
-            {
-                messages.push(publish_diagnostics_notification(
-                    document.as_str(),
-                    Vec::new(),
-                    None,
-                ));
-            }
-        }
+        // Read current facts only after the whole coalesced batch. A surviving
+        // overlay wins; a removed source clears its previous publication.
+        let messages = self
+            .project
+            .publish_open_and_changed_diagnostics(&changed_documents);
         let mut messages = self.wrap_workspace_diagnostics(messages);
         messages.extend(self.refresh_watched_files());
         messages

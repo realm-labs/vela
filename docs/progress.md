@@ -119,8 +119,14 @@ Explicit empty type annotations and unfinished import paths now retain their
 required diagnostics while preserving recovered nodes and accepted quiet
 expression policy. See the
 [selection recovery review](../tests/lsp_matrix/reviews/selection-recovery.md).
-Source/dependency recovery state, trivia, installed selection and native
-Outline/picker/folding interactions remain separate pending requirements.
+Selection source/dependency recovery now checks complete current, fresh and
+retained CST/selection vectors through dirty/save/close/reopen, hidden disk
+changes, deletion, recreation, rename and simultaneous damage/repair. Closed
+publication owners retain diagnostic updates after watched repair, preventing
+stale syntax errors. See the
+[selection lifecycle review](../tests/lsp_matrix/reviews/selection-lifecycle.md).
+Trivia, installed selection and native Outline/picker/folding interactions
+remain separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

@@ -1,0 +1,3455 @@
+{
+  "version": 1,
+  "id": "selection-lifecycle",
+  "files": {
+    "scripts/main.vela": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n[[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[cursor]]ield[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]pub fn apply[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/decoy.vela": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]fn stable() [[body:start]]{ [[statement:start]]return [[value:start]][[leaf:start]]t[[cursor]]rue[[leaf:end]][[end]][[value:end]][[boundary:start]];[[boundary:end]][[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "variants": {
+      "main-base": {
+        "id": "main-base",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n[[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[cursor]]ield[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "receiver",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "field",
+            "kind": "FieldExpr"
+          },
+          {
+            "marker": "callee",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "argument",
+            "kind": "Argument"
+          },
+          {
+            "marker": "args",
+            "kind": "ArgList"
+          },
+          {
+            "marker": "call",
+            "kind": "CallExpr"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "import-path",
+            "kind": "UsePath"
+          },
+          {
+            "marker": "import",
+            "kind": "UseItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "main-dirty": {
+        "id": "main-dirty",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n// dirty 中😀\n\n[[item:start]]fn changed[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]o[[cursor]]ther[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "receiver",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "field",
+            "kind": "FieldExpr"
+          },
+          {
+            "marker": "callee",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "argument",
+            "kind": "Argument"
+          },
+          {
+            "marker": "args",
+            "kind": "ArgList"
+          },
+          {
+            "marker": "call",
+            "kind": "CallExpr"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "import-path",
+            "kind": "UsePath"
+          },
+          {
+            "marker": "import",
+            "kind": "UseItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "main-damage-before": {
+        "id": "main-damage-before",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n[[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items:[[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[cursor]]ield[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "receiver",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "field",
+            "kind": "FieldExpr"
+          },
+          {
+            "marker": "callee",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "argument",
+            "kind": "Argument"
+          },
+          {
+            "marker": "args",
+            "kind": "ArgList"
+          },
+          {
+            "marker": "call",
+            "kind": "CallExpr"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "import-path",
+            "kind": "UsePath"
+          },
+          {
+            "marker": "import",
+            "kind": "UseItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "E_PARSE",
+            "message": "expected type annotation",
+            "range": "bad-param"
+          }
+        ]
+      },
+      "main-damage-after": {
+        "id": "main-damage-after",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n[[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[cursor]]ield[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items:[[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "receiver",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "field",
+            "kind": "FieldExpr"
+          },
+          {
+            "marker": "callee",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "argument",
+            "kind": "Argument"
+          },
+          {
+            "marker": "args",
+            "kind": "ArgList"
+          },
+          {
+            "marker": "call",
+            "kind": "CallExpr"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "import-path",
+            "kind": "UsePath"
+          },
+          {
+            "marker": "import",
+            "kind": "UseItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "E_PARSE",
+            "message": "expected type annotation",
+            "range": "bad-param"
+          }
+        ]
+      },
+      "main-repaired": {
+        "id": "main-repaired",
+        "file": "scripts/main.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[import:start]]use [[import-path:start]]helper::apply[[import-path:end]] as build;[[import:end]]\n[[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[call:start]][[callee:start]]build[[callee:end]][[args:start]]([[argument:start]][[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[cursor]]ield[[leaf:end]][[end]][[field:end]][[argument:end]][[boundary:start]])[[boundary:end]][[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items: [[bad-type:start]]i64[[bad-type:end]][[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "field",
+                "kind": "FieldExpr"
+              },
+              {
+                "marker": "argument",
+                "kind": "Argument"
+              },
+              {
+                "marker": "args",
+                "kind": "ArgList"
+              },
+              {
+                "marker": "call",
+                "kind": "CallExpr"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "field",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "receiver",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "field",
+            "kind": "FieldExpr"
+          },
+          {
+            "marker": "callee",
+            "kind": "PathExpr"
+          },
+          {
+            "marker": "argument",
+            "kind": "Argument"
+          },
+          {
+            "marker": "args",
+            "kind": "ArgList"
+          },
+          {
+            "marker": "call",
+            "kind": "CallExpr"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "import-path",
+            "kind": "UsePath"
+          },
+          {
+            "marker": "import",
+            "kind": "UseItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "helper-base": {
+        "id": "helper-base",
+        "file": "scripts/helper.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]pub fn apply[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "inner-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "type-args",
+            "kind": "TypeArgList"
+          },
+          {
+            "marker": "type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "helper-dirty": {
+        "id": "helper-dirty",
+        "file": "scripts/helper.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ // changed 中😀\n\n[[item:start]]pub fn edited[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "inner-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "type-args",
+            "kind": "TypeArgList"
+          },
+          {
+            "marker": "type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "helper-damage-before": {
+        "id": "helper-damage-before",
+        "file": "scripts/helper.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items:[[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[item:start]]pub fn apply[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "inner-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "type-args",
+            "kind": "TypeArgList"
+          },
+          {
+            "marker": "type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "E_PARSE",
+            "message": "expected type annotation",
+            "range": "bad-param"
+          }
+        ]
+      },
+      "helper-damage-after": {
+        "id": "helper-damage-after",
+        "file": "scripts/helper.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]pub fn apply[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items:[[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "inner-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "type-args",
+            "kind": "TypeArgList"
+          },
+          {
+            "marker": "type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "E_PARSE",
+            "message": "expected type annotation",
+            "range": "bad-param"
+          }
+        ]
+      },
+      "helper-repaired": {
+        "id": "helper-repaired",
+        "file": "scripts/helper.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]pub fn apply[[params:start]]([[param:start]]items: [[type:start]]Array[[type-args:start]]<[[inner-type:start]][[leaf:start]]i[[cursor]]64[[leaf:end]][[end]][[inner-type:end]][[boundary:start]]>[[boundary:end]][[type-args:end]][[type:end]][[param:end]])[[params:end]] [[body:start]]{ [[statement:start]]return [[value:start]]1[[value:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[bad-item:start]]fn broken[[bad-params:start]]([[bad-param:start]]items: [[bad-type:start]]i64[[bad-type:end]][[bad-param:end]])[[bad-params:end]] [[bad-body:start]]{}[[bad-body:end]][[bad-item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "inner-type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "type-args",
+                "kind": "TypeArgList"
+              },
+              {
+                "marker": "type",
+                "kind": "TypeHint"
+              },
+              {
+                "marker": "param",
+                "kind": "Param"
+              },
+              {
+                "marker": "params",
+                "kind": "ParamList"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "type-args",
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "inner-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "type-args",
+            "kind": "TypeArgList"
+          },
+          {
+            "marker": "type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "param",
+            "kind": "Param"
+          },
+          {
+            "marker": "params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "bad-type",
+            "kind": "TypeHint"
+          },
+          {
+            "marker": "bad-param",
+            "kind": "Param"
+          },
+          {
+            "marker": "bad-params",
+            "kind": "ParamList"
+          },
+          {
+            "marker": "bad-body",
+            "kind": "Block"
+          },
+          {
+            "marker": "bad-item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      },
+      "decoy-base": {
+        "id": "decoy-base",
+        "file": "scripts/decoy.vela",
+        "source": "[[file:start]]// source 中😀 [[comment]]\n/*中😀*/ [[item:start]]fn stable() [[body:start]]{ [[statement:start]]return [[value:start]][[leaf:start]]t[[cursor]]rue[[leaf:end]][[end]][[value:end]][[boundary:start]];[[boundary:end]][[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "value",
+                "kind": "Literal"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "end",
+            "token": "boundary",
+            "ancestors": [
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "boundary",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "cursor",
+            "token": "leaf",
+            "ancestors": [
+              {
+                "marker": "value",
+                "kind": "Literal"
+              },
+              {
+                "marker": "statement",
+                "kind": "ReturnStmt"
+              },
+              {
+                "marker": "body",
+                "kind": "Block"
+              },
+              {
+                "marker": "item",
+                "kind": "FunctionItem"
+              },
+              {
+                "marker": "file",
+                "kind": "SourceFile"
+              }
+            ],
+            "chain": [
+              "leaf",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ],
+        "nodes": [
+          {
+            "marker": "value",
+            "kind": "Literal"
+          },
+          {
+            "marker": "statement",
+            "kind": "ReturnStmt"
+          },
+          {
+            "marker": "body",
+            "kind": "Block"
+          },
+          {
+            "marker": "item",
+            "kind": "FunctionItem"
+          },
+          {
+            "marker": "file",
+            "kind": "SourceFile"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    "phases": [
+      {
+        "id": "disk",
+        "actions": [],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "open-main",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "dirty-main",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-dirty"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-dirty",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-main-before",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-damage-before"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-damage-before"
+        },
+        "views": {
+          "scripts/main.vela": "main-damage-before",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-main",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-repaired"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-repaired"
+        },
+        "views": {
+          "scripts/main.vela": "main-repaired",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "redamage-main-after",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-damage-after",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "close-main-restores-disk",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/main.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "reopen-main",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/main.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "open-helper",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "dirty-helper",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-dirty"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-dirty"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-dirty",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-helper-before",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-before"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-helper",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-repaired"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-repaired"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-repaired",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "redamage-helper-after",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-disk-hidden-by-open-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-before"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-overlay-over-damaged-disk",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "close-helper-exposes-damaged-disk",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-closed-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-closed-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "delete-closed-helper",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "recreate-damaged-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-before"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-recreated-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "open-helper-for-delete",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-overlay-for-delete",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "delete-disk-keeps-overlay",
+        "actions": [
+          {
+            "op": "delete",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-overlay-without-disk",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "close-deleted-helper-removes-source",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "recreate-damaged-helper-again",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "rename-helper-away",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/renamed.vela",
+            "publication": false,
+            "variant": "helper-damage-after"
+          },
+          {
+            "op": "delete",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": "helper-damage-after",
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": "helper-damage-after",
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-renamed-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/renamed.vela",
+            "publication": false,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": "helper-base",
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": null,
+          "scripts/renamed.vela": "helper-base",
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "rename-helper-back",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          },
+          {
+            "op": "delete",
+            "file": "scripts/renamed.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "reopen-helper-version-reset",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-helper-after-reopen",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-before"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-before",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-helper-after-reopen",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "main-and-helper-damaged",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-damage-before"
+          },
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-damage-before",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-damage-before",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-only-main",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/main.vela",
+            "publication": true,
+            "variant": "main-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-only-helper",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "damage-helper-for-save",
+        "actions": [
+          {
+            "op": "change",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-damage-after"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "save-damaged-helper",
+        "actions": [
+          {
+            "op": "save",
+            "file": "scripts/helper.vela",
+            "publication": false
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "close-saved-damaged-helper",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-damage-after",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "repair-saved-closed-helper",
+        "actions": [
+          {
+            "op": "write",
+            "file": "scripts/helper.vela",
+            "publication": true,
+            "variant": "helper-base"
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "reopen-saved-helper",
+        "actions": [
+          {
+            "op": "open",
+            "file": "scripts/helper.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "save-repaired-helper",
+        "actions": [
+          {
+            "op": "save",
+            "file": "scripts/helper.vela",
+            "publication": false
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base"
+        },
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      },
+      {
+        "id": "close-all-restores-baseline",
+        "actions": [
+          {
+            "op": "close",
+            "file": "scripts/helper.vela",
+            "publication": true
+          },
+          {
+            "op": "close",
+            "file": "scripts/main.vela",
+            "publication": true
+          }
+        ],
+        "disk": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        },
+        "open": {},
+        "views": {
+          "scripts/main.vela": "main-base",
+          "scripts/helper.vela": "helper-base",
+          "scripts/renamed.vela": null,
+          "scripts/decoy.vela": "decoy-base",
+          "scripts/missing.vela": null
+        }
+      }
+    ]
+  }
+}
