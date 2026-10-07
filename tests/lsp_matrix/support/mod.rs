@@ -18,6 +18,7 @@ pub(crate) mod folding_trivia;
 mod schema;
 pub(crate) mod selection;
 pub(crate) mod selection_bodies;
+pub(crate) mod selection_brackets;
 pub(crate) mod selection_calls;
 pub(crate) mod selection_declarations;
 pub(crate) mod selection_imports;

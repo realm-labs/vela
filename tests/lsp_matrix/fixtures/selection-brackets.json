@@ -1,0 +1,3287 @@
+{
+  "version": 1,
+  "id": "selection-brackets",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]][[module-cursor]]helper[[module:end]]::[[callee:start]][[callee-cursor]]apply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]][[label-cursor]]value[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]pub fn apply(value) [[body:start]]{ [[return:start]]return [[binary:start]][[field:start]][[receiver:start]]v[[receiver-cursor]]alue[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "member-cursor",
+        "chain": [
+          "member",
+          "field",
+          "binary",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "repaired-named-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]][[module-cursor]]helper[[module:end]]::[[callee:start]][[callee-cursor]]apply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]][[label-cursor]]value[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-array-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-index-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "rows-cursor",
+            "chain": [
+              "rows",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-call-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[args:end]][[call:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-map-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[entry:end]][[map:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-record-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]R[[type-cursor]]ecord[[type:end]] [[fields:start]]{ [[record-field:start]][[label:start]]v[[label-cursor]]alue[[label:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[record-field:end]][[fields:end]][[record:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "record-field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "record-field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-array-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-index-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "rows-cursor",
+            "chain": [
+              "rows",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-call-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-map-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-record-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]R[[type-cursor]]ecord[[type:end]] [[fields:start]]{ [[record-field:start]][[label:start]]v[[label-cursor]]alue[[label:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[record-field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "record-field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "record-field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-array-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-array-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-index-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-index-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-array-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[array:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-array-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[array:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-index-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[index:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-index-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[index:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-array-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[array:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-array-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[array:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "array",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-array:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-array",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-array",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[inner-index:start]][[inner-rows:start]]i[[inner-rows-cursor]]nnerRows[[inner-rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[inner-index:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-index",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "inner-index",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-index-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[index:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-index-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]]][[index:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "index",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-array-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[array:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-index-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[rows:start]]r[[rows-cursor]]ows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[index:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "rows-cursor",
+            "chain": [
+              "rows",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "point-only-comment-in-body",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ /* br[[comment]]ackets [] */  [[space]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]][[module-cursor]]helper[[module:end]]::[[callee:start]][[callee-cursor]]apply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]][[label-cursor]]value[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "parse": "quiet",
+        "source": "[[file:start]]// ar[[comment]]ray [ row.field\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "parse": "quiet",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "parse": "quiet",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}

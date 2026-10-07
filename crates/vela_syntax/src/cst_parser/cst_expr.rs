@@ -134,7 +134,7 @@ impl CstParser<'_, '_> {
         };
         self.expression_range(start, index_start);
         self.emit_until(index_start + 1);
-        let index_end = end.saturating_sub(1);
+        let index_end = self.bracket_contents_end(index_start, end);
         let value_start = self.skip_trivia(index_start + 1);
         self.expression_range(value_start, index_end);
         self.emit_until(end);
@@ -224,10 +224,20 @@ impl CstParser<'_, '_> {
     }
 
     fn array_expression_body(&mut self, start: usize, end: usize) {
-        let close = end.saturating_sub(1);
+        let close = self.bracket_contents_end(start, end);
         self.emit_until(start + 1);
         self.comma_separated_expressions(close);
         self.emit_until(end);
+    }
+
+    fn bracket_contents_end(&self, start: usize, end: usize) -> usize {
+        if self.find_matching_delimiter_end(start, SyntaxKind::LBracket, SyntaxKind::RBracket)
+            == Some(end)
+        {
+            end.saturating_sub(1)
+        } else {
+            end
+        }
     }
 
     fn map_expression_body(&mut self, start: usize, end: usize) {
@@ -812,11 +822,9 @@ impl CstParser<'_, '_> {
             if depth.is_root()
                 && current == SyntaxKind::LBracket
                 && cursor > start
-                && self.find_matching_delimiter_end(
-                    cursor,
-                    SyntaxKind::LBracket,
-                    SyntaxKind::RBracket,
-                ) == Some(end)
+                && self
+                    .find_matching_delimiter_end(cursor, SyntaxKind::LBracket, SyntaxKind::RBracket)
+                    .is_none_or(|close| close == end)
             {
                 return Some(cursor);
             }

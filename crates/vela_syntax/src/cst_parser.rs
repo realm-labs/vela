@@ -1164,6 +1164,8 @@ impl MemberDelimiterDepth {
 }
 
 #[cfg(test)]
+mod bracket_recovery_tests;
+#[cfg(test)]
 mod declaration_recovery_tests;
 #[cfg(test)]
 mod expression_recovery_tests;
