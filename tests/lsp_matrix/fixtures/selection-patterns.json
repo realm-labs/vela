@@ -1,0 +1,3068 @@
+{
+  "version": 1,
+  "id": "selection-patterns",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[record-pattern:start]][[enum:start]]Cho[[enum-cursor]]ice[[enum:end]]::[[variant:start]]Rec[[variant-cursor]]ord[[variant:end]] { [[record-field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[tuple-pattern:start]]([[head:start]]he[[head-cursor]]ad[[head:end]], [[tail:start]]ta[[tail-cursor]]il[[tail:end]])[[tuple-pattern:end]][[record-field:end]], [[shorthand:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]] [[shorthand:end]]}[[record-pattern:end]] if [[guard:start]][[guard-head:start]]he[[guard-head-cursor]]ad[[guard-head:end]] [[guard-op:start]][[guard-op-cursor]]>[[guard-op:end]] [[guard-floor:start]]fl[[guard-floor-cursor]]oor[[guard-floor:end]][[guard:end]] => [[arm-body:start]]{ [[for:start]][[for-keyword:start]]f[[for-keyword-cursor]]or[[for-keyword:end]] [[key:start]]k[[key-cursor]]ey[[key:end]], [[loop-value:start]]va[[loop-value-cursor]]lue[[loop-value:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[for-body:start]]{ [[if:start]][[if-keyword:start]][[if-keyword-cursor]]if[[if-keyword:end]] [[condition:start]][[condition-value:start]]va[[condition-value-cursor]]lue[[condition-value:end]] > [[condition-floor:start]]fl[[condition-floor-cursor]]oor[[condition-floor:end]][[condition:end]] [[then:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] }[[then:end]][[if:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[for-body:end]][[for:end]] [[arm-return:start]]return [[arm-value:start]]t[[arm-value-cursor]]ag[[arm-value:end]];[[arm-return:end]] }[[arm-body:end]][[arm:end]][[separator:start]][[separator-cursor]],[[separator:end]] [[fallback-arm:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[fallback:start]]fall[[fallback-cursor]]back[[fallback:end]][[fallback-arm:end]] }[[match-arms:end]][[match:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper(input) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]in[[scrutinee-cursor]]put[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[binding:start]]va[[binding-cursor]]lue[[binding:end]], _)[[pattern:end]] if [[guard:start]][[use:start]]va[[use-cursor]]lue[[use:end]] > [[floor:start]]fl[[floor-cursor]]oor[[floor:end]][[guard:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]] [[declaration:start]]pub enum Choice { Unit, Tuple(i64, i64), Record { value: (i64, i64), tag: i64 } }[[declaration:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "binding-cursor",
+        "chain": [
+          "binding",
+          "pattern",
+          "arm",
+          "match-arms",
+          "match",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      },
+      {
+        "position": "use-cursor",
+        "chain": [
+          "use",
+          "guard",
+          "arm",
+          "match-arms",
+          "match",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "nested-record-pattern-guard-for-and-control-owners",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[record-pattern:start]][[enum:start]]Cho[[enum-cursor]]ice[[enum:end]]::[[variant:start]]Rec[[variant-cursor]]ord[[variant:end]] { [[record-field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[tuple-pattern:start]]([[head:start]]he[[head-cursor]]ad[[head:end]], [[tail:start]]ta[[tail-cursor]]il[[tail:end]])[[tuple-pattern:end]][[record-field:end]], [[shorthand:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]] [[shorthand:end]]}[[record-pattern:end]] if [[guard:start]][[guard-head:start]]he[[guard-head-cursor]]ad[[guard-head:end]] [[guard-op:start]][[guard-op-cursor]]>[[guard-op:end]] [[guard-floor:start]]fl[[guard-floor-cursor]]oor[[guard-floor:end]][[guard:end]] => [[arm-body:start]]{ [[for:start]][[for-keyword:start]]f[[for-keyword-cursor]]or[[for-keyword:end]] [[key:start]]k[[key-cursor]]ey[[key:end]], [[loop-value:start]]va[[loop-value-cursor]]lue[[loop-value:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[for-body:start]]{ [[if:start]][[if-keyword:start]][[if-keyword-cursor]]if[[if-keyword:end]] [[condition:start]][[condition-value:start]]va[[condition-value-cursor]]lue[[condition-value:end]] > [[condition-floor:start]]fl[[condition-floor-cursor]]oor[[condition-floor:end]][[condition:end]] [[then:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] }[[then:end]][[if:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[for-body:end]][[for:end]] [[arm-return:start]]return [[arm-value:start]]t[[arm-value-cursor]]ag[[arm-value:end]];[[arm-return:end]] }[[arm-body:end]][[arm:end]][[separator:start]][[separator-cursor]],[[separator:end]] [[fallback-arm:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[fallback:start]]fall[[fallback-cursor]]back[[fallback:end]][[fallback-arm:end]] }[[match-arms:end]][[match:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "head-cursor",
+            "chain": [
+              "head",
+              "tuple-pattern",
+              "record-field",
+              "record-pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "record-field",
+              "record-pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "head-cursor",
+            "chain": [
+              "head",
+              "tuple-pattern",
+              "record-field",
+              "record-pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "shorthand",
+              "record-pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "guard-head-cursor",
+            "chain": [
+              "guard-head",
+              "guard",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "guard-floor-cursor",
+            "chain": [
+              "guard-floor",
+              "guard",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "loop-value-cursor",
+            "chain": [
+              "loop-value",
+              "for",
+              "arm-body",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "then",
+              "if",
+              "for-body",
+              "for",
+              "arm-body",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "for-body",
+              "for",
+              "arm-body",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "arm-value-cursor",
+            "chain": [
+              "arm-value",
+              "arm-return",
+              "arm-body",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "record-pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "separator-cursor",
+            "chain": [
+              "separator",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "scrutinee-cursor",
+            "chain": [
+              "scrutinee",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "returned-cursor",
+            "chain": [
+              "returned",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "wildcard-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[pattern-cursor]]_[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binding-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-true",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]t[[pattern-cursor]]rue[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-false",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]f[[pattern-cursor]]alse[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-integer",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]1[[pattern-cursor]]23[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-float",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]1[[pattern-cursor]].5[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-string",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]\"[[pattern-cursor]]中😀\"[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-pattern-character",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]'[[pattern-cursor]]x'[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unit-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Un[[pattern-cursor]]it[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-qualified-unit-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::[[variant:start]]Un[[variant-cursor]]it[[variant:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-qualified-unit-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]host::Choice::[[variant:start]]Un[[variant-cursor]]it[[variant:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-qualified-unit-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]missing::Choice::[[variant:start]]Un[[variant-cursor]]it[[variant:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-pattern-trailing-comma",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]],)[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-tuple-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]([[inner:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[inner:end]], [[other:start]]ot[[other-cursor]]her[[other:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "inner",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-tuple-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[variant:start]]Em[[variant-cursor]]pty[[variant:end]]([[close:start]][[close-cursor]])[[close:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-tuple-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::[[variant:start]]Tu[[variant-cursor]]ple[[variant:end]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "wildcard-cursor",
+            "chain": [
+              "wildcard",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-tuple-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]host::Choice::[[variant:start]]Tu[[variant-cursor]]ple[[variant:end]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "wildcard-cursor",
+            "chain": [
+              "wildcard",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-tuple-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]missing::Choice::[[variant:start]]Tu[[variant-cursor]]ple[[variant:end]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "wildcard-cursor",
+            "chain": [
+              "wildcard",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-pattern-label-value-and-shorthand",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[variant:start]]Cho[[variant-cursor]]ice[[variant:end]]::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]][[field:end]], [[short:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]] [[short:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "short",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-record-label-and-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[field:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-record-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[inner:start]]Inner::Record { [[inner-field:start]][[inner-label:start]]na[[inner-label-cursor]]me[[inner-label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]] [[inner-field:end]]}[[inner:end]] [[field:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "inner-field",
+              "inner",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-label-cursor",
+            "chain": [
+              "inner-label",
+              "inner-field",
+              "inner",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-record-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]host::Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]] [[field:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-record-variant-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]missing::Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]] [[field:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-record-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[variant:start]]Em[[variant-cursor]]pty[[variant:end]] { [[close:start]][[close-cursor]]}[[close:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-pattern-trailing-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]] /* field[[comment]] */ [[field:end]], }[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "multiline-record-and-tuple-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Record {\n [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[inner:start]]([[left:start]]le[[left-cursor]]ft[[left:end]],\n [[right:start]]ri[[right-cursor]]ght[[right:end]])[[inner:end]]\n[[field:end]],\n [[short:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]]\n[[short:end]]}[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "inner",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "inner",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "short",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-binary-and-keyword",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[guard:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]>[[operator:end]] [[right:start]]fl[[right-cursor]]oor[[right:end]][[guard:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "guard",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "guard",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-named-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[call:start]][[callee:start]]acc[[callee-cursor]]ept[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]bin[[value-cursor]]ding[[value:end]][[argument:end]])[[args:end]][[call:end]] => [[arm-value:start]]res[[arm-value-cursor]]ult[[arm-value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-lambda-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[call:start]][[paren:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]])[[paren:end]][[args:start]]([[argument:start]]bin[[argument-cursor]]ding[[argument:end]])[[args:end]][[call:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "paren",
+              "call",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "argument-cursor",
+            "chain": [
+              "argument",
+              "args",
+              "call",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "guard-assignment-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[assignment:start]][[left:start]]bin[[left-cursor]]ding[[left:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "block-arm-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] => [[arm-body:start]]{ [[return:start]]return [[returned:start]]bin[[returned-cursor]]ding[[returned:end]];[[return:end]] }[[arm-body:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "returned-cursor",
+            "chain": [
+              "returned",
+              "return",
+              "arm-body",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-match-arms",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]][[keyword:start]]ma[[keyword-cursor]]tch[[keyword:end]] [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]][[open:start]][[open-cursor]]{[[open:end]] [[close:start]][[close-cursor]]}[[close:end]][[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "standalone-match-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] => [[value:start]]bin[[value-cursor]]ding[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "scrutinee-cursor",
+            "chain": [
+              "scrutinee",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-neighbor-arm-bindings",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[first:start]][[first-pattern:start]]Choice::Tuple([[first-binding:start]]va[[first-binding-cursor]]lue[[first-binding:end]])[[first-pattern:end]] => [[first-value:start]]va[[first-value-cursor]]lue[[first-value:end]][[first:end]], [[second:start]][[second-pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[second-binding:start]]va[[second-binding-cursor]]lue[[second-binding:end]] [[field:end]]}[[second-pattern:end]] => [[second-value:start]]va[[second-value-cursor]]lue[[second-value:end]][[second:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-binding-cursor",
+            "chain": [
+              "second-binding",
+              "field",
+              "second-pattern",
+              "second",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-binding-cursor",
+            "chain": [
+              "first-binding",
+              "first-pattern",
+              "first",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-single-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-wildcard-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[binding:start]][[binding-cursor]]_[[binding:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-tuple-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[pattern:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-key-value-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[key:start]]k[[key-cursor]]ey[[key:end]], [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-nested-key-value-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[key-pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[key-pattern:end]], [[value-pattern:start]]Choice::Tuple([[binding:start]]va[[binding-cursor]]lue[[binding:end]])[[value-pattern:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "key-pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "value-pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-record-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]] [[pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[field:end]]}[[pattern:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-range-iterable",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[range:start]][[start:start]]st[[start-cursor]]art[[start:end]] [[operator:start]][[operator-cursor]]..[[operator:end]] [[end:start]]e[[end-cursor]]nd[[end:end]][[range:end]] [[loop-body:start]]{ break; }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "start-cursor",
+            "chain": [
+              "start",
+              "range",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "range",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-call-iterable",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[call:start]][[callee:start]]pro[[callee-cursor]]duce[[callee:end]][[args:start]]([[argument:start]]se[[argument-cursor]]ed[[argument:end]])[[args:end]][[call:end]] [[loop-body:start]]{ break; }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "argument-cursor",
+            "chain": [
+              "argument",
+              "args",
+              "call",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-method-iterable",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[call:start]][[field:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]].[[method:start]]it[[method-cursor]]er[[method:end]][[field:end]][[args:start]]()[[args:end]][[call:end]] [[loop-body:start]]{ break; }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "field",
+              "call",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-index-iterable",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[index-value:start]]sl[[index-value-cursor]]ot[[index-value:end]]][[index:end]] [[loop-body:start]]{ break; }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "index-value-cursor",
+            "chain": [
+              "index-value",
+              "index",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-parenthesized-iterable",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[paren:start]]([[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]])[[paren:end]] [[loop-body:start]]{ break; }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "paren",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-for-if-controls",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[outer:start]]for row in [[outer-iterable:start]]ro[[outer-iterable-cursor]]ws[[outer-iterable:end]] [[outer-body:start]]{ [[inner:start]]for value in [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]val[[member-cursor]]ues[[member:end]][[field:end]] [[inner-body:start]]{ [[if:start]]if [[condition:start]]fl[[condition-cursor]]ag[[condition:end]] [[then:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] }[[then:end]] else [[else:start]]{ [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[else:end]][[if:end]] }[[inner-body:end]][[inner:end]] }[[outer-body:end]][[outer:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner",
+              "outer-body",
+              "outer",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "then",
+              "if",
+              "inner-body",
+              "inner",
+              "outer-body",
+              "outer",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "else",
+              "if",
+              "inner-body",
+              "inner",
+              "outer-body",
+              "outer",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "let-tuple-destructuring",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let [[pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[pattern:end]] = [[value:start]]pa[[value-cursor]]ir[[value:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "pattern",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "pattern",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "let-record-destructuring",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let [[pattern:start]]Choice::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]bin[[binding-cursor]]ding[[binding:end]][[field:end]], [[short:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]] [[short:end]]}[[pattern:end]] = [[value:start]]it[[value-cursor]]em[[value:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "pattern",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "short",
+              "pattern",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "if-else-if-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[if:start]][[keyword:start]][[keyword-cursor]]if[[keyword:end]] [[condition:start]]fl[[condition-cursor]]ag[[condition:end]] [[then:start]]{ [[then-statement:start]][[first-value:start]]fi[[first-value-cursor]]rst[[first-value:end]] [[then-statement:end]]}[[then:end]] [[else-keyword:start]]el[[else-keyword-cursor]]se[[else-keyword:end]] [[else-if:start]][[inner-keyword:start]][[inner-keyword-cursor]]if[[inner-keyword:end]] [[second-condition:start]]ot[[second-condition-cursor]]her[[second-condition:end]] [[second:start]]{ [[second-statement:start]][[second-value:start]]sec[[second-value-cursor]]ond[[second-value:end]] [[second-statement:end]]}[[second:end]] else [[last:start]]{ [[last-statement:start]][[last-value:start]]la[[last-value-cursor]]st[[last-value:end]] [[last-statement:end]]}[[last:end]][[else-if:end]][[if:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "else-keyword-cursor",
+            "chain": [
+              "else-keyword",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second-statement",
+              "second",
+              "else-if",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "last-value-cursor",
+            "chain": [
+              "last-value",
+              "last-statement",
+              "last",
+              "else-if",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-source-enum-pattern",
+        "source": "[[file:start]]/*中😀*/ use helper::Choice as Alias; [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[alias:start]]Al[[alias-cursor]]ias[[alias:end]]::Tuple([[binding:start]]va[[binding-cursor]]lue[[binding:end]], _)[[pattern:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-enum-separate-declaration",
+        "source": "[[file:start]]/*中😀*/ [[declaration:start]]enum Choice { Unit, Tuple(i64), Record { value: i64 } }[[declaration:end]] [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[binding:start]]va[[binding-cursor]]lue[[binding:end]])[[pattern:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-option-some-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Option::[[variant:start]]So[[variant-cursor]]me[[variant:end]]([[binding:start]]va[[binding-cursor]]lue[[binding:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-result-ok-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Result::[[variant:start]]O[[variant-cursor]]k[[variant:end]]([[binding:start]]va[[binding-cursor]]lue[[binding:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-result-err-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Result::[[variant:start]]E[[variant-cursor]]rr[[variant:end]]([[binding:start]]va[[binding-cursor]]lue[[binding:end]])[[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-option-none-pattern",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Option::[[variant:start]]No[[variant-cursor]]ne[[variant:end]][[pattern:end]] => [[value:start]]res[[value-cursor]]ult[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "variant-cursor",
+            "chain": [
+              "variant",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-enum-record-alias-pattern",
+        "source": "[[file:start]]/*中😀*/ use helper::Choice as Alias; [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[alias:start]]Al[[alias-cursor]]ias[[alias:end]]::Record { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[field:end]]}[[pattern:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-tuple-variant-alias-pattern",
+        "source": "[[file:start]]/*中😀*/ use helper::Choice::Tuple as Alias; [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[alias:start]]Al[[alias-cursor]]ias[[alias:end]]([[binding:start]]va[[binding-cursor]]lue[[binding:end]], _)[[pattern:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-record-variant-alias-pattern",
+        "source": "[[file:start]]/*中😀*/ use helper::Choice::Record as Alias; [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]][[alias:start]]Al[[alias-cursor]]ias[[alias:end]] { [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[binding:start]]va[[binding-cursor]]lue[[binding:end]] [[field:end]]}[[pattern:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "field",
+              "pattern",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-unit-variant-alias-pattern",
+        "source": "[[file:start]]/*中😀*/ use helper::Choice::Unit as Alias; [[item:start]]fn run(item) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[alias:start]]Al[[alias-cursor]]ias[[alias:end]] => [[value:start]]va[[value-cursor]]lue[[value:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "alias-cursor",
+            "chain": [
+              "alias",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "match-arm-trailing-comment-and-semicolon",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] [[guard-keyword:start]][[guard-keyword-cursor]]if[[guard-keyword:end]] [[guard:start]]fl[[guard-cursor]]ag[[guard:end]] [[arrow:start]][[arrow-cursor]]=>[[arrow:end]] [[value:start]]bin[[value-cursor]]ding[[value:end]] /* ar[[comment]]m */ [[arm:end]][[separator:start]][[separator-cursor]];[[separator:end]] [[other:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[fallback:start]]fall[[fallback-cursor]]back[[fallback:end]][[other:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "guard-keyword-cursor",
+            "chain": [
+              "guard-keyword",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "arrow-cursor",
+            "chain": [
+              "arrow",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "separator-cursor",
+            "chain": [
+              "separator",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "newline-separated-match-arms",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{\n [[first:start]][[first-binding:start]]fi[[first-binding-cursor]]rst[[first-binding:end]] => [[first-value:start]]fi[[first-value-cursor]]rst[[first-value:end]][[first:end]]\n [[second:start]][[second-binding:start]]sec[[second-binding-cursor]]ond[[second-binding:end]] => [[second-value:start]]sec[[second-value-cursor]]ond[[second-value:end]][[second:end]]\n}[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "first-binding-cursor",
+            "chain": [
+              "first-binding",
+              "first",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-multiline-binding-and-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]][[keyword:start]]f[[keyword-cursor]]or[[keyword:end]]\n [[pattern:start]]([[left:start]]le[[left-cursor]]ft[[left:end]],\n [[right:start]]ri[[right-cursor]]ght[[right:end]])[[pattern:end]] /* bin[[comment]]ding */ [[in:start]][[in-cursor]]in[[in:end]]\n [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]]\n [[loop-body:start]]{\n [[continue:start]]continue;[[continue:end]]\n}[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "pattern",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "in-cursor",
+            "chain": [
+              "in",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "match-inside-for-control-bodies",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[loop-body:start]]{ [[match:start]]match [[scrutinee:start]]va[[scrutinee-cursor]]lue[[scrutinee:end]] [[match-arms:start]]{ [[first:start]][[pattern:start]]Choice::Tuple([[binding:start]]in[[binding-cursor]]ner[[binding:end]])[[pattern:end]] => [[first-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] }[[first-body:end]][[first:end]], [[second:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[second-body:start]]{ [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[second-body:end]][[second:end]], }[[match-arms:end]][[match:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "pattern",
+              "first",
+              "match-arms",
+              "match",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "first-body",
+              "first",
+              "match-arms",
+              "match",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "second-body",
+              "second",
+              "match-arms",
+              "match",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "let-bare-binding-without-pattern-owner",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let [[binding:start]]va[[binding-cursor]]lue[[binding:end]] = [[initializer:start]]se[[initializer-cursor]]ed[[initializer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "initializer-cursor",
+            "chain": [
+              "initializer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "let-wildcard-binding",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let [[binding:start]][[binding-cursor]]_[[binding:end]] = [[initializer:start]]se[[initializer-cursor]]ed[[initializer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "standalone-if-else-controls",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[for:start]]for value in rows [[loop-body:start]]{ [[if:start]][[keyword:start]][[keyword-cursor]]if[[keyword:end]] [[condition:start]]fl[[condition-cursor]]ag[[condition:end]] [[then:start]]{ [[continue:start]]continue;[[continue:end]] }[[then:end]] [[else-keyword:start]]el[[else-keyword-cursor]]se[[else-keyword:end]] [[else:start]]{ [[break:start]]break;[[break:end]] }[[else:end]][[if:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "if",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "else-keyword-cursor",
+            "chain": [
+              "else-keyword",
+              "if",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-match-arm-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[outer-binding:start]]va[[outer-binding-cursor]]lue[[outer-binding:end]])[[pattern:end]] => [[inner:start]]match [[inner-scrutinee:start]]va[[inner-scrutinee-cursor]]lue[[inner-scrutinee:end]] [[inner-arms:start]]{ [[inner-arm:start]][[inner-binding:start]]bin[[inner-binding-cursor]]ding[[inner-binding:end]] => [[inner-value:start]]bin[[inner-value-cursor]]ding[[inner-value:end]][[inner-arm:end]], }[[inner-arms:end]][[inner:end]][[arm:end]], }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "inner-binding-cursor",
+            "chain": [
+              "inner-binding",
+              "inner-arm",
+              "inner-arms",
+              "inner",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-value-cursor",
+            "chain": [
+              "inner-value",
+              "inner-arm",
+              "inner-arms",
+              "inner",
+              "arm",
+              "match-arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "point-only-pattern-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ /* match Ch[[comment]]oice::Tuple(value) */  [[space]]  }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(rows) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]it[[scrutinee-cursor]]em[[scrutinee:end]] [[match-arms:start]]{ [[arm:start]][[record-pattern:start]][[enum:start]]Cho[[enum-cursor]]ice[[enum:end]]::[[variant:start]]Rec[[variant-cursor]]ord[[variant:end]] { [[record-field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[tuple-pattern:start]]([[head:start]]he[[head-cursor]]ad[[head:end]], [[tail:start]]ta[[tail-cursor]]il[[tail:end]])[[tuple-pattern:end]][[record-field:end]], [[shorthand:start]][[tag:start]]t[[tag-cursor]]ag[[tag:end]] [[shorthand:end]]}[[record-pattern:end]] if [[guard:start]][[guard-head:start]]he[[guard-head-cursor]]ad[[guard-head:end]] [[guard-op:start]][[guard-op-cursor]]>[[guard-op:end]] [[guard-floor:start]]fl[[guard-floor-cursor]]oor[[guard-floor:end]][[guard:end]] => [[arm-body:start]]{ [[for:start]][[for-keyword:start]]f[[for-keyword-cursor]]or[[for-keyword:end]] [[key:start]]k[[key-cursor]]ey[[key:end]], [[loop-value:start]]va[[loop-value-cursor]]lue[[loop-value:end]] [[in:start]][[in-cursor]]in[[in:end]] [[iterable:start]]ro[[iterable-cursor]]ws[[iterable:end]] [[for-body:start]]{ [[if:start]][[if-keyword:start]][[if-keyword-cursor]]if[[if-keyword:end]] [[condition:start]][[condition-value:start]]va[[condition-value-cursor]]lue[[condition-value:end]] > [[condition-floor:start]]fl[[condition-floor-cursor]]oor[[condition-floor:end]][[condition:end]] [[then:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] }[[then:end]][[if:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[for-body:end]][[for:end]] [[arm-return:start]]return [[arm-value:start]]t[[arm-value-cursor]]ag[[arm-value:end]];[[arm-return:end]] }[[arm-body:end]][[arm:end]][[separator:start]][[separator-cursor]],[[separator:end]] [[fallback-arm:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[fallback:start]]fall[[fallback-cursor]]back[[fallback:end]][[fallback-arm:end]] }[[match-arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// for val[[comment]]ue in rows\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}
