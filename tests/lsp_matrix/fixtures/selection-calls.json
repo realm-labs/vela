@@ -1,0 +1,3654 @@
+{
+  "version": 1,
+  "id": "selection-calls",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[first:start]][[first-label:start]]fi[[first-label-cursor]]rst[[first-label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[second:start]][[callback-label:start]]call[[callback-label-cursor]]back[[callback-label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[binary:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[binary:end]][[lambda:end]][[second:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper() [[body:start]]{ [[return:start]]return [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[return:end]] }[[body:end]][[item:end]] [[apply-item:start]]pub fn apply(first, callback = fallback) { return first; }[[apply-item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "value-cursor",
+        "chain": [
+          "value",
+          "argument",
+          "args",
+          "call",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      },
+      {
+        "position": "label-cursor",
+        "chain": [
+          "label",
+          "argument",
+          "args",
+          "call",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "qualified-named-callback-and-positional-owners",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[first:start]][[first-label:start]]fi[[first-label-cursor]]rst[[first-label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[second:start]][[callback-label:start]]call[[callback-label-cursor]]back[[callback-label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[binary:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[binary:end]][[lambda:end]][[second:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-label-cursor",
+            "chain": [
+              "first-label",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callback-label-cursor",
+            "chain": [
+              "callback-label",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "binary",
+              "lambda",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "binary",
+              "lambda",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "equal-cursor",
+            "chain": [
+              "equal",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "returned-cursor",
+            "chain": [
+              "returned",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-call-list",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "one-positional-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "multiple-positional-arguments",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[first:start]][[left:start]]le[[left-cursor]]ft[[left:end]][[first:end]], [[second:start]][[middle:start]]mid[[middle-cursor]]dle[[middle:end]][[second:end]], [[third:start]][[right:start]]ri[[right-cursor]]ght[[right:end]][[third:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "middle-cursor",
+            "chain": [
+              "middle",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-label-and-value",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "equal-cursor",
+            "chain": [
+              "equal",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "reordered-named-arguments",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[first:start]][[right-label:start]]ri[[right-label-cursor]]ght[[right-label:end]] = [[right:start]]ot[[right-cursor]]her[[right:end]][[first:end]], [[second:start]][[left-label:start]]le[[left-label-cursor]]ft[[left-label:end]] = [[left:start]]se[[left-cursor]]ed[[left:end]][[second:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-label-cursor",
+            "chain": [
+              "left-label",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "mixed-positional-and-named",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[first:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[first:end]], [[second:start]][[label:start]]co[[label-cursor]]unt[[label:end]] = [[other:start]]ot[[other-cursor]]her[[other:end]][[second:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "argument-trailing-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]](  [[first:start]][[value:start]]se[[value-cursor]]ed[[value:end]] [[first:end]],  [[second:start]][[label:start]]ot[[label-cursor]]her[[label:end]] = [[other:start]]ot[[other-cursor]]her[[other:end]]  [[second:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trailing-comma-and-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]][[comma:start]][[comma-cursor]],[[comma:end]] /* tail[[comment]] */ [[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "multiline-argument-ownership",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]](\n  [[first:start]][[label:start]]fi[[label-cursor]]rst[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]]\n[[first:end]],\n  [[second:start]][[other:start]]ot[[other-cursor]]her[[other:end]]\n[[second:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "first",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "second",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-label-with-comments",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] /* pre[[comment]] */ = /* va[[second-comment]]lue */ [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "second-comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "nested-positional-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[inner:start]][[inner-callee:start]]com[[inner-callee-cursor]]pute[[inner-callee:end]][[inner-args:start]]([[inner-argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[inner-argument:end]])[[inner-args:end]][[inner:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "inner-callee-cursor",
+            "chain": [
+              "inner-callee",
+              "inner",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "inner-args",
+              "inner",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-named-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[inner:start]][[inner-callee:start]]com[[inner-callee-cursor]]pute[[inner-callee:end]][[inner-args:start]]([[inner-argument:start]][[inner-label:start]]in[[inner-label-cursor]]put[[inner-label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[inner-argument:end]])[[inner-args:end]][[inner:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-label-cursor",
+            "chain": [
+              "inner-label",
+              "inner-argument",
+              "inner-args",
+              "inner",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "inner-argument",
+              "inner-args",
+              "inner",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "consecutive-returned-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[inner:start]][[factory:start]]fac[[factory-cursor]]tory[[factory:end]][[inner-args:start]]()[[inner-args:end]][[inner:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "factory-cursor",
+            "chain": [
+              "factory",
+              "inner",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-callee",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[paren:start]]([[callee:start]]ap[[callee-cursor]]ply[[callee:end]])[[paren:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "paren",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "indexed-callee",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[index:start]][[receiver:start]]call[[receiver-cursor]]backs[[receiver:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "index",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "call-then-index",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Record) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: host::Entity) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Rule) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dynamic-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Any) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Missing) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "stdlib-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row: Array<i64>) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]pu[[method-cursor]]sh[[method:end]][[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-source-function",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]helper::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "host-function-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]host::[[callee:start]]gr[[callee-cursor]]ant[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "stdlib-function-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]io::[[callee:start]]pr[[callee-cursor]]int[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "missing-function-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]missing::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "service-base-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]service::base::[[callee:start]]han[[callee-cursor]]dle[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "service-pinned-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]service::pinned::peer::[[callee:start]]ta[[callee-cursor]]ke[[callee:end]][[path:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "scoped-task-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]task::[[callee:start]]spawn_[[callee-cursor]]scoped[[callee:end]][[path:end]][[args:start]]([[worker-call:start]][[worker:start]]wor[[worker-cursor]]ker[[worker:end]][[worker-args:start]]([[value:start]]se[[value-cursor]]ed[[value:end]])[[worker-args:end]][[worker-call:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "worker-args",
+              "worker-call",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "worker-cursor",
+            "chain": [
+              "worker",
+              "worker-call",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unknown-bare-function",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]unk[[callee-cursor]]nown[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "scoped-task-continuation-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]]task::[[callee:start]]spawn_sc[[callee-cursor]]oped_then[[callee:end]][[path:end]][[args:start]]([[worker-call:start]][[worker:start]]wor[[worker-cursor]]ker[[worker:end]][[worker-args:start]]([[value:start]]se[[value-cursor]]ed[[value:end]])[[worker-args:end]][[worker-call:end]], [[continuation-argument:start]][[continuation:start]]contin[[continuation-cursor]]uation[[continuation:end]][[continuation-argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "worker-cursor",
+            "chain": [
+              "worker",
+              "worker-call",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "worker-args",
+              "worker-call",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continuation-cursor",
+            "chain": [
+              "continuation",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "method-chain-calls",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[outer-callee:start]][[inner:start]][[inner-callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[first-method:start]]fi[[first-method-cursor]]rst[[first-method:end]][[inner-callee:end]][[inner-args:start]]([[inner-argument:start]][[first-value:start]]se[[first-value-cursor]]ed[[first-value:end]][[inner-argument:end]])[[inner-args:end]][[inner:end]].[[second-method:start]]sec[[second-method-cursor]]ond[[second-method:end]][[outer-callee:end]][[args:start]]([[argument:start]][[second-value:start]]ot[[second-value-cursor]]her[[second-value:end]][[argument:end]])[[args:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "first-method-cursor",
+            "chain": [
+              "first-method",
+              "inner-callee",
+              "inner",
+              "outer-callee",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "inner-args",
+              "inner",
+              "outer-callee",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-method-cursor",
+            "chain": [
+              "second-method",
+              "outer-callee",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "args",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "returned-receiver-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[factory:start]][[factory-name:start]]fac[[factory-name-cursor]]tory[[factory-name:end]][[factory-args:start]]()[[factory-args:end]][[factory:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "factory-name-cursor",
+            "chain": [
+              "factory-name",
+              "factory",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "indexed-receiver-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]][[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-positional-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-positional-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-positional-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-positional-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "compound-assignment-positional-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-assignment-positional",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[paren:start]]([[assignment:start]][[target:start]]va[[target-cursor]]lue[[target:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[paren:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "paren",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "paren",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "field-assignment-positional",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]va[[member-cursor]]lue[[member:end]][[field:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[assignment:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] += [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] += [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "typed-callback-parameter",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[param:start]][[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]: [[type:start]]i[[type-cursor]]64[[type:end]][[param:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "param",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "param",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "block-callback-method",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]][[pipes:start]][[pipes-cursor]]||[[pipes:end]][[params:end]] [[lambda-body:start]]{ [[statement:start]][[inner:start]][[inner-callee:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[inner-callee:end]][[inner-args:start]]()[[inner-args:end]][[inner:end]];[[statement:end]] }[[lambda-body:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pipes-cursor",
+            "chain": [
+              "pipes",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "inner-callee",
+              "inner",
+              "statement",
+              "lambda-body",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-as-callee",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[paren:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]])[[paren:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "paren",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "lambda",
+              "paren",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "awaited-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]async fn run(row) [[body:start]]{ [[local:start]]let result = [[await:start]][[call:start]][[callee:start]]fe[[callee-cursor]]tch[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]].[[await-keyword:start]]aw[[await-keyword-cursor]]ait[[await-keyword:end]][[await:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "await",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "await",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "await-keyword-cursor",
+            "chain": [
+              "await-keyword",
+              "await",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "awaited-try-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]async fn run(row) [[body:start]]{ [[local:start]]let result = [[try:start]][[await:start]][[call:start]][[callee:start]]fe[[callee-cursor]]tch[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]].[[await-keyword:start]]aw[[await-keyword-cursor]]ait[[await-keyword:end]][[await:end]][[question:start]][[question-cursor]]?[[question:end]][[try:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "await",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "await",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "await-keyword-cursor",
+            "chain": [
+              "await-keyword",
+              "await",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "question-cursor",
+            "chain": [
+              "question",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "awaited-receiver-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]async fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[outer-callee:start]][[await:start]][[call:start]][[callee:start]]fe[[callee-cursor]]tch[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]].[[await-keyword:start]]aw[[await-keyword-cursor]]ait[[await-keyword:end]][[await:end]].[[method:start]]ap[[method-cursor]]ply[[method:end]][[outer-callee:end]][[outer-args:start]]([[outer-argument:start]][[other:start]]ot[[other-cursor]]her[[other:end]][[outer-argument:end]])[[outer-args:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "await",
+              "outer-callee",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "outer-callee",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "outer-args",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[record:start]][[constructor:start]]Rec[[constructor-cursor]]ord[[constructor:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[field:end]]}[[fields:end]][[record:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "constructor-cursor",
+            "chain": [
+              "constructor",
+              "record",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "field",
+              "fields",
+              "record",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[tuple:start]]([[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]])[[tuple:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "tuple",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "tuple",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "array-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[array:start]][ [[left:start]]le[[left-cursor]]ft[[left:end]], [[right:start]]ri[[right-cursor]]ght[[right:end]] ][[array:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "array",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "array",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "function-default-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run[[params:start]]([[param:start]][[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]] = [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[label:start]]in[[label-cursor]]put[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "required-trait-default-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn apply[[params:start]]([[self-param:start]]self[[self-param:end]],[[param:start]] value = [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][[param:end]])[[params:end]];[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-default-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn apply[[params:start]]([[self-param:start]]self[[self-param:end]],[[param:start]] value = [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][[param:end]])[[params:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inherent-default-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Record { [[method:start]]fn apply[[params:start]]([[self-param:start]]self[[self-param:end]],[[param:start]] value = [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][[param:end]])[[params:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-default-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Rule for Record { [[method:start]]fn apply[[params:start]]([[self-param:start]]self[[self-param:end]],[[param:start]] value = [[call:start]][[callee:start]]com[[callee-cursor]]pute[[callee:end]][[args:start]]([[argument:start]][[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]][[param:end]])[[params:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "args",
+              "call",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-callable-separate-declaration",
+        "source": "[[file:start]]/*中😀*/ [[declaration:start]]fn apply(value = seed) { return value; }[[declaration:end]] [[item:start]]fn run() [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]ot[[value-cursor]]her[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-callable-alias",
+        "source": "[[file:start]]/*中😀*/ [[import:start]]use helper::apply as Alias;[[import:end]] [[item:start]]fn run() [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]Al[[callee-cursor]]ias[[callee:end]][[args:start]]([[argument:start]][[label:start]]fi[[label-cursor]]rst[[label:end]] = [[value:start]]se[[value-cursor]]ed[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-label-and-value",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[args:start]]([[argument:start]][[label:start]]va[[label-cursor]]lue[[label:end]] = [[value:start]]va[[value-cursor]]lue[[value:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-neighbor-calls",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[first-local:start]]let first = [[first-call:start]][[first-callee:start]]ap[[first-callee-cursor]]ply[[first-callee:end]][[first-args:start]]([[first-value:start]]se[[first-value-cursor]]ed[[first-value:end]])[[first-args:end]][[first-call:end]];[[first-local:end]] [[second-local:start]]let second = [[second-call:start]][[second-callee:start]]ap[[second-callee-cursor]]ply[[second-callee:end]][[second-args:start]]([[second-value:start]]ot[[second-value-cursor]]her[[second-value:end]])[[second-args:end]][[second-call:end]];[[second-local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-callee-cursor",
+            "chain": [
+              "second-callee",
+              "second-call",
+              "second-local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-callee-cursor",
+            "chain": [
+              "first-callee",
+              "first-call",
+              "first-local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "first-args",
+              "first-call",
+              "first-local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second-args",
+              "second-call",
+              "second-local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "stdlib-iterator-pipeline",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(arr: Array<i64>) [[body:start]]{ [[local:start]]let result = [[collect-call:start]][[collect-callee:start]][[map-call:start]][[map-callee:start]][[iter-call:start]][[iter-callee:start]][[receiver:start]]a[[receiver-cursor]]rr[[receiver:end]].[[iter-method:start]]it[[iter-method-cursor]]er[[iter-method:end]][[iter-callee:end]][[iter-args:start]]()[[iter-args:end]][[iter-call:end]].[[map-method:start]]m[[map-method-cursor]]ap[[map-method:end]][[map-callee:end]][[map-args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]])[[map-args:end]][[map-call:end]].[[collect-method:start]]collec[[collect-method-cursor]]t_array[[collect-method:end]][[collect-callee:end]][[collect-args:start]]()[[collect-args:end]][[collect-call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "iter-method-cursor",
+            "chain": [
+              "iter-method",
+              "iter-callee",
+              "iter-call",
+              "map-callee",
+              "map-call",
+              "collect-callee",
+              "collect-call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "map-args",
+              "map-call",
+              "collect-callee",
+              "collect-call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "lambda",
+              "map-args",
+              "map-call",
+              "collect-callee",
+              "collect-call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "collect-method-cursor",
+            "chain": [
+              "collect-method",
+              "collect-callee",
+              "collect-call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unit-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[unit:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "unit",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-positional-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]+[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "block-positional-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[block:start]]{ [[inner-return:start]]return [[value:start]]se[[value-cursor]]ed[[value:end]];[[inner-return:end]] }[[block:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "inner-return",
+              "block",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "conditional-positional-argument",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[if:start]]if [[condition:start]]fl[[condition-cursor]]ag[[condition:end]] [[then:start]]{ [[left-statement:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[left-statement:end]]}[[then:end]] else [[else:start]]{ [[right-statement:start]][[right:start]]ri[[right-cursor]]ght[[right:end]] [[right-statement:end]]}[[else:end]][[if:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "condition-cursor",
+            "chain": [
+              "condition",
+              "if",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "left-statement",
+              "then",
+              "if",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "right-statement",
+              "else",
+              "if",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-set-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-set-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-subtract-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-subtract-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-multiply-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-multiply-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-divide-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-divide-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "positional-remainder-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-remainder-assignment-callback",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[use:start]]va[[use-cursor]]lue[[use:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[delta:start]]se[[delta-cursor]]ed[[delta:end]][[assignment:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "point-only-call-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ /* app[[comment]]ly(value = seed) */  [[space]]  }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]][[open:start]][[open-cursor]]([[open:end]][[first:start]][[first-label:start]]fi[[first-label-cursor]]rst[[first-label:end]] [[equal:start]][[equal-cursor]]=[[equal:end]] [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[first:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[second:start]][[callback-label:start]]call[[callback-label-cursor]]back[[callback-label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[binary:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[binary:end]][[lambda:end]][[second:end]][[close:start]][[close-cursor]])[[close:end]][[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// app[[comment]]ly(seed)\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}

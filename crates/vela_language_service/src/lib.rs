@@ -133,6 +133,8 @@ mod provider_tooling_tests;
 #[cfg(test)]
 mod selection_body_tests;
 #[cfg(test)]
+mod selection_call_tests;
+#[cfg(test)]
 mod selection_declaration_tests;
 #[cfg(test)]
 mod selection_import_tests;

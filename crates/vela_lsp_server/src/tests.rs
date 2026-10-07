@@ -240,6 +240,7 @@ mod rename_schema;
 mod schema_reload;
 mod selection;
 mod selection_bodies;
+mod selection_calls;
 mod selection_declarations;
 mod selection_imports;
 mod selection_members;
