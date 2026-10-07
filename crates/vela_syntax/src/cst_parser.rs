@@ -1175,3 +1175,5 @@ mod map_recovery_tests;
 mod method_recovery_tests;
 #[cfg(test)]
 mod parameter_default_tests;
+#[cfg(test)]
+mod paren_recovery_tests;

@@ -101,7 +101,7 @@ impl CstParser<'_, '_> {
 
     fn paren_expression_body(&mut self, start: usize, end: usize) {
         self.emit_until(start + 1);
-        let close = end.saturating_sub(1);
+        let close = self.paren_contents_end(start, end);
         let value_start = self.skip_trivia(start + 1);
         self.expression_range(value_start, close);
         self.emit_until(end);
@@ -112,7 +112,7 @@ impl CstParser<'_, '_> {
     }
 
     fn tuple_expression_body(&mut self, start: usize, end: usize) {
-        let close = end.saturating_sub(1);
+        let close = self.paren_contents_end(start, end);
         self.emit_until(start + 1);
         self.comma_separated_expressions(close);
         self.emit_until(end);
@@ -541,8 +541,9 @@ impl CstParser<'_, '_> {
             return self.braced_expression_kind(start, end);
         }
         if self.at_kind(start, SyntaxKind::LParen)
-            && self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
-                == Some(end)
+            && self
+                .find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+                .is_none_or(|close| close == end)
         {
             return self.parenthesized_expression_kind(start, end);
         }
@@ -569,7 +570,7 @@ impl CstParser<'_, '_> {
     }
 
     fn parenthesized_expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
-        let close = end.saturating_sub(1);
+        let close = self.paren_contents_end(start, end);
         let first = self.skip_trivia(start + 1);
         if first >= close {
             return SyntaxKind::UnitExpr;
@@ -581,6 +582,16 @@ impl CstParser<'_, '_> {
             return SyntaxKind::TupleExpr;
         }
         SyntaxKind::ParenExpr
+    }
+
+    fn paren_contents_end(&self, start: usize, end: usize) -> usize {
+        if self.find_matching_delimiter_end(start, SyntaxKind::LParen, SyntaxKind::RParen)
+            == Some(end)
+        {
+            end.saturating_sub(1)
+        } else {
+            end
+        }
     }
 
     fn braced_expression_kind(&self, start: usize, end: usize) -> SyntaxKind {

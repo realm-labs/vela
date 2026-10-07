@@ -2,7 +2,7 @@
 
 B10.22 covers folding S9 positive/negative service/protocol and protocol
 recovery state. The marked fixture independently defines 54 whole sets:
-49 positives, 264 fold spans and five genuinely empty sets. Forty-three cases
+49 positives, 265 fold spans and five genuinely empty sets. Forty-three cases
 require parse errors; eleven retain valid or accepted quiet recovery policy.
 No provider output generates expected folding ranges.
 
@@ -12,7 +12,7 @@ No provider output generates expected folding ranges.
 | Members | Missing struct/enum/trait/impl owners, field names/defaults, enum payload defaults and required/inherent method defaults preserve enclosing recovered declaration and available body spans. |
 | Quiet expressions | Unfinished members, named arguments, constructors, patterns and initializers retain their complete enclosing function/body set without introducing parse errors. Dynamic/unresolved receivers stay independent. |
 | EOF owners | Unclosed function, array, map, record, block, lambda, parameter list/default array, struct, enum, tuple variant, trait and impl retain exact available multiline spans. |
-| Unknown expression shape | An unclosed parenthesized list and a lexically rejected multiline string retain the primary CST's PathExpr recovery shape, independently checked over their complete authored byte extent. They add no guessed tuple/literal fold. |
+| Recovered tuple and unknown literal | B10.33 retains an unclosed tuple's exact TupleExpr, first/final Literal children and complete multiline fold. A lexically rejected multiline string retains its complete PathExpr recovery shape and adds no literal fold. |
 | Imports | A consecutive group ending in an unfinished use path remains one imports fold under the existing quiet completion policy. |
 | Exact empties | Empty/trivia files, stray semicolon, single-line partial function and partial const own no folds. Their error policy is explicit. |
 
@@ -36,10 +36,22 @@ remain valid. This changes malformed CST ownership, not executable syntax.
 
 The expanded first draft guessed tuple/literal folds for two unknown CST shapes
 and an error for a quiet unfinished use. Primary classification/lexer/use-path
-code established the existing policy; reviewed expectations pin PathExpr
+code established the then-existing policy; B10.22 expectations pinned PathExpr
 ownership and quiet use explicitly. Original source text, raw responses and
 failed draft expectations remain as artifacts. These are not production
 defect claims, and no existing accepted assertion was weakened.
+
+B10.33 fixes missing-parenthesis CST recovery with independently authored
+selection/AST red evidence. The original folding fixture then fails its cached
+PathExpr assertion at both layers. This is an explicit strengthening of that
+one case: preserve all 54 clean sources, error policies and original 264 folds;
+require TupleExpr over the same whole EOF extent, exact first/final literal
+children and one added multiline tuple fold (265 total). Added markers preserve
+clean bytes and Node pins whole UTF16/byte slices in all four forms. All other
+cases, including rejected triple-string PathExpr, remain unchanged. Catalog
+evidence descriptions record the revised assertion without certifying new cells
+or changing any accepted parent scope. Preserve the first full failed audit and
+its source identity; it cannot satisfy the corrected source's fresh gate.
 
 Service and protocol run every case through damage -> clean repair -> same
 damage, for LF/CRLF and two Unicode shift lines: 162 transitions per form.

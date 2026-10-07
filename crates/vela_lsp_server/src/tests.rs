@@ -246,6 +246,7 @@ mod selection_declarations;
 mod selection_imports;
 mod selection_literals;
 mod selection_members;
+mod selection_parens;
 mod selection_patterns;
 mod selection_types;
 mod semantic_tokens;

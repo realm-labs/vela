@@ -145,6 +145,8 @@ mod selection_literal_tests;
 #[cfg(test)]
 mod selection_member_tests;
 #[cfg(test)]
+mod selection_paren_tests;
+#[cfg(test)]
 mod selection_pattern_tests;
 #[cfg(test)]
 mod selection_type_tests;

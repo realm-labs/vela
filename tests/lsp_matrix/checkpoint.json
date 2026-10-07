@@ -8718,10 +8718,26 @@
         "selection/syntax/S9/negative/protocol"
       ],
       "summary": "Partial S9 bracket recovery, no broad cell certification. Independent pilot11documents/44stdio vectors/136positions exposes8failedvectors/12positions plus AST row.field truncated to row. Array contents now exclude only their matching closing bracket;missing outer index recognized with complete contents,inner closers remain owned. Original sources/coordinates/expectations unchanged,all44 thenmatch. Final90documents/265queries:171completechains/94points,85positive/fourpointonly/oneempty,43damaged E_PARSE-only/47quiet. Local/return/expression contexts,array/index final field/binary/named-call/nestedarray/nestedindex/Map,call/Map/record controls,repair/redamage/duplicate/point-empty policies. Four Unicode LF/CRLFforms360whole stdio vectors/1060positions allmatch. Mainmember61..66UTF16/65..70bytes complete named-call chain;unclosedarrayfield37..46/array35..46;indexfield41..50/index35..50;statement/body/item own terminalnewline. Helpermember43..48/full field/binary/return/body/item/file. AST432 damage/repair/redamage cases pin whole slices/ranges/actual delimiters;syntax125+fixture1,service13/protocol16,Node242,architecture3/fmt/Clippy/HIR/analysis/bytecode/package. Preserve test-support direct-crate compile failure;use dependency-neutral diagnostic-code iterator without weakening policy. Both layers whole repeated disk/dirty/close/current/fresh/all retained snapshots,typed envelopes,encoded roots/unchanged disk/fixed counters/invalid UTF16 errors. Common oracles/all earlier assertions/catalog unchanged. Fresh Windows native50/VSIX25/full automatic and strict B09 service777+2historicignored/protocol831/stdio10. Fold80/240/192 and workspace-symbol486/1458 retained. Preserve accepted10/prior238children/macOShistory/B16deferred. Core1020verified/305pending/2NA;B10150verified/26pending. NextB10.33 complete S9 recovery;four S9 cells/recovery-state/trivia/editor/nativeUX11/UX12 remain unreviewed;no parent acceptance. VSIX editors/vscode/test-results/run-mg28vZ/results.json; native editors/vscode/test-results/input-E88kPW/results.json; audit target/lsp-matrix/run-ZspUg3/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.33",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S9/positive/service",
+        "selection/syntax/S9/positive/protocol",
+        "selection/syntax/S9/negative/service",
+        "selection/syntax/S9/negative/protocol",
+        "folding/syntax/S9/positive/service",
+        "folding/syntax/S9/positive/protocol",
+        "folding/syntax/S9/negative/service",
+        "folding/syntax/S9/negative/protocol",
+        "folding/states/recovery/protocol"
+      ],
+      "summary": "Partial S9 parenthesis recovery, no broad cell certification. Independently authored four-document pilot16stdio vectors/64positions exposes8failedvectors/24positions; AST retained grouping missing. Recognize missing outer parenthesis; classifier/group/tuple body excludes only its matching close. Closed inner call cannot stand for outer close. Original clean source/coordinates/expectations fixed;all16 thenmatch. Preserve marker-script invalid point-name issue before observations separately. Final83documents/321queries:234completechains/87points,78positive/fourpointonly/oneempty,40damaged E_PARSE-only/43quiet. Group/tuple final field/binary/named-call/closedarray/closedindex/Map in local/return/expression;repair/redamage/duplicate/comments/space/EOF/empty. Four Unicode LF/CRLFforms332whole stdio vectors/1284positions allmatch. Repaired member41..46UTF16/45..50bytes;field37..46/group35..47/local22..48/body20..50/item8..50/fullfile0. Unclosedgroup field37..46/group35..46;tuplemember43..48/field39..48/tuple35..48;unclosedstatement/body/item own newline. Helpermember43..48/field37..48/binary37..52/return30..53/body28..55/item8..55/file0. AST432 damage/repair/redamage observations pin complete node/final operand/first tuple member/separator/byte bounds/actual delimiter. Syntax126+fixture1;selectionservice14/protocol17;Node245;architecture3/fmt/Clippy/HIR108/analysis167/bytecode433/package. Both layers whole repeated disk/dirty/close/current-fresh/all retained snapshots,owned source/CST/diagnostics/two records/no schema/fixed counters,typed envelopes/atomic invalid UTF16/encoded roots/unchanged disk. Common oracles/bracket fix/native contracts unchanged. First full audit exposes old folding PathExpr contract at both layers; explicit single-case migration preserves54 clean sources/error policies/all264 old folds,requires TupleExpr and two exact Literal children,adds sole tuple fold265total. Node literal goldens and whole648stdio damage/repair/redamage vectors match; five folding S9/recovery catalog descriptions reflect stronger evidence,all other cases and rows unchanged. Preserve first failed full audit/source/native/editor plus marker-membership authoring failure; regenerate fresh source gates. Fresh Windows native50/VSIX25/full automatic and strict B09 service778+2historicignored/protocol832/stdio10. Fold80/240/192 and workspace-symbol486/1458 proof retained. Preserve accepted10/prior239children/macOShistory/B16deferred. Core1020verified/305pending/2NA;B10150verified/26pending. NextB10.34 continue S9 including tuple patterns;four S9 cells/remaining recovery/state/trivia/installedselection/nativeUX11/UX12 still unreviewed,no parent acceptance. VSIX editors/vscode/test-results/run-v8AfAr/results.json; native editors/vscode/test-results/input-GLmBic/results.json; audit target/lsp-matrix/run-crpyZk/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.33",
-  "nextTask": "B10.33",
+  "activeChild": "B10.34",
+  "nextTask": "B10.34",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -12064,7 +12080,80 @@
     "target/b10-32-recovery-pilot.json",
     "target/b10-32-recovery-pilot-after-fix.json",
     "target/b10-32-corpus-pilot.js",
-    "target/b10-32-checkpoint.log"
+    "target/b10-32-checkpoint.log",
+    "target/lsp-matrix/run-crpyZk/report.json",
+    "editors/vscode/test-results/run-v8AfAr/results.json",
+    "editors/vscode/test-results/input-GLmBic/results.json",
+    "target/lsp-matrix/run-OJR7NK/report.json",
+    "editors/vscode/test-results/run-v8AfAr/base-results.json",
+    "editors/vscode/test-results/run-v8AfAr/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-v8AfAr/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-v8AfAr/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-v8AfAr/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-v8AfAr/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-v8AfAr/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-v8AfAr/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-v8AfAr/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-v8AfAr/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-v8AfAr/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-v8AfAr/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-v8AfAr/folding-crlf-shifted-client.log",
+    "target/b10-33-toolchain.log",
+    "target/b10-33-build.log",
+    "target/b10-33-input.log",
+    "target/b10-33-editor.log",
+    "target/b10-33-scoped.log",
+    "target/b10-33-automatic.log",
+    "target/b10-33-input-verify.log",
+    "target/b10-33-editor-verify.log",
+    "target/b10-33-automatic-verify.log",
+    "target/b10-33-scoped-verify.log",
+    "target/b10-33-baseline-syntax.log",
+    "target/b10-33-baseline-service.log",
+    "target/b10-33-baseline-protocol.log",
+    "target/b10-33-service-first.log",
+    "target/b10-33-protocol-first.log",
+    "target/b10-33-architecture.log",
+    "target/b10-33-node-first.log",
+    "target/b10-33-node.log",
+    "target/b10-33-fmt.log",
+    "target/b10-33-format-apply.log",
+    "target/b10-33-package.log",
+    "target/b10-33-clippy.log",
+    "target/b10-33-syntax-red.log",
+    "target/b10-33-syntax-first.log",
+    "target/b10-33-syntax.log",
+    "target/b10-33-analysis.log",
+    "target/b10-33-hir.log",
+    "target/b10-33-bytecode.log",
+    "target/b10-33-recovery-prototype.log",
+    "target/b10-33-recovery-pilot.log",
+    "target/b10-33-recovery-pilot-after-fix.log",
+    "target/b10-33-freeze.log",
+    "target/b10-33-folding-state-prototype.json",
+    "target/b10-33-folding-state-prototype.log",
+    "target/b10-33-folding-service.log",
+    "target/b10-33-folding-protocol.log",
+    "target/b10-33-node-first-with-folding.log",
+    "target/b10-33-folding-service-red.log",
+    "target/b10-33-folding-protocol-red.log",
+    "target/b10-33-folding-marker-membership-red.log",
+    "target/b10-33-folding-recovery-before-migration.json",
+    "target/b10-33-frozen-source-before-folding-migration.json",
+    "target/b10-33-editor-before-folding-migration.log",
+    "target/b10-33-input-before-folding-migration.log",
+    "target/lsp-matrix/run-GObGW8/report.json",
+    "editors/vscode/test-results/input-OVCobJ/results.json",
+    "editors/vscode/test-results/run-zeXFws/results.json",
+    "target/b10-33-frozen-source.json",
+    "target/b10-33-native-contracts.json",
+    "target/b10-33-recovery-prototype.json",
+    "target/b10-33-selection-parens-pilot.json",
+    "target/b10-33-recovery-pilot.json",
+    "target/b10-33-recovery-pilot-after-fix.json",
+    "target/b10-33-corpus.js",
+    "target/b10-33-marker-authoring.md",
+    "target/b10-33-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15992,8 +16081,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "fc3688c9e9c7bc2ab2cd630d3601c62e3400cad7",
-          "treeSha256": "3f49224d20caecb798fa96fb85b426ff8f43ed8cf548004e0da465b43b53dd96"
+          "revision": "7fce8f2887bc75edf1863f3f5f6df4bca5d388bb",
+          "treeSha256": "d05330e8021c86a828d7e81980ac82afafccaed437d2cbddc7202305b3459210"
         },
         "profile": {
           "platform": "win32",
@@ -16001,11 +16090,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-ZspUg3/report.json"
+          "target/lsp-matrix/run-crpyZk/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-mg28vZ/results.json --local-results editors/vscode/test-results/input-E88kPW/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-v8AfAr/results.json --local-results editors/vscode/test-results/input-GLmBic/results.json",
             "exitCode": 0
           }
         ]

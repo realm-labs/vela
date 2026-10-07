@@ -1023,7 +1023,7 @@
       },
       {
         "id": "unclosed-tuple",
-        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]](\n 1,\n 2[[value:end]][[body:end]][[broken:end]]",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n[[broken:start]]fn Broken() [[body:start]]{\n let value = [[value:start]](\n [[first:start]]1[[first:end]],\n [[last:start]]2[[last:end]][[value:end]][[body:end]][[broken:end]]",
         "ranges": [
           {
             "kind": "region",
@@ -1048,13 +1048,25 @@
           {
             "kind": "region",
             "range": "body"
+          },
+          {
+            "kind": "region",
+            "range": "value"
           }
         ],
         "parseError": true,
         "syntaxRegions": [
           {
             "range": "value",
-            "kind": "PathExpr"
+            "kind": "TupleExpr"
+          },
+          {
+            "range": "first",
+            "kind": "Literal"
+          },
+          {
+            "range": "last",
+            "kind": "Literal"
           }
         ]
       },

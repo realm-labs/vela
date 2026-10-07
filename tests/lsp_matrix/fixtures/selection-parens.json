@@ -1,0 +1,4052 @@
+{
+  "version": 1,
+  "id": "selection-parens",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]pub fn apply(value) [[body:start]]{ [[return:start]]return [[binary:start]][[field:start]][[receiver:start]]v[[receiver-cursor]]alue[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "member-cursor",
+        "chain": [
+          "member",
+          "field",
+          "binary",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "repaired-group-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-tuple-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-group-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-tuple-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-group-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-group-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-group-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-group-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-group-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-group-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]( [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-field",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-binary",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-binary",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "binary",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-call",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-call",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[call:start]][[callee:start]]a[[callee-cursor]]pply[[callee:end]][[args:start]]([[argument:start]][[label:start]]v[[label-cursor]]alue[[label:end]] = [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[argument:end]])[[args:end]][[call:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "argument",
+              "args",
+              "call",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-array",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-array",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[array:start]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[array:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "array",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-index",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-index",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[index:start]][[rows:start]]i[[rows-cursor]]nnerRows[[rows:end]][ [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]]][[index:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-map",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]][[paren:end]]\n[[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-map",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[map:start]]{ [[entry:start]][[key:start]]k[[key-cursor]]ey[[key:end]]: [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] [[entry:end]]}[[map:end]])[[paren:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "entry",
+              "map",
+              "paren",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-group-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-tuple-final-field",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]([[first:start]][[first-cursor]]0[[first:end]], [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]][[paren:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "point-only-comment-in-body",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ /* pa[[comment]]rens () */  [[space]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]]( [[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]])[[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "parse": "quiet",
+        "source": "[[file:start]]// gr[[comment]]oup ( row.field\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "parse": "quiet",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "parse": "quiet",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}
