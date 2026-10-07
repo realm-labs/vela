@@ -1,0 +1,2401 @@
+{
+  "version": 1,
+  "id": "selection-bodies",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper() [[body:start]]{ [[return:start]]return [[value:start]]se[[value-cursor]]ed[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "value-cursor",
+        "chain": [
+          "value",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "typed-local-assignment-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "op-cursor",
+            "chain": [
+              "op",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "assignment-semi-cursor",
+            "chain": [
+              "assignment-semi",
+              "assignment-statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "return-semi-cursor",
+            "chain": [
+              "return-semi",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "uninitialized-local",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]pen[[binding-cursor]]ding[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-local-type",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "known-cursor",
+            "chain": [
+              "known",
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "builtin-local-type",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let value: [[type:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[args:start]]<[[int:start]]I[[int-cursor]]nt[[int:end]]>[[args:end]][[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "int-cursor",
+            "chain": [
+              "int",
+              "args",
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-local-type",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let value: [[type:start]]([[int:start]]I[[int-cursor]]nt[[int:end]], [[bool:start]]Bo[[bool-cursor]]ol[[bool:end]])[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "int-cursor",
+            "chain": [
+              "int",
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "bool-cursor",
+            "chain": [
+              "bool",
+              "type",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "attributed-local",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]][[attribute:start]]#[ [[tag:start]]t[[tag-cursor]]ag[[tag:end]] ][[attribute:end]] let [[binding:start]]va[[binding-cursor]]lue[[binding:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "tag-cursor",
+            "chain": [
+              "tag",
+              "attribute",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[sum:start]][[value:start]]de[[value-cursor]]lta[[value:end]] + [[extra:start]]ex[[extra-cursor]]tra[[extra:end]][[sum:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "extra-cursor",
+            "chain": [
+              "extra",
+              "sum",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "member-assignment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[name:start]]co[[name-cursor]]unt[[name:end]][[field:end]] += [[value:start]]de[[value-cursor]]lta[[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "name-cursor",
+            "chain": [
+              "name",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "field",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "index-assignment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[assignment:start]][[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[key:start]]k[[key-cursor]]ey[[key:end]] ][[index:end]] = [[value:start]]ne[[value-cursor]]xt[[value:end]][[assignment:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "index",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "receiver-cursor",
+            "chain": [
+              "receiver",
+              "index",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bare-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[return:start]][[keyword:start]]ret[[keyword-cursor]]urn[[keyword:end]][[semi:start]][[semi-cursor]];[[semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "semi-cursor",
+            "chain": [
+              "semi",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[return:start]]return [[value:start]]4[[value-cursor]]2[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "newline-statements",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]va[[binding-cursor]]lue[[binding:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]][[local:end]]\n[[return:start]]return [[value:start]]va[[value-cursor]]lue[[value:end]][[return:end]]\n }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "seed-cursor",
+            "chain": [
+              "seed",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-block-shadow",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[outer:start]]let [[outer-name:start]]va[[outer-name-cursor]]lue[[outer-name:end]] = seed;[[outer:end]] [[nested:start]]{ [[inner:start]]let [[inner-name:start]]va[[inner-name-cursor]]lue[[inner-name:end]] = other;[[inner:end]] [[return:start]]return [[use:start]]va[[use-cursor]]lue[[use:end]];[[return:end]] }[[nested:end]] [[last:start]]return [[last-use:start]]va[[last-use-cursor]]lue[[last-use:end]];[[last:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "return",
+              "nested",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-name-cursor",
+            "chain": [
+              "outer-name",
+              "outer",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "nested",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "last-use-cursor",
+            "chain": [
+              "last-use",
+              "last",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "deep-block-tail",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[first:start]]{ [[second:start]]{ [[tail:start]][[value:start]]va[[value-cursor]]lue[[value:end]] [[tail:end]]}[[second:end]] }[[first:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "tail",
+              "second",
+              "first",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "block-initializer",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let value = [[nested:start]]{ [[inner:start]]let [[binding:start]]sa[[binding-cursor]]ved[[binding:end]] = seed;[[inner:end]] [[tail:start]][[value:start]]sa[[value-cursor]]ved[[value:end]] [[tail:end]]}[[nested:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "inner",
+              "nested",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "tail",
+              "nested",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-blocks",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[nested:start]]{[[close:start]][[close-cursor]]}[[close:end]][[nested:end]] [[return:start]]return;[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "nested",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "if-statement",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[if:start]]if [[condition:start]]cond[[condition-cursor]]ition[[condition:end]] [[then:start]]{ [[left-return:start]]return [[left:start]]le[[left-cursor]]ft[[left:end]];[[left-return:end]] }[[then:end]] else [[else:start]]{ [[right-return:start]]return [[right:start]]ri[[right-cursor]]ght[[right:end]];[[right-return:end]] }[[else:end]][[if:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "condition-cursor",
+            "chain": [
+              "condition",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "right-return",
+              "else",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "left-return",
+              "then",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "if-initializer",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let value = [[if:start]]if [[condition:start]]cond[[condition-cursor]]ition[[condition:end]] [[then:start]]{ [[left-tail:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[left-tail:end]]}[[then:end]] else [[else:start]]{ [[right-tail:start]][[right:start]]ri[[right-cursor]]ght[[right:end]] [[right-tail:end]]}[[else:end]][[if:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "condition-cursor",
+            "chain": [
+              "condition",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "left-tail",
+              "then",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "right-tail",
+              "else",
+              "if",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "else-if-nesting",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[if:start]]if [[first:start]]fi[[first-cursor]]rst[[first:end]] [[then:start]]{}[[then:end]] else [[elseif:start]]if [[second:start]]sec[[second-cursor]]ond[[second:end]] [[middle:start]]{ [[return:start]]return [[value:start]]va[[value-cursor]]lue[[value:end]];[[return:end]] }[[middle:end]] else [[last:start]]{}[[last:end]][[elseif:end]][[if:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-cursor",
+            "chain": [
+              "second",
+              "elseif",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "middle",
+              "elseif",
+              "if",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "match-guard-and-block",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[match:start]]match [[scrutinee:start]]va[[scrutinee-cursor]]lue[[scrutinee:end]] [[arms:start]]{ [[guarded:start]][[pattern:start]]bin[[pattern-cursor]]ding[[pattern:end]] if [[guard:start]][[guard-name:start]]bin[[guard-name-cursor]]ding[[guard-name:end]] > [[zero:start]][[zero-cursor]]0[[zero:end]][[guard:end]] => [[arm-body:start]]{ [[arm-return:start]]return [[arm-value:start]]bin[[arm-value-cursor]]ding[[arm-value:end]];[[arm-return:end]] }[[arm-body:end]][[guarded:end]], [[fallback:start]][[wildcard:start]][[wildcard-cursor]]_[[wildcard:end]] => [[fallback-value:start]]fall[[fallback-value-cursor]]back[[fallback-value:end]] [[fallback:end]]}[[arms:end]][[match:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "scrutinee-cursor",
+            "chain": [
+              "scrutinee",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "guarded",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "guard-name-cursor",
+            "chain": [
+              "guard-name",
+              "guard",
+              "guarded",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "arm-value-cursor",
+            "chain": [
+              "arm-value",
+              "arm-return",
+              "arm-body",
+              "guarded",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "wildcard-cursor",
+            "chain": [
+              "wildcard",
+              "fallback",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "fallback-value-cursor",
+            "chain": [
+              "fallback-value",
+              "fallback",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "match-initializer",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]in[[scrutinee-cursor]]put[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]va[[pattern-cursor]]lue[[pattern:end]] => [[output:start]]va[[output-cursor]]lue[[output:end]] [[arm:end]]}[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "pattern-cursor",
+            "chain": [
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "output-cursor",
+            "chain": [
+              "output",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "scrutinee-cursor",
+            "chain": [
+              "scrutinee",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-control",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[for:start]]for [[binding:start]]va[[binding-cursor]]lue[[binding:end]] in [[iterable:start]]val[[iterable-cursor]]ues[[iterable:end]] [[loop-body:start]]{ [[continue:start]][[continue-keyword:start]]cont[[continue-keyword-cursor]]inue[[continue-keyword:end]];[[continue:end]] [[break:start]][[break-keyword:start]]br[[break-keyword-cursor]]eak[[break-keyword:end]];[[break:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "iterable-cursor",
+            "chain": [
+              "iterable",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "continue-keyword-cursor",
+            "chain": [
+              "continue-keyword",
+              "continue",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "break-keyword-cursor",
+            "chain": [
+              "break-keyword",
+              "break",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "for-key-value",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[for:start]]for [[key:start]]k[[key-cursor]]ey[[key:end]], [[value:start]]va[[value-cursor]]lue[[value:end]] in [[iterable:start]]ent[[iterable-cursor]]ries[[iterable:end]] [[loop-body:start]]{ [[return:start]]return [[use:start]]va[[use-cursor]]lue[[use:end]];[[return:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "return",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-for-if",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[for:start]]for [[binding:start]]va[[binding-cursor]]lue[[binding:end]] in [[iterable:start]]val[[iterable-cursor]]ues[[iterable:end]] [[loop-body:start]]{ [[if:start]]if [[condition:start]]re[[condition-cursor]]ady[[condition:end]] [[then:start]]{ [[continue:start]][[keyword:start]]cont[[keyword-cursor]]inue[[keyword:end]];[[continue:end]] }[[then:end]][[if:end]] }[[loop-body:end]][[for:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "condition-cursor",
+            "chain": [
+              "condition",
+              "if",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "keyword-cursor",
+            "chain": [
+              "keyword",
+              "continue",
+              "then",
+              "if",
+              "loop-body",
+              "for",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "typed-lambda-capture",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[param:start]][[param-name:start]]va[[param-name-cursor]]lue[[param-name:end]]: [[param-type:start]]I[[param-type-cursor]]nt[[param-type:end]][[param:end]]|[[params:end]] [[lambda-body:start]]{ [[return:start]]return [[sum:start]][[use:start]]va[[use-cursor]]lue[[use:end]] + [[capture:start]]capt[[capture-cursor]]ured[[capture:end]][[sum:end]];[[return:end]] }[[lambda-body:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "param-name-cursor",
+            "chain": [
+              "param-name",
+              "param",
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "param-type-cursor",
+            "chain": [
+              "param-type",
+              "param",
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "sum",
+              "return",
+              "lambda-body",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "capture-cursor",
+            "chain": [
+              "capture",
+              "sum",
+              "return",
+              "lambda-body",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "expression-lambda",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[param-name:start]]va[[param-name-cursor]]lue[[param-name:end]]|[[params:end]] [[sum:start]][[value:start]]va[[value-cursor]]lue[[value:end]] + [[capture:start]]capt[[capture-cursor]]ured[[capture:end]][[sum:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "param-name-cursor",
+            "chain": [
+              "param-name",
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "sum",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "capture-cursor",
+            "chain": [
+              "capture",
+              "sum",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "zero-parameter-lambda",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]][[params-cursor]]||[[params:end]] [[lambda-body:start]]{ [[return:start]]return [[capture:start]]capt[[capture-cursor]]ured[[capture:end]];[[return:end]] }[[lambda-body:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "params-cursor",
+            "chain": [
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "capture-cursor",
+            "chain": [
+              "capture",
+              "return",
+              "lambda-body",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-lambda",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[outer-lambda:start]][[outer-params:start]]|[[outer-param:start]]ou[[outer-param-cursor]]ter[[outer-param:end]]|[[outer-params:end]] [[inner-lambda:start]][[inner-params:start]]|[[inner-param:start]]in[[inner-param-cursor]]ner[[inner-param:end]]|[[inner-params:end]] [[sum:start]][[outer-use:start]]ou[[outer-use-cursor]]ter[[outer-use:end]] + [[inner-use:start]]in[[inner-use-cursor]]ner[[inner-use:end]][[sum:end]][[inner-lambda:end]][[outer-lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "outer-param-cursor",
+            "chain": [
+              "outer-param",
+              "outer-params",
+              "outer-lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-param-cursor",
+            "chain": [
+              "inner-param",
+              "inner-params",
+              "inner-lambda",
+              "outer-lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-use-cursor",
+            "chain": [
+              "outer-use",
+              "sum",
+              "inner-lambda",
+              "outer-lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-use-cursor",
+            "chain": [
+              "inner-use",
+              "sum",
+              "inner-lambda",
+              "outer-lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]][[argument:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "named-callback-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]][[callee:start]]con[[callee-cursor]]sume[[callee:end]][[args:start]]([[argument:start]][[label:start]]call[[label-cursor]]back[[label:end]] = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]][[argument:end]], [[fallback-argument:start]]fallback = [[fallback:start]]se[[fallback-cursor]]ed[[fallback:end]][[fallback-argument:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "use-cursor",
+            "chain": [
+              "use",
+              "lambda",
+              "argument",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "fallback-cursor",
+            "chain": [
+              "fallback",
+              "fallback-argument",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-default-body",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn apply() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inherent-method-body",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Row { [[method:start]]fn apply() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-body",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Rule for Row { [[method:start]]fn apply() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "local",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "assignment",
+              "assignment-statement",
+              "body",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "comment-and-empty-body",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ /* let fa[[comment]]ke = seed; */  [[space]]  [[return:start]]return [[value:start]]va[[value-cursor]]lue[[value:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-named-function-bodies",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]fn first() [[first-body:start]]{ [[first-return:start]]return [[first-value:start]]sa[[first-value-cursor]]me[[first-value:end]];[[first-return:end]] }[[first-body:end]][[first:end]] [[second:start]]fn second() [[second-body:start]]{ [[second-return:start]]return [[second-value:start]]sa[[second-value-cursor]]me[[second-value:end]];[[second-return:end]] }[[second-body:end]][[second:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second-return",
+              "second-body",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "first-return",
+              "first-body",
+              "first",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "lambda-body-assignment-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "callback-body-assignment-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[statement:start]][[call:start]]consume[[args:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]])[[args:end]][[call:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "args",
+              "call",
+              "statement",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "zero-parameter-body-assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]][[params-cursor]]||[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "params-cursor",
+            "chain": [
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "zero-parameter-body-assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[params:start]][[params-cursor]]||[[params:end]] [[assignment:start]][[target:start]]sa[[target-cursor]]ved[[target:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[value:start]]va[[value-cursor]]lue[[value:end]][[assignment:end]][[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "params-cursor",
+            "chain": [
+              "params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-cursor",
+            "chain": [
+              "target",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "assignment",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "only-body-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ /* return [[comment]]fake; */  [[space]]   }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ [[local:start]]let [[binding:start]]lo[[binding-cursor]]cal[[binding:end]]: [[type:start]]I[[type-cursor]]nt[[type:end]] = [[seed:start]]se[[seed-cursor]]ed[[seed:end]];[[local:end]] [[assignment-statement:start]][[assignment:start]][[target:start]]lo[[target-cursor]]cal[[target:end]] [[op:start]]+[[op-cursor]]=[[op:end]] [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[assignment:end]][[assignment-semi:start]][[assignment-semi-cursor]];[[assignment-semi:end]][[assignment-statement:end]] [[return:start]]return [[value:start]]lo[[value-cursor]]cal[[value:end]][[return-semi:start]][[return-semi-cursor]];[[return-semi:end]][[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// fn fake() { ret[[comment]]urn; }\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}

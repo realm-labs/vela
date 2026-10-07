@@ -50,7 +50,13 @@ impl CstParser<'_, '_> {
 
     fn argument_range(&mut self, start: usize, end: usize) {
         self.builder.start_node(SyntaxKind::Argument);
-        if let Some(equal) = self.find_root_kind_before(SyntaxKind::Equal, start, end) {
+        let named_equal = if self.at_kind(start, SyntaxKind::Ident) {
+            self.next_significant_before(start + 1, end)
+                .filter(|&next| self.at_kind(next, SyntaxKind::Equal))
+        } else {
+            None
+        };
+        if let Some(equal) = named_equal {
             let value_start = self.skip_trivia(equal + 1);
             self.emit_until(value_start);
             self.expression_range(value_start, end);

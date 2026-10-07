@@ -239,6 +239,7 @@ mod rename_collisions;
 mod rename_schema;
 mod schema_reload;
 mod selection;
+mod selection_bodies;
 mod selection_declarations;
 mod selection_imports;
 mod semantic_tokens;

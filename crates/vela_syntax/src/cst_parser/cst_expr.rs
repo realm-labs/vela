@@ -482,11 +482,11 @@ impl CstParser<'_, '_> {
     }
 
     fn expression_kind(&self, start: usize, end: usize) -> SyntaxKind {
-        if self.find_root_assign_op_before(start, end).is_some() {
-            return SyntaxKind::AssignExpr;
-        }
         if self.at_kind(start, SyntaxKind::Pipe) || self.at_kind(start, SyntaxKind::OrOr) {
             return SyntaxKind::LambdaExpr;
+        }
+        if self.find_root_assign_op_before(start, end).is_some() {
+            return SyntaxKind::AssignExpr;
         }
         if self.at_kind(start, SyntaxKind::IfKw) {
             let if_end = self.find_if_expression_end(start, end);
