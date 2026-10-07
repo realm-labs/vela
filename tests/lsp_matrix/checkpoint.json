@@ -8781,10 +8781,21 @@
         "selection/states/recovery/protocol"
       ],
       "summary": "Complete selection source/dependency recovery protocol:11 independently authored variants/43 states/46 finite operations in4UnicodeLFCRLF/shift forms;whole main/helper/renamed/decoy/missing vectors3times+actualemptyvectors,current/fresh/everyold immutable snapshot. Exact owned source/globalCSTnodes/full token ancestry including equal-span nodes,recordcounts/no schema,query generation/parse/project/HIR unchanged. Dirty errors before/after healthy main/helper,repair/redamage,separate repair of simultaneous errors,hidden disk error/overlay priority,close to damaged disk,closed watched repair,delete with/without surviving overlay,recreate,physical rename away/back,version-reset reopen,saved damaged/repaired disk,whole final baseline. Protocol typed full envelopes/encoded owned roots/real disk/exact diagnostic message/code/severity/source/UTF16span and per-URI publication cardinality. Independent literal regression red pins stale E_PARSE on closed watched repair,line1col18..24;retain closed publication URI ownership and publish current/clear once after coalesced refresh,without copying analysis facts or changing never-opened/save policy. Initial overbroad never-opened rename publication expectation preserved separately; full regression exposed source-order and test-field architecture violations,restore original open/metadata/removed order and production-dispatch naming without weakening tests. Node257/focused service1/watching10/workspace/fmt/whole Clippy/package pass. Fresh same-source Windows native50/installedVSIX25/fullautomatic/strictB09 service781+2historicalignored/protocol836/stdio10;fold80/240/192/workspacesymbol486/1458 retained. Accepted10/prior242children/macOS history/openissues/B16deferred preserved;core1025verified/300pending/2NA,B10155verified/21pending. No parent acceptance. NextB10.37 selection S12 trivia;installed selection/UX11/UX12 pending. Native editors/vscode/test-results/input-XMKC9U/results.json; VSIX editors/vscode/test-results/run-QvEewQ/results.json; audit target/lsp-matrix/run-RkVsho/report.json. Find this commit via LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal trailer and clean worktree checked separately."
+    },
+    {
+      "id": "B10.37",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S12/positive/service",
+        "selection/syntax/S12/positive/protocol",
+        "selection/syntax/S12/negative/service",
+        "selection/syntax/S12/negative/protocol"
+      ],
+      "summary": "Complete selection S12 positive/negative service/protocol:63 independent literal documents/458 ordered queries(155 whole chains/303 points)+actualemptyvector in4UnicodeLFCRLF/shift forms;bounded real stdio252vectors/1832positions exact. Exact lexical kinds/full literal spans/trivia flags/global authored CST nodes/full selected-token ancestry including equal-span Literal/TypeHint. Comments/doc/nested/multiline/shebang,blankgroups/tab/mixedindentation,topitem/import/nestedfield/method/type/callargument ownership;significant boundary/finalbraceEOF chains,trivia-only/empty/error fallback points,opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage,unclosedbody/exact unterminated block code set. Shebang bytezero retained including EOFseparator;literal CRLF linecomment CR ownership and whitespace merging. Whole main/helper/missing vectors repeat3+actualempties,current/fresh/everyold immutable source/CST snapshots,no schema/tworecords/query generation/parse/project/HIR unchanged;protocol typedfullenvelopes/encodedroot/realdisk/atomic invalidUTF16/outsidevectors. Primary lexer/CST author corrections for adjacentrighttoken/EOFpoint/ParamArgument trivia and Nodebyte/equalspan assertions retained separately;no productionpolicy changes or provider-derived expectedvalues. Node261/focusedservice1/protocol1/workspace/fmt/wholeClippy/package pass. Fresh same-source Windows native50/installedVSIX25/fullautomatic/strictB09 service782+2historicalignored/protocol837/stdio10;fold80/240/192/workspacesymbol486/1458 retained. Accepted10/prior243children/macOS history/openissues/B16deferred preserved;core1029verified/296pending/2NA,B10159verified/17pending. No parentacceptance. NextB10.38 installed selection;UX11/UX12 pending. Initial native attempt input-iqDDOd failed after48proofs at trust Installed Vela extension visibility(15s); both observers healthy, process exit0; original result/log/screenshot/ARIA preserved. Complete fresh same-source retry required; no assertion/time budget changes. First scoped invocation incorrectly included global --strict flag with --batch B09; all suites passed but all-future-batch gate correctly rejected348unverified cells. Preserve report/log and rerun correct built-in strict --batch B09 scope; no gate changes. Native editors/vscode/test-results/input-rGyMWg/results.json; VSIX editors/vscode/test-results/run-ED4vZj/results.json; audit target/lsp-matrix/run-YED37P/report.json. Find this commit via LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal trailer and clean worktree checked separately."
     }
   ],
-  "activeChild": "B10.37",
-  "nextTask": "B10.37",
+  "activeChild": "B10.38",
+  "nextTask": "B10.38",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -12398,7 +12409,70 @@
     "target/b10-36-scope.json",
     "target/b10-36-corpus.js",
     "target/b10-36-preflight.md",
-    "target/b10-36-checkpoint.log"
+    "target/b10-36-checkpoint.log",
+    "target/lsp-matrix/run-YED37P/report.json",
+    "editors/vscode/test-results/run-ED4vZj/results.json",
+    "editors/vscode/test-results/input-rGyMWg/results.json",
+    "target/lsp-matrix/run-ZksDz6/report.json",
+    "editors/vscode/test-results/run-ED4vZj/base-results.json",
+    "editors/vscode/test-results/run-ED4vZj/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-ED4vZj/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-ED4vZj/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-ED4vZj/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-ED4vZj/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-ED4vZj/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-ED4vZj/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-ED4vZj/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-ED4vZj/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-ED4vZj/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-ED4vZj/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-ED4vZj/folding-crlf-shifted-client.log",
+    "target/b10-37-baseline-service.log",
+    "target/b10-37-baseline-protocol.log",
+    "target/b10-37-baseline-node.log",
+    "target/b10-37-service-first.log",
+    "target/b10-37-service-second.log",
+    "target/b10-37-service-eof-author-error.log",
+    "target/b10-37-service.log",
+    "target/b10-37-protocol.log",
+    "target/b10-37-node-first.log",
+    "target/b10-37-node-second.log",
+    "target/b10-37-node.log",
+    "target/b10-37-format-apply.log",
+    "target/b10-37-fmt.log",
+    "target/b10-37-clippy.log",
+    "target/b10-37-workspace.log",
+    "target/b10-37-package.log",
+    "target/b10-37-build.log",
+    "target/b10-37-prototype.log",
+    "target/b10-37-toolchain.log",
+    "target/b10-37-freeze.log",
+    "target/b10-37-input.log",
+    "target/b10-37-editor.log",
+    "target/b10-37-scoped.log",
+    "target/b10-37-input-verify.log",
+    "target/b10-37-editor-verify.log",
+    "target/b10-37-automatic-verify.log",
+    "target/b10-37-scoped-verify.log",
+    "target/b10-37-selection-trivia.json",
+    "target/b10-37-selection-trivia-before-primary-review.json",
+    "target/b10-37-recovery-prototype.json",
+    "target/b10-37-frozen-source.json",
+    "target/b10-37-native-contracts.json",
+    "target/b10-37-scope.json",
+    "target/b10-37-paths.json",
+    "target/b10-37-corpus.js",
+    "target/b10-37-corpus-before-primary-review.js",
+    "target/b10-37-preflight.md",
+    "target/b10-37-input-first.log",
+    "target/b10-37-input-retry-source-check.log",
+    "target/b10-37-scoped-global-flag.log",
+    "target/b10-37-scoped-retry-source-check.log",
+    "target/lsp-matrix/run-O8qVhe/report.json",
+    "editors/vscode/test-results/input-iqDDOd/results.json",
+    "editors/vscode/test-results/input-iqDDOd/trust/failure.png",
+    "editors/vscode/test-results/input-iqDDOd/trust/failure.aria.txt",
+    "target/b10-37-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -16326,8 +16400,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "be121890af86400a6949047354745c16d3f515c7",
-          "treeSha256": "47d59f050020a56cbbbf5eb0ce27f05bc27dc3a41a2badfeff7071e11e89cf5b"
+          "revision": "b27f95da548f45f52ddeb368201ad2770de75a17",
+          "treeSha256": "3ec2537cde73cd65c9bb7e61b7e63e7abd773a79a93ea5e4024d5b627127a4df"
         },
         "profile": {
           "platform": "win32",
@@ -16335,11 +16409,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-RkVsho/report.json"
+          "target/lsp-matrix/run-YED37P/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --local-results editors/vscode/test-results/input-XMKC9U/results.json --editor-results editors/vscode/test-results/run-QvEewQ/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ED4vZj/results.json --local-results editors/vscode/test-results/input-rGyMWg/results.json",
             "exitCode": 0
           }
         ]

@@ -125,8 +125,13 @@ changes, deletion, recreation, rename and simultaneous damage/repair. Closed
 publication owners retain diagnostic updates after watched repair, preventing
 stale syntax errors. See the
 [selection lifecycle review](../tests/lsp_matrix/reviews/selection-lifecycle.md).
-Trivia, installed selection and native Outline/picker/folding interactions
-remain separate pending requirements.
+Selection S12 now pins full lexical/CST ownership and selection vectors for
+comments, shebangs, blank lines, indentation, top-level and nested syntax,
+literal lookalikes, malformed neighbors and significant/trivia EOF boundaries.
+LF/CRLF and shifted forms retain current, fresh and previous immutable facts;
+see the [trivia review](../tests/lsp_matrix/reviews/selection-trivia.md).
+Installed selection and native Outline/picker/folding interactions remain
+separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

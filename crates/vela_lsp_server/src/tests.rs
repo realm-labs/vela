@@ -251,6 +251,7 @@ mod selection_parens;
 mod selection_pattern_recovery;
 mod selection_patterns;
 mod selection_recovery;
+mod selection_trivia;
 mod selection_types;
 mod semantic_tokens;
 mod semantic_tokens_degradation;

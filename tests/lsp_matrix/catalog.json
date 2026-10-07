@@ -18591,6 +18591,46 @@
           "name": "tests::selection_lifecycle::watched_repair_clears_syntax_diagnostic_previously_published_on_close"
         }
       ]
+    },
+    {
+      "requirement": "selection/syntax/S12/positive/service",
+      "assertion": "Reviewed in reviews/selection-trivia.md. Complete S12:63 independently authored documents/458 queries(155 whole chains/303 points), actual empty vectors, four Unicode LFCRLF/shift forms. Exact lexical kinds/full bounds/trivia flag and whole cached CST nodes/token ancestry including equal-span Literal/TypeHint; comments/doc/nested/multiline/shebang, blank groups/tab/mixed indentation, top item/import/nested field/method/type/call-argument ownership. Significant boundary and final-brace EOF chains; trivia-only/empty/lexical-error points; opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage, unclosed body and exact unterminated block codes. Shebang retains byte zero including EOF newline separator; lexical CRLF comment CR ownership and merged whitespace authored from literal text. Current/fresh/every prior immutable source/CST snapshots; whole main/helper/missing vectors repeat3+actual empties; no schema/two records and unchanged generation/parse/project/HIR counters. Protocol typed full envelopes/encoded owned roots/unchanged physical disk/atomic invalid UTF16 and outside positions. Independent Node fixed membership/cardinality/literal byteUTF16 geometry/equal spans/lexical policy/duplicate order/containment. Preserve original boundary/EOF/Node author errors separately; no provider-derived expected values or product policy changes. Fresh same-source Windows native50/VSIX25/fullautomatic/strictB09 required; installed selection and UX11/UX12 pending; no B10 parent acceptance or cross-platform evidence mixing.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "selection_trivia_tests::selection_trivia_preserve_whole_cst_tokens_ancestry_points_and_retained_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S12/positive/protocol",
+      "assertion": "Reviewed in reviews/selection-trivia.md. Complete S12:63 independently authored documents/458 queries(155 whole chains/303 points), actual empty vectors, four Unicode LFCRLF/shift forms. Exact lexical kinds/full bounds/trivia flag and whole cached CST nodes/token ancestry including equal-span Literal/TypeHint; comments/doc/nested/multiline/shebang, blank groups/tab/mixed indentation, top item/import/nested field/method/type/call-argument ownership. Significant boundary and final-brace EOF chains; trivia-only/empty/lexical-error points; opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage, unclosed body and exact unterminated block codes. Shebang retains byte zero including EOF newline separator; lexical CRLF comment CR ownership and merged whitespace authored from literal text. Current/fresh/every prior immutable source/CST snapshots; whole main/helper/missing vectors repeat3+actual empties; no schema/two records and unchanged generation/parse/project/HIR counters. Protocol typed full envelopes/encoded owned roots/unchanged physical disk/atomic invalid UTF16 and outside positions. Independent Node fixed membership/cardinality/literal byteUTF16 geometry/equal spans/lexical policy/duplicate order/containment. Preserve original boundary/EOF/Node author errors separately; no provider-derived expected values or product policy changes. Fresh same-source Windows native50/VSIX25/fullautomatic/strictB09 required; installed selection and UX11/UX12 pending; no B10 parent acceptance or cross-platform evidence mixing.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::selection_trivia::lsp_selection_trivia_preserve_whole_cst_tokens_utf16_ancestry_points_and_retained_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S12/negative/service",
+      "assertion": "Reviewed in reviews/selection-trivia.md. Complete S12:63 independently authored documents/458 queries(155 whole chains/303 points), actual empty vectors, four Unicode LFCRLF/shift forms. Exact lexical kinds/full bounds/trivia flag and whole cached CST nodes/token ancestry including equal-span Literal/TypeHint; comments/doc/nested/multiline/shebang, blank groups/tab/mixed indentation, top item/import/nested field/method/type/call-argument ownership. Significant boundary and final-brace EOF chains; trivia-only/empty/lexical-error points; opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage, unclosed body and exact unterminated block codes. Shebang retains byte zero including EOF newline separator; lexical CRLF comment CR ownership and merged whitespace authored from literal text. Current/fresh/every prior immutable source/CST snapshots; whole main/helper/missing vectors repeat3+actual empties; no schema/two records and unchanged generation/parse/project/HIR counters. Protocol typed full envelopes/encoded owned roots/unchanged physical disk/atomic invalid UTF16 and outside positions. Independent Node fixed membership/cardinality/literal byteUTF16 geometry/equal spans/lexical policy/duplicate order/containment. Preserve original boundary/EOF/Node author errors separately; no provider-derived expected values or product policy changes. Fresh same-source Windows native50/VSIX25/fullautomatic/strictB09 required; installed selection and UX11/UX12 pending; no B10 parent acceptance or cross-platform evidence mixing.",
+      "tests": [
+        {
+          "layer": "service",
+          "name": "selection_trivia_tests::selection_trivia_preserve_whole_cst_tokens_ancestry_points_and_retained_snapshots"
+        }
+      ]
+    },
+    {
+      "requirement": "selection/syntax/S12/negative/protocol",
+      "assertion": "Reviewed in reviews/selection-trivia.md. Complete S12:63 independently authored documents/458 queries(155 whole chains/303 points), actual empty vectors, four Unicode LFCRLF/shift forms. Exact lexical kinds/full bounds/trivia flag and whole cached CST nodes/token ancestry including equal-span Literal/TypeHint; comments/doc/nested/multiline/shebang, blank groups/tab/mixed indentation, top item/import/nested field/method/type/call-argument ownership. Significant boundary and final-brace EOF chains; trivia-only/empty/lexical-error points; opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage, unclosed body and exact unterminated block codes. Shebang retains byte zero including EOF newline separator; lexical CRLF comment CR ownership and merged whitespace authored from literal text. Current/fresh/every prior immutable source/CST snapshots; whole main/helper/missing vectors repeat3+actual empties; no schema/two records and unchanged generation/parse/project/HIR counters. Protocol typed full envelopes/encoded owned roots/unchanged physical disk/atomic invalid UTF16 and outside positions. Independent Node fixed membership/cardinality/literal byteUTF16 geometry/equal spans/lexical policy/duplicate order/containment. Preserve original boundary/EOF/Node author errors separately; no provider-derived expected values or product policy changes. Fresh same-source Windows native50/VSIX25/fullautomatic/strictB09 required; installed selection and UX11/UX12 pending; no B10 parent acceptance or cross-platform evidence mixing.",
+      "tests": [
+        {
+          "layer": "protocol",
+          "name": "tests::selection_trivia::lsp_selection_trivia_preserve_whole_cst_tokens_utf16_ancestry_points_and_retained_snapshots"
+        }
+      ]
     }
   ],
   "featureFiles": [
