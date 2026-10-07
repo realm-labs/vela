@@ -9,6 +9,7 @@ const { isDeepStrictEqual } = require("node:util");
 const { relativeFile, fileUri, canonicalUri } = require("./paths");
 const { readTrace, workspaceReadiness } = require("./readiness");
 const { readSession, sessionLog } = require("./session");
+const { readFileIfPresent } = require("./disk-file");
 
 async function runWorkspaceFiles({ page, bridge, record, root, workspace, contracts, until, onProof, pid, platform }) {
   const native = require("./native-menu").nativeMenu({ root, platform, page, pid });
@@ -21,7 +22,7 @@ async function runWorkspaceFiles({ page, bridge, record, root, workspace, contra
       const c = expected(id); assert.deepEqual(observed, c.expected, contract.id + "/" + id);
       checks.push({ ...c, observed, status: "passed" }); receipt("assertion", id, { expected: c.expected, observed });
     };
-    const disk = file => fs.existsSync(path.join(workspace, file)) ? fs.readFileSync(path.join(workspace, file), "utf8") : null;
+    const disk = file => readFileIfPresent(path.join(workspace, file));
     const state = async () => {
       const active = (await bridge("inspect")).active; if (!active) return null;
       const file = relativeFile(workspace, fileURLToPath(active.uri));

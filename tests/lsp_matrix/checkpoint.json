@@ -8639,6 +8639,19 @@
         "selection/syntax/S2/negative/protocol"
       ],
       "summary": "Selection S2 body ancestry only: four positive/negative service/protocol cells.59 independently marked cases/180 inputs:168 complete chains,12 points;54 positive documents,four point-only documents,one actual empty request vector. Four LF/CRLF Unicode forms give236 complete stdio vectors/720 positions. Locals/types/attributes,all6 assignment operators/member/index writes,returns/terminators,nested shadow/tail blocks,if/match/guards/for/break/continue,typed/zero/nested/captured lambdas,positional/named callbacks,trait-default/inherent/trait-impl bodies and independent same-named neighbors. Complete exact ancestors,dedup/cardinality,duplicate/reordered vectors and point/empty policies; independent helper,root0,return value65..70 UTF16/69..74bytes,return58..71,body17..73,item8..73,binding23..28/27..32;helper29..33/return22..34/body20..36/item8..36. Disk/everydirty/close restoration,current/fresh/allretained immutable snapshots repeat3; source/CST/quiet parse/no-schema/two records and fixed generation/parse/project/HIR counters; typed whole request/result/atomic invalid half/outside/mixed errors,encoded owned physical roots,unchanged disk. Two actual CST defects: assignment classification stole leading lambda nodes,any-root-equal named-argument scan stole positional callback assignment bodies. Leading pipe/OrOr classification now precedes assignment; named labels require initial IDENT followed by Equal; no new grammar/runtime/LSP capability. Genuine failing directAST2/service1/protocol1 runs and reviewed pre-fix56 whole vectors/168 positions retained; final same-source236/720 allmatch/noE_PARSE/E_LEX. Initial marker drafts corrected trailing ExprStmt/MatchArm trivia and skipped argument space against primary parser; unsupported lambda-parameter-default draft replaced by supported typed parameter,originals retained. Misplaced tests inside raw string selected0; restored original bytes and appended outside,original0-test draft retained separately from genuine reds. Package wrong-script and architecture wrong-crate/0-test logs retained; correct gates pass. Freeze draft compared JSON field order; corrected to structural equality with no assertion/fixture relaxation. Original generic projections/import/declaration assertions,10accepted/prior231children and native50/GUI25 contracts/macOS history preserved. Syntax124lib+1fixture/AST4/HIR7/bytecode9; selection service7/protocol10/architecture3/Node222/fmt/Clippy/package. Fresh frozen Windows native50/VSIX25/automatic full/strictB09 service771+2historicalignored/protocol825/stdio10; folding80 observations/240 queries/192 public ranges and workspace-symbol486/1458freshwirepairs retained. Core1000verified/325pending/2NA/zero failed;B10130verified/46pending. NextB10.27 selection type partitions; other selection syntax/recovery/installed selection/nativeUX11/UX12 remain open,no parent acceptance;B16deferred. VSIX editors/vscode/test-results/run-MrPogP/results.json; native editors/vscode/test-results/input-ptoDVQ/results.json; audit target/lsp-matrix/run-0CQCNW/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B09.10",
+      "revision": null,
+      "requirements": [
+        "vscode/UX17/explorer-create/command/local",
+        "vscode/UX17/explorer-create/input/local",
+        "vscode/UX17/explorer-rename/command/local",
+        "vscode/UX17/explorer-rename/input/local",
+        "vscode/UX17/explorer-delete/command/local",
+        "vscode/UX17/explorer-delete/input/local"
+      ],
+      "summary": "Repair confirmed native Explorer rename disk-read race during expanded frozen B10.27. Old driver separately existsSync then readFileSync; actual rename removes amber_quarry between those observations, causing ENOENT six milliseconds after native Enter. Failed bundle43 proofs/source7ddafe and original log/PNG/ARIA/trace retained; owned final disk has no old path and exact violet_archive contents. Read once and treat only ENOENT as missing; empty/exact contents unchanged,EACCES/EIO/EISDIR rethrow. Exact original driver/actions/checks/deadlines preserved except one focused helper import/read call; no extra UI actions or delayed/relaxed checks. Faithfully reconstructed original reader with deterministic disappearance genuinely fails one Node test; new independent read-state/Unicode-CRLF/real rename/nonmissing-error tests2 and Node227 with pending B10.27 pass. Fresh installed native14 passes create/rename/delete plus unchanged eleven installation/driver/navigation prerequisites; every full action/check/trace/artifact/profile/source/binary contract and healthy clean exit verified. All50 native contracts unchanged; no production,LSP capability,semantic cell or parent acceptance. Preserve ten original accepted snapshots/profile audits,prior232 children,independent macOS history/B16 and activeB10.27. Pending47-case/232-query type selection corpus and its earlier draft/ValueKey/View review remain outside this prerequisite commit; source identity includes that uncommitted work,whose completion still requires new full native50/VSIX25/automatic/strict acceptance after this commit. editors/vscode/test-results/input-ONgu2j/results.json; formal LSP-Batch trailer locates commit. Checkpoint tests15 pass; post-commit source identity/formal trailer and exact ten pending B10.27 files are checked separately."
     }
   ],
   "activeChild": "B10.27",
@@ -11638,7 +11651,47 @@
     "target/b10-26-selection-bodies-before-callback-review.json",
     "target/b10-26-bodies-before-callback-review.json",
     "target/b10-26-lambda-tests-before-placement-fix.rs",
-    "target/b10-26-checkpoint.log"
+    "target/b10-26-checkpoint.log",
+    "editors/vscode/test-results/input-ONgu2j/results.json",
+    "editors/vscode/test-results/input-lfPNKR/results.json",
+    "editors/vscode/test-results/input-lfPNKR/failure.png",
+    "editors/vscode/test-results/input-lfPNKR/failure.aria.txt",
+    "editors/vscode/test-results/input-lfPNKR/trace.json",
+    "target/b09-10-input.log",
+    "target/b09-10-disk-file.log",
+    "target/b09-10-node.log",
+    "target/b09-10-red.log",
+    "target/b09-10-freeze.log",
+    "target/b09-10-frozen-source.json",
+    "target/b09-10-red.test.js",
+    "target/b10-27-input.log",
+    "target/b10-27-frozen-source.json",
+    "target/b10-27-selection-types-before-contract-review.json",
+    "target/b10-27-types-before-contract-review.json",
+    "target/b10-27-types-before-contract-review.log",
+    "target/b10-27-selection-types-before-keyability-review.json",
+    "target/b10-27-types-before-keyability-review.json",
+    "target/b10-27-types-before-keyability-review.log",
+    "target/b10-27-service-parse-draft.log",
+    "target/b10-27-service-parse-details.log",
+    "target/b10-27-selection-types-before-view-review.json",
+    "target/b10-27-types-before-view-review.json",
+    "target/b10-27-types-before-view-review.log",
+    "target/b10-27-frozen-source-before-view-review.json",
+    "target/b10-27-input-before-view-review.log",
+    "target/b10-27-input-before-view-review-verify.log",
+    "target/b10-27-selection-types.json",
+    "target/b10-27-types-prototype.json",
+    "target/b10-27-types-prototype.log",
+    "target/b10-27-service-first.log",
+    "target/b10-27-protocol-first.log",
+    "target/b10-27-node.log",
+    "target/b10-27-fmt.log",
+    "target/b10-27-clippy.log",
+    "target/b10-27-architecture.log",
+    "target/b10-27-keyability.log",
+    "editors/vscode/test-results/input-nXy9Oe/results.json",
+    "target/b09-10-checkpoint.log"
   ],
   "openIssues": [
     {
