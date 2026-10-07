@@ -2064,7 +2064,7 @@
             {"marker":"pattern-eof-4-29","text":"::","type":"pathSeparator","modifiers":[]},
             {"marker":"pattern-eof-4-30","text":"One","type":"enumMember","modifiers":["source"]},
             {"marker":"pattern-eof-4-31","text":"(","type":"parenthesis","modifiers":[]},
-            {"marker":"pattern-eof-4-32","text":"bound","type":"variable","modifiers":[]}
+            {"marker":"pattern-eof-4-32","text":"bound","type":"variable","modifiers":["declaration","source"]}
           ],
           "diagnostics": {
             "phase": "pattern-eof",

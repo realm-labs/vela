@@ -11,7 +11,7 @@ the malformed importer never executes script or host code.
 | Valid neighbors | Imports, declarations, parameters, source fields, source calls and builtin methods retain their exact ownership beside malformed syntax. Each repair restores the complete valid stream and clears its diagnostics. |
 | Member and call recovery | Empty member names, empty named argument values, open calls and nested open calls preserve typed receivers, known callees, known argument labels and delimiters. Missing names and qualified callees remain unresolved; diagnostic suggestions do not turn a misspelled method into a builtin method token. Unknown source fields retain lexical member classification under the existing conservative diagnostic precision policy. |
 | Types and declarations | Invalid type arity, unknown hints and an open `Array<` keep lexical type roles without invented arguments. Partial signatures retain real parameter spans. Nameless struct/enum/trait owners report parser errors and cannot lend field or member ownership to their orphaned syntax. Removing the previous `Local` owner removes its type/field provenance from the still-valid neighboring function. |
-| Owners, records and patterns | Open inherent/trait methods, an open source record and a partial enum pattern retain independently known owner/member/variant facts. A pattern name with no bound HIR local stays lexical; the fixture does not invent a binding from an unfinished arm. |
+| Owners, records and patterns | Open inherent/trait methods, an open source record and a partial enum pattern retain independently known owner/member/variant facts. B10.34 preserves the authored final `bound` pattern when its outer parenthesis is missing; the existing HIR pattern-binding contract gives it `declaration` and `source` modifiers despite the unfinished arm. Names without a bound HIR local stay lexical. |
 | Literal and trivia recovery | Unterminated strings, interpolations, byte strings, chars and multiline strings retain opaque lexical envelopes with exact line slices and no symbol provenance. Comment-looking contents stay literal text. A real unfinished block comment stays a comment. Lexer/parser errors remain available rather than being suppressed by token recovery. |
 | Empty source and stale facts | Replacing all source with an empty document returns an empty full stream and empty range, without cached declarations or tokens. Actual deltas applied to prior data reproduce every complete current stream. |
 
@@ -43,3 +43,11 @@ These changes preserve errors and do not make malformed programs executable.
 Only twelve S9 full/delta/range positive/negative service/protocol obligations
 use this evidence. Other B06 cells remain separate; macOS requires independent
 fresh evidence and B16 remains deferred.
+
+B10.34's complete audit exposed this single outdated modifier expectation at
+token 76 in `pattern-eof`. The source, marker, token text/type/range, all other
+1705 damaged tokens, all 25 diagnostic policies and the 76-token valid stream
+remain unchanged. The complete original audit is retained as failed evidence;
+both layers must recheck the entire fixture, including repair, deltas and ranges.
+This strengthens proof of the existing known-binding contract and changes no
+requirement ID, applicability, ownership or catalog acceptance scope.

@@ -8734,10 +8734,33 @@
         "folding/states/recovery/protocol"
       ],
       "summary": "Partial S9 parenthesis recovery, no broad cell certification. Independently authored four-document pilot16stdio vectors/64positions exposes8failedvectors/24positions; AST retained grouping missing. Recognize missing outer parenthesis; classifier/group/tuple body excludes only its matching close. Closed inner call cannot stand for outer close. Original clean source/coordinates/expectations fixed;all16 thenmatch. Preserve marker-script invalid point-name issue before observations separately. Final83documents/321queries:234completechains/87points,78positive/fourpointonly/oneempty,40damaged E_PARSE-only/43quiet. Group/tuple final field/binary/named-call/closedarray/closedindex/Map in local/return/expression;repair/redamage/duplicate/comments/space/EOF/empty. Four Unicode LF/CRLFforms332whole stdio vectors/1284positions allmatch. Repaired member41..46UTF16/45..50bytes;field37..46/group35..47/local22..48/body20..50/item8..50/fullfile0. Unclosedgroup field37..46/group35..46;tuplemember43..48/field39..48/tuple35..48;unclosedstatement/body/item own newline. Helpermember43..48/field37..48/binary37..52/return30..53/body28..55/item8..55/file0. AST432 damage/repair/redamage observations pin complete node/final operand/first tuple member/separator/byte bounds/actual delimiter. Syntax126+fixture1;selectionservice14/protocol17;Node245;architecture3/fmt/Clippy/HIR108/analysis167/bytecode433/package. Both layers whole repeated disk/dirty/close/current-fresh/all retained snapshots,owned source/CST/diagnostics/two records/no schema/fixed counters,typed envelopes/atomic invalid UTF16/encoded roots/unchanged disk. Common oracles/bracket fix/native contracts unchanged. First full audit exposes old folding PathExpr contract at both layers; explicit single-case migration preserves54 clean sources/error policies/all264 old folds,requires TupleExpr and two exact Literal children,adds sole tuple fold265total. Node literal goldens and whole648stdio damage/repair/redamage vectors match; five folding S9/recovery catalog descriptions reflect stronger evidence,all other cases and rows unchanged. Preserve first failed full audit/source/native/editor plus marker-membership authoring failure; regenerate fresh source gates. Fresh Windows native50/VSIX25/full automatic and strict B09 service778+2historicignored/protocol832/stdio10. Fold80/240/192 and workspace-symbol486/1458 proof retained. Preserve accepted10/prior239children/macOShistory/B16deferred. Core1020verified/305pending/2NA;B10150verified/26pending. NextB10.34 continue S9 including tuple patterns;four S9 cells/remaining recovery/state/trivia/installedselection/nativeUX11/UX12 still unreviewed,no parent acceptance. VSIX editors/vscode/test-results/run-v8AfAr/results.json; native editors/vscode/test-results/input-GLmBic/results.json; audit target/lsp-matrix/run-crpyZk/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.34",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S9/positive/service",
+        "selection/syntax/S9/positive/protocol",
+        "selection/syntax/S9/negative/service",
+        "selection/syntax/S9/negative/protocol",
+        "tokens-delta/syntax/S9/negative/protocol",
+        "tokens-delta/syntax/S9/negative/service",
+        "tokens-delta/syntax/S9/positive/protocol",
+        "tokens-delta/syntax/S9/positive/service",
+        "tokens-full/syntax/S9/negative/protocol",
+        "tokens-full/syntax/S9/negative/service",
+        "tokens-full/syntax/S9/positive/protocol",
+        "tokens-full/syntax/S9/positive/service",
+        "tokens-range/syntax/S9/negative/protocol",
+        "tokens-range/syntax/S9/negative/service",
+        "tokens-range/syntax/S9/positive/protocol",
+        "tokens-range/syntax/S9/positive/service"
+      ],
+      "summary": "Partial S9 tuple-pattern recovery; no broad selection cell certification. Independent AST fails final pattern count1vs2. Initial four-doc pilot duplicated equal pattern/arm spans:8mismatching vectors,corrected16/64 allmatch before product fix. Expanded first draft160 failed vectors includes author record-field-space and direct-Match statement/newline errors; corrections preserve83clean sources/positions/all actual responses. Corrected full corpus72failedvectors/144positions is genuine product red for final qualified paths/nested tuple/record in all3contexts/2outerforms/4Unicode LFCRLFforms. One-line fix reuses matching paren contents boundary,retains complete final pattern/inner closers;corrected expected/text/positions unchanged,all332 whole stdio vectors/1284positions thenmatch. Final83documents/321queries:234completechains/87points,78positive/fourpointonly/oneactualempty,40damaged nonempty E_PARSE-only/43quiet. Binding/wildcard/bool/qualified path/nested tuple/record,qualified/naked tuples,local/return/direct match,repair/redamage/duplicate/comments/space/EOF/empty. Mainbinding67..71UTF16/71..75bytes;tuple47..72/arm47..77/list45..80/match35..80/local22..81/body20..83/item8..83/file0. Missing-arrow equal pattern/arm47..71 appears once;local/body/item retain newline. Direct match has no invented ExprStmt;incomplete arm/list/match own newline. Fixed helper complete field/binary/return/body/item/file. AST432observations pin whole source/node/final pattern/first binding/separator/owner path/bytes/real closer/errors through damage-repair-redamage. Syntax127+fixture1;selectionservice15/protocol18;Node249;architecture3/fmt/Clippy/HIR108/analysis167/bytecode433/package. Both layers whole repeated disk/dirty/close/current-fresh/all immutable snapshots,owned source/CST/parse policy/two records/no schema/fixed counters;typed envelopes/atomic invalid UTF16/encoded roots/unchanged disk. Unknown pattern owners remain syntactic,not semantic declaration parents. Complete first audit run-79RKqS fails only old semantic pattern-eof bound modifiers in both layers(service778pass1fail2ignored/protocol832pass1fail). Primary HIR pattern-binding contract establishes declaration/source;strengthen this one modifier set,all source/positions/types/1705other damaged tokens/valid76/25diagnostic policies unchanged. Independent LFCRLF literal Node golden/full focused semantic service1/protocol1 pass;catalog requirement contracts/scopes remain unchanged. Renew all current-source Windows proof;earlier native/GUI and failed audit are historical only. Common oracles/all prior selection and folding assertions/catalog/native contracts unchanged. Fresh Windows native50/VSIX25/full automatic and strict B09 service779+2historicignored/protocol833/stdio10. Fold80/240/192 and workspace-symbol486/1458 retained. Preserve accepted10/prior240children/macOShistory/B16deferred. Core1020verified/305pending/2NA;B10150verified/26pending. NextB10.35 continue remaining S9 malformed partitions;four S9 cells/recovery-state/trivia/installedselection/nativeUX11/UX12 remain open,no parent acceptance. VSIX editors/vscode/test-results/run-mY6VZh/results.json; native editors/vscode/test-results/input-oLTb9f/results.json; audit target/lsp-matrix/run-r6khFD/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.34",
-  "nextTask": "B10.34",
+  "activeChild": "B10.35",
+  "nextTask": "B10.35",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -12153,7 +12176,80 @@
     "target/b10-33-recovery-pilot-after-fix.json",
     "target/b10-33-corpus.js",
     "target/b10-33-marker-authoring.md",
-    "target/b10-33-checkpoint.log"
+    "target/b10-33-checkpoint.log",
+    "target/lsp-matrix/run-r6khFD/report.json",
+    "editors/vscode/test-results/run-mY6VZh/results.json",
+    "editors/vscode/test-results/input-oLTb9f/results.json",
+    "target/lsp-matrix/run-oGY0iX/report.json",
+    "editors/vscode/test-results/run-mY6VZh/base-results.json",
+    "editors/vscode/test-results/run-mY6VZh/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-mY6VZh/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-mY6VZh/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-mY6VZh/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-mY6VZh/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-mY6VZh/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-mY6VZh/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-mY6VZh/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-mY6VZh/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-mY6VZh/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-mY6VZh/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-mY6VZh/folding-crlf-shifted-client.log",
+    "target/b10-34-toolchain.log",
+    "target/b10-34-build.log",
+    "target/b10-34-input.log",
+    "target/b10-34-editor.log",
+    "target/b10-34-scoped.log",
+    "target/b10-34-automatic.log",
+    "target/b10-34-input-verify.log",
+    "target/b10-34-editor-verify.log",
+    "target/b10-34-automatic-verify.log",
+    "target/b10-34-scoped-verify.log",
+    "target/b10-34-baseline-syntax.log",
+    "target/b10-34-baseline-node.log",
+    "target/b10-34-baseline-service.log",
+    "target/b10-34-baseline-protocol.log",
+    "target/b10-34-service-first.log",
+    "target/b10-34-protocol-first.log",
+    "target/b10-34-architecture.log",
+    "target/b10-34-node-first.log",
+    "target/b10-34-node.log",
+    "target/b10-34-fmt.log",
+    "target/b10-34-format-apply.log",
+    "target/b10-34-package.log",
+    "target/b10-34-clippy.log",
+    "target/b10-34-syntax-red.log",
+    "target/b10-34-syntax-first.log",
+    "target/b10-34-syntax.log",
+    "target/b10-34-analysis.log",
+    "target/b10-34-hir.log",
+    "target/b10-34-bytecode.log",
+    "target/b10-34-recovery-prototype.log",
+    "target/b10-34-recovery-pilot.log",
+    "target/b10-34-recovery-red.log",
+    "target/b10-34-recovery-before-dedup.log",
+    "target/b10-34-recovery-before-boundary-review.log",
+    "target/b10-34-freeze.log",
+    "target/b10-34-frozen-source.json",
+    "target/b10-34-native-contracts.json",
+    "target/b10-34-recovery-prototype.json",
+    "target/b10-34-selection-pattern-recovery-pilot.json",
+    "target/b10-34-recovery-pilot.json",
+    "target/b10-34-recovery-red.json",
+    "target/b10-34-recovery-before-dedup.json",
+    "target/b10-34-selection-pattern-recovery-before-dedup.json",
+    "target/b10-34-recovery-before-boundary-review.json",
+    "target/b10-34-selection-pattern-recovery-before-boundary-review.json",
+    "target/b10-34-corpus.js",
+    "target/b10-34-semantic-scope.json",
+    "target/b10-34-semantic-service.log",
+    "target/b10-34-semantic-protocol.log",
+    "target/b10-34-frozen-before-semantic-review.json",
+    "target/b10-34-editor-before-semantic-review.log",
+    "target/b10-34-input-before-semantic-review.log",
+    "target/lsp-matrix/run-79RKqS/report.json",
+    "editors/vscode/test-results/run-REfzEA/results.json",
+    "editors/vscode/test-results/input-jfwyWp/results.json",
+    "target/b10-34-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -16081,8 +16177,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "7fce8f2887bc75edf1863f3f5f6df4bca5d388bb",
-          "treeSha256": "d05330e8021c86a828d7e81980ac82afafccaed437d2cbddc7202305b3459210"
+          "revision": "138a1a0ad1f8e55f9470a7465034a000563264b6",
+          "treeSha256": "e2338a16b11bea27dad18da0ab128e778eb5208db5b14fc4be4b9d7862925e1c"
         },
         "profile": {
           "platform": "win32",
@@ -16090,11 +16186,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-crpyZk/report.json"
+          "target/lsp-matrix/run-r6khFD/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-v8AfAr/results.json --local-results editors/vscode/test-results/input-GLmBic/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-mY6VZh/results.json --local-results editors/vscode/test-results/input-oLTb9f/results.json",
             "exitCode": 0
           }
         ]

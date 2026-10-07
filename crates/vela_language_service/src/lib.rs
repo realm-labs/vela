@@ -147,6 +147,8 @@ mod selection_member_tests;
 #[cfg(test)]
 mod selection_paren_tests;
 #[cfg(test)]
+mod selection_pattern_recovery_tests;
+#[cfg(test)]
 mod selection_pattern_tests;
 #[cfg(test)]
 mod selection_type_tests;

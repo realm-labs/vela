@@ -450,7 +450,7 @@ impl CstParser<'_, '_> {
             return;
         };
         self.emit_until(fields_start + 1);
-        let close = end.saturating_sub(1);
+        let close = self.paren_contents_end(fields_start, end);
         while self.pos < close {
             let field_start = self.skip_trivia(self.pos);
             self.emit_until(field_start);

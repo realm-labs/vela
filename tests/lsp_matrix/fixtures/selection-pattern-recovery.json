@@ -1,0 +1,4172 @@
+{
+  "version": 1,
+  "id": "selection-pattern-recovery",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]pub fn apply(value) [[body:start]]{ [[return:start]]return [[binary:start]][[field:start]][[receiver:start]]v[[receiver-cursor]]alue[[receiver:end]].[[member:start]]f[[member-cursor]]ield[[member:end]][[field:end]] + [[number:start]][[number-cursor]]2[[number:end]][[binary:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "member-cursor",
+        "chain": [
+          "member",
+          "field",
+          "binary",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "repaired-variant-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-tuple-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-variant-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-tuple-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-variant-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-variant-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-local-tuple-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-local-tuple-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-variant-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-variant-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-return-tuple-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[return:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-return-tuple-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[return:start]]return [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-variant-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-variant-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-binding",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-wildcard",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-wildcard",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]][[leaf-cursor]]_[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-literal",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-literal",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]rue[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-path",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-path",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]][[enum:start]]C[[enum-cursor]]hoice[[enum:end]]::[[leaf:start]]U[[leaf-cursor]]nit[[leaf:end]][[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-tuple",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-tuple",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Tuple([[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]], _)[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "incomplete-statement-tuple-final-record",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]][[pattern:end]]\n[[arm:end]][[arms:end]][[match:end]][[statement:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "repaired-statement-tuple-final-record",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[statement:start]][[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[inner-pattern:start]]Choice::Record { [[record-field:start]]value: [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]] [[record-field:end]]}[[inner-pattern:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "record-field",
+              "inner-pattern",
+              "pattern",
+              "arm",
+              "arms",
+              "match",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-variant-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "redamaged-tuple-final-binding",
+        "parse": "damaged",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]][[pattern:end]][[arm:end]][[arms:end]][[match:end]]\n[[local:end]][[body:end]][[item:end]][[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-cursor",
+            "chain": [
+              "first",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "leaf-cursor",
+            "chain": [
+              "leaf",
+              "pattern",
+              "arms",
+              "match",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "point-only-comment-in-body",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run() [[body:start]]{ /* pa[[comment]]tterns () */  [[space]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "parse": "quiet",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[match:start]]match [[scrutinee:start]]r[[scrutinee-cursor]]ow[[scrutinee:end]] [[arms:start]]{ [[arm:start]][[pattern:start]]Choice::Tuple([[first:start]]h[[first-cursor]]ead[[first:end]], [[leaf:start]]t[[leaf-cursor]]ail[[leaf:end]])[[pattern:end]] => 1[[arm:end]], }[[arms:end]][[match:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "parse": "quiet",
+        "source": "[[file:start]]// tu[[comment]]ple Choice::Tuple(head, tail\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "parse": "quiet",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "parse": "quiet",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}
