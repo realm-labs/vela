@@ -112,6 +112,15 @@ damage/repair sequences. See the
 [installed provider review](../tests/lsp_matrix/reviews/document-symbol-editor.md).
 The checkpoint records complete document-symbol core coverage. Workspace symbols,
 folding, selection and native Outline/picker workflows remain open.
+Selection S9 now has a consolidated recovery corpus with whole CST ancestry and
+complete selection vectors, including malformed declarations, open types/calls,
+control guards, lexical envelopes and retained bracket/tuple-pattern partitions.
+Explicit empty type annotations and unfinished import paths now retain their
+required diagnostics while preserving recovered nodes and accepted quiet
+expression policy. See the
+[selection recovery review](../tests/lsp_matrix/reviews/selection-recovery.md).
+Source/dependency recovery state, trivia, installed selection and native
+Outline/picker/folding interactions remain separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

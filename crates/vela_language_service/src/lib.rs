@@ -151,6 +151,8 @@ mod selection_pattern_recovery_tests;
 #[cfg(test)]
 mod selection_pattern_tests;
 #[cfg(test)]
+mod selection_recovery_tests;
+#[cfg(test)]
 mod selection_type_tests;
 
 #[cfg(test)]

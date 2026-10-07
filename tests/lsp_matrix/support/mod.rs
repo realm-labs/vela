@@ -27,6 +27,7 @@ pub(crate) mod selection_members;
 pub(crate) mod selection_parens;
 pub(crate) mod selection_pattern_recovery;
 pub(crate) mod selection_patterns;
+pub(crate) mod selection_recovery;
 pub(crate) mod selection_types;
 pub(crate) mod workspace_symbol_incremental;
 pub(crate) mod workspace_symbol_sources;

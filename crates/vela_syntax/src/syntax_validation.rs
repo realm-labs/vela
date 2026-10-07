@@ -106,8 +106,9 @@ fn validate_removed_null(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagn
 }
 
 fn validate_use_path(source: SourceId, path: &SyntaxUsePath) -> Vec<Diagnostic> {
-    path.path_tokens()
-        .into_iter()
+    let tokens = path.path_tokens();
+    let mut diagnostics = tokens
+        .iter()
         .filter(|token| token.kind() == SyntaxKind::Dot)
         .map(|token| {
             let span = span_for(source, token.text_range());
@@ -115,7 +116,18 @@ fn validate_use_path(source: SourceId, path: &SyntaxUsePath) -> Vec<Diagnostic> 
                 .with_code("E_PARSE")
                 .with_span(span)
         })
-        .collect()
+        .collect::<Vec<_>>();
+    if let Some(separator) = tokens
+        .last()
+        .filter(|token| token.kind() == SyntaxKind::ColonColon)
+    {
+        diagnostics.push(
+            Diagnostic::error("expected import path segment")
+                .with_code("E_PARSE")
+                .with_span(span_for(source, separator.text_range())),
+        );
+    }
+    diagnostics
 }
 
 fn validate_type_hint(source: SourceId, hint: &SyntaxTypeHint) -> Vec<Diagnostic> {

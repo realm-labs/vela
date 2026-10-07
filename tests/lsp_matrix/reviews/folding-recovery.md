@@ -3,7 +3,9 @@
 B10.22 covers folding S9 positive/negative service/protocol and protocol
 recovery state. The marked fixture independently defines 54 whole sets:
 49 positives, 265 fold spans and five genuinely empty sets. Forty-three cases
-require parse errors; eleven retain valid or accepted quiet recovery policy.
+require parse errors in the original B10.22 corpus; B10.35 strengthens the
+unfinished import to require its missing-segment diagnostic, making 44 diagnosed
+and ten valid or accepted quiet cases. All sources and folds remain unchanged.
 No provider output generates expected folding ranges.
 
 | Partition | Independent expected behavior |
@@ -13,7 +15,7 @@ No provider output generates expected folding ranges.
 | Quiet expressions | Unfinished members, named arguments, constructors, patterns and initializers retain their complete enclosing function/body set without introducing parse errors. Dynamic/unresolved receivers stay independent. |
 | EOF owners | Unclosed function, array, map, record, block, lambda, parameter list/default array, struct, enum, tuple variant, trait and impl retain exact available multiline spans. |
 | Recovered tuple and unknown literal | B10.33 retains an unclosed tuple's exact TupleExpr, first/final Literal children and complete multiline fold. A lexically rejected multiline string retains its complete PathExpr recovery shape and adds no literal fold. |
-| Imports | A consecutive group ending in an unfinished use path remains one imports fold under the existing quiet completion policy. |
+| Imports | A consecutive group ending in an unfinished use path remains one imports fold; B10.35 requires the missing import segment diagnostic. |
 | Exact empties | Empty/trivia files, stray semicolon, single-line partial function and partial const own no folds. Their error policy is explicit. |
 
 The initial 43-case actual stdio probe retains all 172 raw comparisons. Four

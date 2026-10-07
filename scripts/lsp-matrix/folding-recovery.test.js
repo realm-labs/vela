@@ -4,7 +4,7 @@ const spec=require("../../tests/lsp_matrix/fixtures/folding-recovery.json"),{par
 test("folding recovery pins fifty-four complete authored sets and all diagnosed quiet and empty partitions",()=>{
  assert.equal(spec.id,"folding-recovery");assert.equal(cases.length,54);assert.equal(new Set(cases.map(c=>c.id)).size,54);
  assert.deepEqual(cases.map(c=>c.ranges.length),[6,4,4,4,4,4,4,4,4,4,6,6,6,6,5,5,5,5,5,5,5,5,5,6,6,5,6,6,6,6,6,6,6,6,7,7,7,7,7,8,5,6,5,5,5,5,6,5,4,0,0,0,0,0]);
- assert.equal(cases.reduce((n,c)=>n+c.ranges.length,0),265);assert.equal(cases.filter(c=>!c.ranges.length).length,5);assert.equal(cases.filter(c=>c.parseError).length,43);
+ assert.equal(cases.reduce((n,c)=>n+c.ranges.length,0),265);assert.equal(cases.filter(c=>!c.ranges.length).length,5);assert.equal(cases.filter(c=>c.parseError).length,44);
  assert.deepEqual(Object.keys(spec.files),["scripts/main.vela","scripts/helper.vela"]);assert.equal(spec.files["scripts/main.vela"],cases[0].source);
  for(const c of cases){const doc=parseMarkers(c.source),names=[...c.ranges,...(c.syntaxRegions??[])].map(r=>r.range),unique=[...new Set(names)];assert.equal(names.length-unique.length,c.id==="unclosed-tuple"?1:0);assert.deepEqual(Object.keys(doc.markers).sort(),unique.sort());assert.equal(typeof c.parseError,"boolean");}
 });
@@ -44,7 +44,7 @@ test("folding recovery preserves damaged owners healthy neighbors quiet partials
  assert.deepEqual(names("function-no-body"),["before","before-body","broken","after","after-body"]);
  assert.deepEqual(names("unclosed-lambda"),["before","before-body","after","after-body","broken","body","value","lambda-body"]);
  for(const c of cases.filter(c=>c.id.startsWith("quiet-")||c.id==="unresolved-owner"||c.id==="dynamic-owner")){assert.equal(c.parseError,false);assert.deepEqual(c.ranges.map(r=>r.range),["before","before-body","broken","body","after","after-body"]);}
- assert.equal(get("unclosed-import-group").parseError,false);assert.deepEqual(get("unclosed-import-group").ranges[0],{kind:"imports",range:"imports"});
+ assert.equal(get("unclosed-import-group").parseError,true);assert.deepEqual(get("unclosed-import-group").ranges[0],{kind:"imports",range:"imports"});
  for(const c of cases.filter(c=>c.id.startsWith("no-fold-")))assert.deepEqual(c.ranges,[]);
  for(const id of["const-no-name","state-no-value","function-no-name","enum-no-payload-default","trait-no-parameter-default","impl-no-parameter-default","unclosed-parameters","unclosed-parameter-array"])assert.equal(get(id).parseError,true);
 });

@@ -1401,7 +1401,7 @@
             "range": "after-body"
           }
         ],
-        "parseError": false
+        "parseError": true
       },
       {
         "id": "unclosed-triple-string",

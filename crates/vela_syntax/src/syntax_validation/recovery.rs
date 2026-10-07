@@ -11,6 +11,8 @@ use crate::{
 };
 
 #[cfg(test)]
+mod required_child_tests;
+#[cfg(test)]
 mod tests;
 
 pub(super) fn validate(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnostic> {
@@ -81,6 +83,9 @@ fn missing_parts(node: &SyntaxNode) -> Vec<&'static str> {
             if item.default_equal_token().is_some() && item.default_value().is_none() {
                 errors.push("expected parameter default expression");
             }
+            if direct_token(node, SyntaxKind::Colon) && item.type_hint().is_none() {
+                errors.push("expected type annotation");
+            }
         }
         SyntaxKind::StructField => {
             let item = item!(SyntaxStructField);
@@ -89,6 +94,9 @@ fn missing_parts(node: &SyntaxNode) -> Vec<&'static str> {
             }
             if direct_token(node, SyntaxKind::Equal) && item.default_value().is_none() {
                 errors.push("expected field default expression");
+            }
+            if direct_token(node, SyntaxKind::Colon) && item.type_hint().is_none() {
+                errors.push("expected type annotation");
             }
         }
         SyntaxKind::TraitMethod if item!(SyntaxTraitMethod).name_token().is_none() => {
