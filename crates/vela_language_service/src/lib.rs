@@ -136,6 +136,8 @@ mod selection_body_tests;
 mod selection_declaration_tests;
 #[cfg(test)]
 mod selection_import_tests;
+#[cfg(test)]
+mod selection_type_tests;
 
 #[cfg(test)]
 #[path = "../../../tests/lsp_matrix/support/mod.rs"]

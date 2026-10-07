@@ -1,0 +1,3173 @@
+{
+  "version": 1,
+  "id": "selection-types",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] { return value; }[[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper[[params:start]]([[param:start]]value: [[hint:start]][[set:start]]S[[set-cursor]]et[[set:end]][[args:start]]<[[character:start]]ch[[character-cursor]]ar[[character:end]]>[[args:end]][[hint:end]][[param:end]])[[params:end]] -> [[result:start]]A[[result-cursor]]ny[[result:end]] { return value; }[[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "character-cursor",
+        "chain": [
+          "character",
+          "args",
+          "hint",
+          "param",
+          "params",
+          "item",
+          "file"
+        ]
+      },
+      {
+        "position": "result-cursor",
+        "chain": [
+          "result",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "nested-parameter-and-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] { return value; }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "binding-cursor",
+            "chain": [
+              "binding",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "return-unit",
+              "return-tuple",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "return-array-name-cursor",
+            "chain": [
+              "return-array-name",
+              "return-array",
+              "return-tuple",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "all-primitive-and-dynamic-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param-0:start]]value0: [[type-0:start]]A[[type-0-cursor]]ny[[type-0:end]][[param-0:end]],[[param-1:start]] value1: [[type-1:start]]bo[[type-1-cursor]]ol[[type-1:end]][[param-1:end]],[[param-2:start]] value2: [[type-2:start]]ch[[type-2-cursor]]ar[[type-2:end]][[param-2:end]],[[param-3:start]] value3: [[type-3:start]]i[[type-3-cursor]]8[[type-3:end]][[param-3:end]],[[param-4:start]] value4: [[type-4:start]]i[[type-4-cursor]]16[[type-4:end]][[param-4:end]],[[param-5:start]] value5: [[type-5:start]]i[[type-5-cursor]]32[[type-5:end]][[param-5:end]],[[param-6:start]] value6: [[type-6:start]]i[[type-6-cursor]]64[[type-6:end]][[param-6:end]],[[param-7:start]] value7: [[type-7:start]]u[[type-7-cursor]]8[[type-7:end]][[param-7:end]],[[param-8:start]] value8: [[type-8:start]]u[[type-8-cursor]]16[[type-8:end]][[param-8:end]],[[param-9:start]] value9: [[type-9:start]]u[[type-9-cursor]]32[[type-9:end]][[param-9:end]],[[param-10:start]] value10: [[type-10:start]]u[[type-10-cursor]]64[[type-10:end]][[param-10:end]],[[param-11:start]] value11: [[type-11:start]]f[[type-11-cursor]]32[[type-11:end]][[param-11:end]],[[param-12:start]] value12: [[type-12:start]]f[[type-12-cursor]]64[[type-12:end]][[param-12:end]],[[param-13:start]] value13: [[type-13:start]]Str[[type-13-cursor]]ing[[type-13:end]][[param-13:end]],[[param-14:start]] value14: [[type-14:start]]By[[type-14-cursor]]tes[[type-14:end]][[param-14:end]],[[param-15:start]] value15: [[type-15:start]]Ra[[type-15-cursor]]nge[[type-15:end]][[param-15:end]],[[param-16:start]] value16: [[type-16:start]]Func[[type-16-cursor]]tion[[type-16:end]][[param-16:end]],[[param-17:start]] value17: [[type-17:start]]Clo[[type-17-cursor]]sure[[type-17:end]][[param-17:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "type-0-cursor",
+            "chain": [
+              "type-0",
+              "param-0",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-1-cursor",
+            "chain": [
+              "type-1",
+              "param-1",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-2-cursor",
+            "chain": [
+              "type-2",
+              "param-2",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-3-cursor",
+            "chain": [
+              "type-3",
+              "param-3",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-4-cursor",
+            "chain": [
+              "type-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-5-cursor",
+            "chain": [
+              "type-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-6-cursor",
+            "chain": [
+              "type-6",
+              "param-6",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-7-cursor",
+            "chain": [
+              "type-7",
+              "param-7",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-8-cursor",
+            "chain": [
+              "type-8",
+              "param-8",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-9-cursor",
+            "chain": [
+              "type-9",
+              "param-9",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-10-cursor",
+            "chain": [
+              "type-10",
+              "param-10",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-11-cursor",
+            "chain": [
+              "type-11",
+              "param-11",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-12-cursor",
+            "chain": [
+              "type-12",
+              "param-12",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-13-cursor",
+            "chain": [
+              "type-13",
+              "param-13",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-14-cursor",
+            "chain": [
+              "type-14",
+              "param-14",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-15-cursor",
+            "chain": [
+              "type-15",
+              "param-15",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-16-cursor",
+            "chain": [
+              "type-16",
+              "param-16",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-17-cursor",
+            "chain": [
+              "type-17",
+              "param-17",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "bare-builtin-container-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param-0:start]]value0: [[type-0:start]]Ar[[type-0-cursor]]ray[[type-0:end]][[param-0:end]],[[param-1:start]] value1: [[type-1:start]]M[[type-1-cursor]]ap[[type-1:end]][[param-1:end]],[[param-2:start]] value2: [[type-2:start]]S[[type-2-cursor]]et[[type-2:end]][[param-2:end]],[[param-3:start]] value3: [[type-3:start]]Iter[[type-3-cursor]]ator[[type-3:end]][[param-3:end]],[[param-4:start]] value4: [[type-4:start]]Opt[[type-4-cursor]]ion[[type-4:end]][[param-4:end]],[[param-5:start]] value5: [[type-5:start]]Res[[type-5-cursor]]ult[[type-5:end]][[param-5:end]],[[param-6:start]] value6: [[type-6:start]]A[[type-6-cursor]]rrayView[[type-6:end]][[param-6:end]],[[param-7:start]] value7: [[type-7:start]]A[[type-7-cursor]]rrayMut[[type-7:end]][[param-7:end]],[[param-8:start]] value8: [[type-8:start]]S[[type-8-cursor]]etView[[type-8:end]][[param-8:end]],[[param-9:start]] value9: [[type-9:start]]S[[type-9-cursor]]etMut[[type-9:end]][[param-9:end]],[[param-10:start]] value10: [[type-10:start]]M[[type-10-cursor]]apView[[type-10:end]][[param-10:end]],[[param-11:start]] value11: [[type-11:start]]M[[type-11-cursor]]apMut[[type-11:end]][[param-11:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "type-0-cursor",
+            "chain": [
+              "type-0",
+              "param-0",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-1-cursor",
+            "chain": [
+              "type-1",
+              "param-1",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-2-cursor",
+            "chain": [
+              "type-2",
+              "param-2",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-3-cursor",
+            "chain": [
+              "type-3",
+              "param-3",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-4-cursor",
+            "chain": [
+              "type-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-5-cursor",
+            "chain": [
+              "type-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-6-cursor",
+            "chain": [
+              "type-6",
+              "param-6",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-7-cursor",
+            "chain": [
+              "type-7",
+              "param-7",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-8-cursor",
+            "chain": [
+              "type-8",
+              "param-8",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-9-cursor",
+            "chain": [
+              "type-9",
+              "param-9",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-10-cursor",
+            "chain": [
+              "type-10",
+              "param-10",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-11-cursor",
+            "chain": [
+              "type-11",
+              "param-11",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "source-host-trait-unknown-and-qualified-spellings",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param-0:start]]value0: [[type-0:start]]A[[type-0-cursor]]ny[[type-0:end]][[param-0:end]],[[param-1:start]] value1: [[type-1:start]]Mis[[type-1-cursor]]sing[[type-1:end]][[param-1:end]],[[param-2:start]] value2: [[type-2:start]]Rec[[type-2-cursor]]ord[[type-2:end]][[param-2:end]],[[param-3:start]] value3: [[type-3:start]]host::[[type-3-terminal:start]]Ent[[type-3-terminal-cursor]]ity[[type-3-terminal:end]][[type-3:end]][[param-3:end]],[[param-4:start]] value4: [[type-4:start]]Ru[[type-4-cursor]]le[[type-4:end]][[param-4:end]],[[param-5:start]] value5: [[type-5:start]]helper::[[type-5-terminal:start]]Kn[[type-5-terminal-cursor]]own[[type-5-terminal:end]][[type-5:end]][[param-5:end]],[[param-6:start]] value6: [[type-6:start]]Al[[type-6-cursor]]ias[[type-6:end]][[param-6:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "type-0-cursor",
+            "chain": [
+              "type-0",
+              "param-0",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-1-cursor",
+            "chain": [
+              "type-1",
+              "param-1",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-2-cursor",
+            "chain": [
+              "type-2",
+              "param-2",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-3-terminal-cursor",
+            "chain": [
+              "type-3-terminal",
+              "type-3",
+              "param-3",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-4-cursor",
+            "chain": [
+              "type-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-5-terminal-cursor",
+            "chain": [
+              "type-5-terminal",
+              "type-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "type-6-cursor",
+            "chain": [
+              "type-6",
+              "param-6",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unit-parameter",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[open:start]][[open-cursor]]([[open:end]])[[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-parameter",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]]([[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]])[[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-tuple-parameter",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]]([[inner:start]]([[integer:start]]i[[integer-cursor]]64[[integer:end]], [[unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[unit:end]])[[inner:end]], [[option:start]][[option-name:start]]Opt[[option-name-cursor]]ion[[option-name:end]][[option-args:start]]<[[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[option-args:end]][[option:end]])[[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "unit",
+              "inner",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "option-args",
+              "option",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-element-trailing-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]]([[first:start]][[integer:start]]i[[integer-cursor]]64[[integer:end]] [[first:end]], [[last:start]][[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]] [[last:end]])[[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "first",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "last",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-array-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]Ar[[outer-cursor]]ray[[outer:end]][[outer-args:start]]<[[inner:start]][[inner-name:start]]Opt[[inner-name-cursor]]ion[[inner-name:end]][[inner-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[inner-args:end]][[inner:end]]>[[outer-args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner-args",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-cursor",
+            "chain": [
+              "outer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-set-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]S[[outer-cursor]]et[[outer:end]][[outer-args:start]]<[[inner:start]][[inner-name:start]]Opt[[inner-name-cursor]]ion[[inner-name:end]][[inner-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[inner-args:end]][[inner:end]]>[[outer-args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner-args",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-cursor",
+            "chain": [
+              "outer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-iterator-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]Iter[[outer-cursor]]ator[[outer:end]][[outer-args:start]]<[[inner:start]][[inner-name:start]]Opt[[inner-name-cursor]]ion[[inner-name:end]][[inner-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[inner-args:end]][[inner:end]]>[[outer-args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner-args",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-cursor",
+            "chain": [
+              "outer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-option-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]Opt[[outer-cursor]]ion[[outer:end]][[outer-args:start]]<[[inner:start]][[inner-name:start]]Opt[[inner-name-cursor]]ion[[inner-name:end]][[inner-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[inner-args:end]][[inner:end]]>[[outer-args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner-args",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-cursor",
+            "chain": [
+              "outer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-name-cursor",
+            "chain": [
+              "inner-name",
+              "inner",
+              "outer-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-with-tuple-and-result",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[value:start]]([[integer:start]]i[[integer-cursor]]64[[integer:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]], [[unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[unit:end]]>[[result-args:end]][[result:end]])[[value:end]]>[[args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "value",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "value",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "unit",
+              "result-args",
+              "result",
+              "value",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "result-with-two-nested-containers",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]Res[[outer-cursor]]ult[[outer:end]][[args:start]]<[[left:start]][[left-name:start]]Ar[[left-name-cursor]]ray[[left-name:end]][[left-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[left-args:end]][[left:end]], [[right:start]][[right-name:start]]S[[right-name-cursor]]et[[right-name:end]][[right-args:start]]<[[character:start]]ch[[character-cursor]]ar[[character:end]]>[[right-args:end]][[right:end]]>[[args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "left-args",
+              "left",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "character-cursor",
+            "chain": [
+              "character",
+              "right-args",
+              "right",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "type-argument-trailing-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[args:start]]< [[string:start]]Str[[string-cursor]]ing[[string:end]] , [[value:start]][[option-name:start]]Opt[[option-name-cursor]]ion[[option-name:end]][[value-args:start]]< [[integer:start]]i[[integer-cursor]]64[[integer:end]] >[[value-args:end]][[value:end]] >[[args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "value-args",
+              "value",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "multiline-nested-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]\n  value: [[hint:start]][[outer:start]]Opt[[outer-cursor]]ion[[outer:end]][[args:start]]<\n    [[inner:start]][[inner-name:start]]M[[inner-name-cursor]]ap[[inner-name:end]][[inner-args:start]]< [[string:start]]Str[[string-cursor]]ing[[string:end]], [[integer:start]]i[[integer-cursor]]64[[integer:end]] >[[inner-args:end]][[inner:end]]\n  >[[args:end]][[hint:end]]\n[[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "inner-args",
+              "inner",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "inner-args",
+              "inner",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-cursor",
+            "chain": [
+              "outer",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "comments-inside-type-arguments",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[outer:start]]Opt[[outer-cursor]]ion[[outer:end]][[args:start]]< /* chi[[comment]]ld */ [[integer:start]]i[[integer-cursor]]64[[integer:end]] /* e[[second-comment]]nd */ >[[args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "unit-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() -> [[hint:start]][[open:start]][[open-cursor]]([[open:end]])[[hint:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "qualified-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() -> [[hint:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[terminal:start]]Kn[[terminal-cursor]]own[[terminal:end]][[hint:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "terminal-cursor",
+            "chain": [
+              "terminal",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-return",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() -> [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "async-type-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub async fn typed[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "defaulted-parameter-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed[[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "typed-lambda-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[lambda-params:start]]|[[lambda-param:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[lambda-param:end]]|[[lambda-params:end]] value[[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "typed-lambda-in-default",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]callback = [[lambda:start]][[lambda-params:start]]|[[lambda-param:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[lambda-param:end]]|[[lambda-params:end]] value[[lambda:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "lambda-param",
+              "lambda-params",
+              "lambda",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "two-typed-lambda-parameters",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() [[body:start]]{ [[local:start]]let callback = [[lambda:start]][[lambda-params:start]]|[[first:start]]left: [[first-type:start]]i[[first-type-cursor]]64[[first-type:end]][[first:end]], [[second:start]]right: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]]>[[args:end]][[hint:end]][[second:end]]|[[lambda-params:end]] left[[lambda:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "first-type-cursor",
+            "chain": [
+              "first-type",
+              "first",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "args",
+              "hint",
+              "second",
+              "lambda-params",
+              "lambda",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "local-nested-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() [[body:start]]{ [[local:start]]let value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed;[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "uninitialized-local-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() [[body:start]]{ [[local:start]]let value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "constant-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]const VALUE: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed;[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "state-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]state value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed;[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "extern-state-hint",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub extern state value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "struct-field-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub struct Record [[fields:start]]{ [[first:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed[[first:end]], [[second:start]]other: [[tuple:start]]([[integer2:start]]i[[integer2-cursor]]64[[integer2:end]], [[boolean2:start]]bo[[boolean2-cursor]]ol[[boolean2:end]])[[tuple:end]][[second:end]] }[[fields:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "first",
+              "fields",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean2-cursor",
+            "chain": [
+              "boolean2",
+              "tuple",
+              "second",
+              "fields",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-variant-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[variant:start]]Pair[[params:start]]([[param:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = seed[[param:end]])[[params:end]][[variant:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-variant-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]enum Choice [[variants:start]]{ [[variant:start]]Row[[fields:start]]{ [[field:start]]value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[field:end]] }[[fields:end]][[variant:end]] }[[variants:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "field",
+              "fields",
+              "variant",
+              "variants",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "required-trait-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn apply[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]];[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "return-unit",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-default-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]trait Rule { [[method:start]]fn apply[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "return-unit",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "inherent-method-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Record { [[method:start]]fn apply[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "return-unit",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "trait-impl-method-signature",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl Rule for Record { [[method:start]]fn apply[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] -> [[return-tuple:start]]([[return-array:start]][[return-array-name:start]]Ar[[return-array-name-cursor]]ray[[return-array-name:end]][[return-array-args:start]]<[[byte:start]]u[[byte-cursor]]8[[byte:end]]>[[return-array-args:end]][[return-array:end]], [[return-unit:start]][[unit-open:start]][[unit-open-cursor]]([[unit-open:end]])[[return-unit:end]])[[return-tuple:end]] {}[[method:end]] }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-cursor",
+            "chain": [
+              "integer",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "string-cursor",
+            "chain": [
+              "string",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "result-args",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "option-cursor",
+            "chain": [
+              "option",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "map-name-cursor",
+            "chain": [
+              "map-name",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "result-name-cursor",
+            "chain": [
+              "result-name",
+              "result",
+              "map-args",
+              "map",
+              "option-args",
+              "hint",
+              "param",
+              "params",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "byte-cursor",
+            "chain": [
+              "byte",
+              "return-array-args",
+              "return-array",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "unit-open-cursor",
+            "chain": [
+              "unit-open",
+              "return-unit",
+              "return-tuple",
+              "method",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "impl-header-type-spellings",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]impl [[trait:start]][[trait-module:start]]hel[[trait-module-cursor]]per[[trait-module:end]]::[[trait-name:start]]Ru[[trait-name-cursor]]le[[trait-name:end]][[trait:end]] for [[target:start]][[target-module:start]]ho[[target-module-cursor]]st[[target-module:end]]::[[target-name:start]]Ent[[target-name-cursor]]ity[[target-name:end]][[target:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "trait-name-cursor",
+            "chain": [
+              "trait-name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-name-cursor",
+            "chain": [
+              "target-name",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "trait-module-cursor",
+            "chain": [
+              "trait-module",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "target-module-cursor",
+            "chain": [
+              "target-module",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "hint-with-internal-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]]value: [[hint:start]][[module:start]]hel[[module-cursor]]per[[module:end]] /* own[[comment]]er */ :: [[terminal:start]]Kn[[terminal-cursor]]own[[terminal:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "terminal-cursor",
+            "chain": [
+              "terminal",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "module-cursor",
+            "chain": [
+              "module",
+              "hint",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-type-neighbors",
+        "source": "[[file:start]]/*中😀*/ [[first:start]]struct Record {}[[first:end]] [[second:start]]fn typed[[params:start]]([[param:start]]value: [[type:start]]Rec[[type-cursor]]ord[[type:end]][[param:end]])[[params:end]] -> [[result:start]]Rec[[result-cursor]]ord[[result:end]] {}[[second:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "result-cursor",
+            "chain": [
+              "result",
+              "second",
+              "file"
+            ]
+          },
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "param",
+              "params",
+              "second",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "imported-alias-hint",
+        "source": "[[file:start]]/*中😀*/ [[import:start]]use helper::Known as Alias;[[import:end]] [[item:start]]fn typed[[params:start]]([[param:start]]value: [[type:start]]Al[[type-cursor]]ias[[type:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "param",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "point-only-type-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed() { /* value: Opt[[comment]]ion<i64> */  [[space]]  }[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn typed[[params:start]]([[param:start]][[binding:start]]va[[binding-cursor]]lue[[binding:end]]: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]][[param:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// value: Opt[[comment]]ion<i64>\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "builtin-view-mut-hints",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn views[[params:start]]([[param-0:start]]value0: [[hint-0:start]][[outer-0:start]]A[[outer-0-cursor]]rrayView[[outer-0:end]][[args-0:start]]<[[integer-0:start]]i[[integer-0-cursor]]64[[integer-0:end]]>[[args-0:end]][[hint-0:end]][[param-0:end]],[[param-1:start]] value1: [[hint-1:start]][[outer-1:start]]A[[outer-1-cursor]]rrayMut[[outer-1:end]][[args-1:start]]<[[integer-1:start]]i[[integer-1-cursor]]64[[integer-1:end]]>[[args-1:end]][[hint-1:end]][[param-1:end]],[[param-2:start]] value2: [[hint-2:start]][[outer-2:start]]S[[outer-2-cursor]]etView[[outer-2:end]][[args-2:start]]<[[integer-2:start]]i[[integer-2-cursor]]64[[integer-2:end]]>[[args-2:end]][[hint-2:end]][[param-2:end]],[[param-3:start]] value3: [[hint-3:start]][[outer-3:start]]S[[outer-3-cursor]]etMut[[outer-3:end]][[args-3:start]]<[[integer-3:start]]i[[integer-3-cursor]]64[[integer-3:end]]>[[args-3:end]][[hint-3:end]][[param-3:end]],[[param-4:start]] value4: [[hint-4:start]][[outer-4:start]]M[[outer-4-cursor]]apView[[outer-4:end]][[args-4:start]]<[[key-4:start]]S[[key-4-cursor]]tring[[key-4:end]], [[integer-4:start]]i[[integer-4-cursor]]64[[integer-4:end]]>[[args-4:end]][[hint-4:end]][[param-4:end]],[[param-5:start]] value5: [[hint-5:start]][[outer-5:start]]M[[outer-5-cursor]]apMut[[outer-5:end]][[args-5:start]]<[[key-5:start]]S[[key-5-cursor]]tring[[key-5:end]], [[integer-5:start]]i[[integer-5-cursor]]64[[integer-5:end]]>[[args-5:end]][[hint-5:end]][[param-5:end]])[[params:end]] {}[[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "integer-0-cursor",
+            "chain": [
+              "integer-0",
+              "args-0",
+              "hint-0",
+              "param-0",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-0-cursor",
+            "chain": [
+              "outer-0",
+              "hint-0",
+              "param-0",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-1-cursor",
+            "chain": [
+              "integer-1",
+              "args-1",
+              "hint-1",
+              "param-1",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-1-cursor",
+            "chain": [
+              "outer-1",
+              "hint-1",
+              "param-1",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-2-cursor",
+            "chain": [
+              "integer-2",
+              "args-2",
+              "hint-2",
+              "param-2",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-2-cursor",
+            "chain": [
+              "outer-2",
+              "hint-2",
+              "param-2",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-3-cursor",
+            "chain": [
+              "integer-3",
+              "args-3",
+              "hint-3",
+              "param-3",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-3-cursor",
+            "chain": [
+              "outer-3",
+              "hint-3",
+              "param-3",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-4-cursor",
+            "chain": [
+              "integer-4",
+              "args-4",
+              "hint-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-4-cursor",
+            "chain": [
+              "outer-4",
+              "hint-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-4-cursor",
+            "chain": [
+              "key-4",
+              "args-4",
+              "hint-4",
+              "param-4",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "integer-5-cursor",
+            "chain": [
+              "integer-5",
+              "args-5",
+              "hint-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "outer-5-cursor",
+            "chain": [
+              "outer-5",
+              "hint-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-5-cursor",
+            "chain": [
+              "key-5",
+              "args-5",
+              "hint-5",
+              "param-5",
+              "params",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -20,6 +20,7 @@ pub(crate) mod selection;
 pub(crate) mod selection_bodies;
 pub(crate) mod selection_declarations;
 pub(crate) mod selection_imports;
+pub(crate) mod selection_types;
 pub(crate) mod workspace_symbol_incremental;
 pub(crate) mod workspace_symbol_sources;
 pub(crate) mod workspace_symbol_states;
