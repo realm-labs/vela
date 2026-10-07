@@ -243,6 +243,7 @@ mod selection_bodies;
 mod selection_calls;
 mod selection_declarations;
 mod selection_imports;
+mod selection_literals;
 mod selection_members;
 mod selection_patterns;
 mod selection_types;

@@ -8696,10 +8696,21 @@
         "selection/syntax/S6/negative/protocol"
       ],
       "summary": "Selection S6 patterns/control-flow only: four positive/negative service/protocol cells.79 independently authored documents/204 queries:191 complete chains/13 points,74 positive documents,four point-only,one true empty vector. Four LF/CRLF Unicode forms:316 actual whole stdio vectors/816 positions allmatch. Wildcard/binding/six literal/bare-qualified unit/tuple/nested/tuple-variant/record-variant patterns,explicit-shorthand label/binding separation,nested record/tuple fields,empty tuple/record constructors,trailing commas/comments/multiline owned trivia;source-host-unknown,Option/Result,real imported source enum/direct unit-tuple-record variant aliases/public helper Choice,separate declaration/same-spelled arm ownership. Guards binary/named/lambda calls/all six assignments;guard keyword/arrow,expression/block-return/empty/standalone/nested match,semicolon/newline/trailing comments. For single-wildcard-tuple-keyvalue-nested-record bindings,range/call/method/index/parenthesized iterables,multiline/nested for-if-match controls,complete break/continue statements;let bare-wildcard-tuple-record and expression/standalone if/else-if keyword ownership. Mainhead74..78UTF16/78..82bytes/tuple73..85/field66..85/record49..92/arm49..192/list47..209/match36..209/local23..210/block21..227/item8..227/file0. Tag87..90/field87..91 ownedspace;guard96..100/binary96..108. Continue158..166/stmt158..167/then156..169/if139..169/forbody137..178/for114..178/armbody112..192/arm;break170..175/stmt170..176. Separator192..193/list. Helperbinding62..67/tuple48..71/arm48..97/list46..100/match34..100/return27..101/block25..103/item8..103;guard75..80/binary75..88/fullfile includes publicenum. Complete syntax ancestors/dedup/order/duplicate queries/point-empty cardinality,no phantom field lists/guard/shorthand binding or semantic declaration parents. Preserve two literal-[ adjacent-marker authoring failures and premature prototype missing-corpus log;valid index whitespace established before actual stdio. Original63-document252-vector676-position draft has36 failed vectors/52positions omitting record-field trailing spaces;primary record_pattern_field_range retains untrimmed boundary,move only marker ends with identical clean source/query coordinates/actual responses,all252 thenmatch. Sixteen reviewed partition documents intentionally extend finalsource corpus;all316 finalvectors match. No production/parser/grammar/runtime/capability change or product defect. Both layers repeat whole main/helper/missing/empty vectors3times through disk/everydirty/close restoration,current/fresh/every previous immutable snapshot;source/CST/quiet cached parse/two records/no schema/fixed generation-parse-project-HIR counters. Whole typed protocol envelopes,owned encoded physical roots,unchanged disk,atomic invalid half/outside/mixed positions. All earlier generic/import/declaration/body/type/member/call assertions and production unchanged. Baseline selection service10/protocol13/Node233;finalservice11/protocol14/architecture3/Node236/fmt/Clippy/package. Fresh frozen Windows native50/installedVSIX25/automatic full/strict B09 service775+2historicalignored/protocol829/stdio10. Fullfold80observations/240queries/192publicranges and workspace-symbol486/1458freshpairs retained. Preserve ten accepted/prior236 children/macOS history/B16deferred. Core1016verified/309pending/2NA/zero failed;B10146verified/30pending. NextB10.31 selection literals/operators S7;remaining selection syntax/recovery/installedselection/nativeUX11/UX12 open,no parent acceptance. VSIX editors/vscode/test-results/run-H3eaF7/results.json; native editors/vscode/test-results/input-jlLBh0/results.json; audit target/lsp-matrix/run-h8LPFm/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
+    },
+    {
+      "id": "B10.31",
+      "revision": null,
+      "requirements": [
+        "selection/syntax/S7/positive/service",
+        "selection/syntax/S7/positive/protocol",
+        "selection/syntax/S7/negative/service",
+        "selection/syntax/S7/negative/protocol"
+      ],
+      "summary": "Reviewed in reviews/selection-literals.md.117 independently marked documents/244 queries:230 complete chains/14 points,112 positive documents/four point-only/one actual empty vector. Four LF/CRLF Unicode forms:468 whole stdio vectors/976 positions allmatch. Integer bases/separators/all eight suffixes;floats/exponents/two suffixes;booleans,ASCII/Unicode/non-BMP/escaped characters,empty/escaped/multiline strings,bytes,interpolation chunks/braces/nested multiline strings/comments/lambda and named calls. Unary/nesting/all17 binary-logical-range/all6 assignment operators,precedence and association. Unit/parenthesis/tuple/arrays/maps/records/indexing/trailing comma/comment/multiline ownership,Map string/bare/integer/float/char/bool/qualified keys,Set current set::from_array,empty braces Block,try/await/path/member punctuation,same-spelled neighbors. Mainmember46..52UTF16/54..60bytes with field/index/binary/interpolation/literal/local/block/item/file parents;namedlabel85..89/arg85..96/list84..97/call71..97;chunks35..41/67..70;bracket52..53UTF16/60..61bytes. Helpermember43..48/field39..48/binary39..52/interpolation38..53/literal32..54/return25..55/block23..57/item8..57/fullfile includes pub apply. Five bracket leaves use independent ASCII-width test wrappers plus fixed whole-chain goldens;common marker/parser/oracles unchanged. Preserve initial4 failed vectors/4positions;inner tuple marker included outer close,move marker only with identical clean bytes/coords/responses;corrected408 allmatch.15 suffix/key documents deliberately extend final corpus,all468 match. No product defect/production change. Both layers repeat3 disk/dirty/close/current-fresh/all retained immutable snapshots,source/CST/quiet parse/two records/no schema/fixed counters;whole typed envelopes/encoded physical roots/unchanged disk/atomic invalid UTF16 vectors. Independent membership/goldens/containment/dedup/order/points/empty. Prior assertions/catalog/accepted platform history retained;other selection/native/editor open,B16 deferred. Baseline selection service11/protocol14/Node236;finalservice12/protocol15/architecture3/Node239/fmt/Clippy/package. Fresh frozen Windows native50/installedVSIX25/automatic full/strict B09 service776+2historicignored/protocol830/stdio10. Fold80observations/240queries/192publicranges and workspace-symbol486/1458freshpairs retained. Preserve ten accepted/prior237 children/macOS history. Core1020verified/305pending/2NA/zero failed;B10150verified/26pending. NextB10.32 selection recovery S9;remaining syntax/recovery/installedselection/nativeUX11/UX12 open,no parent acceptance. VSIX editors/vscode/test-results/run-5Gvsgl/results.json; native editors/vscode/test-results/input-vd2XcB/results.json; audit target/lsp-matrix/run-YOrzhH/report.json. Find commit through formal LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal LSP-Batch trailer and clean worktree are checked separately."
     }
   ],
-  "activeChild": "B10.31",
-  "nextTask": "B10.31",
+  "activeChild": "B10.32",
+  "nextTask": "B10.32",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -11933,7 +11944,59 @@
     "target/b10-30-corpus-before-trivia-review.js",
     "target/b10-30-corpus-before-marker-guard.js",
     "target/b10-30-corpus-before-marker-spacing.js",
-    "target/b10-30-checkpoint.log"
+    "target/b10-30-checkpoint.log",
+    "target/lsp-matrix/run-YOrzhH/report.json",
+    "editors/vscode/test-results/run-5Gvsgl/results.json",
+    "editors/vscode/test-results/input-vd2XcB/results.json",
+    "target/lsp-matrix/run-3GOaun/report.json",
+    "editors/vscode/test-results/run-5Gvsgl/base-results.json",
+    "editors/vscode/test-results/run-5Gvsgl/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-5Gvsgl/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-5Gvsgl/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-5Gvsgl/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-5Gvsgl/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-5Gvsgl/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-5Gvsgl/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-5Gvsgl/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-5Gvsgl/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-5Gvsgl/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-5Gvsgl/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-5Gvsgl/folding-crlf-shifted-client.log",
+    "target/b10-31-toolchain.log",
+    "target/b10-31-input.log",
+    "target/b10-31-editor.log",
+    "target/b10-31-scoped.log",
+    "target/b10-31-automatic.log",
+    "target/b10-31-input-verify.log",
+    "target/b10-31-editor-verify.log",
+    "target/b10-31-automatic-verify.log",
+    "target/b10-31-scoped-verify.log",
+    "target/b10-31-baseline-node.log",
+    "target/b10-31-baseline-service.log",
+    "target/b10-31-baseline-protocol.log",
+    "target/b10-31-service-first.log",
+    "target/b10-31-protocol-first.log",
+    "target/b10-31-architecture.log",
+    "target/b10-31-node-first.log",
+    "target/b10-31-node.log",
+    "target/b10-31-fmt.log",
+    "target/b10-31-format-apply.log",
+    "target/b10-31-package.log",
+    "target/b10-31-clippy.log",
+    "target/b10-31-literals-prototype.log",
+    "target/b10-31-literals-before-marker-review.log",
+    "target/b10-31-literals-before-partition-review.log",
+    "target/b10-31-service-before-partition-review.log",
+    "target/b10-31-freeze.log",
+    "target/b10-31-frozen-source.json",
+    "target/b10-31-native-contracts.json",
+    "target/b10-31-literals-prototype.json",
+    "target/b10-31-selection-literals-before-marker-review.json",
+    "target/b10-31-literals-before-marker-review.json",
+    "target/b10-31-selection-literals-before-partition-review.json",
+    "target/b10-31-literals-before-partition-review.json",
+    "target/b10-31-corpus-before-marker-review.js",
+    "target/b10-31-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -15861,8 +15924,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "72398bd5bc5e871c8b07494f5a27233f6d29895a",
-          "treeSha256": "ecae76cd877de8fc6fb57a8c14119e3ee21b8e5684357f4a615209492b81c5c6"
+          "revision": "38defb9e72abe18b3d5b8443a13e1eedcfb1bde1",
+          "treeSha256": "a1c32d19804a0360818c6dfeaff9513b9b6e1064bad498c680560fce4a617dcf"
         },
         "profile": {
           "platform": "win32",
@@ -15870,11 +15933,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-h8LPFm/report.json"
+          "target/lsp-matrix/run-YOrzhH/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-H3eaF7/results.json --local-results editors/vscode/test-results/input-jlLBh0/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-5Gvsgl/results.json --local-results editors/vscode/test-results/input-vd2XcB/results.json",
             "exitCode": 0
           }
         ]

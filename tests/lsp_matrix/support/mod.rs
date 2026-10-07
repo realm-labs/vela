@@ -21,6 +21,7 @@ pub(crate) mod selection_bodies;
 pub(crate) mod selection_calls;
 pub(crate) mod selection_declarations;
 pub(crate) mod selection_imports;
+pub(crate) mod selection_literals;
 pub(crate) mod selection_members;
 pub(crate) mod selection_patterns;
 pub(crate) mod selection_types;

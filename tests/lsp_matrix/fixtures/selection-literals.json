@@ -1,0 +1,3425 @@
+{
+  "version": 1,
+  "id": "selection-literals",
+  "files": {
+    "scripts/main.vela": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]中😀 [[prefix:end]][[first-interpolation:start]][[first-open:start]][[first-open-cursor]]{[[first-open:end]][[binary:start]][[index:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]val[[member-cursor]]ues[[member:end]][[field:end]][[index-open]][ [[slot:start]]sl[[slot-cursor]]ot[[slot:end]]][[index:end]] [[operator:start]][[operator-cursor]]+[[operator:end]] [[number:start]]0x[[number-cursor]]2a[[number:end]][[binary:end]][[first-close:start]][[first-close-cursor]]}[[first-close:end]][[first-interpolation:end]][[middle:start]] [[middle-cursor]]/ [[middle:end]][[second-interpolation:start]][[second-open:start]][[second-open-cursor]]{[[second-open:end]][[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]]fl[[label-cursor]]ag[[label:end]] = [[boolean:start]]tr[[boolean-cursor]]ue[[boolean:end]][[argument:end]])[[args:end]][[call:end]][[second-close:start]][[second-close-cursor]]}[[second-close:end]][[second-interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]/*中😀*/ [[item:start]]fn helper(row) [[body:start]]{ [[return:start]]return [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]值😀 [[prefix:end]][[interpolation:start]]{[[binary:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]] * [[number:start]]2[[number-cursor]][[number:end]][[binary:end]]}[[interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[return:end]] }[[body:end]][[item:end]] [[declaration:start]]pub fn apply(flag) { return flag; }[[declaration:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "helperQueries": [
+      {
+        "position": "member-cursor",
+        "chain": [
+          "member",
+          "field",
+          "binary",
+          "interpolation",
+          "literal",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      },
+      {
+        "position": "prefix-cursor",
+        "chain": [
+          "prefix",
+          "literal",
+          "return",
+          "body",
+          "item",
+          "file"
+        ]
+      }
+    ],
+    "cases": [
+      {
+        "id": "unicode-interpolation-index-operator-and-named-call-owners",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]中😀 [[prefix:end]][[first-interpolation:start]][[first-open:start]][[first-open-cursor]]{[[first-open:end]][[binary:start]][[index:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]val[[member-cursor]]ues[[member:end]][[field:end]][[index-open]][ [[slot:start]]sl[[slot-cursor]]ot[[slot:end]]][[index:end]] [[operator:start]][[operator-cursor]]+[[operator:end]] [[number:start]]0x[[number-cursor]]2a[[number:end]][[binary:end]][[first-close:start]][[first-close-cursor]]}[[first-close:end]][[first-interpolation:end]][[middle:start]] [[middle-cursor]]/ [[middle:end]][[second-interpolation:start]][[second-open:start]][[second-open-cursor]]{[[second-open:end]][[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]]fl[[label-cursor]]ag[[label:end]] = [[boolean:start]]tr[[boolean-cursor]]ue[[boolean:end]][[argument:end]])[[args:end]][[call:end]][[second-close:start]][[second-close-cursor]]}[[second-close:end]][[second-interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] [[return:start]]return [[returned:start]]res[[returned-cursor]]ult[[returned:end]];[[return:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "binary",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "label-cursor",
+            "chain": [
+              "label",
+              "argument",
+              "args",
+              "call",
+              "second-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "index",
+              "binary",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "slot-cursor",
+            "chain": [
+              "slot",
+              "index",
+              "binary",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "middle-cursor",
+            "chain": [
+              "middle",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "number-cursor",
+            "chain": [
+              "number",
+              "binary",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-open-cursor",
+            "chain": [
+              "first-open",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-close-cursor",
+            "chain": [
+              "first-close",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "second-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "boolean-cursor",
+            "chain": [
+              "boolean",
+              "argument",
+              "args",
+              "call",
+              "second-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "index-open",
+            "token": "[",
+            "chain": [
+              "index",
+              "binary",
+              "first-interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "returned-cursor",
+            "chain": [
+              "returned",
+              "return",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-zero",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[literal-cursor]]0[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-decimal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]]23[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-underscores",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]]_234[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-hex",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]0[[literal-cursor]]x2a[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-binary",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]0[[literal-cursor]]b1010[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-decimal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]].5[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-positive-exponent",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]].5e+2[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-negative-exponent",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]].5e-2[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-underscored-integer",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1[[literal-cursor]]_234.5[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-boolean-true",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]t[[literal-cursor]]rue[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-boolean-false",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f[[literal-cursor]]alse[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-char-ascii",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]'[[literal-cursor]]x'[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-char-unicode",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]'[[literal-cursor]]中'[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-char-non-bmp",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]'[[literal-cursor]]😀'[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-char-newline",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]'[[literal-cursor]]\\n'[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-char-unicode-escape",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]'[[literal-cursor]]\\u{4e2d}'[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-string-empty",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]\"[[literal-cursor]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-string-unicode",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]\"[[literal-cursor]]中😀\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-string-escapes",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]\"[[literal-cursor]]a\\n\\t\\\"b\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-string-unicode-escape",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]\"[[literal-cursor]]\\u{1f600}\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-string-multiline",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]\"[[literal-cursor]]\"\"中😀\nsecond line\n\"\"\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-bytes-empty",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]b[[literal-cursor]]\"\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-bytes-ascii",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]b[[literal-cursor]]\"abc\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-bytes-escapes",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]b[[literal-cursor]]\"\\x00\\xff\\n\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-interpolated-no-expressions",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f[[literal-cursor]]\"中😀 plain {{braces}}\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-not",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[unary:start]][[operator:start]][[operator-cursor]]![[operator:end]][[operand:start]]va[[operand-cursor]]lue[[operand:end]][[unary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operand-cursor",
+            "chain": [
+              "operand",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-negate",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[unary:start]][[operator:start]][[operator-cursor]]-[[operator:end]][[operand:start]]va[[operand-cursor]]lue[[operand:end]][[unary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operand-cursor",
+            "chain": [
+              "operand",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-unary-operators",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[outer-op:start]][[outer-op-cursor]]![[outer-op:end]][[middle:start]][[middle-op:start]][[middle-op-cursor]]![[middle-op:end]][[inner:start]][[inner-op:start]][[inner-op-cursor]]-[[inner-op:end]][[operand:start]]va[[operand-cursor]]lue[[operand:end]][[inner:end]][[middle:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operand-cursor",
+            "chain": [
+              "operand",
+              "inner",
+              "middle",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "middle-op-cursor",
+            "chain": [
+              "middle-op",
+              "middle",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]+[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]-[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]*[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]/[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]%[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-less",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]<[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-less-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]<=[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-greater",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]>[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-greater-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]>=[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]==[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-not-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]!=[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-strict-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]===[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-strict-not-equal",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]!==[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-and",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]&&[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-or",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]||[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-range",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]..[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "binary-range-inclusive",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[operator:start]][[operator-cursor]]..=[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-set",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-add",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-subtract",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]-=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-multiply",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]*=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-divide",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]/=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "assignment-remainder",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]%=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "arithmetic-precedence",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[left:start]]le[[left-cursor]]ft[[left:end]] + [[inner:start]][[middle:start]]mid[[middle-cursor]]dle[[middle:end]] [[operator:start]][[operator-cursor]]*[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[inner:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "middle-cursor",
+            "chain": [
+              "middle",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "left-associative-subtraction",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[inner:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[first-op:start]][[first-op-cursor]]-[[first-op:end]] [[middle:start]]mid[[middle-cursor]]dle[[middle:end]][[inner:end]] [[second-op:start]][[second-op-cursor]]-[[second-op:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "first-op-cursor",
+            "chain": [
+              "first-op",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "second-op-cursor",
+            "chain": [
+              "second-op",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "right-associative-assignment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[left:start]]le[[left-cursor]]ft[[left:end]] = [[inner:start]][[middle:start]]mid[[middle-cursor]]dle[[middle:end]] [[operator:start]][[operator-cursor]]=[[operator:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[inner:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "middle-cursor",
+            "chain": [
+              "middle",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "logical-and-before-or",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[outer:start]][[inner:start]][[left:start]]le[[left-cursor]]ft[[left:end]] [[and:start]][[and-cursor]]&&[[and:end]] [[middle:start]]mid[[middle-cursor]]dle[[middle:end]][[inner:end]] [[or:start]][[or-cursor]]||[[or:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[outer:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "and-cursor",
+            "chain": [
+              "and",
+              "inner",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "or-cursor",
+            "chain": [
+              "or",
+              "outer",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-binary-precedence",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[unary:start]][[operator:start]][[operator-cursor]]-[[operator:end]][[left:start]]le[[left-cursor]]ft[[left:end]][[unary:end]] + [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "unary",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "unary",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "range-additive-precedence",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[range:start]][[left-binary:start]][[left:start]]st[[left-cursor]]art[[left:end]] + [[delta:start]]de[[delta-cursor]]lta[[delta:end]][[left-binary:end]] [[operator:start]][[operator-cursor]]..=[[operator:end]] [[right-binary:start]][[right:start]]e[[right-cursor]]nd[[right:end]] - [[step:start]]st[[step-cursor]]ep[[step:end]][[right-binary:end]][[range:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "delta-cursor",
+            "chain": [
+              "delta",
+              "left-binary",
+              "range",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "range",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "step-cursor",
+            "chain": [
+              "step",
+              "right-binary",
+              "range",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-precedence",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[binary:start]][[paren:start]]([[inner:start]][[left:start]]le[[left-cursor]]ft[[left:end]] + [[middle:start]]mid[[middle-cursor]]dle[[middle:end]][[inner:end]])[[paren:end]] * [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "inner",
+              "paren",
+              "binary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unit-delimiters",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[unit:start]][[open:start]][[open-cursor]]([[open:end]][[close:start]][[close-cursor]])[[close:end]][[unit:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "unit",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "unit",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "parenthesized-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[paren:start]][[open:start]][[open-cursor]]([[open:end]][[value:start]]va[[value-cursor]]lue[[value:end]][[close:start]][[close-cursor]])[[close:end]][[paren:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "paren",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-elements-and-delimiters",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[tuple:start]][[open:start]][[open-cursor]]([[open:end]][[left:start]]le[[left-cursor]]ft[[left:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[close:start]][[close-cursor]])[[close:end]][[tuple:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "tuple-trailing-comma",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[tuple:start]]([[value:start]]va[[value-cursor]]lue[[value:end]][[comma:start]][[comma-cursor]],[[comma:end]])[[tuple:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-tuple-and-array",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[tuple:start]]([[inner:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]]][[inner:end]], [[second:start]]([[other:start]]ot[[other-cursor]]her[[other:end]], true)[[second:end]])[[tuple:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "inner",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "second",
+              "tuple",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-array-delimiters",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][[open]][ [[close:start]][[close-cursor]]][[close:end]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open",
+            "token": "[",
+            "chain": [
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "array-elements-and-punctuation",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][[open]][ [[left:start]]le[[left-cursor]]ft[[left:end]][[comma:start]][[comma-cursor]],[[comma:end]] [[right:start]]ri[[right-cursor]]ght[[right:end]][[close:start]][[close-cursor]]][[close:end]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open",
+            "token": "[",
+            "chain": [
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-array-literals",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[inner:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]]][[inner:end]], [[other:start]]ot[[other-cursor]]her[[other:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "inner",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "other-cursor",
+            "chain": [
+              "other",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "array-trailing-comment-and-comma",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]] /* va[[comment]]lue */ [[comma:start]][[comma-cursor]],[[comma:end]]][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "multiline-array",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[array:start]][\n [[left:start]]le[[left-cursor]]ft[[left:end]],\n [[right:start]]ri[[right-cursor]]ght[[right:end]]\n][[array:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "array",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "array-as-indexed-receiver",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[array:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]]][[array:end]][[open]][ [[slot:start]]sl[[slot-cursor]]ot[[slot:end]][[close:start]][[close-cursor]]][[close:end]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "array",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "open",
+            "token": "[",
+            "chain": [
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "slot-cursor",
+            "chain": [
+              "slot",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "empty-braced-block",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]][[open:start]][[open-cursor]]{[[open:end]] [[close:start]][[close-cursor]]}[[close:end]][[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-key-value-colon-and-trivia",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]][[open:start]][[open-cursor]]{[[open:end]] [[entry:start]][[key:start]]\"[[key-cursor]]key\"[[key:end]][[colon:start]][[colon-cursor]]:[[colon:end]] [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]][[close:start]][[close-cursor]]}[[close:end]][[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "colon-cursor",
+            "chain": [
+              "colon",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-logical-bare-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]na[[key-cursor]]me[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "nested-map-and-array",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]\"[[key-cursor]]key\"[[key:end]]: [[array:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]]][[array:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "array",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-trailing-comma-and-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]\"[[key-cursor]]key\"[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] /* en[[comment]]try */ [[entry:end]][[comma:start]][[comma-cursor]],[[comma:end]] }[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "multiline-map-entries",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{\n [[first:start]][[key:start]]\"[[key-cursor]]first\"[[key:end]]: [[left:start]]le[[left-cursor]]ft[[left:end]]\n[[first:end]],\n [[second:start]][[second-key:start]]\"[[second-key-cursor]]second\"[[second-key:end]]: [[right:start]]ri[[right-cursor]]ght[[right:end]]\n[[second:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "first",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "second",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "set-from-array-builtin",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[path:start]][[module:start]]s[[module-cursor]]et[[module:end]]::[[callee:start]]from_[[callee-cursor]]array[[callee:end]][[path:end]][[args:start]]([[array:start]][ [[value:start]]se[[value-cursor]]ed[[value:end]], true][[array:end]])[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "callee-cursor",
+            "chain": [
+              "callee",
+              "path",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "array",
+              "args",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-literal-explicit-and-shorthand",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]Rec[[type-cursor]]ord[[type:end]] [[fields:start]]{ [[first:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]][[first:end]], [[second:start]][[short:start]]ot[[short-cursor]]her[[short:end]] [[second:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "first",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "short-cursor",
+            "chain": [
+              "short",
+              "second",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-literal-empty",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]Rec[[type-cursor]]ord[[type:end]] [[fields:start]][[open:start]][[open-cursor]]{[[open:end]] [[close:start]][[close-cursor]]}[[close:end]][[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "type-cursor",
+            "chain": [
+              "type",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-nested-map-value",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]Rec[[type-cursor]]ord[[type:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[map:start]]{ [[entry:start]][[key:start]]\"[[key-cursor]]key\"[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]] [[field:end]]}[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "record-trailing-comma-and-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[record:start]][[type:start]]Rec[[type-cursor]]ord[[type:end]] [[fields:start]]{ [[field:start]][[label:start]]va[[label-cursor]]lue[[label:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] /* fi[[comment]]eld */ [[field:end]][[comma:start]][[comma-cursor]],[[comma:end]] }[[fields:end]][[record:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "field",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comma-cursor",
+            "chain": [
+              "comma",
+              "fields",
+              "record",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "interpolation-single-value",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]][[prefix-cursor]]f\"[[prefix:end]][[interpolation:start]][[open:start]][[open-cursor]]{[[open:end]][[value:start]]va[[value-cursor]]lue[[value:end]][[close:start]][[close-cursor]]}[[close:end]][[interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "open-cursor",
+            "chain": [
+              "open",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "suffix-cursor",
+            "chain": [
+              "suffix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-escaped-braces-and-text",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]{{中😀}} [[prefix:end]][[interpolation:start]]{[[value:start]]va[[value-cursor]]lue[[value:end]]}[[interpolation:end]][[suffix:start]] [[suffix-cursor]]{{tail}}\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "suffix-cursor",
+            "chain": [
+              "suffix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-unary-and-binary",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f\"[[interpolation:start]]{[[binary:start]][[unary:start]][[operator:start]][[operator-cursor]]-[[operator:end]][[left:start]]va[[left-cursor]]lue[[left:end]][[unary:end]] + [[right:start]]se[[right-cursor]]ed[[right:end]][[binary:end]]}[[interpolation:end]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "unary",
+              "binary",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-array-and-map",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f\"[[interpolation:start]]{[[array:start]][ [[map:start]]{ [[entry:start]][[key:start]]\"[[key-cursor]]key\"[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]]][[array:end]]}[[interpolation:end]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "array",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "array",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-nested-string",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]outer [[prefix:end]][[interpolation:start]]{[[inner-literal:start]][[inner-prefix:start]]f\"[[inner-prefix-cursor]]inner [[inner-prefix:end]][[inner-interpolation:start]]{[[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]]}[[inner-interpolation:end]][[inner-suffix:start]][[inner-suffix-cursor]]\"[[inner-suffix:end]][[inner-literal:end]]}[[interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "inner-interpolation",
+              "inner-literal",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "inner-prefix-cursor",
+            "chain": [
+              "inner-prefix",
+              "inner-literal",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-multiline-with-expressions",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"\"\"[[prefix-cursor]]中😀\n [[prefix:end]][[interpolation:start]]{[[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]]}[[interpolation:end]][[suffix:start]]\n[[suffix-cursor]]end\"\"\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "suffix-cursor",
+            "chain": [
+              "suffix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-inner-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f\"[[interpolation:start]]{[[binary:start]][[left:start]]le[[left-cursor]]ft[[left:end]] /* in[[comment]]ner */ + [[right:start]]ri[[right-cursor]]ght[[right:end]][[binary:end]]}[[interpolation:end]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "left-cursor",
+            "chain": [
+              "left",
+              "binary",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "comment",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "interpolation-escaped-unicode",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]\\u{1f600} [[prefix:end]][[interpolation:start]]{[[value:start]]va[[value-cursor]]lue[[value:end]]}[[interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "prefix-cursor",
+            "chain": [
+              "prefix",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-lambda-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f\"[[interpolation:start]]{[[call:start]][[paren:start]]([[lambda:start]][[params:start]]|[[parameter:start]]va[[parameter-cursor]]lue[[parameter:end]]|[[params:end]] [[use:start]]va[[use-cursor]]lue[[use:end]][[lambda:end]])[[paren:end]][[args:start]]([[argument:start]]se[[argument-cursor]]ed[[argument:end]])[[args:end]][[call:end]]}[[interpolation:end]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "parameter-cursor",
+            "chain": [
+              "parameter",
+              "params",
+              "lambda",
+              "paren",
+              "call",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "argument-cursor",
+            "chain": [
+              "argument",
+              "args",
+              "call",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "interpolation-assignment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]f\"[[interpolation:start]]{[[assignment:start]][[left:start]]va[[left-cursor]]lue[[left:end]] [[operator:start]][[operator-cursor]]+=[[operator:end]] [[right:start]]se[[right-cursor]]ed[[right:end]][[assignment:end]]}[[interpolation:end]]\"[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "assignment",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "assignment",
+              "interpolation",
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "indexed-binary-expression",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][[open]][ [[binary:start]][[left:start]]sl[[left-cursor]]ot[[left:end]] + [[right:start]]de[[right-cursor]]lta[[right:end]][[binary:end]][[close:start]][[close-cursor]]][[close:end]][[index:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "open",
+            "token": "[",
+            "chain": [
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "right-cursor",
+            "chain": [
+              "right",
+              "binary",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "close-cursor",
+            "chain": [
+              "close",
+              "index",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "try-indexed-receiver",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[try:start]][[index:start]][[receiver:start]]ro[[receiver-cursor]]ws[[receiver:end]][ [[slot:start]]sl[[slot-cursor]]ot[[slot:end]]][[index:end]][[operator:start]][[operator-cursor]]?[[operator:end]][[try:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "slot-cursor",
+            "chain": [
+              "slot",
+              "index",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "unary-method-call",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[unary:start]][[operator:start]][[operator-cursor]]![[operator:end]][[call:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[method:start]]re[[method-cursor]]ady[[method:end]][[field:end]][[args:start]]()[[args:end]][[call:end]][[unary:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "operator-cursor",
+            "chain": [
+              "operator",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "method-cursor",
+            "chain": [
+              "method",
+              "field",
+              "call",
+              "unary",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "await-try-operators",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]async fn run(row) [[body:start]]{ [[local:start]]let result = [[try:start]][[await:start]][[call:start]][[callee:start]]fe[[callee-cursor]]tch[[callee:end]][[args:start]]([[argument:start]]se[[argument-cursor]]ed[[argument:end]])[[args:end]][[call:end]].[[await-keyword:start]]aw[[await-keyword-cursor]]ait[[await-keyword:end]][[await:end]][[try-operator:start]][[try-operator-cursor]]?[[try-operator:end]][[try:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "argument-cursor",
+            "chain": [
+              "argument",
+              "args",
+              "call",
+              "await",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "await-keyword-cursor",
+            "chain": [
+              "await-keyword",
+              "await",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "try-operator-cursor",
+            "chain": [
+              "try-operator",
+              "try",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "path-separators-and-member-dot",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[call:start]][[field:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]][[separator:start]][[separator-cursor]]::[[separator:end]][[value:start]]r[[value-cursor]]ow[[value:end]][[path:end]].[[member:start]]fi[[member-cursor]]eld[[member:end]][[field:end]][[args:start]]()[[args:end]][[call:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "separator-cursor",
+            "chain": [
+              "separator",
+              "path",
+              "field",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "member-cursor",
+            "chain": [
+              "member",
+              "field",
+              "call",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "same-spelled-neighbor-literals",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[first-local:start]]let first = [[first-value:start]]1[[first-value-cursor]]23[[first-value:end]];[[first-local:end]] [[second-local:start]]let second = [[second-value:start]]1[[second-value-cursor]]23[[second-value:end]];[[second-local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "second-value-cursor",
+            "chain": [
+              "second-value",
+              "second-local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "first-value-cursor",
+            "chain": [
+              "first-value",
+              "first-local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-i8",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]i8[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-i16",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]i16[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-i32",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]i32[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-i64",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]i64[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-u8",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]u8[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-u16",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]u16[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-u32",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]u32[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-integer-suffix-u64",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]12[[literal-cursor]]u64[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-suffix-f32",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1.5[[literal-cursor]]f32[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "literal-float-suffix-f64",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]]1.5[[literal-cursor]]f64[[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "literal-cursor",
+            "chain": [
+              "literal",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-integer-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]4[[key-cursor]]2[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-float-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]1[[key-cursor]].5[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-character-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]'[[key-cursor]]中'[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-boolean-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]]t[[key-cursor]]rue[[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "key-cursor",
+            "chain": [
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "map-qualified-path-key",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[map:start]]{ [[entry:start]][[key:start]][[module:start]]Cho[[module-cursor]]ice[[module:end]]::[[terminal:start]]Un[[terminal-cursor]]it[[terminal:end]][[key:end]]: [[value:start]]se[[value-cursor]]ed[[value:end]] [[entry:end]]}[[map:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "terminal-cursor",
+            "chain": [
+              "terminal",
+              "key",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          },
+          {
+            "position": "value-cursor",
+            "chain": [
+              "value",
+              "entry",
+              "map",
+              "local",
+              "body",
+              "item",
+              "file"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "point-only-literal-comment",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ /* f\"a[[comment]]rray [value]\" */  [[space]]  }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "actual-empty-request-vector",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]fn run(row) [[body:start]]{ [[local:start]]let result = [[literal:start]][[prefix:start]]f\"[[prefix-cursor]]中😀 [[prefix:end]][[first-interpolation:start]][[first-open:start]][[first-open-cursor]]{[[first-open:end]][[binary:start]][[index:start]][[field:start]][[receiver:start]]r[[receiver-cursor]]ow[[receiver:end]].[[member:start]]val[[member-cursor]]ues[[member:end]][[field:end]][[index-open]][ [[slot:start]]sl[[slot-cursor]]ot[[slot:end]]][[index:end]] [[operator:start]][[operator-cursor]]+[[operator:end]] [[number:start]]0x[[number-cursor]]2a[[number:end]][[binary:end]][[first-close:start]][[first-close-cursor]]}[[first-close:end]][[first-interpolation:end]][[middle:start]] [[middle-cursor]]/ [[middle:end]][[second-interpolation:start]][[second-open:start]][[second-open-cursor]]{[[second-open:end]][[call:start]][[path:start]][[module:start]]hel[[module-cursor]]per[[module:end]]::[[callee:start]]ap[[callee-cursor]]ply[[callee:end]][[path:end]][[args:start]]([[argument:start]][[label:start]]fl[[label-cursor]]ag[[label:end]] = [[boolean:start]]tr[[boolean-cursor]]ue[[boolean:end]][[argument:end]])[[args:end]][[call:end]][[second-close:start]][[second-close-cursor]]}[[second-close:end]][[second-interpolation:end]][[suffix:start]][[suffix-cursor]]\"[[suffix:end]][[literal:end]];[[local:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]",
+        "queries": []
+      },
+      {
+        "id": "comment-only",
+        "source": "[[file:start]]// op[[comment]]erator +\n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "comment",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "whitespace-only",
+        "source": "[[file:start]] [[space]] \n\t[[tab]] \n[[eof]][[file:end]]",
+        "queries": [
+          {
+            "position": "space",
+            "chain": []
+          },
+          {
+            "position": "tab",
+            "chain": []
+          },
+          {
+            "position": "eof",
+            "chain": []
+          }
+        ]
+      },
+      {
+        "id": "empty-file",
+        "source": "[[file:start]][[empty]][[file:end]]",
+        "queries": [
+          {
+            "position": "empty",
+            "chain": []
+          }
+        ]
+      }
+    ]
+  }
+}
