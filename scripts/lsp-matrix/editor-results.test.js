@@ -23,9 +23,11 @@ test("isolated editor suites reject duplicate checks or different source binary 
   const missing = result("workspace"); missing.provenance = null;
   assert.throws(() => mergeEditorResults(result("existing"), missing), /provenance present/);
 });
-test("matrix editor discovery retains original checks plus folding and isolated global workspace checks", () => {
+test("matrix editor discovery retains original checks plus folding selection and isolated global workspace checks", () => {
   const names = editorTests(path.resolve(__dirname, "../.."));
-  assert.equal(names.length, 25);
+  assert.equal(names.filter(name => !name.startsWith("selection provider ")).length, 25);
+  assert.equal(names.length, 27);
+  assert.equal(names.filter(name => name.startsWith("selection provider ")).length, 2);
   assert.equal(names.filter(name => name.startsWith("folding provider ")).length, 1);
   assert.equal(names.filter(name => name.startsWith("workspace symbol provider ")).length, 1);
   assert.equal(names.filter(name => name.startsWith("document symbol provider ")).length, 3);

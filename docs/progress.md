@@ -130,7 +130,12 @@ comments, shebangs, blank lines, indentation, top-level and nested syntax,
 literal lookalikes, malformed neighbors and significant/trivia EOF boundaries.
 LF/CRLF and shifted forms retain current, fresh and previous immutable facts;
 see the [trivia review](../tests/lsp_matrix/reviews/selection-trivia.md).
-Installed selection and native Outline/picker/folding interactions remain
+Installed selection now checks complete public and raw wire parent chains across
+105 authored syntax cases and the full source/dependency lifecycle in four Unicode
+LF/CRLF forms, including dirty/save/close, deletion, rename and recovery. SDK word
+and line augmentation has independent literal expectations; see the
+[installed selection review](../tests/lsp_matrix/reviews/selection-editor.md).
+Native Outline/picker/folding and selection input/render interactions remain
 separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.

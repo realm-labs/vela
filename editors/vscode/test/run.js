@@ -124,6 +124,23 @@ async function main() {
       fs.writeFileSync(resultFile, JSON.stringify(merged, null, 2));
     } else if (!editorFailure) { throw new Error("missing isolated workspace symbol editor results"); }
   }
+  if (!editorFailure) {
+    fs.copyFileSync(resultFile, path.join(resultRoot, "base-and-workspace-results.json"));
+    // Ordinary SDK output channels overwrite their single file at 30 MiB.
+    // Preserve complete independent selection evidence in two fresh sessions.
+    for (const kind of ["syntax", "lifecycle"]) {
+      const directory = path.join(resultRoot, `selection-${kind}-editor`);
+      try { await require("./selection-runner").runSelectionEditor({ directory, kind, extensionsDir, vscodeExecutablePath }); }
+      catch (error) { editorFailure = error; }
+      const selected = path.join(directory, "results.json");
+      if (fs.existsSync(selected)) {
+        const merged = require("../../../scripts/lsp-matrix/editor-results").mergeEditorResults(
+          JSON.parse(fs.readFileSync(resultFile, "utf8")), JSON.parse(fs.readFileSync(selected, "utf8")));
+        fs.writeFileSync(resultFile, JSON.stringify(merged, null, 2));
+      } else if (!editorFailure) { throw new Error(`missing isolated selection ${kind} results`); }
+      if (editorFailure) break;
+    }
+  }
   const audit = spawnSync(process.execPath, [path.join(extensionRoot, "../../scripts/lsp-matrix/run.js"),
     "--run", ...(fs.existsSync(resultFile) ? ["--editor-results", resultFile] : [])], {
     // Each Rust suite retains its ten-minute budget; allow bounded

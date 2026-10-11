@@ -8792,10 +8792,18 @@
         "selection/syntax/S12/negative/protocol"
       ],
       "summary": "Complete selection S12 positive/negative service/protocol:63 independent literal documents/458 ordered queries(155 whole chains/303 points)+actualemptyvector in4UnicodeLFCRLF/shift forms;bounded real stdio252vectors/1832positions exact. Exact lexical kinds/full literal spans/trivia flags/global authored CST nodes/full selected-token ancestry including equal-span Literal/TypeHint. Comments/doc/nested/multiline/shebang,blankgroups/tab/mixedindentation,topitem/import/nestedfield/method/type/callargument ownership;significant boundary/finalbraceEOF chains,trivia-only/empty/error fallback points,opaque string/bytes/char/multiline comment-lookalikes. Distinct before/after malformed-neighbor damage/repair/redamage,unclosedbody/exact unterminated block code set. Shebang bytezero retained including EOFseparator;literal CRLF linecomment CR ownership and whitespace merging. Whole main/helper/missing vectors repeat3+actualempties,current/fresh/everyold immutable source/CST snapshots,no schema/tworecords/query generation/parse/project/HIR unchanged;protocol typedfullenvelopes/encodedroot/realdisk/atomic invalidUTF16/outsidevectors. Primary lexer/CST author corrections for adjacentrighttoken/EOFpoint/ParamArgument trivia and Nodebyte/equalspan assertions retained separately;no productionpolicy changes or provider-derived expectedvalues. Node261/focusedservice1/protocol1/workspace/fmt/wholeClippy/package pass. Fresh same-source Windows native50/installedVSIX25/fullautomatic/strictB09 service782+2historicalignored/protocol837/stdio10;fold80/240/192/workspacesymbol486/1458 retained. Accepted10/prior243children/macOS history/openissues/B16deferred preserved;core1029verified/296pending/2NA,B10159verified/17pending. No parentacceptance. NextB10.38 installed selection;UX11/UX12 pending. Initial native attempt input-iqDDOd failed after48proofs at trust Installed Vela extension visibility(15s); both observers healthy, process exit0; original result/log/screenshot/ARIA preserved. Complete fresh same-source retry required; no assertion/time budget changes. First scoped invocation incorrectly included global --strict flag with --batch B09; all suites passed but all-future-batch gate correctly rejected348unverified cells. Preserve report/log and rerun correct built-in strict --batch B09 scope; no gate changes. Native editors/vscode/test-results/input-rGyMWg/results.json; VSIX editors/vscode/test-results/run-ED4vZj/results.json; audit target/lsp-matrix/run-YED37P/report.json. Find this commit via LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal trailer and clean worktree checked separately."
+    },
+    {
+      "id": "B10.38",
+      "revision": null,
+      "requirements": [
+        "selection/editor/smoke"
+      ],
+      "summary": "Complete installed production VSIX selection/editor/smoke:105 full authored cases across10 fixture families;all4 Unicode LF/CRLF/shift forms,whole ordered public and raw UTF16 chains,duplicates/points/actualemptyvectors repeated3. SDK word/subword/line/model augmentation independently authored from pinned primary rules, explicit literal ASCII bracket rule retained. Separate43phase/46action/11variant source/dependency lifecycle with main/helper/renamed/decoy/missing views,dirty/save/close/reopen,hidden disk/delete/recreate/physical rename/simultaneous damage-repair; exact text/version/EOL/disk/absence and fresh paired requests. Actual absent models reject before LSP with three no-request attempts. Original startup/singlefolder/bracket/no-op author errors preserved. Preliminary completed4syntaxforms+1lifecycleform intentionally stopped after syntax742seconds exceeded unchanged600second budget; no unexecuted proof claimed. Append-only journal/fresh byte-tail reading preserves all assertions/quiet intervals/timeouts;3 bytewise UTF8/CRLF/corruption/truncation tests. First formal syntax passed532387ms but lifecycle failed at pinned SDK30MiB single-file trace overwrite; result/log/failedautomatic report/previous frozen source and native50 retained. Two fresh private installed sessions now complete both fullchecks within original budgets, and every actual pair remains in retained raw logs; original base24+workspace1 and identical package provenance retained. Fresh syntax1272vectors/3816invocations and lifecycle1016vectors/3048invocations+352absentviews/1056actualpre-dispatchrejections,6864full owned paired wire vectors. Node269/workspace/fmt/Clippy;same-source Windows native50/installedVSIX27/automatic/strictB09 service782+2historicalignored/protocol837/stdio10. Original folding80/240/192 and workspace486/1458 retained. Accepted10/prior244children/macOS audit history/openissues/B16deferred preserved. Core1030verified/295pending/2NA,B10160verified/16pending;no parent acceptance. NextB10.39 nativeUX11/UX12. Native editors/vscode/test-results/input-FTxuPA/results.json;VSIX editors/vscode/test-results/run-s59buW/results.json;audit target/lsp-matrix/run-jZJ193/report.json. Find commit via LSP-Batch trailer. Final checkpoint tests15 pass; post-commit source identity, formal trailer and clean worktree checked separately."
     }
   ],
-  "activeChild": "B10.38",
-  "nextTask": "B10.38",
+  "activeChild": "B10.39",
+  "nextTask": "B10.39",
   "remainingRequirements": [
     "batch/B14/semantic-partitions",
     "batch/B15/high-risk-combinations",
@@ -12472,7 +12480,101 @@
     "editors/vscode/test-results/input-iqDDOd/results.json",
     "editors/vscode/test-results/input-iqDDOd/trust/failure.png",
     "editors/vscode/test-results/input-iqDDOd/trust/failure.aria.txt",
-    "target/b10-37-checkpoint.log"
+    "target/b10-37-checkpoint.log",
+    "target/lsp-matrix/run-jZJ193/report.json",
+    "editors/vscode/test-results/run-s59buW/results.json",
+    "editors/vscode/test-results/input-FTxuPA/results.json",
+    "target/lsp-matrix/run-gqsREs/report.json",
+    "editors/vscode/test-results/run-s59buW/base-results.json",
+    "editors/vscode/test-results/run-s59buW/base-and-workspace-results.json",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/results.json",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/results.json",
+    "editors/vscode/test-results/run-s59buW/workspace-symbol-editor/results.json",
+    "editors/vscode/test-results/run-s59buW/workspace-symbol-editor/workspace-symbol-observations.json",
+    "editors/vscode/test-results/run-s59buW/workspace-symbol-editor/workspace-symbol-client.log",
+    "editors/vscode/test-results/run-s59buW/workspace-symbol-editor/workspace-symbol-server.jsonl",
+    "editors/vscode/test-results/run-s59buW/folding-lf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/folding-lf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/folding-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/folding-lf-shifted-client.log",
+    "editors/vscode/test-results/run-s59buW/folding-crlf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/folding-crlf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/folding-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/folding-crlf-shifted-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-lf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-lf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-lf-shifted-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-crlf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-crlf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-syntax-editor/selection-syntax-crlf-shifted-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-lf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-lf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-lf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-lf-shifted-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-crlf-original-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-crlf-original-client.log",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-crlf-shifted-observations.json",
+    "editors/vscode/test-results/run-s59buW/selection-lifecycle-editor/selection-lifecycle-crlf-shifted-client.log",
+    "target/b10-38-baseline-node.log",
+    "target/b10-38-node-first.log",
+    "target/b10-38-node-second.log",
+    "target/b10-38-node-bracket.log",
+    "target/b10-38-node-third.log",
+    "target/b10-38-node-fourth.log",
+    "target/b10-38-node-final.log",
+    "target/b10-38-node-final-formatted.log",
+    "target/b10-38-node-final-minimized.log",
+    "target/b10-38-fmt-final.log",
+    "target/b10-38-clippy.log",
+    "target/b10-38-workspace.log",
+    "target/b10-38-prototype-first.log",
+    "target/b10-38-prototype-second.log",
+    "target/b10-38-prototype-third.log",
+    "target/b10-38-prototype-fourth.log",
+    "target/b10-38-prototype-fifth.log",
+    "target/b10-38-trace-prototype.log",
+    "target/b10-38-trace-prototype-second.log",
+    "target/b10-38-syntax-verify.log",
+    "target/b10-38-lifecycle-lf-verify.log",
+    "target/b10-38-freeze.log",
+    "target/b10-38-input.log",
+    "target/b10-38-editor.log",
+    "target/b10-38-scoped.log",
+    "target/b10-38-input-verify.log",
+    "target/b10-38-editor-verify.log",
+    "target/b10-38-automatic-verify.log",
+    "target/b10-38-scoped-verify.log",
+    "target/b10-38-node-isolated.log",
+    "target/b10-38-node-isolated-final.log",
+    "target/b10-38-freeze-isolated.log",
+    "target/b10-38-input-isolated.log",
+    "target/b10-38-input-isolated-verify.log",
+    "target/b10-38-editor-isolated.log",
+    "target/b10-38-output-primary-review.log",
+    "target/b10-38-output-primary-review-second.log",
+    "target/b10-38-syntax-raw-verify.log",
+    "target/b10-38-lifecycle-raw-verify.log",
+    "editors/vscode/test-results/input-tsNKL9/results.json",
+    "editors/vscode/test-results/run-8Lhbjv/results.json",
+    "target/lsp-matrix/run-Kwrea0/report.json",
+    "target/b10-38-selection-editor.json",
+    "target/b10-38-literal-author-error.json",
+    "target/b10-38-nochange-author-error.json",
+    "target/b10-38-rotation-author-error.json",
+    "target/b10-38-preliminary.json",
+    "target/b10-38-frozen-source.json",
+    "target/b10-38-frozen-source-before-isolation.json",
+    "target/b10-38-native-contracts.json",
+    "target/b10-38-scope.json",
+    "target/b10-38-paths.json",
+    "editors/vscode/test-results/selection-prototype-9KeSQe",
+    "editors/vscode/test-results/selection-prototype-R4tUt7",
+    "editors/vscode/test-results/selection-prototype-Bnd89z",
+    "editors/vscode/test-results/selection-prototype-3fFaTZ",
+    "editors/vscode/test-results/selection-prototype-jW7DPY",
+    "target/b10-38-checkpoint.log"
   ],
   "openIssues": [
     {
@@ -16400,8 +16502,8 @@
       ],
       "validation": {
         "source": {
-          "revision": "b27f95da548f45f52ddeb368201ad2770de75a17",
-          "treeSha256": "3ec2537cde73cd65c9bb7e61b7e63e7abd773a79a93ea5e4024d5b627127a4df"
+          "revision": "438866aa5839d72994d2dccb72a26faa79a16567",
+          "treeSha256": "cba5f621d7ba3ea8d360d5a82868be5b0681f63483faf85f9a81647088499d7a"
         },
         "profile": {
           "platform": "win32",
@@ -16409,11 +16511,11 @@
           "vscodeVersion": "1.137.0"
         },
         "artifacts": [
-          "target/lsp-matrix/run-YED37P/report.json"
+          "target/lsp-matrix/run-jZJ193/report.json"
         ],
         "commands": [
           {
-            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-ED4vZj/results.json --local-results editors/vscode/test-results/input-rGyMWg/results.json",
+            "command": "node scripts/lsp-matrix/run.js --run --batch B09 --editor-results editors/vscode/test-results/run-s59buW/results.json --local-results editors/vscode/test-results/input-FTxuPA/results.json",
             "exitCode": 0
           }
         ]

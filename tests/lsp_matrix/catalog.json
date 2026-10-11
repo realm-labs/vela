@@ -18631,6 +18631,20 @@
           "name": "tests::selection_trivia::lsp_selection_trivia_preserve_whole_cst_tokens_utf16_ancestry_points_and_retained_snapshots"
         }
       ]
+    },
+    {
+      "requirement": "selection/editor/smoke",
+      "assertion": "Reviewed in reviews/selection-editor.md. Installed production VSIX public executeSelectionRangeProvider and complete paired raw UTF16 selection vectors:105 independent complete cases across10 existing syntax/member/call/literal/pattern/recovery/trivia families, all ordered positions/whole parents/duplicates/points/actual empties;dirty disk preservation, watched helper changes, real close restoration. Separate43phase/46action/11variant main/helper/renamed/decoy/missing lifecycle includes actual save/close/reopen, hidden disk changes, delete/recreate/physical rename and simultaneous damage/repair. All four Unicode LF/CRLF/shift forms, repeat3 every full vector and empty vector, exact source/version/EOL/disk ownership and fresh unique wire envelopes. SDK word/subword/line/model augmentation separately derived from pinned primary SDK rules; no provider-derived expected values. Actual absent models reject before dispatch, three attempts with no owned requests. Bounded original waits/quiet windows, append-only incremental evidence with independently tested UTF8/CRLF/partial/corrupt/truncated record handling. No product/runtime change; original25checks/native50 contracts and macOS history retained; UX11/UX12 and parent B10 acceptance remain open. Separate fresh installed SDK sessions for syntax and lifecycle preserve complete single-file trace evidence below the pinned SDK30MiB logger limit; every retained raw paired response must match its actual invocation. Original base25 assertions and package provenance remain required.",
+      "tests": [
+        {
+          "layer": "editor",
+          "name": "selection provider preserves complete authored public and wire parent chains through dirty close Unicode LF CRLF states"
+        },
+        {
+          "layer": "editor",
+          "name": "selection provider preserves complete public and wire vectors through saved closed and renamed dependency recovery"
+        }
+      ]
     }
   ],
   "featureFiles": [

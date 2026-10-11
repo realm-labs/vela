@@ -2,7 +2,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const entries = ["suite.js", "workspace-symbol-suite.js"];
+const entries = ["suite.js", "workspace-symbol-suite.js", "selection-suite.js"];
 
 function editorTests(root) {
   const names = entries.flatMap(entry => [...fs.readFileSync(path.join(root, "editors/vscode/test", entry), "utf8")

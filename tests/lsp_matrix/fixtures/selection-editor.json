@@ -1,0 +1,544 @@
+{
+  "version": 1,
+  "id": "selection-editor",
+  "files": {
+    "scripts/main.vela": "[[file:start]]// disk baseline 中😀\n[[prefix:start]]/*中[[prefix-cursor]]😀*/[[prefix:end]] [[item:start]]fn run[[params:start]]([[param:start]]row[[param:end]])[[params:end]] [[body:start]]{[[indent:start]]\n[[indent-cursor]]  [[indent:end]][[statement:start]]return [[field:start]][[receiver:start]]row[[receiver:end]].[[leaf:start]]f[[leaf-cursor]]ield[[leaf:end]][[leaf-end]][[field:end]][[tail:start]] [[tail-cursor]] [[tail:end]];[[statement:end]][[body-tail:start]]\n[[body-tail-cursor]]  [[body-tail:end]]}[[body:end]][[item:end]][[file-tail:start]]\n[[file-tail-cursor]][[file-tail:end]][[eof]][[file:end]]",
+    "scripts/helper.vela": "[[file:start]]// source 中😀\n/*中😀*/ [[item:start]]pub fn apply(value) [[body:start]]{ [[statement:start]]return [[binary:start]][[field:start]][[receiver:start]]value[[receiver:end]].[[leaf:start]]f[[leaf-cursor]]ield[[leaf:end]][[leaf-end]][[field:end]] + [[number:start]]2[[number:end]][[binary:end]];[[statement:end]] }[[body:end]][[item:end]]\n[[eof]][[file:end]]"
+  },
+  "actions": [],
+  "oracle": {
+    "file": "scripts/main.vela",
+    "baseline": {
+      "fixture": "selection-trivia",
+      "case": "baseline-field-trivia"
+    },
+    "cases": [
+      {
+        "id": "selection-declarations/function-default-signature",
+        "fixture": "selection-declarations",
+        "case": "function-default-signature"
+      },
+      {
+        "id": "selection-declarations/private-empty-function",
+        "fixture": "selection-declarations",
+        "case": "private-empty-function"
+      },
+      {
+        "id": "selection-declarations/async-function",
+        "fixture": "selection-declarations",
+        "case": "async-function"
+      },
+      {
+        "id": "selection-declarations/attributed-function",
+        "fixture": "selection-declarations",
+        "case": "attributed-function"
+      },
+      {
+        "id": "selection-declarations/constant",
+        "fixture": "selection-declarations",
+        "case": "constant"
+      },
+      {
+        "id": "selection-declarations/state",
+        "fixture": "selection-declarations",
+        "case": "state"
+      },
+      {
+        "id": "selection-declarations/extern-state",
+        "fixture": "selection-declarations",
+        "case": "extern-state"
+      },
+      {
+        "id": "selection-declarations/struct-field-defaults",
+        "fixture": "selection-declarations",
+        "case": "struct-field-defaults"
+      },
+      {
+        "id": "selection-declarations/enum-tuple-defaults",
+        "fixture": "selection-declarations",
+        "case": "enum-tuple-defaults"
+      },
+      {
+        "id": "selection-declarations/enum-record-defaults",
+        "fixture": "selection-declarations",
+        "case": "enum-record-defaults"
+      },
+      {
+        "id": "selection-declarations/trait-required",
+        "fixture": "selection-declarations",
+        "case": "trait-required"
+      },
+      {
+        "id": "selection-declarations/trait-default",
+        "fixture": "selection-declarations",
+        "case": "trait-default"
+      },
+      {
+        "id": "selection-declarations/inherent-impl",
+        "fixture": "selection-declarations",
+        "case": "inherent-impl"
+      },
+      {
+        "id": "selection-declarations/trait-impl",
+        "fixture": "selection-declarations",
+        "case": "trait-impl"
+      },
+      {
+        "id": "selection-declarations/public-use-declaration",
+        "fixture": "selection-declarations",
+        "case": "public-use-declaration"
+      },
+      {
+        "id": "selection-types/nested-parameter-and-return",
+        "fixture": "selection-types",
+        "case": "nested-parameter-and-return"
+      },
+      {
+        "id": "selection-types/all-primitive-and-dynamic-hints",
+        "fixture": "selection-types",
+        "case": "all-primitive-and-dynamic-hints"
+      },
+      {
+        "id": "selection-types/source-host-trait-unknown-and-qualified-spellings",
+        "fixture": "selection-types",
+        "case": "source-host-trait-unknown-and-qualified-spellings"
+      },
+      {
+        "id": "selection-types/unit-parameter",
+        "fixture": "selection-types",
+        "case": "unit-parameter"
+      },
+      {
+        "id": "selection-types/nested-tuple-parameter",
+        "fixture": "selection-types",
+        "case": "nested-tuple-parameter"
+      },
+      {
+        "id": "selection-types/result-with-two-nested-containers",
+        "fixture": "selection-types",
+        "case": "result-with-two-nested-containers"
+      },
+      {
+        "id": "selection-types/typed-lambda-hint",
+        "fixture": "selection-types",
+        "case": "typed-lambda-hint"
+      },
+      {
+        "id": "selection-types/builtin-view-mut-hints",
+        "fixture": "selection-types",
+        "case": "builtin-view-mut-hints"
+      },
+      {
+        "id": "selection-bodies/typed-local-assignment-return",
+        "fixture": "selection-bodies",
+        "case": "typed-local-assignment-return"
+      },
+      {
+        "id": "selection-bodies/member-assignment",
+        "fixture": "selection-bodies",
+        "case": "member-assignment"
+      },
+      {
+        "id": "selection-bodies/index-assignment",
+        "fixture": "selection-bodies",
+        "case": "index-assignment"
+      },
+      {
+        "id": "selection-bodies/nested-block-shadow",
+        "fixture": "selection-bodies",
+        "case": "nested-block-shadow"
+      },
+      {
+        "id": "selection-bodies/if-statement",
+        "fixture": "selection-bodies",
+        "case": "if-statement"
+      },
+      {
+        "id": "selection-bodies/match-guard-and-block",
+        "fixture": "selection-bodies",
+        "case": "match-guard-and-block"
+      },
+      {
+        "id": "selection-bodies/for-key-value",
+        "fixture": "selection-bodies",
+        "case": "for-key-value"
+      },
+      {
+        "id": "selection-bodies/typed-lambda-capture",
+        "fixture": "selection-bodies",
+        "case": "typed-lambda-capture"
+      },
+      {
+        "id": "selection-members/source-field",
+        "fixture": "selection-members",
+        "case": "source-field"
+      },
+      {
+        "id": "selection-members/host-field",
+        "fixture": "selection-members",
+        "case": "host-field"
+      },
+      {
+        "id": "selection-members/trait-field",
+        "fixture": "selection-members",
+        "case": "trait-field"
+      },
+      {
+        "id": "selection-members/dynamic-field",
+        "fixture": "selection-members",
+        "case": "dynamic-field"
+      },
+      {
+        "id": "selection-members/unknown-field",
+        "fixture": "selection-members",
+        "case": "unknown-field"
+      },
+      {
+        "id": "selection-members/source-method",
+        "fixture": "selection-members",
+        "case": "source-method"
+      },
+      {
+        "id": "selection-members/host-method",
+        "fixture": "selection-members",
+        "case": "host-method"
+      },
+      {
+        "id": "selection-members/trait-method",
+        "fixture": "selection-members",
+        "case": "trait-method"
+      },
+      {
+        "id": "selection-members/dynamic-method",
+        "fixture": "selection-members",
+        "case": "dynamic-method"
+      },
+      {
+        "id": "selection-members/unknown-method",
+        "fixture": "selection-members",
+        "case": "unknown-method"
+      },
+      {
+        "id": "selection-members/nested-member-chain",
+        "fixture": "selection-members",
+        "case": "nested-member-chain"
+      },
+      {
+        "id": "selection-members/indexed-receiver-member",
+        "fixture": "selection-members",
+        "case": "indexed-receiver-member"
+      },
+      {
+        "id": "selection-members/returned-receiver-method",
+        "fixture": "selection-members",
+        "case": "returned-receiver-method"
+      },
+      {
+        "id": "selection-members/record-explicit-and-shorthand-fields",
+        "fixture": "selection-members",
+        "case": "record-explicit-and-shorthand-fields"
+      },
+      {
+        "id": "selection-members/enum-all-variant-declarations",
+        "fixture": "selection-members",
+        "case": "enum-all-variant-declarations"
+      },
+      {
+        "id": "selection-imports/qualified-unresolved-alias",
+        "fixture": "selection-imports",
+        "case": "qualified-unresolved-alias"
+      },
+      {
+        "id": "selection-imports/module-alias-pub-reexport",
+        "fixture": "selection-imports",
+        "case": "module-alias-pub-reexport"
+      },
+      {
+        "id": "selection-imports/multiline-path-and-alias",
+        "fixture": "selection-imports",
+        "case": "multiline-path-and-alias"
+      },
+      {
+        "id": "selection-imports/semicolon-at-eof",
+        "fixture": "selection-imports",
+        "case": "semicolon-at-eof"
+      },
+      {
+        "id": "selection-calls/qualified-named-callback-and-positional-owners",
+        "fixture": "selection-calls",
+        "case": "qualified-named-callback-and-positional-owners"
+      },
+      {
+        "id": "selection-calls/empty-call-list",
+        "fixture": "selection-calls",
+        "case": "empty-call-list"
+      },
+      {
+        "id": "selection-calls/nested-named-call",
+        "fixture": "selection-calls",
+        "case": "nested-named-call"
+      },
+      {
+        "id": "selection-calls/consecutive-returned-call",
+        "fixture": "selection-calls",
+        "case": "consecutive-returned-call"
+      },
+      {
+        "id": "selection-calls/stdlib-iterator-pipeline",
+        "fixture": "selection-calls",
+        "case": "stdlib-iterator-pipeline"
+      },
+      {
+        "id": "selection-calls/service-base-call",
+        "fixture": "selection-calls",
+        "case": "service-base-call"
+      },
+      {
+        "id": "selection-calls/service-pinned-call",
+        "fixture": "selection-calls",
+        "case": "service-pinned-call"
+      },
+      {
+        "id": "selection-calls/scoped-task-continuation-call",
+        "fixture": "selection-calls",
+        "case": "scoped-task-continuation-call"
+      },
+      {
+        "id": "selection-calls/awaited-try-call",
+        "fixture": "selection-calls",
+        "case": "awaited-try-call"
+      },
+      {
+        "id": "selection-literals/unicode-interpolation-index-operator-and-named-call-owners",
+        "fixture": "selection-literals",
+        "case": "unicode-interpolation-index-operator-and-named-call-owners"
+      },
+      {
+        "id": "selection-literals/literal-float-negative-exponent",
+        "fixture": "selection-literals",
+        "case": "literal-float-negative-exponent"
+      },
+      {
+        "id": "selection-literals/literal-char-non-bmp",
+        "fixture": "selection-literals",
+        "case": "literal-char-non-bmp"
+      },
+      {
+        "id": "selection-literals/literal-string-multiline",
+        "fixture": "selection-literals",
+        "case": "literal-string-multiline"
+      },
+      {
+        "id": "selection-literals/literal-bytes-escapes",
+        "fixture": "selection-literals",
+        "case": "literal-bytes-escapes"
+      },
+      {
+        "id": "selection-literals/logical-and-before-or",
+        "fixture": "selection-literals",
+        "case": "logical-and-before-or"
+      },
+      {
+        "id": "selection-literals/right-associative-assignment",
+        "fixture": "selection-literals",
+        "case": "right-associative-assignment"
+      },
+      {
+        "id": "selection-literals/nested-tuple-and-array",
+        "fixture": "selection-literals",
+        "case": "nested-tuple-and-array"
+      },
+      {
+        "id": "selection-literals/map-key-value-colon-and-trivia",
+        "fixture": "selection-literals",
+        "case": "map-key-value-colon-and-trivia"
+      },
+      {
+        "id": "selection-literals/interpolation-multiline-with-expressions",
+        "fixture": "selection-literals",
+        "case": "interpolation-multiline-with-expressions"
+      },
+      {
+        "id": "selection-patterns/nested-record-pattern-guard-for-and-control-owners",
+        "fixture": "selection-patterns",
+        "case": "nested-record-pattern-guard-for-and-control-owners"
+      },
+      {
+        "id": "selection-patterns/wildcard-pattern",
+        "fixture": "selection-patterns",
+        "case": "wildcard-pattern"
+      },
+      {
+        "id": "selection-patterns/tuple-pattern",
+        "fixture": "selection-patterns",
+        "case": "tuple-pattern"
+      },
+      {
+        "id": "selection-patterns/record-pattern-label-value-and-shorthand",
+        "fixture": "selection-patterns",
+        "case": "record-pattern-label-value-and-shorthand"
+      },
+      {
+        "id": "selection-patterns/host-record-variant-pattern",
+        "fixture": "selection-patterns",
+        "case": "host-record-variant-pattern"
+      },
+      {
+        "id": "selection-patterns/unknown-record-variant-pattern",
+        "fixture": "selection-patterns",
+        "case": "unknown-record-variant-pattern"
+      },
+      {
+        "id": "selection-patterns/builtin-option-some-pattern",
+        "fixture": "selection-patterns",
+        "case": "builtin-option-some-pattern"
+      },
+      {
+        "id": "selection-patterns/builtin-result-err-pattern",
+        "fixture": "selection-patterns",
+        "case": "builtin-result-err-pattern"
+      },
+      {
+        "id": "selection-patterns/for-key-value-binding",
+        "fixture": "selection-patterns",
+        "case": "for-key-value-binding"
+      },
+      {
+        "id": "selection-recovery/damage-member-local",
+        "fixture": "selection-recovery",
+        "case": "damage-member-local"
+      },
+      {
+        "id": "selection-recovery/repair-member-local",
+        "fixture": "selection-recovery",
+        "case": "repair-member-local"
+      },
+      {
+        "id": "selection-recovery/redamage-member-local",
+        "fixture": "selection-recovery",
+        "case": "redamage-member-local"
+      },
+      {
+        "id": "selection-recovery/damage-nested-open-type",
+        "fixture": "selection-recovery",
+        "case": "damage-nested-open-type"
+      },
+      {
+        "id": "selection-recovery/repair-nested-open-type",
+        "fixture": "selection-recovery",
+        "case": "repair-nested-open-type"
+      },
+      {
+        "id": "selection-recovery/damage-lexical-open-interpolation-ordinary",
+        "fixture": "selection-recovery",
+        "case": "damage-lexical-open-interpolation-ordinary"
+      },
+      {
+        "id": "selection-recovery/repair-lexical-open-interpolation-ordinary",
+        "fixture": "selection-recovery",
+        "case": "repair-lexical-open-interpolation-ordinary"
+      },
+      {
+        "id": "selection-recovery/damage-neighbor-before-fn-129",
+        "fixture": "selection-recovery",
+        "case": "damage-neighbor-before-fn-129"
+      },
+      {
+        "id": "selection-recovery/repair-neighbor-before-fn-129",
+        "fixture": "selection-recovery",
+        "case": "repair-neighbor-before-fn-129"
+      },
+      {
+        "id": "selection-recovery/damage-neighbor-after-fn-132",
+        "fixture": "selection-recovery",
+        "case": "damage-neighbor-after-fn-132"
+      },
+      {
+        "id": "selection-recovery/repair-neighbor-after-fn-132",
+        "fixture": "selection-recovery",
+        "case": "repair-neighbor-after-fn-132"
+      },
+      {
+        "id": "selection-trivia/baseline-field-trivia",
+        "fixture": "selection-trivia",
+        "case": "baseline-field-trivia"
+      },
+      {
+        "id": "selection-trivia/nested-enum-tuple",
+        "fixture": "selection-trivia",
+        "case": "nested-enum-tuple"
+      },
+      {
+        "id": "selection-trivia/nested-trait-required",
+        "fixture": "selection-trivia",
+        "case": "nested-trait-required"
+      },
+      {
+        "id": "selection-trivia/call-argument-trivia",
+        "fixture": "selection-trivia",
+        "case": "call-argument-trivia"
+      },
+      {
+        "id": "selection-trivia/shebang-field",
+        "fixture": "selection-trivia",
+        "case": "shebang-field"
+      },
+      {
+        "id": "selection-trivia/significant-final-brace-eof",
+        "fixture": "selection-trivia",
+        "case": "significant-final-brace-eof"
+      },
+      {
+        "id": "selection-trivia/blank-line-group",
+        "fixture": "selection-trivia",
+        "case": "blank-line-group"
+      },
+      {
+        "id": "selection-trivia/mixed-whitespace-only",
+        "fixture": "selection-trivia",
+        "case": "mixed-whitespace-only"
+      },
+      {
+        "id": "selection-trivia/line-comment-only",
+        "fixture": "selection-trivia",
+        "case": "line-comment-only"
+      },
+      {
+        "id": "selection-trivia/shebang-only-eof",
+        "fixture": "selection-trivia",
+        "case": "shebang-only-eof"
+      },
+      {
+        "id": "selection-trivia/unterminated-block-only",
+        "fixture": "selection-trivia",
+        "case": "unterminated-block-only"
+      },
+      {
+        "id": "selection-trivia/empty",
+        "fixture": "selection-trivia",
+        "case": "empty"
+      },
+      {
+        "id": "selection-trivia/empty-vector",
+        "fixture": "selection-trivia",
+        "case": "empty-vector"
+      },
+      {
+        "id": "selection-trivia/boundary-space",
+        "fixture": "selection-trivia",
+        "case": "boundary-space"
+      },
+      {
+        "id": "selection-trivia/boundary-block",
+        "fixture": "selection-trivia",
+        "case": "boundary-block"
+      },
+      {
+        "id": "selection-trivia/boundary-line",
+        "fixture": "selection-trivia",
+        "case": "boundary-line"
+      }
+    ],
+    "lifecycle": "selection-lifecycle"
+  }
+}
