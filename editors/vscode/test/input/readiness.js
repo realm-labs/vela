@@ -57,4 +57,20 @@ function completedProviderRequest(rows, { afterSeq, method, matchesDocument }) {
     result.id === request.id && result.method === method && result.documentUri === request.documentUri);
 }
 
-module.exports = { readTrace, workspaceReadiness, completedResponse, providerWatermark, completedProviderRequest };
+// Worker responses omit the main-loop sequence. Correlate the fresh main
+// request with its queued generation, then a later completed worker response.
+// A dispatch acknowledgement alone cannot prove an empty Outline result.
+function completedWorkerProviderRequest(rows, { afterSeq, method, matchesDocument }) {
+  for (const [index, request] of rows.entries()) {
+    if (request.event !== "message_received" || request.lane !== "main" || request.kind !== "request" ||
+      !Number.isSafeInteger(request.seq) || request.seq <= afterSeq || request.method !== method || !matchesDocument(request.documentUri)) continue;
+    const owner = row => row.id === request.id && row.method === method && row.documentUri === request.documentUri;
+    const queued = rows.findIndex((row, i) => i > index && row.event === "request_queued" && row.lane === "worker" &&
+      row.status === "queued" && Number.isSafeInteger(row.generation) && owner(row));
+    if (queued < 0) continue;
+    const response = rows.find((row, i) => i > queued && row.lane === "worker" && row.kind === "task" &&
+      row.generation === rows[queued].generation && owner(row) && completedResponse(row));
+    if (response) return response;
+  }
+}
+module.exports = { readTrace, workspaceReadiness, completedResponse, providerWatermark, completedProviderRequest, completedWorkerProviderRequest };

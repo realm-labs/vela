@@ -5,6 +5,7 @@ const { hoverSignatureModel } = require("../../../../scripts/lsp-matrix/hover-si
 const evidence = require("../../../../scripts/lsp-matrix/local-evidence");
 const { fileUri } = require("./paths");
 const { tokenGeometry } = require("./token-geometry");
+const { hoverLineReady } = require("./hover-layout");
 const { readTrace, providerWatermark, completedProviderRequest } = require("./readiness");
 
 async function runHoverSignature({ page, bridge, record, root, workspace, contracts, until, onProof }) {
@@ -79,6 +80,11 @@ async function runHoverSignature({ page, bridge, record, root, workspace, contra
     };
     const show = async () => { await action("show-chord"); await action("show-invoke"); };
     const pointTarget = async () => {
+      await until("reviewed hover inlay layout", async () => {
+        const lines = await editor.locator(".view-lines > .view-line").allTextContents();
+        observe("target-inlay-layout", lines);
+        return hoverLineReady(lines);
+      });
       const geometry = await tokenGeometry(editor, m.disk), glyph = geometry.glyphs.target;
       assert(glyph.visible && glyph.aligned && glyph.text === "combine", "actual authored target glyph");
       observe("target-geometry", geometry);

@@ -24,9 +24,10 @@ The observer only reads folder/settings state and executes the separate definiti
 commands; it does not update folders or accepted settings. Full workspace JSON
 preserves each pinned profile's preferences, with application dialog settings
 remaining in the private user profile. The roots proof has a 120-second budget.
-Before expanded captures, the runner and observer budgets are set to 450 seconds:
+Before expanded captures, the runner and observer budgets are set to 570 seconds:
 180 for existing routes, 120 for roots, 120 for invalid configuration/schema,
-and 30 for transitions. These are finite planned budgets, not measured relaxations.
+30 for transitions, and 120 for the complete Outline trees in LF/CRLF.
+These are finite planned budgets, not measured relaxations.
 Both profiles now also pin `files.simpleDialog.enable: true`. The inspected
 pinned editor uses this setting for file/folder pickers; `window.dialogStyle`
 only controls confirmation dialogs. Workbench pickers remain actual VS Code

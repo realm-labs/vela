@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "id": "input-outline",
+  "sources": [
+    { "fixture": "document-symbol-declarations.json", "namespace": "declarations" },
+    { "fixture": "document-symbol-ownership.json", "namespace": "ownership" }
+  ],
+  "forms": ["lf", "crlf"],
+  "oracle": {
+    "paletteLabel": "Explorer: Focus on Outline View",
+    "rootsPerForm": 44,
+    "nodesPerForm": 79,
+    "emptyText": "No symbols found in document '{file}'",
+    "icons": {
+      "Constant": "symbol-constant", "Variable": "symbol-variable",
+      "Function": "symbol-function", "Struct": "symbol-struct",
+      "Field": "symbol-field", "Enum": "symbol-enum",
+      "EnumMember": "symbol-enum-member", "Interface": "symbol-interface",
+      "Method": "symbol-method", "Object": "symbol-object"
+    }
+  }
+}

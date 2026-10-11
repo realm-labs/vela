@@ -169,6 +169,13 @@ async function run() {
     fs.writeFileSync(target, document.text);
   }
   const vsix = path.join(root, "vela.vsix");
+  const outline = require("../../../../scripts/lsp-matrix/outline-contracts").outlineModel();
+  for (const [file, text] of Object.entries(outline.files)) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "Outline fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, text);
+  }
   const packaged = spawnSync(
     process.execPath,
     [path.join(extensionRoot, "scripts/package-vsix.js"), "--out", vsix],
@@ -289,7 +296,7 @@ async function run() {
   };
   // Existing routes 180s + roots 120s + invalid configuration 120s + setup 30s.
   // Pin this finite additive budget before capturing the expanded suite.
-  const timer = setTimeout(() => child.kill("SIGTERM"), 450000);
+  const timer = setTimeout(() => child.kill("SIGTERM"), 570000);
   try {
     await until(
       "debug endpoint",
@@ -488,9 +495,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux10-ux17-ux18-or-ux21-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux11-ux17-ux18-or-ux21-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux(?:0[13456789]|10|17|18|21)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux(?:0[13456789]|10|11|17|18|21)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
@@ -529,6 +536,10 @@ async function run() {
     await require("./hover-signature").runHoverSignature({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter((item) => requestedProofs.includes(item.id)) : contracts,
       until, onProof: (proof) => proofs.push(proof),
+    });
+    await require("./outline").runOutline({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: proof => proofs.push(proof),
     });
     await require("./lifecycle").runLifecycle({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item=>requestedProofs.includes(item.id)) : contracts,

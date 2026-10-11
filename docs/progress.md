@@ -110,8 +110,8 @@ and frozen trees, disk/overlay/dependency/schema transitions, actual closes and
 damage/repair sequences. See the
 [lifecycle review](../tests/lsp_matrix/reviews/document-symbol-lifecycle.md) and
 [installed provider review](../tests/lsp_matrix/reviews/document-symbol-editor.md).
-The checkpoint records complete document-symbol core coverage. Workspace symbols,
-folding, selection and native Outline/picker workflows remain open.
+The checkpoint records complete document-symbol core coverage. Native symbol
+pickers, folding and selection workflows remain open.
 Selection S9 now has a consolidated recovery corpus with whole CST ancestry and
 complete selection vectors, including malformed declarations, open types/calls,
 control guards, lexical envelopes and retained bracket/tuple-pattern partitions.
@@ -135,8 +135,12 @@ Installed selection now checks complete public and raw wire parent chains across
 LF/CRLF forms, including dirty/save/close, deletion, rename and recovery. SDK word
 and line augmentation has independent literal expectations; see the
 [installed selection review](../tests/lsp_matrix/reviews/selection-editor.md).
-Native Outline/picker/folding and selection input/render interactions remain
-separate pending requirements.
+Native Outline now checks complete authored declaration/ownership trees in
+eighteen LF/CRLF views, with literal names, details, icons, parent levels and
+physical caret/full-declaration navigation. All buffers and physical fixture
+files remain unchanged; see the [Outline review](../tests/lsp_matrix/reviews/input-outline.md).
+Native symbol pickers/no-match queries, folding and selection input/render
+interactions remain separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

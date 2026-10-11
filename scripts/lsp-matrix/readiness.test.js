@@ -2,6 +2,7 @@
 const test = require("node:test"), assert = require("node:assert/strict");
 const fs = require("node:fs"), os = require("node:os"), path = require("node:path");
 const { readTrace, workspaceReadiness, completedResponse, providerWatermark, completedProviderRequest } = require("../../editors/vscode/test/input/readiness");
+const { completedWorkerProviderRequest } = require("../../editors/vscode/test/input/readiness");
 const received = (seq, method = "textDocument/didOpen") =>
   ({ event: "message_received", lane: "main", seq, method });
 const finished = (seq, timestampMs, method = "textDocument/didOpen") =>
@@ -92,4 +93,20 @@ test("native provider correlation rejects stale origins, wrong owners and incomp
   assert.equal(completedProviderRequest([signatureReply],signatureOptions),undefined);
   assert.equal(completedProviderRequest([signatureOrigin],signatureOptions),undefined);
   assert.equal(completedProviderRequest(pair,{...signatureOptions,afterSeq:652}),undefined);
+});
+
+test("Outline worker completion joins a fresh request and queued generation without a response sequence", () => {
+  const origin = { ...signatureOrigin, method: "textDocument/documentSymbol" };
+  const queued = { ...origin, event: "request_queued", lane: "worker", status: "queued", generation: 32 };
+  delete queued.seq;
+  const reply = { ...queued, event: "response_sent", kind: "task", status: "completed", resultKind: "response", outputMessages: 1 };
+  const options = { ...signatureOptions, method: origin.method };
+  assert.deepEqual(completedWorkerProviderRequest([origin, queued, reply], options), reply);
+  for (const changed of [{ ...reply, generation: 33 }, { ...reply, id: "481" }, { ...reply, lane: "main" },
+    { ...reply, kind: "request" }, { ...reply, method: "textDocument/hover" }, { ...reply, documentUri: "file:///other.vela" },
+    { ...reply, status: "stale_discarded" }, { ...reply, resultKind: "none", outputMessages: 0 }])
+    assert.equal(completedWorkerProviderRequest([origin, queued, changed], options), undefined);
+  for (const rows of [[origin, reply], [reply, origin, queued], [queued, origin, reply], [queued, reply],
+    [{ ...origin, seq: 650 }, queued, reply], [origin, { ...queued, generation: undefined }, reply]])
+    assert.equal(completedWorkerProviderRequest(rows, options), undefined);
 });
