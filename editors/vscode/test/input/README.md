@@ -227,5 +227,20 @@ shortcuts without changing source, caret or visible state. Each state retains
 the whole line/icon set, public visibleRanges, source/focus/caret and PNG/ARIA.
 This lane keeps four 120-second windows and a 480-second aggregate limit.
 `npm --prefix editors/vscode run test:input -- --proof ux12-keyboard-fold`
-provides a focused proof; full acceptance requires all 56 registered proofs.
+provides a focused proof; full acceptance uses all registered proofs.
 See the [keyboard review](../../../../tests/lsp_matrix/reviews/input-keyboard-fold.md).
+
+UX12 selection expansion/shrinking covers all 105 authored cases and 480 positions
+in four forms. Forty normal private windows keep each original helper family.
+Physical Go to Line offset-mode keys position each caret, then shortcuts walk every
+public ancestor and return through every shrink state. Actual source/focus/caret,
+native textbox selected text and painted rows are checked at every step; PNG/ARIA
+captures retain each query's first, outermost and restored selections. New-lane
+limits are 480 seconds per window and 19,200 seconds aggregate; earlier budgets
+are unchanged. Full trace/observations are journaled and flushed after documents.
+`npm --prefix editors/vscode run test:input -- --proof ux12-selection-expand-shrink`
+runs the whole focused proof. Full acceptance requires all 57 registered proofs.
+For diagnostic work only, a positive `VELA_NATIVE_SELECTION_DIAGNOSTIC_DOCUMENTS`
+up to 420 deliberately throws after that many documents and yields failed partial
+evidence; it cannot supply acceptance. Unset it for every acceptance run.
+See the [selection review](../../../../tests/lsp_matrix/reviews/input-selection.md).

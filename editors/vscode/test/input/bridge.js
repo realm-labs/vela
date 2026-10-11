@@ -115,6 +115,14 @@ async function run() {
             })) };
           break;
         }
+        case "selection-observe": {
+          const editor=vscode.window.activeTextEditor;
+          if(!editor)throw Error("selection observation requires an active editor");
+          value={uri:fileUri(editor.document.uri.fsPath),text:editor.document.getText(),dirty:editor.document.isDirty,
+            selections:editor.selections.map(s=>({anchor:{line:s.anchor.line,character:s.anchor.character},active:{line:s.active.line,character:s.active.character}})),
+            selectedTexts:editor.selections.map(s=>editor.document.getText(s))};
+          break;
+        }
         case "diagnostics": {
           const uri = vscode.Uri.joinPath(
             vscode.workspace.workspaceFolders[0].uri,

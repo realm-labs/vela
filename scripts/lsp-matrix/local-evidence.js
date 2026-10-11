@@ -127,6 +127,15 @@ function validateBundle(bundle, expected, contracts, root) {
   );
   if (!Array.isArray(trace) || trace.some((item) => item.kind === "failure"))
     throw new Error("invalid or failed action trace");
+  const assertions = new Map();
+  for (const item of trace) {
+    if (item.kind !== "assertion") continue;
+    let owner = assertions.get(item.proof);
+    if (!owner) assertions.set(item.proof, (owner = new Map()));
+    let rows = owner.get(item.id);
+    if (!rows) owner.set(item.id, (rows = []));
+    rows.push(item);
+  }
   for (const proof of bundle.proofs) {
     const contract = contracts.find((item) => item.id === proof.id);
     if (
@@ -188,12 +197,7 @@ function validateBundle(bundle, expected, contracts, root) {
         required.expected,
         "local observation differs from independent contract",
       );
-      const observed = trace.filter(
-        (item) =>
-          item.kind === "assertion" &&
-          item.proof === proof.id &&
-          item.id === check.id,
-      );
+      const observed = assertions.get(proof.id)?.get(check.id) ?? [];
       if (observed.length !== 1)
         throw new Error("assertion trace is missing or duplicated");
       assert.deepEqual(

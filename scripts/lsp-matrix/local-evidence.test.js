@@ -265,3 +265,14 @@ test("local proof rejects command receipts relabeled as physical keyboard input"
     bundle.artifacts = bundle.artifacts.map((item) => artifact(root, item.path));
     assert.throws(() => validateBundle(bundle, expected, contracts, root), /cannot be interchanged/);
   }));
+
+test("indexed assertions retain exact proof ownership and detect duplicates after rehashing", () => {
+  for (const mutation of ["owner", "duplicate"]) setup(({root,bundle,contracts,expected}) => {
+    const file=path.join(root,"trace.json"),trace=JSON.parse(fs.readFileSync(file)),index=trace.findIndex(r=>r.kind==="assertion");
+    assert(index>=0);
+    if(mutation==="owner")trace[index].proof="unrelated-owner";
+    else trace.push(structuredClone(trace[index]));
+    fs.writeFileSync(file,JSON.stringify(trace));bundle.artifacts=bundle.artifacts.map(item=>artifact(root,item.path));
+    assert.throws(()=>validateBundle(bundle,expected,contracts,root),/assertion trace is missing or duplicated/);
+  });
+});

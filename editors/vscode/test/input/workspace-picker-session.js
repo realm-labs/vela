@@ -35,7 +35,9 @@ async function pickerWindow({root,profile,executable,extensions,installedServer,
   child.on("error",e=>{childError=e;});const exited=new Promise(resolve=>child.once("exit",(code,signal)=>{exit={code,signal};resolve(exit);}));
   child.once("close",()=>{closed=true;});
   const alive=()=>{if(childError)throw childError;if(exit)throw Error("picker workbench exited "+JSON.stringify(exit));};
-  const timer=setTimeout(()=>child.kill("SIGTERM"),120000);
+  const windowBudgetMs=c.windowBudgetMs??120000;
+  assert([120000,480000].includes(windowBudgetMs),"registered finite private-window budget");
+  const timer=setTimeout(()=>child.kill("SIGTERM"),windowBudgetMs);
   try{
     await until("picker debug endpoint",()=>{alive();return cdp;},30000);
     browser=await chromium.connectOverCDP(cdp,{timeout:15000});

@@ -86,6 +86,7 @@ function localContracts(requirements, fixture, platform = "darwin") {
     ...require("./workspace-picker-contracts").workspacePickerContracts(requirements, platform),
     ...require("./gutter-fold-contracts").gutterFoldContracts(requirements, platform),
     ...require("./keyboard-fold-contracts").keyboardFoldContracts(requirements, platform),
+    ...require("./selection-input-contracts").selectionInputContracts(requirements, platform),
   ];
   if (platform === "win32") {
     const keys = { "Meta+t": "Control+t", "Meta+Shift+o": "Control+Shift+o", "Meta+p": "Control+p", "Meta+Shift+P": "Control+Shift+P", "Meta+Shift+M": "Control+Shift+M", "Meta+1": "Control+1", "Meta+.": "Control+.", "Meta+,": "Control+,", "Meta+Home": "Control+Home", "Control+-": "Alt+ArrowLeft", "Meta+z": "Control+z", "Meta+a": "Control+a", "Meta+Shift+z": "Control+y", Meta: "Control" };

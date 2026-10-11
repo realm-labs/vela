@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "input-selection",
+  "forms": ["lf-original", "lf-shifted", "crlf-original", "crlf-shifted"],
+  "oracle": {
+    "windowBudgetMs": 480000,
+    "aggregateBudgetMs": 19200000,
+    "maxChainDepth": 64,
+    "keys": {
+      "win32": { "home": "Control+Home", "end": "Control+End", "goto": "Control+g", "selectAll": "Control+a", "expand": "Alt+Shift+ArrowRight", "shrink": "Alt+Shift+ArrowLeft" },
+      "darwin": { "home": "Meta+Home", "end": "Meta+End", "goto": "Control+g", "selectAll": "Meta+a", "expand": "Control+Meta+Shift+ArrowRight", "shrink": "Control+Meta+Shift+ArrowLeft" }
+    }
+  }
+}

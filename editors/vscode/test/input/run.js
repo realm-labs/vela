@@ -56,20 +56,8 @@ async function run() {
   const root = fs.mkdtempSync(path.join(resultsDir, "input-"));
   console.log(`Input artifacts: ${root}`);
   buildNativeMenu(root, profile.platform);
-  const trace = [];
-  const record = (kind, id, details) => {
-    trace.push({
-      kind,
-      id,
-      proof: fixture.id,
-      at: new Date().toISOString(),
-      ...details,
-    });
-    fs.writeFileSync(
-      path.join(root, "trace.json"),
-      JSON.stringify(trace, null, 2),
-    );
-  };
+  const recorder = require("./trace-recorder").traceRecorder(root, fixture.id);
+  const { trace, record } = recorder;
   const workspace = path.join(root, "中文 % workspace");
   new FixtureWorkspace(fixture).materialize(workspace);
   const workspaceSchema = require("../../../../tests/lsp_matrix/fixtures/input-workspace-schema.json");
@@ -591,6 +579,17 @@ async function run() {
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
     });
+    const selectionContracts = requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts;
+    if (selectionContracts.some(item => item.id === "ux12-selection-expand-shrink")) {
+      recorder.startJournal("ux12-selection-expand-shrink-trace.jsonl");
+      try {
+        await require("./selection").runSelection({
+          root, profile, executable, extensions, installedServer, record, until,
+          onProof: proof => proofs.push(proof), onDocument: recorder.flush,
+          contracts: selectionContracts,
+        });
+      } finally { recorder.endJournal(); }
+    }
     await require("./workspace-trust-session").runWorkspaceTrustSession({
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
