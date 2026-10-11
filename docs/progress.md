@@ -143,8 +143,11 @@ Native document-symbol picker now checks all 158 authored LF/CRLF rows through
 physical acceptance, exact caret navigation, immediate parent descriptions and
 kind icons; empty/no-match Enter retains the current source and selection. See
 the [document picker review](../tests/lsp_matrix/reviews/input-document-picker.md).
-Native workspace picker, combined no-match queries, folding and selection
-input/render interactions remain separate pending requirements.
+Native workspace picker and combined no-match proof cover the complete source/
+schema lists in four independent LF/CRLF normal windows, physical source-target
+navigation and fresh empty-query responses; see the
+[workspace picker review](../tests/lsp_matrix/reviews/input-workspace-picker.md).
+Native folding and selection input/render interactions remain pending.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

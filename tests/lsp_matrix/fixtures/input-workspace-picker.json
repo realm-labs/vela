@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "id": "input-workspace-picker",
+  "forms": ["lf", "crlf"],
+  "sources": [
+    {"fixture":"workspace-symbol-declarations.json","family":"declarations","document":"scripts/api.vela","positive":"choose"},
+    {"fixture":"workspace-symbol-ownership.json","family":"ownership","document":"scripts/source.vela","positive":"make"}
+  ],
+  "oracle": {
+    "workspaceEmpty": "No matching workspace symbols",
+    "documentEmpty": "No matching editor symbols",
+    "reset": "ux11_probe_absent_947",
+    "documentAbsent": "ux11_document_absent_947",
+    "descriptionSeparator": " • ",
+    "sourceTargetIndices": {"nested-api-file":1,"source-widget":1},
+    "icons": {
+      "Class":"symbol-class","Constant":"symbol-constant","Enum":"symbol-enum",
+      "EnumMember":"symbol-enum-member","Field":"symbol-field","File":"symbol-file",
+      "Function":"symbol-function","Interface":"symbol-interface","Method":"symbol-method",
+      "Module":"symbol-module","Object":"symbol-object","Struct":"symbol-struct","Variable":"symbol-variable"
+    }
+  }
+}

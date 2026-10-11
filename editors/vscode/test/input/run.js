@@ -579,6 +579,10 @@ async function run() {
     assert.equal(completed.code, 0);
     assert.equal(completed.signal, null);
     record("assertion", "clean-exit", { observed: completed });
+    await require("./workspace-picker").runWorkspacePicker({
+      root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
+      contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+    });
     await require("./workspace-trust-session").runWorkspaceTrustSession({
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,

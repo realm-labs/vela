@@ -42,7 +42,19 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
   for (let i = 0; i < mac.length; i++) {
     assert.deepEqual(windows[i].requirements, mac[i].requirements);
     const semantic = (c) => !["native-submenu", "visible-candidate"].includes(c.id);
-    const semanticChecks = (checks) => checks.filter(semantic).map(c => {
+    const semanticChecks = (checks, platform) => checks.filter(semantic).map(c => {
+      if (["ux11-workspace-picker", "ux11-no-match"].includes(mac[i].id)) {
+        const normalized = structuredClone(c);
+        if (c.id.endsWith("-profile")) {
+          assert.equal(c.expected.platform, platform);
+          normalized.expected.platform = "<registered platform>";
+        }
+        if (c.level === "Render" && c.expected.description && c.expected.description !== "." && !c.expected.description.endsWith(" • .")) {
+          assert.match(c.expected.description, /^(?:.* • )?scripts[\\/].*\.vela$/);
+          normalized.expected.description = c.expected.description.replaceAll("\\", "/");
+        }
+        return normalized;
+      }
       if (c.id === "confirmation" || c.id.endsWith("-confirmation")) return { ...c, expected: { ...c.expected, button: "<platform deletion label>" } };
       if (c.expected.file !== "ux17-matrix.code-workspace") return c;
       const normalized = structuredClone(c);
@@ -67,7 +79,7 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
       }
       return normalized;
     });
-    assert.deepEqual(semanticChecks(windows[i].checks), semanticChecks(mac[i].checks));
+    assert.deepEqual(semanticChecks(windows[i].checks, "win32"), semanticChecks(mac[i].checks, "darwin"));
     assert.equal(windows[i].actions.length, mac[i].actions.length);
   }
   const actions = windows.flatMap((c) => c.actions);

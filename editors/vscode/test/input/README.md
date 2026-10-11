@@ -196,3 +196,15 @@ A focused run is
 `npm --prefix editors/vscode run test:input -- --proof ux21-untrusted-open --proof ux21-grant-trust`.
 Full acceptance now requires all 50 proofs on one frozen source/profile/server.
 See the [trust review](../../../../tests/lsp_matrix/reviews/workspace-trust-workbench.md).
+
+UX11 workspace picker/no-match uses four further sequential normal windows with
+private user/shared data, complete original declaration/ownership corpora and
+LF/CRLF. Explicit owned roots/schema preserve module identities and unopened
+source targets. The same installed VSIX/server and registered presentation
+profile apply to every window; metadata-only rows do not claim source jumps.
+The new lane has four 120-second windows and 480-second aggregate proof budgets,
+planned before capture. The ordinary 810-second and trust 210-second lanes retain
+their budgets. A focused run requires both owned proofs:
+`npm --prefix editors/vscode run test:input -- --proof ux11-workspace-picker --proof ux11-no-match`.
+Full acceptance requires all 54 proofs on one unchanged source/profile/server.
+See the [workspace picker review](../../../../tests/lsp_matrix/reviews/input-workspace-picker.md).
