@@ -39,7 +39,7 @@ test("workspace picker owns every row, source target, cold file and complete emp
 });
 test("workspace picker binds per-platform physical keys and path presentation without changing prior contracts",()=>{
   for(const [platform,modifier]of [["win32","Control"],["darwin","Meta"]]){
-    const cs=localContracts(requirements,require("../../tests/lsp_matrix/fixtures/input-driver.json"),platform);assert.equal(cs.length,55);
+    const cs=localContracts(requirements,require("../../tests/lsp_matrix/fixtures/input-driver.json"),platform);assert.equal(cs.length,56);
     const p=cs.find(c=>c.id==="ux11-workspace-picker"),n=cs.find(c=>c.id==="ux11-no-match");
     assert(p.actions.filter(a=>a.id.endsWith("-open")||a.id.endsWith("-reopen")).every(a=>a.key===modifier+"+t"));
     assert(n.actions.filter(a=>a.id.endsWith("-document-open")).every(a=>a.key===modifier+"+Shift+o"));

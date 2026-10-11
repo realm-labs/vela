@@ -150,8 +150,10 @@ navigation and fresh empty-query responses; see the
 Native gutter folding covers the full authored LF/CRLF and shifted corpus with
 physical collapse/expand and exact visible line/range observations; see the
 [gutter review](../tests/lsp_matrix/reviews/input-gutter-fold.md).
-Keyboard folding, selection and combined malformed-neighbor interactions remain
-pending.
+Native keyboard folding covers each eligible header through physical caret
+positioning and fold/unfold shortcuts, plus repeated unfold and empty-view
+no-ops; see the [keyboard review](../tests/lsp_matrix/reviews/input-keyboard-fold.md).
+Selection and combined malformed-neighbor interactions remain pending.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or

@@ -587,6 +587,10 @@ async function run() {
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
     });
+    await require("./keyboard-fold").runKeyboardFold({
+      root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
+      contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+    });
     await require("./workspace-trust-session").runWorkspaceTrustSession({
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,

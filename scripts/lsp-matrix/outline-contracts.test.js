@@ -53,7 +53,7 @@ test("Outline uses each platform's physical palette binding and leaves prior rou
   const fixture = require("../../tests/lsp_matrix/fixtures/input-driver.json");
   for (const [platform, modifier] of [["win32", "Control"], ["darwin", "Meta"]]) {
     const contracts = localContracts(requirements, fixture, platform), c = contracts.find(c => c.id === "ux11-outline");
-    assert.equal(contracts.length, 55);
+    assert.equal(contracts.length, 56);
     assert.equal(c.id, "ux11-outline");
     assert(c.actions.filter(a => a.id.endsWith("-query")).every(a => a.text === "Explorer: Focus on Outline View"));
     assert(c.actions.filter(a => a.id.endsWith("-palette")).every(a => a.key === modifier + "+Shift+P"));

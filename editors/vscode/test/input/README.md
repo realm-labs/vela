@@ -206,7 +206,7 @@ The new lane has four 120-second windows and 480-second aggregate proof budgets,
 planned before capture. The ordinary 810-second and trust 210-second lanes retain
 their budgets. A focused run requires both owned proofs:
 `npm --prefix editors/vscode run test:input -- --proof ux11-workspace-picker --proof ux11-no-match`.
-Full acceptance requires all 54 proofs on one unchanged source/profile/server.
+Full acceptance uses all registered proofs on one unchanged source/profile/server.
 See the [workspace picker review](../../../../tests/lsp_matrix/reviews/input-workspace-picker.md).
 
 UX12 gutter folding adds four sequential normal windows using the complete
@@ -216,5 +216,16 @@ numbers and read-only visibleRanges; source and disk bytes remain unchanged.
 This lane has four 120-second windows and a 480-second aggregate budget.
 Earlier lane budgets and all prior contracts remain unchanged. A focused run is
 `npm --prefix editors/vscode run test:input -- --proof ux12-gutter-fold`.
-Full acceptance requires all 55 proofs on one frozen source/profile/server.
+Full acceptance uses all registered proofs on one frozen source/profile/server.
 See the [gutter review](../../../../tests/lsp_matrix/reviews/input-gutter-fold.md).
+
+UX12 keyboard folding adds four sequential normal windows with the same complete
+forty-view folding corpus. Physical document-start/Down keys position the exact
+caret before platform fold/unfold shortcuts; every eligible region receives
+collapse, expand and repeated-expand checks. Twelve empty views receive both
+shortcuts without changing source, caret or visible state. Each state retains
+the whole line/icon set, public visibleRanges, source/focus/caret and PNG/ARIA.
+This lane keeps four 120-second windows and a 480-second aggregate limit.
+`npm --prefix editors/vscode run test:input -- --proof ux12-keyboard-fold`
+provides a focused proof; full acceptance requires all 56 registered proofs.
+See the [keyboard review](../../../../tests/lsp_matrix/reviews/input-keyboard-fold.md).

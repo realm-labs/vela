@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "id": "input-keyboard-fold",
+  "forms": ["lf-original", "lf-shifted", "crlf-original", "crlf-shifted"],
+  "oracle": { "windowBudgetMs": 120000, "aggregateBudgetMs": 480000,
+    "keys": { "win32": { "home": "Control+Home", "collapse": "Control+Shift+[", "expand": "Control+Shift+]" },
+      "darwin": { "home": "Meta+Home", "collapse": "Alt+Meta+[", "expand": "Alt+Meta+]" } }
+  }
+}

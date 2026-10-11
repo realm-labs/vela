@@ -35,7 +35,7 @@ test("document picker requires every physical selection and presentation, includ
 test("document picker registers both native bindings and does not own workspace/no-match cells", () => {
   for(const [platform,modifier]of [["win32","Control"],["darwin","Meta"]]){
     const cs=localContracts(requirements,require("../../tests/lsp_matrix/fixtures/input-driver.json"),platform),c=cs.find(c=>c.id==="ux11-document-picker");
-    assert.equal(cs.length,55);assert.equal(c.id,"ux11-document-picker");
+    assert.equal(cs.length,56);assert.equal(c.id,"ux11-document-picker");
     assert(c.actions.filter(a=>a.id.endsWith("-open")||a.id.endsWith("-reopen")).every(a=>a.key===modifier+"+Shift+o"));
     assert(c.requirements.every(r=>r.id.includes("/document-picker/")));
     assert(cs.some(c=>c.id==="ux11-outline"));
