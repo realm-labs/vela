@@ -208,3 +208,13 @@ their budgets. A focused run requires both owned proofs:
 `npm --prefix editors/vscode run test:input -- --proof ux11-workspace-picker --proof ux11-no-match`.
 Full acceptance requires all 54 proofs on one unchanged source/profile/server.
 See the [workspace picker review](../../../../tests/lsp_matrix/reviews/input-workspace-picker.md).
+
+UX12 gutter folding adds four sequential normal windows using the complete
+folding corpus in LF/CRLF and shifted forms. Forty source views verify all
+eligible gutter controls with physical collapse/expand, exact painted line
+numbers and read-only visibleRanges; source and disk bytes remain unchanged.
+This lane has four 120-second windows and a 480-second aggregate budget.
+Earlier lane budgets and all prior contracts remain unchanged. A focused run is
+`npm --prefix editors/vscode run test:input -- --proof ux12-gutter-fold`.
+Full acceptance requires all 55 proofs on one frozen source/profile/server.
+See the [gutter review](../../../../tests/lsp_matrix/reviews/input-gutter-fold.md).

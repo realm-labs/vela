@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "id": "input-gutter-fold",
+  "forms": ["lf-original", "lf-shifted", "crlf-original", "crlf-shifted"],
+  "oracle": {"expandedIcon":"folding-expanded","collapsedIcon":"folding-collapsed","windowBudgetMs":120000,"aggregateBudgetMs":480000}
+}

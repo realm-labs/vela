@@ -105,6 +105,16 @@ async function run() {
         case "inspect":
           value = await inspect();
           break;
+        case "gutter-observe": {
+          const editor = vscode.window.activeTextEditor;
+          if (!editor) throw Error("gutter observation requires an active editor");
+          value = { uri: fileUri(editor.document.uri.fsPath), text: editor.document.getText(), dirty: editor.document.isDirty,
+            visibleRanges: editor.visibleRanges.map(range => ({
+              start: { line: range.start.line, character: range.start.character },
+              end: { line: range.end.line, character: range.end.character },
+            })) };
+          break;
+        }
         case "diagnostics": {
           const uri = vscode.Uri.joinPath(
             vscode.workspace.workspaceFolders[0].uri,

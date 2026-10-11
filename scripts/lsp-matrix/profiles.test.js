@@ -43,7 +43,7 @@ test("Windows input routes keep exact semantic oracles and platform-specific rea
     assert.deepEqual(windows[i].requirements, mac[i].requirements);
     const semantic = (c) => !["native-submenu", "visible-candidate"].includes(c.id);
     const semanticChecks = (checks, platform) => checks.filter(semantic).map(c => {
-      if (["ux11-workspace-picker", "ux11-no-match"].includes(mac[i].id)) {
+      if (["ux11-workspace-picker", "ux11-no-match", "ux12-gutter-fold"].includes(mac[i].id)) {
         const normalized = structuredClone(c);
         if (c.id.endsWith("-profile")) {
           assert.equal(c.expected.platform, platform);

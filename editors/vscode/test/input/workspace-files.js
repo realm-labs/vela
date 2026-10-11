@@ -145,6 +145,9 @@ async function runWorkspaceFiles({ page, bridge, record, root, workspace, contra
       if (a.id === "rename-accept") {
         await until("completed native file rename", () => disk(o.dependency) === null && disk(o.renamed) === m.dependency.text);
         await explorer().getByRole("textbox").waitFor({ state: "hidden" });
+        await until("renamed editor URI activated", async () =>
+          (await bridge("inspect")).active?.uri === fileUri(path.join(workspace, o.renamed)));
+        await settled();
       }
       if (a.id.endsWith("-create")) {
         await until("created file open", async () => (await bridge("inspect")).active?.uri === fileUri(path.join(workspace, o.dependency)));

@@ -502,9 +502,9 @@ async function run() {
     // owned route; absent proofs are never treated as passed or N/A.
     const requestedProofs = [];
     for (let index = 2; index < process.argv.length; index += 2) {
-      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux11-ux17-ux18-or-ux21-proof-id>");
+      if (process.argv[index] !== "--proof" || !process.argv[index + 1]) throw Error("use --proof <registered-ux01-ux03-to-ux12-ux17-ux18-or-ux21-proof-id>");
       const id = process.argv[index + 1];
-      if (!/^ux(?:0[13456789]|10|11|17|18|21)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
+      if (!/^ux(?:0[13456789]|10|11|12|17|18|21)-/.test(id) || !contracts.some((item) => item.id === id) || requestedProofs.includes(id))
         throw Error(`unknown or duplicate proof: ${id}`);
       requestedProofs.push(id);
     }
@@ -580,6 +580,10 @@ async function run() {
     assert.equal(completed.signal, null);
     record("assertion", "clean-exit", { observed: completed });
     await require("./workspace-picker").runWorkspacePicker({
+      root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
+      contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+    });
+    await require("./gutter-fold").runGutterFold({
       root, profile, executable, extensions, installedServer, record, until, onProof: proof => proofs.push(proof),
       contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
     });

@@ -147,7 +147,11 @@ Native workspace picker and combined no-match proof cover the complete source/
 schema lists in four independent LF/CRLF normal windows, physical source-target
 navigation and fresh empty-query responses; see the
 [workspace picker review](../tests/lsp_matrix/reviews/input-workspace-picker.md).
-Native folding and selection input/render interactions remain pending.
+Native gutter folding covers the full authored LF/CRLF and shifted corpus with
+physical collapse/expand and exact visible line/range observations; see the
+[gutter review](../tests/lsp_matrix/reviews/input-gutter-fold.md).
+Keyboard folding, selection and combined malformed-neighbor interactions remain
+pending.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
