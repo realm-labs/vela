@@ -138,7 +138,10 @@ async function runDiagnostics({ page, bridge, record, root, workspace, contracts
     if (contract.id !== "ux07-valid-location") {
       await action("select-problem");
       await state("selected-problem", Object.keys(contract.checks.find((item) => item.id === "selected-problem").expected));
-      const marked = await decorations(model.target.range, model.typed.text);
+      const marked = await until("target diagnostic decoration painted", async () => {
+        const value = await decorations(model.target.range, model.typed.text);
+        return value.aligned && value.target.rect.width > 0 && value;
+      });
       fs.writeFileSync(path.join(root, `${contract.id}-observations.json`), JSON.stringify({ rows: rendered, marked }, null, 2));
       check("target-decoration", { marker: "target", text: marked.target.text,
         aligned: marked.aligned, visible: marked.aligned && marked.target.rect.width > 0 });

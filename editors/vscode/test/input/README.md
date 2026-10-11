@@ -24,9 +24,10 @@ The observer only reads folder/settings state and executes the separate definiti
 commands; it does not update folders or accepted settings. Full workspace JSON
 preserves each pinned profile's preferences, with application dialog settings
 remaining in the private user profile. The roots proof has a 120-second budget.
-Before expanded captures, the runner and observer budgets are set to 570 seconds:
+Before expanded captures, the runner and observer budgets are set to 810 seconds:
 180 for existing routes, 120 for roots, 120 for invalid configuration/schema,
-30 for transitions, and 120 for the complete Outline trees in LF/CRLF.
+30 for transitions, 120 for the complete Outline trees in LF/CRLF, and 240 for
+the complete document-symbol picker navigation in both line endings.
 These are finite planned budgets, not measured relaxations.
 Both profiles now also pin `files.simpleDialog.enable: true`. The inspected
 pinned editor uses this setting for file/folder pickers; `window.dialogStyle`
@@ -189,7 +190,7 @@ visible disabled policy and Restricted Mode, and grants trust through the actual
 trust editor. The owned configured binary must stay unstarted until trust;
 afterward the exact server, dirty caller, native F12 and diagnostics recover.
 The read-only trust observer never changes trust/configuration through its API.
-The trusted 450-second lane and new 210-second lane keep separate finite budgets;
+The ordinary 810-second lane and separate 210-second trust lane keep finite budgets;
 the latter covers two 90-second proofs plus setup. No native windows run together.
 A focused run is
 `npm --prefix editors/vscode run test:input -- --proof ux21-untrusted-open --proof ux21-grant-trust`.

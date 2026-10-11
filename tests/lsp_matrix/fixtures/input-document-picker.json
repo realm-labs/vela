@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "id": "input-document-picker",
+  "source": "input-outline.json",
+  "oracle": {
+    "emptyText": "No editor symbols",
+    "noMatchText": "No matching editor symbols",
+    "noMatchQuery": "vela_picker_no_such_symbol_9f74",
+    "prefix": "@",
+    "separator": "symbols ({count})",
+    "selection": "selectionRange.start",
+    "description": "immediate parent name"
+  }
+}

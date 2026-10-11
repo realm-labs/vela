@@ -270,7 +270,7 @@ async function run() {
   const timer = setTimeout(() => {
     expired = true;
     finish();
-  }, 570000);
+  }, 810000);
   try {
     await finished;
     if (expired)

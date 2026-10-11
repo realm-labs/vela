@@ -176,6 +176,13 @@ async function run() {
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
   }
+  const documentPicker = require("../../../../scripts/lsp-matrix/document-picker-contracts").documentPickerModel();
+  for (const [file, text] of Object.entries(documentPicker.files)) {
+    const target = path.join(workspace, file);
+    assert.ok(!fs.existsSync(target), "document picker fixture must not overwrite driver files");
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, text);
+  }
   const packaged = spawnSync(
     process.execPath,
     [path.join(extensionRoot, "scripts/package-vsix.js"), "--out", vsix],
@@ -296,7 +303,7 @@ async function run() {
   };
   // Existing routes 180s + roots 120s + invalid configuration 120s + setup 30s.
   // Pin this finite additive budget before capturing the expanded suite.
-  const timer = setTimeout(() => child.kill("SIGTERM"), 570000);
+  const timer = setTimeout(() => child.kill("SIGTERM"), 810000);
   try {
     await until(
       "debug endpoint",
@@ -538,6 +545,10 @@ async function run() {
       until, onProof: (proof) => proofs.push(proof),
     });
     await require("./outline").runOutline({
+      page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
+      until, onProof: proof => proofs.push(proof),
+    });
+    await require("./document-picker").runDocumentPicker({
       page, bridge, record, root, workspace, contracts: requestedProofs.length ? contracts.filter(item => requestedProofs.includes(item.id)) : contracts,
       until, onProof: proof => proofs.push(proof),
     });

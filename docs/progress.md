@@ -139,8 +139,12 @@ Native Outline now checks complete authored declaration/ownership trees in
 eighteen LF/CRLF views, with literal names, details, icons, parent levels and
 physical caret/full-declaration navigation. All buffers and physical fixture
 files remain unchanged; see the [Outline review](../tests/lsp_matrix/reviews/input-outline.md).
-Native symbol pickers/no-match queries, folding and selection input/render
-interactions remain separate pending requirements.
+Native document-symbol picker now checks all 158 authored LF/CRLF rows through
+physical acceptance, exact caret navigation, immediate parent descriptions and
+kind icons; empty/no-match Enter retains the current source and selection. See
+the [document picker review](../tests/lsp_matrix/reviews/input-document-picker.md).
+Native workspace picker, combined no-match queries, folding and selection
+input/render interactions remain separate pending requirements.
 Open-document coverage now checks complete source/version ownership, marked
 diagnostic facts, recovery, immutable snapshots and stale worker publication.
 Ordinary notifications cannot mutate workspace state before initialization or
