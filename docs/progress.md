@@ -14,9 +14,15 @@ The accepted next product direction is recorded in the
 [runtime simplification plan](runtime-simplification-plan.md): synchronous
 interpreter execution, ordinary script hot reload, and serialized-value or
 opaque-object Rust interop. Service/Provider execution, script async/tasks,
-borrowed Rust boundaries, and JIT are removal scope. This is a documentation
-checkpoint only; implementation removal has not started. The next checkpoint
-is A's object-boundary contract and minimal replacement vertical slice.
+borrowed Rust boundaries, and JIT are removal scope. The current pass is
+removal-only: no new opaque-object system, value-conversion APIs, or replacement
+features. Missing interop capabilities and object-boundary design are deferred
+to a separate follow-up. Checkpoint A is complete: the active contracts and
+agent instructions are consolidated, deletion dependencies and existing tests
+are named in the architecture, and 27 focused retained-baseline tests pass.
+This does not establish runtime removal. The active checkpoint is B:
+Service/Provider removal across declarations, compilation, dispatch, artifacts,
+tooling, and callers.
 The baseline and milestone records below describe existing implementation,
 including capabilities scheduled for removal, rather than the new target.
 
@@ -710,11 +716,12 @@ in the
 ### Runtime Simplification
 
 The [removal checklist](runtime-simplification-plan.md#removal-checklist) is
-recorded and all implementation items remain open. Checkpoint A must resolve
-opaque ownership/destruction, handle identity and affinity, native re-entry,
-serialization limits, and reload behavior before replacing the borrowed-host
-boundary. Existing LSP and container gaps below remain baseline observations;
-affected evidence must be updated as features are removed.
+recorded: R01/checkpoint A is complete, R02 is deferred, and B-E/R03-R16 remain
+open. A establishes the removal contract and existing retained-language
+baseline, not a replacement boundary. Opaque ownership, storage, re-entry, serialization,
+and reload design questions belong to a separate follow-up. Existing LSP and
+container gaps below remain baseline observations; affected evidence must be
+updated as features are removed.
 
 ### Parameterized Container Contracts
 
@@ -1186,9 +1193,10 @@ retaining exact observed-setting checks. B16 remains deferred.
 ## Validation
 
 Every implementation commit runs the focused test for its changed behavior.
-A phase acceptance checkpoint runs the repository and later-phase gates from
-[the hard-switch plan](rust-vela-service-hard-switch-plan.md#5-validation-commands).
-Use the relevant subset of [validation.md](validation.md) during implementation.
+A removal acceptance checkpoint runs the affected repository gates from
+[validation.md](validation.md), the validation command source of truth. Old
+Service hard-switch gates are historical evidence, not acceptance requirements.
+Use focused subsets during implementation.
 The phase-closing commit or acceptance report records the commands and final
 result; a routine feature commit does not claim phase acceptance from focused
 tests alone.
@@ -1203,16 +1211,17 @@ provides it.
 
 ## Next Up
 
-1. Start checkpoint A of the simplification plan: settle the opaque-object
-   boundary, consolidate active contracts/agent instructions, and prove a
-   synchronous serialized-value/object-method vertical slice.
-2. Follow checkpoints B-E for Service/Provider, task/async, borrowed-host, and
-   repository-wide cleanup. Do not mark removals complete from this plan alone.
+1. Execute checkpoint B: remove Service/Provider declarations, compiler targets,
+   runtime dispatch, artifact/tooling data, and callers together. Preserve the
+   named retained tests and add removed-boundary rejection proof.
+2. Follow checkpoints C-E for task/async, borrowed-host, and repository-wide
+   cleanup. Do not implement a replacement opaque-object system or new
+   conversion APIs, or mark removals complete from documentation alone.
 3. Preserve existing LSP evidence and its execution checkpoint; revise affected
    language/schema contracts and capture fresh evidence during removal.
 4. Retain independent LSP incrementality and script-container acceptance gaps
-   for the reduced runtime; reassess old borrowed-host optimizations after the
-   replacement boundary is implemented.
+   for the reduced runtime. Remove obsolete borrowed-host optimization targets;
+   replacement interop design and implementation remain a separate follow-up.
 
 ## Update Rules
 

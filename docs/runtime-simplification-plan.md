@@ -1,6 +1,7 @@
 # Runtime Simplification And Feature Removal Plan
 
-Status: scope recorded; implementation has not started.
+Status: checkpoint A complete (contracts and retained baseline); B-E runtime
+removal remains open. R02 replacement interop is deferred.
 
 ## Target And Authority
 
@@ -17,6 +18,15 @@ This document does not claim that any runtime feature has already been removed.
 
 Keep repository artifacts domain-neutral. The purpose of this plan is to reduce
 the language and embedding contract, without reproducing another host ABI.
+
+This pass performs removals and the cleanup needed to keep retained behavior
+runnable. It does not implement new features, a replacement opaque-object
+system, new value-conversion APIs, or a new re-entry model. The value/object
+boundary above constrains the eventual embedding surface; implementing missing
+parts is deferred to a separate follow-up, not a prerequisite or acceptance
+condition for this removal pass. Existing interop may remain only where it does
+not depend on removed capabilities. Otherwise remove the affected entrypoints
+and callers rather than preserve them through compatibility wrappers.
 
 ## Confirmed Scope
 
@@ -42,21 +52,27 @@ Keep:
 - Dynamic typing, optional type contracts, functions, closures, structs,
   enums, traits, pattern matching, collections, iterators, and Option/Result.
 - Ordinary modules, visibility, manifests, workspaces, and path dependencies.
-- Synchronous native functions and opaque-object constructors/methods.
+- Existing synchronous native functions and value conversion that do not depend
+  on removed capabilities. Existing opaque-object constructors/methods may
+  remain only if they meet the reduced boundary without a replacement system.
 - Ordinary script hot reload, compatible script-state preservation, stable
   identities, ABI checks, and exact old-generation ownership for active calls
   and retained closures.
 - Script GC, finite execution/memory/call-depth budgets, permissions,
   diagnostics, LSP, browser execution, and justified interpreter optimizations.
-- Controlled script reflection and registered opaque-object metadata/calls.
-  Reflection must not recover host layout, borrowed children, or path access.
+- Controlled script reflection and metadata/calls for any retained opaque
+  surface. Reflection must not recover host layout, borrowed children, or path
+  access. This pass does not add an opaque reflection schema.
 
 Rust hosts may use their own executors and call Vela synchronously after work
 completes. LSP worker threads, protocol cancellation, and editor request
 scheduling are outside the removed script execution surface. Debugger scope,
 ordinary script traits, and package loading are not removed by this decision.
 
-## Rust Boundary
+## Rust Boundary And Deferred Follow-Up
+
+These constraints apply to retained interop and any future replacement. They do
+not require implementing missing boundary features during this removal pass.
 
 | Boundary | Required semantics |
 |---|---|
@@ -64,24 +80,17 @@ ordinary script traits, and package loading are not removed by this decision.
 | Opaque object | Script stores object identity and invokes an explicitly registered synchronous surface. Its lifetime does not depend on a caller-stack borrow. Rust host state remains outside the script GC. |
 | Native implementation | Rust may borrow internally for one invocation. Such a borrow cannot become a script value, borrowed argument binding, retained view, or borrowed return. |
 
-The replacement must reject borrow-shaped wrappers as well as direct reference
-entrypoints. An opaque wrapper around a call-scoped borrowed object does not
-satisfy the new boundary. A handle must not silently serialize the Rust object
+Remove borrow-shaped wrappers as well as direct reference entrypoints. An
+opaque wrapper around a call-scoped borrowed object does not satisfy the new
+boundary. A handle must not silently serialize the Rust object
 or recreate the old transparent field/collection access model.
 
-Recommended first implementation: methods only, explicit getters/setters,
-host-managed object storage, and identity-checked handles. Replace transparent
-host field/index read-modify-write with registered operations. For example:
+A future opaque-object design may use methods-only exposure, explicit
+getters/setters, host-managed storage, and identity-checked handles. No concrete
+storage or registration design is approved here. Do not implement these as
+replacements for deleted paths in this pass.
 
-```vela
-fn handle(player, reward) {
-    let level = player.level();
-    player.set_level(level + 1);
-    player.grant(reward);
-}
-```
-
-Before implementing the replacement, record the concrete rules for:
+A separate follow-up must resolve the following before adding a replacement:
 
 - Object ownership, retention, invalidation, destruction, and Runtime teardown;
   whether handles may be stored in state, containers, and closures.
@@ -94,39 +103,42 @@ Before implementing the replacement, record the concrete rules for:
 - Opaque-object compatibility across script reload and its reflection/tooling
   schema. Do not promise migration or transparent serialization of host state.
 
-These are implementation decisions to resolve in checkpoint A. Methods-only
-exposure and host-managed storage are recommendations, not already implemented
-or independently approved storage designs.
+These are deferred design questions, not checkpoint A work or removal-pass
+acceptance requirements. Existing handle, storage, and method-registration code
+is an audit starting point, not proof that the future boundary is implemented.
 
 ## Removal Checklist
 
-Every item below remains open. Remove a feature's declarations, public exports,
-compiler metadata, runtime dispatch, portable encoding, tooling projection,
-examples, and build registrations together with its implementation.
+R01 is complete at checkpoint A; R02 is deferred. R03-R16 remain open. Remove a
+feature's declarations, public exports, compiler metadata, runtime dispatch,
+portable encoding, tooling projection, examples, and build registrations
+together with its implementation.
 
 | ID | Work | Acceptance |
 |---|---|---|
-| R01 | Replace obsolete product/architecture requirements, agent instructions, long-term goal text, milestone targets, and active plan links. | The synchronous value/object contract is authoritative; historical implementation proof is labeled accurately. |
-| R02 | Implement serialized-value and opaque-object registration/call boundaries. | A runnable source-to-VM example round-trips a value and calls a state-changing opaque method without borrowed injection. |
+| R01 | Replace obsolete product/architecture requirements, agent instructions, long-term goal text, milestone targets, and active plan links. | The removal-only scope and reduced synchronous contract are authoritative; deferred features and historical implementation proof are labeled accurately. |
+| R02 | Deferred: design and implement missing serialized-value and opaque-object boundaries in a separate follow-up. | Not required to close this removal pass; do not add replacement APIs or examples here. |
 | R03 | Delete Service/domain macros, schemas, default composition, Snapshot/Delta, publication, folding, rollback, and Service deployment bundles. | Public APIs and production dispatch have no Service-specific paths. |
 | R04 | Delete static Service namespaces, hidden implementation targets, generated typed thunks, and Service ABI identities. | Old special calls fail explicitly; ordinary functions and methods still work. |
 | R05 | Delete Provider discovery/catalogs, selection, compile requests, handles, and provider-only ABI facts. | Ordinary package/dependency compilation, imports, and reload still work. |
 | R06 | Delete scoped spawn/then, continuations, child Runtime admission/reuse, schedulers, and task observation. | Scripts cannot start background execution; no detached-task artifact data remains. |
 | R07 | Delete script async syntax/semantics, async callable metadata, native registration, Runtime futures, polling/resume machinery, and CLI `--async`. | Old async source and registration fail explicitly; execution is synchronous. |
 | R08 | Delete `with_host_ref`, `with_host_mut`, borrowed root injection, scoped projection, and erased reborrow/slice machinery. | Caller-borrowed data cannot enter through direct APIs, macros, constructors, or wrappers. |
-| R09 | Delete borrowed returns and collection protocols, including reference envelopes, slices, View/MutView, and lazy borrowed host iterators. | Arguments/results use the value/object boundary; scripts retain their own collections and iterators. |
-| R10 | Delete borrow provenance, retained lease trees, parent/child release ordering, `host::release`/`host::try_release`, and suspension checks. | Object lifetime and invocation safety work without script-managed borrow resources. |
-| R11 | Replace transparent HostPath/PathProxy/HostTargetPlan read/write/RMW and adapter plumbing with opaque registered calls. | Host state mutation uses the new object boundary; old compound paths cannot survive via reflection or compatibility aliases. |
+| R09 | Delete borrowed returns and collection protocols, including reference envelopes, slices, View/MutView, and lazy borrowed host iterators. | Remaining arguments/results do not carry caller borrows; scripts retain their own collections and iterators. |
+| R10 | Delete borrow provenance, retained lease trees, parent/child release ordering, `host::release`/`host::try_release`, and suspension checks. | No script-managed borrow resources remain; remove entrypoints that cannot work safely without them. |
+| R11 | Delete transparent HostPath/PathProxy/HostTargetPlan read/write/RMW and their adapter plumbing and callers. | Old compound paths cannot survive via reflection or compatibility aliases; no replacement object calls are required. |
 | R12 | Simplify TypeBinding, registration macros, native signatures, capabilities/effects, reflection, and exported schemas. | Only retained value/object/synchronous facts are required; opaque layout remains hidden. |
-| R13 | Redesign or remove old `extern state` host bindings; simplify reload metadata and cleanup. | Ordinary VM state and old closure generations remain valid; old borrowed extern bindings cannot bypass removal. |
+| R13 | Remove old `extern state` host bindings that depend on deleted capabilities; simplify reload metadata and cleanup without adding a replacement binding model. | Ordinary VM state and old closure generations remain valid; old borrowed extern bindings cannot bypass removal. |
 | R14 | Remove dead HIR/MIR operations, bytecode instructions, verifier branches, IDs, artifact fields, profile/debug tables, and serializers. | Current artifacts round-trip; obsolete executable formats reject before activation when the format changes. |
 | R15 | Remove JIT milestones, restricted-JIT-only interfaces, and backend assumptions. | Verified MIR, budget/root analyses, caches, scalar blocks, and superinstructions needed by the interpreter remain intact. |
 | R16 | Update LSP, VS Code, CLI, WASM, bilingual site docs, examples, tests, fuzz seeds, benchmarks, Cargo targets, and CI. | Retained behavior has current proof; removed features have no advertised or executable entrypoints. |
 
 Do not remove whole shared crates based on their names. In particular,
 `vela_host`, `vela_package`, `vela_hot_reload`, reflection, and TypeBinding need
-responsibility-level review before module/crate deletion. Retain object type,
-identity, permission, and invalidation checks even when borrow checks disappear.
+responsibility-level review before module/crate deletion. For any retained
+object surface, retain type, identity, permission, and invalidation checks even
+when borrow checks disappear. If retaining that surface requires a new object
+system, remove the dependent surface instead.
 
 ## Implementation Entry Points
 
@@ -144,23 +156,27 @@ Paths identify audit starting points, not an exhaustive file deletion list.
 
 ## Runnable Checkpoints
 
-1. **A: Contract and replacement vertical slice.** Resolve the object rules
-   above, rewrite active contracts/agent instructions, and implement a minimal
-   synchronous native/value/object example. Keep the old runtime proof until
-   its replacement has coverage; do not add public compatibility aliases.
+1. **A: Removal contract and retained baseline.** Rewrite active contracts and
+   agent instructions for this removal-only pass. Identify existing tests for
+   the retained synchronous language, value/native calls, and script reload.
+   Record deletion dependencies and any interop surface that must disappear
+   with them. Do not design or implement a replacement object system.
 2. **B: Service and Provider removal.** Remove the two feature families and
    their compiler/artifact/tooling branches. Prove ordinary functions, methods,
    modules, packages, and script reload still work.
 3. **C: Task and async removal.** Remove background admission first, then
    synchronous/async split machinery. Prove bounded synchronous execution and
    deliberate rejection of removed syntax and APIs.
-4. **D: Borrow and path replacement.** Migrate callers to checkpoint A's
-   boundary; remove borrowed roots/returns/views, transparent paths, leases,
-   explicit borrow release, and old extern bindings. Prove identity, lifetime,
-   mutation, and error safety through opaque objects.
-5. **E: Repository acceptance.** Finish portable format changes, dead metadata,
-   JIT preparation, dependencies, site/tooling/examples, and validation. Replace
-   this transition status with the actual supported baseline.
+4. **D: Borrow and path removal.** Remove borrowed roots/returns/views,
+   transparent paths, leases, explicit borrow release, and dependent extern
+   bindings, registrations, and callers. Preserve existing independent
+   value/native calls; do not add opaque replacements to keep old examples or
+   APIs alive. Prove removed borrowing paths are unavailable.
+5. **E: Repository acceptance.** Finish dead metadata, JIT preparation,
+   dependencies, site/tooling/examples, and validation. Audit portable formats;
+   incompatible format changes and old-format rejection must already accompany
+   their owning removal checkpoints. Record the actual supported baseline and
+   separately deferred interop work, without claiming a replacement is complete.
 
 Each checkpoint consists of small Conventional Commits and must leave a
 runnable retained-language slice. Move feature-specific test expectations with
@@ -171,28 +187,34 @@ and recapture affected evidence rather than marking stale evidence accepted.
 
 ## Required Verification
 
-- Serialized changes do not implicitly write back; explicit returned values
-  decode correctly and unsupported boundary shapes fail with useful errors.
-- Opaque aliases observe the same object; wrong-type, stale, invalid, and
-  foreign-Runtime handles fail under the chosen ownership policy.
-- Object retention/reclamation, root failure, and native invocation/re-entry
-  preserve Rust access safety; caller-borrowed wrappers remain inadmissible.
-- Registered mutation works, opaque fields stay inaccessible under the chosen
-  surface, and permissions, budgets, and source-spanned errors remain enforced.
+- Existing retained value conversions and synchronous native calls work;
+  script-owned value changes do not implicitly write back to Rust. Do not add a
+  new serializer or conversion API to satisfy removal acceptance.
+- Caller-borrowed roots, wrappers, returns, views, and script-managed leases
+  have no remaining executable or registration entrypoints.
+- If an existing opaque surface remains, its type, identity, invalidation,
+  lifetime, and permission checks remain effective without removed machinery.
+  A new object surface is not required for acceptance.
+- Permissions, finite VM budgets, and source-spanned errors remain enforced on
+  retained execution paths.
 - Script state survives compatible reload; old closures retain old code and
-  new entry calls use new code. Host objects follow their explicit lifetime
-  policy rather than implicit migration.
-- Ordinary imports, packages, traits, script collections/iterators, reflection,
-  synchronous native calls, CLI, WASM, and supported LSP operations still work.
+  new entry calls use new code. No new host-object migration or retention
+  policy is introduced by this pass.
+- Ordinary imports, packages, traits, script collections/iterators, script
+  reflection, retained synchronous native calls, CLI, WASM, and supported LSP
+  operations still work.
 - Removed APIs, compiler-owned paths, syntax, macro signatures, and executable
-  artifact formats are rejected at the appropriate boundary.
+  artifact formats are rejected at the appropriate boundary. Update or remove
+  feature-specific fixtures and examples with their feature; preserve retained
+  behavior and boundary rejection coverage, not obsolete success expectations.
 
-Run focused subsystem tests at each behavioral change. At checkpoint closure:
+Run focused subsystem tests at each behavioral change. At checkpoint closure,
+use [validation.md](validation.md) as the command source of truth, including:
 
 ```bash
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
 ```
 
 Also run affected example, editor/site, artifact-codec, benchmark-harness, and

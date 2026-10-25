@@ -15,10 +15,16 @@ does not depend on caller-stack borrows. Rust host state stays outside script
 GC; invocation-local Rust implementation borrows must not escape into scripts.
 
 The [runtime simplification plan](runtime-simplification-plan.md) owns removal
-scope, retained features, runnable checkpoints, and acceptance. Methods-only
-object exposure and host-managed storage are proposed defaults; concrete
-ownership, destruction, re-entry, and reload rules remain checkpoint A design
-work. Implementation removal has not started. Conflicting earlier roadmap and
+scope, retained features, runnable checkpoints, and acceptance. The current
+pass is removal-only: do not implement a replacement opaque-object system,
+new value-conversion APIs, or a new re-entry model. Existing interop remains
+only where it works without removed capabilities; otherwise remove dependent
+entrypoints and callers rather than add compatibility wrappers. Methods-only
+object exposure and host-managed storage are future design candidates, not
+approved implementations. Concrete ownership, destruction, re-entry, and reload
+rules are deferred to a separate follow-up, not checkpoint A prerequisites.
+Checkpoint A has consolidated the contracts and retained baseline; runtime
+removal remains B-E work. Conflicting earlier roadmap and
 architecture requirements describe the previous implementation, not permission
 to expand the removed features. Ordinary packages, script traits, LSP worker
 scheduling, interpreter optimization, and script reload remain in scope.
