@@ -1,5 +1,16 @@
 # Goal
 
+## Scope Transition
+
+The accepted [runtime simplification plan](runtime-simplification-plan.md)
+supersedes conflicting targets below: synchronous interpreter execution,
+ordinary script hot reload, and Rust interop through serialized values or
+opaque objects only. Service hotfixing, Provider entrypoints, script async and
+tasks, Rust borrow injection/returns/views, and JIT are removal scope.
+Implementation has not started. The older roadmap and long-term goal below
+describe the previous scope; do not use them to extend removed capabilities.
+Checkpoint A will replace them with the consolidated target contract.
+
 Build a dynamic scripting language in Rust for host-owned business logic. Game
 server scripting is a primary proving ground, but the language core, standard
 library, builtins, and runtime contract must remain domain-neutral. Scripts can

@@ -4,6 +4,25 @@ This file is the active architecture decision index. Full pre-compaction
 decision history lives in
 [archive/decisions-full-2026-06-01.md](archive/decisions-full-2026-06-01.md).
 
+## Synchronous Runtime With Value And Opaque Object Interop
+
+The accepted product direction is a synchronous interpreted dynamic language
+with ordinary script hot reload. Remove Rust/Vela Service hotfixing and static
+Service calls, Provider entrypoints, script async, scoped background tasks,
+Rust shared/mutable borrow injection, borrowed returns/views, and JIT plans.
+Rust interaction admits serialized values and opaque objects whose validity
+does not depend on caller-stack borrows. Rust host state stays outside script
+GC; invocation-local Rust implementation borrows must not escape into scripts.
+
+The [runtime simplification plan](runtime-simplification-plan.md) owns removal
+scope, retained features, runnable checkpoints, and acceptance. Methods-only
+object exposure and host-managed storage are proposed defaults; concrete
+ownership, destruction, re-entry, and reload rules remain checkpoint A design
+work. Implementation removal has not started. Conflicting earlier roadmap and
+architecture requirements describe the previous implementation, not permission
+to expand the removed features. Ordinary packages, script traits, LSP worker
+scheduling, interpreter optimization, and script reload remain in scope.
+
 ## Installed Editor Acceptance
 
 The native Vela launcher explicitly declares `untrustedWorkspaces.supported`

@@ -10,7 +10,19 @@ Completed execution plans and acceptance reports live under
 
 ## Current Focus
 
-Current implementation focus is the M20.5 local LSP coverage goal under the
+The accepted next product direction is recorded in the
+[runtime simplification plan](runtime-simplification-plan.md): synchronous
+interpreter execution, ordinary script hot reload, and serialized-value or
+opaque-object Rust interop. Service/Provider execution, script async/tasks,
+borrowed Rust boundaries, and JIT are removal scope. This is a documentation
+checkpoint only; implementation removal has not started. The next checkpoint
+is A's object-boundary contract and minimal replacement vertical slice.
+The baseline and milestone records below describe existing implementation,
+including capabilities scheduled for removal, rather than the new target.
+
+## Existing Implementation Checkpoint
+
+The previous implementation focus is the M20.5 local LSP coverage goal under the
 [execution plan](lsp-test-execution-plan.md). The execution checkpoint owns
 accepted batches, the next local task and fresh platform audits. Hover/signature
 coverage includes exact semantic facts, lifecycle states and native pointer and
@@ -695,6 +707,15 @@ in the
 
 ## Active Gaps
 
+### Runtime Simplification
+
+The [removal checklist](runtime-simplification-plan.md#removal-checklist) is
+recorded and all implementation items remain open. Checkpoint A must resolve
+opaque ownership/destruction, handle identity and affinity, native re-entry,
+serialization limits, and reload behavior before replacing the borrowed-host
+boundary. Existing LSP and container gaps below remain baseline observations;
+affected evidence must be updated as features are removed.
+
 ### Parameterized Container Contracts
 
 The runtime supports nested Array/Map/Set/Iterator facts, recursive guards,
@@ -1182,15 +1203,16 @@ provides it.
 
 ## Next Up
 
-1. Continue the local LSP matrix from the execution checkpoint's next task
-   through B15 and B17-B19; B16 stays deferred. Preserve accepted snapshots and
-   require fresh independent evidence on each registered platform.
-2. Address incremental HIR re-lowering and moving `did_change` diagnostics off
-   the message loop when required by local state/scale acceptance.
-3. Audit the parameterized container and value-keyed Map/Set plans against
-   their explicit acceptance matrices.
-4. Keep the shorter Runtime-owned host reclamation policy as a non-blocking
-   post-S2 optimization follow-up.
+1. Start checkpoint A of the simplification plan: settle the opaque-object
+   boundary, consolidate active contracts/agent instructions, and prove a
+   synchronous serialized-value/object-method vertical slice.
+2. Follow checkpoints B-E for Service/Provider, task/async, borrowed-host, and
+   repository-wide cleanup. Do not mark removals complete from this plan alone.
+3. Preserve existing LSP evidence and its execution checkpoint; revise affected
+   language/schema contracts and capture fresh evidence during removal.
+4. Retain independent LSP incrementality and script-container acceptance gaps
+   for the reduced runtime; reassess old borrowed-host optimizations after the
+   replacement boundary is implemented.
 
 ## Update Rules
 

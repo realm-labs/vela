@@ -1,5 +1,16 @@
 # Architecture
 
+## Scope Transition
+
+The [runtime simplification plan](runtime-simplification-plan.md) is the target
+contract for the accepted scope reduction. It supersedes requirements below
+for Service/Provider execution, script async/tasks, caller-borrowed Rust objects
+and views, transparent host paths, and JIT. The replacement uses synchronous
+native calls, serialized values, and opaque objects while retaining ordinary
+script hot reload. Concrete object ownership rules remain checkpoint A work.
+The implementation and detailed contracts below still describe the previous
+runtime; this documentation checkpoint does not change executable behavior.
+
 This document describes the technical architecture for a Hot Reload First
 dynamic scripting language implemented in Rust for host-owned business logic.
 Game server scripting is a primary application, but the core language, stdlib,
