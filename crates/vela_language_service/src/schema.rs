@@ -14,22 +14,18 @@ mod entry;
 use entry::{SchemaFunctionFact, SchemaMemberFact, SchemaNamedFact, SchemaSourceSpan};
 mod source_locations;
 pub use source_locations::SchemaSourceLocations;
-mod service;
+
 mod signature;
 use signature::validate_signatures;
 mod type_binding;
 
-use service::validate_service_set;
-pub use service::{
-    SchemaServiceFact, SchemaServiceMethodFact, SchemaServiceParameterFact, SchemaServiceSetFact,
-};
 pub use type_binding::{SchemaCollectionViewFact, SchemaTypeBindingFact};
 use type_binding::{
     type_binding_checksum_from_schema, type_binding_checksum_to_schema, type_binding_from_schema,
     type_binding_to_schema, validate_type_binding_facts,
 };
 
-pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 1;
+pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 2;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const SCHEMA_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
 
@@ -52,7 +48,7 @@ impl SchemaArtifactError {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SchemaArtifact {
     format_version: u32,
     #[serde(default)]
@@ -61,8 +57,6 @@ pub struct SchemaArtifact {
     schema_hash: Option<String>,
     #[serde(default)]
     facts: SchemaArtifactFacts,
-    #[serde(default)]
-    service_set: Option<SchemaServiceSetFact>,
 }
 
 impl SchemaArtifact {
@@ -73,19 +67,7 @@ impl SchemaArtifact {
             schema_version: None,
             schema_hash: None,
             facts,
-            service_set: None,
         }
-    }
-
-    #[must_use]
-    pub fn with_service_set(mut self, service_set: SchemaServiceSetFact) -> Self {
-        self.service_set = Some(service_set);
-        self
-    }
-
-    #[must_use]
-    pub const fn service_set(&self) -> Option<&SchemaServiceSetFact> {
-        self.service_set.as_ref()
     }
 
     #[must_use]
@@ -108,11 +90,7 @@ impl SchemaArtifact {
     }
 
     pub fn to_registry_facts(&self) -> RegistryFacts {
-        let mut facts = self.facts.to_registry_facts();
-        if let Some(service_set) = &self.service_set {
-            service::project_service_set(service_set, &mut facts);
-        }
-        facts
+        self.facts.to_registry_facts()
     }
 
     #[must_use]
@@ -126,17 +104,7 @@ impl SchemaArtifact {
     }
 
     pub fn computed_schema_hash(&self) -> Result<u64, SchemaArtifactError> {
-        let facts_hash = self.facts.compatibility_hash()?;
-        let Some(service_set) = &self.service_set else {
-            return Ok(facts_hash);
-        };
-        let mut payload = facts_hash.to_le_bytes().to_vec();
-        payload.extend(serde_json::to_vec(service_set).map_err(|error| {
-            SchemaArtifactError::new(format!(
-                "failed to encode canonical service metadata: {error}"
-            ))
-        })?);
-        Ok(fnv1a64(&payload))
+        self.facts.compatibility_hash()
     }
 
     #[must_use]
@@ -172,9 +140,7 @@ impl SchemaArtifact {
         }
         validate_type_binding_facts(&self.facts)?;
         validate_signatures(&self.facts)?;
-        if let Some(service_set) = &self.service_set {
-            validate_service_set(service_set)?;
-        }
+
         Ok(())
     }
 }

@@ -43,12 +43,6 @@ pub enum BindingResolution {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ServiceLexicalCapability {
-    Base,
-    Pinned,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TaskLexicalCapability {
     SpawnScoped,
     SpawnScopedThen,
@@ -76,7 +70,7 @@ pub struct BindingMap {
     pub(crate) pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
     pub(crate) pending_constructor_paths: BTreeMap<HirExprId, Vec<String>>,
     pub(crate) pending_pattern_paths: BTreeMap<Vec<String>, Vec<String>>,
-    pub(crate) service_capabilities: BTreeMap<HirExprId, ServiceLexicalCapability>,
+
     pub(crate) task_capabilities: BTreeMap<HirExprId, TaskLexicalCapability>,
 }
 
@@ -129,19 +123,6 @@ impl BindingMap {
         self.resolutions
             .iter()
             .map(|(expression, resolution)| (*expression, resolution))
-    }
-
-    #[must_use]
-    pub fn service_capability(&self, expression: HirExprId) -> Option<ServiceLexicalCapability> {
-        self.service_capabilities.get(&expression).copied()
-    }
-
-    pub fn service_capabilities(
-        &self,
-    ) -> impl Iterator<Item = (HirExprId, ServiceLexicalCapability)> + '_ {
-        self.service_capabilities
-            .iter()
-            .map(|(expression, capability)| (*expression, *capability))
     }
 
     #[must_use]

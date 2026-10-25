@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_bytecode::{ArtifactTaskServiceRequirement, LinkedArtifact};
+use vela_bytecode::LinkedArtifact;
 use vela_common::Detachability;
 use vela_mir::{MirEffect, MirTypeContract};
 use vela_reflect::access::FunctionEffectSet;
@@ -38,10 +38,6 @@ pub(super) fn registry_for_artifact(
                 .map_or_else(|| "Any".to_owned(), task_contract_display),
             result_mode: reflect_detachability(target.worker_signature.result_detachability),
             effects: reflect_task_effects(target.worker_signature.effects),
-            requires_service_generation: matches!(
-                target.service_requirement,
-                ArtifactTaskServiceRequirement::InheritOriginatingGeneration
-            ),
         };
         registry.register_detached_target(target.worker, reflected);
     }

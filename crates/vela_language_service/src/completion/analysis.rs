@@ -203,13 +203,6 @@ fn analysis_kind(
     active_parameter: Option<usize>,
 ) -> CompletionAnalysisKind {
     match context.kind() {
-        CompletionContextKind::Expression if query.is_service_call() => {
-            CompletionAnalysisKind::CallArgument(CompletionCallArgumentContext {
-                active_parameter: active_parameter
-                    .or_else(|| query.call_active_parameter_index())
-                    .unwrap_or(0),
-            })
-        }
         CompletionContextKind::Expression => CompletionAnalysisKind::Path(path_context(
             PathCompletionKind::Expression,
             query,

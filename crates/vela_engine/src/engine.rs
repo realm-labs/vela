@@ -5,7 +5,6 @@ use vela_bytecode::compiler::options::CompilerOptions;
 use vela_bytecode::{LinkError, LinkedArtifact, Linker, ProgramImage, UnlinkedProgram};
 use vela_common::HostMethodId;
 use vela_def::FunctionId;
-use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostPath;
 use vela_hot_reload::abi::HotReloadAbi;
 use vela_hot_reload::policy::HotReloadPolicy;
@@ -24,18 +23,16 @@ use crate::method::{
 use crate::native::{
     AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
     AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
-    EffectSet, HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
+    HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
     ScopedHostNativeFunctionEntry, ScopedHostNativeOutcome,
 };
 use crate::permission::CapabilitySet;
 use crate::type_binding::TypeBindingRegistry;
 
 mod metadata;
-mod service_dispatch;
 mod support;
 mod task_reflection;
 
-use service_dispatch::service_dispatch_natives;
 pub(crate) use support::check_capabilities;
 use support::{ScopedHostEnvelope, check_method_receiver};
 
@@ -60,26 +57,6 @@ pub struct Engine {
     hot_reload_policy: HotReloadPolicy,
     standard_natives: bool,
     execution_data: crate::runtime::execution_data::SharedGenerationExecutionRegistry,
-    service_set_schema: Option<Arc<crate::service::ServiceSetSchema>>,
-    service_compilation_schema:
-        Option<Arc<vela_bytecode::compiler::service_schema::ServiceCompilationSchema>>,
-    service_dispatch_natives: BTreeMap<FunctionId, ServiceDispatchNative>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct ServiceDispatchNative {
-    pub(crate) target: crate::service::ServiceCallTarget,
-    pub(crate) name: String,
-    pub(crate) effects: EffectSet,
-    pub(crate) asyncness: vela_common::CallableAsyncness,
-    pub(crate) parameter_leases: Vec<ServiceDispatchLease>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct ServiceDispatchLease {
-    pub(crate) index: usize,
-    pub(crate) kind: HostLeaseKind,
-    pub(crate) host_only: bool,
 }
 
 pub(crate) struct EngineParts {
@@ -100,7 +77,6 @@ pub(crate) struct EngineParts {
     pub(crate) reflection_policy: Option<ReflectPolicy>,
     pub(crate) hot_reload_policy: HotReloadPolicy,
     pub(crate) standard_natives: bool,
-    pub(crate) service_set_schema: Option<crate::service::ServiceSetSchema>,
 }
 
 impl Engine {
@@ -116,9 +92,6 @@ impl Engine {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
-        }
-        for (id, entry) in &self.service_dispatch_natives {
-            linker.add_internal_native_implementation(*id, entry.asyncness);
         }
         linker.link_test_program(program)
     }
@@ -212,16 +185,6 @@ impl Engine {
             )
             .map(|desc| (desc.name.clone(), desc.id))
             .collect();
-        let service_compilation_schema = parts
-            .service_set_schema
-            .as_ref()
-            .map(crate::service::ServiceSetSchema::compilation_schema)
-            .map(Arc::new);
-        let service_dispatch_natives = parts
-            .service_set_schema
-            .as_ref()
-            .map(service_dispatch_natives)
-            .unwrap_or_default();
         Self {
             registry: Arc::new(parts.registry),
             type_bindings: Arc::new(parts.type_bindings),
@@ -244,9 +207,6 @@ impl Engine {
             execution_data: Arc::new(Mutex::new(
                 crate::runtime::execution_data::GenerationExecutionRegistry::new(),
             )),
-            service_set_schema: parts.service_set_schema.map(Arc::new),
-            service_compilation_schema,
-            service_dispatch_natives,
         }
     }
 
@@ -276,16 +236,6 @@ impl Engine {
     #[must_use]
     pub fn type_bindings(&self) -> Arc<TypeBindingRegistry> {
         Arc::clone(&self.type_bindings)
-    }
-
-    pub(crate) fn service_compilation_schema(
-        &self,
-    ) -> Option<&vela_bytecode::compiler::service_schema::ServiceCompilationSchema> {
-        self.service_compilation_schema.as_deref()
-    }
-
-    pub(crate) fn service_dispatch_native(&self, id: FunctionId) -> Option<&ServiceDispatchNative> {
-        self.service_dispatch_natives.get(&id)
     }
 
     #[must_use]
@@ -517,9 +467,6 @@ impl Engine {
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
         }
-        for (id, entry) in &self.service_dispatch_natives {
-            linker.add_internal_native_implementation(*id, entry.asyncness);
-        }
         linker.link_compiled_program(program)
     }
 
@@ -531,9 +478,6 @@ impl Engine {
         let mut linker = Linker::with_registry(&self.definition_registry);
         for id in self.native_implementation_ids() {
             linker.add_native_implementation(id);
-        }
-        for (id, entry) in &self.service_dispatch_natives {
-            linker.add_internal_native_implementation(*id, entry.asyncness);
         }
         linker.link_portable_program(program)
     }
@@ -564,7 +508,6 @@ impl Engine {
         self.install_async_native_methods(vm);
         self.install_host_native_functions(vm);
         self.install_context_host_native_functions(vm);
-        self.install_service_dispatch_natives(vm);
         if let Some(policy) = &self.reflection_policy {
             let policy = policy.clone();
             vm.register_reflection_natives_with_policy(registry, policy.clone());
@@ -856,35 +799,6 @@ impl Engine {
                     effects.required_capability_set(),
                 );
                 function(args, &mut context)
-            });
-        }
-    }
-
-    fn install_service_dispatch_natives(&self, vm: &mut Vm) {
-        for (id, entry) in &self.service_dispatch_natives {
-            let id = *id;
-            let entry = entry.clone();
-            if entry.asyncness.is_async() {
-                vm.register_async_native_with_id(id, move |_args| {
-                    Box::pin(async {
-                        Err(VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "async service requires Runtime dispatch",
-                        }))
-                    })
-                });
-                continue;
-            }
-            let engine = self.clone();
-            vm.register_context_host_native_with_id(id, move |args, host, budget| {
-                check_capabilities(&entry.name, &entry.effects, engine.capabilities)?;
-                let mut context = crate::context::NativeCallContext::new(
-                    &engine,
-                    host,
-                    budget,
-                    None,
-                    entry.effects.required_capability_set(),
-                );
-                context.dispatch_service(entry.target, args)
             });
         }
     }

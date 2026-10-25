@@ -120,7 +120,6 @@ fn validate_call(
             host::validate_path(validator, path, origin, "host intrinsic call target")?;
             None
         }
-        CompileCalleeTarget::Service { signature, .. } => Some(signature),
         CompileCalleeTarget::Lambda(body) => {
             validator.snapshot.lambda(root, *body).ok_or_else(|| {
                 validator.error(
@@ -192,8 +191,7 @@ fn validate_call_arguments(
             | CompileCalleeTarget::ValueMethod { .. }
             | CompileCalleeTarget::HostMethod(_)
             | CompileCalleeTarget::Reflection { .. }
-            | CompileCalleeTarget::SetFromArray { .. }
-            | CompileCalleeTarget::Service { .. } => validate_placed_arguments(
+            | CompileCalleeTarget::SetFromArray { .. } => validate_placed_arguments(
                 validator,
                 evaluation_order,
                 parameter_slots,

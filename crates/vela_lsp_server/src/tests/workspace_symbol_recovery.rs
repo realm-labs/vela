@@ -103,7 +103,7 @@ fn lsp_workspace_symbol_recovery_pins_complete_utf16_sets_after_damage_repair_an
             let owner = super::support::unique_temp_root("中文 % workspace recovery");
             let root = owner.join("workspace");
             fixture.materialize(&root).expect("owned fixture");
-            let schema = json!({"formatVersion":1,"facts":authored["schema"]}).to_string();
+            let schema = json!({"formatVersion":2,"facts":authored["schema"]}).to_string();
             std::fs::write(root.join("schema.json"), &schema).expect("static schema");
             for encoding in ["%E4%B8%AD", "%25", "%20"] {
                 assert!(uri(&root, "").contains(encoding));

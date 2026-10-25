@@ -78,7 +78,6 @@ pub struct NativeCallContext<'ctx, 'host> {
     reentry: Option<&'ctx mut dyn NativeReentry>,
     host_provenance: ActiveHostProvenanceSet,
     effect_ceiling: CapabilitySet,
-    service_dispatcher: Option<&'ctx dyn crate::service::ServiceCallDispatcher>,
 }
 
 #[derive(Clone, Copy)]
@@ -105,7 +104,6 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             reentry,
             host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
-            service_dispatcher: None,
         }
     }
 
@@ -113,7 +111,6 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
         engine: &'ctx Engine,
         reentry: &'ctx mut dyn NativeReentry,
         effect_ceiling: CapabilitySet,
-        service_dispatcher: Option<&'ctx dyn crate::service::ServiceCallDispatcher>,
     ) -> Self {
         Self {
             engine,
@@ -122,43 +119,7 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             reentry: Some(reentry),
             host_provenance: ActiveHostProvenanceSet::new(),
             effect_ceiling,
-            service_dispatcher,
         }
-    }
-
-    pub(crate) fn dispatch_service(
-        &mut self,
-        target: crate::service::ServiceCallTarget,
-        args: &[OwnedValue],
-    ) -> VmResult<OwnedValue> {
-        let dispatcher = self.service_dispatcher.ok_or_else(|| {
-            vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
-                operation: "service call outside a pinned service generation",
-            })
-        })?;
-        dispatcher.dispatch(target, args, self)
-    }
-
-    pub(crate) fn dispatch_service_async<'call, 'lease>(
-        &'call mut self,
-        target: crate::service::ServiceCallTarget,
-        args: &'call [OwnedValue],
-        leases: &'call mut [ErasedHostLease<'lease>],
-    ) -> crate::service::ServiceFuture<'call, VmResult<OwnedValue>>
-    where
-        'host: 'call,
-        'lease: 'call,
-    {
-        let Some(dispatcher) = self.service_dispatcher else {
-            return Box::pin(async {
-                Err(vela_vm::error::VmError::new(
-                    vela_vm::error::VmErrorKind::TypeMismatch {
-                        operation: "service call outside a pinned service generation",
-                    },
-                ))
-            });
-        };
-        dispatcher.dispatch_async(target, args, leases, self)
     }
 
     pub fn call<'args, T>(&mut self, target: T, args: CallArgs<'args>) -> VmResult<VelaValue>
@@ -372,20 +333,6 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
                     })
             })
             .collect();
-    }
-
-    /// Releases invocation-scoped Rust argument leases before an internal
-    /// pinned Service call re-enters another Vela implementation.
-    ///
-    /// Rust defaults keep these guards for their whole call or future. A Vela
-    /// target instead reacquires roots through the nested VM entry, so holding
-    /// the outer guards would create a false self-conflict.
-    #[doc(hidden)]
-    pub fn release_service_leases_for_vela_reentry(&mut self, leases: &mut [ErasedHostLease<'_>]) {
-        for lease in leases {
-            drop(lease.take());
-        }
-        self.host_provenance.clear();
     }
 
     pub fn read_path(&mut self, path: &HostPath, source_span: Option<Span>) -> VmResult<HostValue> {

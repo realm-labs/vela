@@ -89,7 +89,7 @@ fn lsp_workspace_symbols_include_script_and_schema_symbols() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

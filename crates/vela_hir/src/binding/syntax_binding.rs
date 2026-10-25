@@ -9,7 +9,7 @@ use vela_syntax::ast::{
 
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
-    ServiceLexicalCapability, TaskLexicalCapability,
+    TaskLexicalCapability,
 };
 use crate::body::{
     HirBody, HirBodyOwner, HirBodyRoot, HirPathKind, HirPathOwner, HirPatternKind,
@@ -43,7 +43,6 @@ pub(crate) struct SyntaxFunctionBindingInput<'a> {
     pub imports: Vec<ImportBinding>,
     pub body_id: HirBodyId,
     pub owner: HirBodyOwner,
-    pub service_capabilities_enabled: bool,
     pub next_expr_id: &'a mut u32,
     pub next_local_id: &'a mut u32,
     pub next_body_id: &'a mut u32,
@@ -123,8 +122,6 @@ struct SyntaxBindingLowerer<'a> {
     bodies: BTreeMap<HirBodyId, HirBody>,
     capture_keys: BTreeMap<(HirBodyId, HirLocalId), HirCaptureId>,
     diagnostics: Vec<Diagnostic>,
-    service_capabilities_enabled: bool,
-    service_capabilities: BTreeMap<HirExprId, ServiceLexicalCapability>,
     task_capabilities: BTreeMap<HirExprId, TaskLexicalCapability>,
 }
 
@@ -195,8 +192,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
-            service_capabilities_enabled: input.service_capabilities_enabled,
-            service_capabilities: BTreeMap::new(),
             task_capabilities: BTreeMap::new(),
         };
 
@@ -309,8 +304,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
-            service_capabilities_enabled: false,
-            service_capabilities: BTreeMap::new(),
             task_capabilities: BTreeMap::new(),
         };
         for param in input.params {
@@ -337,7 +330,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 pattern_resolutions: self.pattern_resolutions,
                 pending_constructor_paths: self.pending_constructor_paths,
                 pending_pattern_paths: self.pending_pattern_paths,
-                service_capabilities: self.service_capabilities,
                 task_capabilities: self.task_capabilities,
             },
             self.bodies.into_values().collect(),
@@ -656,8 +648,14 @@ impl<'a> SyntaxBindingLowerer<'a> {
             self.bind_task_path(id, path, span, usage);
             return;
         }
-        if let Some(capability) = service_lexical_capability(path) {
-            self.bind_service_path(id, path, span, usage, capability);
+        if matches!(path, [service, namespace, ..]
+            if service == "service" && matches!(namespace.as_str(), "base" | "pinned"))
+        {
+            self.diagnostics.push(
+                Diagnostic::error("Service dispatch paths are no longer supported")
+                    .with_code("hir::removed_service_call")
+                    .with_span(span),
+            );
             return;
         }
 
@@ -687,28 +685,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if let Some(resolution) = self.resolve_name(name) {
             self.record_capture_for_resolution(id, &resolution);
             self.resolutions.insert(id, resolution);
-            return;
-        }
-
-        if self.service_capabilities_enabled
-            && matches!(name.as_str(), "base" | "services")
-            && matches!(usage, PathUsage::CalleeFieldBase(_))
-        {
-            self.diagnostics.push(
-                Diagnostic::error(format!(
-                    "contextual `{name}` service calls are no longer supported"
-                ))
-                .with_code("hir::obsolete_service_call_syntax")
-                .with_span(span)
-                .with_label(
-                    span,
-                    if name == "base" {
-                        "use `service::base::method(...)`"
-                    } else {
-                        "use `service::pinned::service_name::method(...)`"
-                    },
-                ),
-            );
             return;
         }
 
@@ -763,41 +739,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
         }
     }
 
-    fn bind_service_path(
-        &mut self,
-        id: HirExprId,
-        path: &[String],
-        span: Span,
-        usage: PathUsage,
-        capability: ServiceLexicalCapability,
-    ) {
-        self.service_capabilities.insert(id, capability);
-        if self.current_body() != self.root_body {
-            self.diagnostics.push(
-                Diagnostic::error("service dispatch paths cannot be captured by a nested function")
-                    .with_code("hir::service_capability_capture")
-                    .with_span(span),
-            );
-            return;
-        }
-        let valid_shape = match capability {
-            ServiceLexicalCapability::Base => path.len() == 3,
-            ServiceLexicalCapability::Pinned => path.len() == 4,
-        };
-        if usage != PathUsage::Callee || !valid_shape {
-            let expected = match capability {
-                ServiceLexicalCapability::Base => "service::base::method(...)",
-                ServiceLexicalCapability::Pinned => "service::pinned::service_name::method(...)",
-            };
-            self.diagnostics.push(
-                Diagnostic::error("service dispatch namespaces cannot be used as values")
-                    .with_code("hir::invalid_service_capability_use")
-                    .with_span(span)
-                    .with_label(span, format!("call it directly as `{expected}`")),
-            );
-        }
-    }
-
     fn bind_self_path(&mut self, id: HirExprId) {
         let Some(resolution) = self.resolve_name("self") else {
             return;
@@ -843,17 +784,5 @@ impl<'a> SyntaxBindingLowerer<'a> {
             origin_span,
             segment_span,
         ))
-    }
-}
-
-fn service_lexical_capability(path: &[String]) -> Option<ServiceLexicalCapability> {
-    match path {
-        [service, namespace, ..] if service == "service" && namespace == "base" => {
-            Some(ServiceLexicalCapability::Base)
-        }
-        [service, namespace, ..] if service == "service" && namespace == "pinned" => {
-            Some(ServiceLexicalCapability::Pinned)
-        }
-        _ => None,
     }
 }

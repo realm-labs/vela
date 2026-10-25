@@ -29,7 +29,7 @@ fn lsp_map_key_completion_suggests_schema_enum_variants() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

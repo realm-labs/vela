@@ -207,7 +207,7 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::RegistrySnapshot(message) => single_error_response(format!(
             "invalid compile-target registry snapshot: {message}"
         )),
-        CompileErrorKind::ServiceCall(message) => single_error_response(message),
+
         CompileErrorKind::DiscardedScopedResource { kind, parent } => single_error_response(
             format!("discarded scoped {kind:?} result retaining {parent:?}"),
         ),
@@ -380,10 +380,8 @@ fn response_to_json(response: PlaygroundResponse) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::{compile_script, run_script};
     use serde_json::Value as JsonValue;
-    use vela_bytecode::compiler::error::{CompileError, CompileErrorKind};
-
-    use super::{compile_error_response, compile_script, run_script};
 
     #[test]
     fn run_script_returns_json_value() {
@@ -451,18 +449,27 @@ mod tests {
     }
 
     #[test]
-    fn service_call_compile_errors_keep_their_diagnostic_code() {
-        let response = compile_error_response(CompileError {
-            kind: CompileErrorKind::ServiceCall("unknown pinned service".to_owned()),
-            span: None,
-        });
+    fn removed_service_call_reports_generic_source_diagnostic() {
+        let response: JsonValue = serde_json::from_str(&compile_script(
+            "fn main() { return service::pinned::handler::handle(1); }",
+        ))
+        .expect("valid playground response");
 
-        assert!(!response.ok);
-        assert_eq!(
-            response.diagnostics[0].code.as_deref(),
-            Some("compiler::invalid_service_call")
+        assert_eq!(response["ok"], false);
+        assert!(
+            !response["diagnostics"]
+                .as_array()
+                .expect("diagnostics")
+                .is_empty()
         );
-        assert_eq!(response.diagnostics[0].message, "unknown pinned service");
+        assert_eq!(
+            response["diagnostics"][0]["code"],
+            "hir::removed_service_call"
+        );
+        assert_eq!(
+            response["diagnostics"][0]["message"],
+            "Service dispatch paths are no longer supported"
+        );
     }
 
     #[test]

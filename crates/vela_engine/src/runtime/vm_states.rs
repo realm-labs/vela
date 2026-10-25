@@ -281,10 +281,6 @@ impl RuntimeVmStateStore {
         vela_vm::serde::from_runtime_value(&value, &self.heap).map(Some)
     }
 
-    pub(super) fn retain(&mut self, runtime_id: u64, value: Value) -> VelaValue {
-        RuntimeValueRoots::retain(&self.retained_values, runtime_id, value)
-    }
-
     pub(super) fn roots(&self) -> Vec<Value> {
         let mut roots = self.values.values().collect::<Vec<_>>();
         roots.extend(

@@ -1,0 +1,5 @@
+error[E0433]: cannot find `service` in `vela_macros`
+ --> tests/ui/removed/service.rs:1:16
+  |
+1 | #[vela_macros::service(path = "host::rules")]
+  |                ^^^^^^^ could not find `service` in `vela_macros`

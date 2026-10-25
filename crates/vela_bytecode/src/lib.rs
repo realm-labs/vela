@@ -27,9 +27,9 @@ pub mod verification;
 pub use artifact::test_support;
 pub use artifact::{
     ArtifactChecksum, ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation,
-    ArtifactTaskParameter, ArtifactTaskServiceRequirement, ArtifactTaskSignature,
-    ArtifactTaskTarget, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
-    ProfileScalarUnitLayout, ProfileSelectedUnitLayout,
+    ArtifactTaskParameter, ArtifactTaskSignature, ArtifactTaskTarget, LinkedArtifact,
+    MirExecutableLayout, ProfileFunctionLayout, ProfileLayout, ProfileScalarUnitLayout,
+    ProfileSelectedUnitLayout,
 };
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
@@ -67,10 +67,8 @@ pub use nominal::{
     NominalFieldDescriptor, NominalTypeDescriptor, NominalTypeKind, NominalVariantDescriptor,
 };
 pub use package_metadata::{
-    CompiledPackageMetadata, InstalledProviderSet, LinkedProviderEntry, PackageArtifactMetadata,
-    PackageCompilationInput, PackageCompilationMetadata, PackageCompileRequestFingerprint,
-    ProviderCompilationInput, ProviderMethodCompilationInput, ProviderReceiverPlan,
-    ProviderSelectionFingerprint,
+    CompiledPackageMetadata, PackageArtifactMetadata, PackageCompilationInput,
+    PackageCompilationMetadata, PackageCompileRequestFingerprint,
 };
 #[cfg(feature = "artifact-codec")]
 pub use portable::{

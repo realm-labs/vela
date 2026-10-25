@@ -32,7 +32,7 @@
     "scripts/query_module_alias.vela": "/* 中😀 */ use option as opt; fn main() { opt::some([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_group_import.vela": "/* 中😀 */ use option::{some, none}; fn main() { some([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_ambiguous_import.vela": "/* 中😀 */ use option::some as wrap; use result::ok as wrap; fn main() { wrap([[replace:start]][[cursor]][[replace:end]]); }\n",
-    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"host::growable\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"arrayMut\",\n            \"element\": {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            \"mutation\": \"growable\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "schema.json": "{\n  \"formatVersion\": 2,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"host::growable\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"arrayMut\",\n            \"element\": {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            \"mutation\": \"growable\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
     "scripts/query_array_growable.vela": "/* 中😀 */ fn main() { host::growable().insert([[replace:start]][[cursor]][[replace:end]]); }\n"
   },
   "actions": [],

@@ -15,8 +15,10 @@ parenthesized and indexed callees, call/index order, source/host/trait/Any/unkno
 methods and functions, qualified paths, actual imported Alias and public
 helper::apply declaration retain complete syntax ancestry. Include stdlib
 io::print, Array methods and iterator map/collect_array callback pipeline;
-service::base, service::pinned and canonical nested-worker scoped-task calls.
-Selection does not execute tasks, call live hosts or invent semantic parents.
+the removed service::base/service::pinned spellings as unresolved syntax-only
+paths, and canonical nested-worker scoped-task calls awaiting checkpoint C.
+These selection cases assert CST ancestry, not Service support or successful
+compilation. Selection does not execute tasks, call live hosts or invent semantic parents.
 Static schema is deliberately absent; missing semantic facts cannot remove CST
 owners. Same-spelled labels/values and neighboring calls retain separate owners.
 

@@ -14,7 +14,7 @@ use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
 use vela_bytecode::{ExecutableGenerationId, LinkedArtifact};
-use vela_common::{CapabilitySet, ServiceGenerationId, ServiceSetId, Span};
+use vela_common::{CapabilitySet, Span};
 use vela_def::FunctionId;
 use vela_vm::DetachedValueImage;
 use vela_vm::budget::ExecutionLimits;
@@ -225,20 +225,7 @@ impl std::error::Error for TaskPolicyError {}
 /// Immutable generation identity retained by a detached child.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum TaskGeneration {
-    Ordinary {
-        executable: ExecutableGenerationId,
-    },
-    Service {
-        executable: ExecutableGenerationId,
-        service_set: ServiceSetId,
-        service_generation: ServiceGenerationId,
-    },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct ServiceTaskGeneration {
-    pub service_set: ServiceSetId,
-    pub service_generation: ServiceGenerationId,
+    Ordinary { executable: ExecutableGenerationId },
 }
 
 /// Generation-local authority ceilings sealed before task admission.
@@ -246,42 +233,19 @@ pub struct ServiceTaskGeneration {
 pub struct TaskAuthorityCeilings {
     pub caller: CapabilitySet,
     pub artifact: CapabilitySet,
-    pub service: Option<CapabilitySet>,
 }
 
 impl TaskAuthorityCeilings {
     #[must_use]
     pub const fn ordinary(caller: CapabilitySet, artifact: CapabilitySet) -> Self {
-        Self {
-            caller,
-            artifact,
-            service: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn service(
-        caller: CapabilitySet,
-        artifact: CapabilitySet,
-        service: CapabilitySet,
-    ) -> Self {
-        Self {
-            caller,
-            artifact,
-            service: Some(service),
-        }
+        Self { caller, artifact }
     }
 
     #[must_use]
     const fn effective(self, engine: CapabilitySet, policy: CapabilitySet) -> CapabilitySet {
-        let service = match self.service {
-            Some(service) => service,
-            None => CapabilitySet::all(),
-        };
         engine
             .intersection(self.caller)
             .intersection(self.artifact)
-            .intersection(service)
             .intersection(policy)
     }
 }
@@ -290,7 +254,7 @@ impl TaskGeneration {
     #[must_use]
     pub const fn executable(self) -> ExecutableGenerationId {
         match self {
-            Self::Ordinary { executable } | Self::Service { executable, .. } => executable,
+            Self::Ordinary { executable } => executable,
         }
     }
 }
@@ -306,7 +270,6 @@ pub struct TaskExecutionCapsule {
     policy: TaskPolicy,
     generation: TaskGeneration,
     effective_capabilities: CapabilitySet,
-    pinned_service: Option<crate::service::PinnedServiceExecution>,
     runtime_pool: runtime_pool::DetachedRuntimePool,
 }
 
@@ -321,41 +284,7 @@ impl TaskExecutionCapsule {
         let generation = TaskGeneration::Ordinary {
             executable: artifact.generation(),
         };
-        Self::new(engine, artifact, ceilings, policy, generation, None)
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn for_service_generation(
-        engine: Engine,
-        artifact: Arc<LinkedArtifact>,
-        caller_ceiling: CapabilitySet,
-        artifact_ceiling: CapabilitySet,
-        policy: TaskPolicy,
-        pinned_service: crate::service::PinnedServiceExecution,
-    ) -> Self {
-        let service = ServiceTaskGeneration {
-            service_set: pinned_service.service_set(),
-            service_generation: pinned_service.generation(),
-        };
-        let generation = TaskGeneration::Service {
-            executable: artifact.generation(),
-            service_set: service.service_set,
-            service_generation: service.service_generation,
-        };
-        let ceilings = TaskAuthorityCeilings::service(
-            caller_ceiling,
-            artifact_ceiling,
-            pinned_service.patch_effect_ceiling(),
-        );
-        Self::new(
-            engine,
-            artifact,
-            ceilings,
-            policy,
-            generation,
-            Some(pinned_service),
-        )
+        Self::new(engine, artifact, ceilings, policy, generation)
     }
 
     fn new(
@@ -364,7 +293,6 @@ impl TaskExecutionCapsule {
         ceilings: TaskAuthorityCeilings,
         policy: TaskPolicy,
         generation: TaskGeneration,
-        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> Self {
         let effective_capabilities =
             ceilings.effective(engine.capabilities(), policy.capabilities());
@@ -375,7 +303,6 @@ impl TaskExecutionCapsule {
             policy,
             generation,
             effective_capabilities,
-            pinned_service,
             runtime_pool,
         }
     }
@@ -417,11 +344,6 @@ impl TaskExecutionCapsule {
     #[must_use]
     pub const fn effective_capabilities(&self) -> CapabilitySet {
         self.effective_capabilities
-    }
-
-    #[must_use]
-    pub const fn pinned_service(&self) -> Option<&crate::service::PinnedServiceExecution> {
-        self.pinned_service.as_ref()
     }
 }
 
@@ -506,7 +428,7 @@ impl ScopedTask {
     }
 
     /// Converts the admitted work into a completion future that pins its exact
-    /// executable and Service generation until delivery or cancellation.
+    /// executable generation until delivery or cancellation.
     #[must_use]
     pub fn into_completion_future(self) -> ScopedTaskCompletionFuture {
         let Self {

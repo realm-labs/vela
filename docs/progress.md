@@ -20,9 +20,10 @@ features. Missing interop capabilities and object-boundary design are deferred
 to a separate follow-up. Checkpoint A is complete: the active contracts and
 agent instructions are consolidated, deletion dependencies and existing tests
 are named in the architecture, and 27 focused retained-baseline tests pass.
-This does not establish runtime removal. The active checkpoint is B:
-Service/Provider removal across declarations, compilation, dispatch, artifacts,
-tooling, and callers.
+Checkpoint B removes Service/Provider declarations, compilation targets,
+dispatch, artifact/schema fields, tooling projections, macros, and callers.
+Portable program format is 6 and tooling schema format is 2; obsolete formats
+reject. The active checkpoint is C: detached task and script async removal.
 The baseline and milestone records below describe existing implementation,
 including capabilities scheduled for removal, rather than the new target.
 
@@ -716,7 +717,7 @@ in the
 ### Runtime Simplification
 
 The [removal checklist](runtime-simplification-plan.md#removal-checklist) is
-recorded: R01/checkpoint A is complete, R02 is deferred, and B-E/R03-R16 remain
+recorded: A-B/R01/R03-R05 are complete, R02 is deferred, and C-E/R06-R16 remain
 open. A establishes the removal contract and existing retained-language
 baseline, not a replacement boundary. Opaque ownership, storage, re-entry, serialization,
 and reload design questions belong to a separate follow-up. Existing LSP and
@@ -1201,6 +1202,15 @@ The phase-closing commit or acceptance report records the commands and final
 result; a routine feature commit does not claim phase acceptance from focused
 tests alone.
 
+Checkpoint B validation: workspace Clippy (all targets/features), isolated macro
+UI, examples, 303 Node checks, site syntax/docs/build, and focused format/source
+rejection tests pass. The monolithic workspace test run timed out at macro UI;
+a partitioned run completed with 4,840 passed, two ignored and one obsolete
+package architecture assertion, corrected and rerun in the owning test target.
+Unrelated accepted editor evidence is preserved; changed schema/Service fixtures
+are not certified by old native captures. Validation used installed Rust 1.98.0
+because the default stable Cargo shim was intermittently unavailable.
+
 Miri remains unavailable on the installed stable Rust 1.97.1
 `aarch64-apple-darwin` toolchain. The pre-existing erased-borrow boundary relies
 on its focused lifecycle, async, lease/re-entry, and source-audit proof until
@@ -1211,11 +1221,10 @@ provides it.
 
 ## Next Up
 
-1. Execute checkpoint B: remove Service/Provider declarations, compiler targets,
-   runtime dispatch, artifact/tooling data, and callers together. Preserve the
-   named retained tests and add removed-boundary rejection proof.
-2. Follow checkpoints C-E for task/async, borrowed-host, and repository-wide
-   cleanup. Do not implement a replacement opaque-object system or new
+1. Execute checkpoint C: remove detached task admission, then script async,
+   native futures, polling/resume machinery, metadata, and CLI async mode.
+   Preserve finite synchronous execution and independent LSP workers.
+2. Follow checkpoints D-E for borrowed-host and repository-wide cleanup. Do not implement a replacement opaque-object system or new
    conversion APIs, or mark removals complete from documentation alone.
 3. Preserve existing LSP evidence and its execution checkpoint; revise affected
    language/schema contracts and capture fresh evidence during removal.

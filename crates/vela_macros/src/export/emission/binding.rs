@@ -126,15 +126,9 @@ pub(crate) fn shared_host_value_tokens(shape: &TypeShape, object: TokenStream) -
     if let Some(element) = shape.borrowed_slice_element() {
         quote! { ::vela_host::object::lease_slice_ref::<#element>(#object) }
     } else {
-        let ty = match shape {
-            TypeShape::StorageDirectedShared(ty) => ty,
-            _ => {
-                let (ty, _) = shape
-                    .host_boundary()
-                    .expect("shared host extraction requires a host boundary");
-                ty
-            }
-        };
+        let (ty, _) = shape
+            .host_boundary()
+            .expect("shared host extraction requires a host boundary");
         quote! { (#object).lease_any().and_then(|object| object.downcast_ref::<#ty>()) }
     }
 }
@@ -194,11 +188,6 @@ pub(crate) fn hint_tokens(shape: &TypeShape) -> TokenStream {
         }
         TypeShape::Value(ty) => {
             quote! { <#ty as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint() }
-        }
-        TypeShape::StorageDirectedShared(ty) => {
-            quote! {
-                <#ty as ::vela_engine::interop::VelaSharedBoundary>::vela_shared_type_hint()
-            }
         }
         TypeShape::Host(ty, _) => {
             quote! { <#ty as ::vela_engine::interop::VelaHostBoundary>::vela_host_type_hint() }

@@ -3,6 +3,7 @@ use vela_common::{CollectionViewMutation, SourceId};
 use vela_hir::{
     body::HirExprKind,
     module_graph::{ModuleGraph, ModuleSource},
+    script_methods::{ScriptMethodCatalog, ScriptMethodCatalogMode},
 };
 use vela_package::{ModulePath, PackageId};
 
@@ -74,9 +75,9 @@ fn check(imports: &str, hint: &str, expected: TypeFact) {
     let mut graph = ModuleGraph::new();
     let text = format!("{imports}
         fn accept(value: {hint}) -> {hint} {{ value }}
-        trait Provider {{ fn echo(self, value: {hint}) -> {hint} {{ value }} }}
+        trait Echo {{ fn echo(self, value: {hint}) -> {hint} {{ value }} }}
         pub struct Worker {{}}
-        #[provider(id = \"worker\")] impl Provider for Worker {{}}
+        impl Echo for Worker {{}}
         struct Holder {{ value: {hint} }}
         const CONSTANT: {hint} = [];
         extern state STATE: {hint};
@@ -94,16 +95,13 @@ fn check(imports: &str, hint: &str, expected: TypeFact) {
         "pub struct Row {} struct Hidden {} pub const Mask: i64 = 1;",
     ));
     graph.resolve_imports();
-    let providers =
-        vela_hir::provider::discover_providers(&graph).expect("valid provider metadata");
-    assert_eq!(providers.len(), 1);
-    assert_eq!(providers[0].provider_type_name, "main::Worker");
-    assert_eq!(providers[0].key.provider().as_str(), "worker");
+    let methods = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
+        .expect("valid ordinary trait implementation");
+    assert_eq!(methods.len(), 1);
     assert_eq!(
-        providers[0]
-            .methods
-            .iter()
-            .map(|method| method.name.as_str())
+        methods
+            .methods()
+            .map(|method| method.name())
             .collect::<Vec<_>>(),
         ["echo"]
     );

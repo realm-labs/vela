@@ -17,21 +17,15 @@ use crate::interop::{VelaValueBoundary, VelaValueKeyBoundary};
 use crate::metadata::type_hint_display;
 use crate::type_binding::TypeBinding;
 
-/// Supplies the concrete binding used when a generated service type closure
-/// reaches a supported Rust standard-library type.
+/// Supplies a concrete binding for a supported Rust standard-library type.
 ///
-/// This is an implementation contract for generated registration bundles. It
-/// does not add generic types to Vela: the generated bundle registers only the
-/// concrete Rust instantiations present in its service signatures.
+/// This does not add generic types to Vela: registration installs only concrete
+/// Rust instantiations.
 pub trait StandardTypeBinding: Sized + 'static {
     fn standard_type_binding() -> TypeBinding<Self>;
 }
 
 /// Returns the unified binding for one supported concrete standard Rust type.
-///
-/// Service macros use this helper while walking their transitive signature
-/// graph, so application authors do not register collection instantiations by
-/// hand.
 #[must_use]
 pub fn standard_type_binding<T>() -> TypeBinding<T>
 where

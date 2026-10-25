@@ -5,7 +5,6 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-parking_lot = "0.12"
 serde = { version = "1", features = ["derive"] }
 vela_bytecode = { path = "../crates/vela_bytecode" }
 vela_common = { path = "../crates/vela_common" }
@@ -14,7 +13,6 @@ vela_def = { path = "../crates/vela_def" }
 vela_engine = { path = "../crates/vela_engine", features = ["serde"] }
 vela_hot_reload = { path = "../crates/vela_hot_reload" }
 vela_host = { path = "../crates/vela_host" }
-vela_hir = { path = "../crates/vela_hir" }
 vela_macros = { path = "../crates/vela_macros" }
 vela_package = { path = "../crates/vela_package" }
 vela_reflect = { path = "../crates/vela_reflect" }

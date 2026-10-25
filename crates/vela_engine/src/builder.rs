@@ -58,8 +58,6 @@ pub struct EngineBuilder {
     controlled_random: bool,
     stdio: bool,
     fs_io: bool,
-    service_set_factories: Vec<crate::service::ServiceSetSchemaFactory>,
-    service_patch_effect_ceiling: Option<crate::native::EffectSet>,
 }
 
 impl EngineBuilder {
@@ -155,7 +153,7 @@ impl EngineBuilder {
 
     /// Installs one generated member of a recursive Value type closure.
     ///
-    /// This remains public only because derive and service macros expand in
+    /// This remains public only because derive macros expand in
     /// downstream crates. Exact prior registrations are retained; a different
     /// binding for the same Rust type is deliberately kept as a duplicate so
     /// Engine sealing reports the conflict instead of silently choosing one.
@@ -183,23 +181,6 @@ impl EngineBuilder {
             return self;
         }
         T::register(self)
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_service_set_schema(
-        mut self,
-        factory: crate::service::ServiceSetSchemaFactory,
-    ) -> Self {
-        self.service_set_factories.push(factory);
-        self
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn service_patch_effect_ceiling(mut self, ceiling: crate::native::EffectSet) -> Self {
-        self.service_patch_effect_ceiling = Some(ceiling);
-        self
     }
 
     fn push_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
@@ -728,28 +709,6 @@ impl EngineBuilder {
         )?;
         validation::validate_types(&types, self.standard_natives)?;
         let type_bindings = TypeBindingRegistry::seal(self.type_bindings, &types)?;
-        let service_set_schema = match self.service_set_factories.as_slice() {
-            [] => None,
-            [factory] => {
-                let ceiling = self.service_patch_effect_ceiling.ok_or_else(|| {
-                    EngineError::new(EngineErrorKind::ServiceSchema {
-                        message:
-                            "generated Service domain requires an explicit patch effect ceiling"
-                                .to_owned(),
-                    })
-                })?;
-                Some(factory(&type_bindings, ceiling).map_err(|error| {
-                    EngineError::new(EngineErrorKind::ServiceSchema {
-                        message: error.to_string(),
-                    })
-                })?)
-            }
-            factories => {
-                return Err(EngineError::new(EngineErrorKind::MultipleServiceSets {
-                    count: factories.len(),
-                }));
-            }
-        };
         let module_options = validation::ModuleValidationOptions::default()
             .include_standard_modules(self.standard_natives)
             .include_time_module(self.time_clock)
@@ -836,7 +795,6 @@ impl EngineBuilder {
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,
             standard_natives: self.standard_natives,
-            service_set_schema,
         }))
     }
 }

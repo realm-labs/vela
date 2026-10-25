@@ -29,7 +29,7 @@ fn workspace_symbol_recovery_pins_whole_query_sets_through_damage_repair_and_uni
         for shifted in [false, true] {
             let (fixture, authored) = oracle::recovery(crlf, shifted);
             let file = authored["file"].as_str().expect("file");
-            let schema = json!({"formatVersion":1,"facts":authored["schema"]}).to_string();
+            let schema = json!({"formatVersion":2,"facts":authored["schema"]}).to_string();
             let mut db = LanguageServiceDatabases::new();
             update(&mut db, &fixture);
             db.load_schema_artifact_json(&uri("schema.json"), &schema);

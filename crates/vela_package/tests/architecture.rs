@@ -57,13 +57,18 @@ fn package_identity_and_manifest_legacy_paths_do_not_return() {
 }
 
 #[test]
-fn provider_runtime_and_reload_keep_artifact_boundaries() {
+fn removed_provider_paths_stay_absent_and_reload_keeps_artifact_boundaries() {
     let root = workspace_root();
-    let provider_runtime =
-        fs::read_to_string(root.join("crates/vela_engine/src/runtime/provider.rs"))
-            .expect("provider runtime");
-    assert!(provider_runtime.contains("method: MethodId"));
-    assert!(!provider_runtime.contains("method_name"));
+    for removed in [
+        "crates/vela_engine/src/runtime/provider.rs",
+        "crates/vela_engine/src/source/package/provider.rs",
+        "crates/vela_hir/src/provider.rs",
+    ] {
+        assert!(
+            !root.join(removed).exists(),
+            "removed Provider path: {removed}"
+        );
+    }
 
     let reload_manifest = fs::read_to_string(root.join("crates/vela_hot_reload/Cargo.toml"))
         .expect("reload manifest");
@@ -72,10 +77,19 @@ fn provider_runtime_and_reload_keep_artifact_boundaries() {
         .next()
         .expect("reload production dependency section");
     assert!(!production_dependencies.contains("vela_package"));
-    for path in rust_files(&root.join("crates/vela_hot_reload/src")) {
+    let reload_source = root.join("crates/vela_hot_reload/src");
+    for path in rust_files(&reload_source) {
+        // ABI tests may compile fixtures; production reload must only accept artifacts.
+        if path.starts_with(reload_source.join("tests")) {
+            continue;
+        }
         let text = fs::read_to_string(&path).expect("hot reload source");
-        assert!(!text.contains("load_package_graph"));
-        assert!(!text.contains("compile_package_program"));
+        assert!(!text.contains("load_package_graph"), "{}", path.display());
+        assert!(
+            !text.contains("compile_package_program"),
+            "{}",
+            path.display()
+        );
     }
 }
 

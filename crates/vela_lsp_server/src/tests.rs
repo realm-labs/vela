@@ -258,8 +258,6 @@ mod semantic_tokens_degradation;
 mod semantic_tokens_schema;
 mod semantic_tokens_schema_trait;
 mod semantic_tokens_source;
-mod service_calls;
-mod service_parameters;
 mod service_paths;
 mod shared_fixture;
 mod signature;

@@ -84,8 +84,7 @@ pub use rename::{
 };
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
-    SchemaCollectionViewFact, SchemaServiceFact, SchemaServiceMethodFact,
-    SchemaServiceParameterFact, SchemaServiceSetFact, SchemaSourceLocations, SchemaTypeBindingFact,
+    SchemaCollectionViewFact, SchemaSourceLocations, SchemaTypeBindingFact,
 };
 pub use selection::SelectionRange;
 pub use semantic_tokens::{

@@ -15,8 +15,8 @@ pub trait IntoScriptArg {
 }
 
 /// Encodes an owned-Value boundary object without consuming the authored Rust
-/// value. Generated `Value` implementations recurse through this trait when a
-/// service parameter is `&T` and the sealed `T` binding uses Value storage.
+/// value. Generated `Value` implementations recurse through this trait for
+/// shared references to types with Value storage.
 pub trait ToScriptValueRef {
     fn to_script_value_ref(&self) -> OwnedValue;
 }

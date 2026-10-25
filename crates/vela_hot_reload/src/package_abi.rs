@@ -30,14 +30,6 @@ fn ensure_compatible_metadata(
             None,
         );
     }
-    if previous.request().providers() != next.request().providers() {
-        return incompatible(
-            "provider selection",
-            "installed provider selection changed",
-            None,
-            None,
-        );
-    }
     for old_package in previous.packages() {
         let Some(new_package) = next
             .packages()
@@ -66,54 +58,6 @@ fn ensure_compatible_metadata(
             );
         }
     }
-    let previous_providers = previous.installed_providers();
-    let next_providers = next.installed_providers();
-    for (key, old_provider) in previous_providers.iter() {
-        let old_manifest = previous
-            .packages()
-            .iter()
-            .find(|package| package.id() == key.package())
-            .map(|package| package.manifest_path().to_owned());
-        let new_manifest = next
-            .packages()
-            .iter()
-            .find(|package| package.id() == key.package())
-            .map(|package| package.manifest_path().to_owned());
-        let Some(new_provider) = next_providers.get(key) else {
-            return incompatible(
-                &format!("provider {}", key.provider()),
-                "selected provider was removed",
-                Some(old_provider.source()),
-                old_manifest,
-            );
-        };
-        if old_provider.provider_type_id() != new_provider.provider_type_id() {
-            return incompatible(
-                &format!("provider {}", key.provider()),
-                "provider target type changed",
-                Some(new_provider.source()),
-                new_manifest.clone(),
-            );
-        }
-        if !old_provider.method_ids().eq(new_provider.method_ids()) {
-            return incompatible(
-                &format!("provider {}", key.provider()),
-                "provider service method set changed",
-                Some(new_provider.source()),
-                new_manifest,
-            );
-        }
-        if old_provider.method_ids().any(|method| {
-            old_provider.method_asyncness(method) != new_provider.method_asyncness(method)
-        }) {
-            return incompatible(
-                &format!("provider {}", key.provider()),
-                "provider service method asyncness changed",
-                Some(new_provider.source()),
-                new_manifest,
-            );
-        }
-    }
     Ok(())
 }
 
@@ -123,12 +67,10 @@ fn incompatible<T>(
     source_span: Option<vela_common::Span>,
     manifest_path: Option<std::path::PathBuf>,
 ) -> HotReloadResult<T> {
-    Err(HotReloadError::new(
-        HotReloadErrorKind::ChangedPackageProviderAbi {
-            target: target.to_owned(),
-            reason: reason.to_owned(),
-            source_span: source_span.map(Box::new),
-            manifest_path,
-        },
-    ))
+    Err(HotReloadError::new(HotReloadErrorKind::ChangedPackageAbi {
+        target: target.to_owned(),
+        reason: reason.to_owned(),
+        source_span: source_span.map(Box::new),
+        manifest_path,
+    }))
 }

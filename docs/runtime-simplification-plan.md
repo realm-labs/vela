@@ -1,7 +1,7 @@
 # Runtime Simplification And Feature Removal Plan
 
-Status: checkpoint A complete (contracts and retained baseline); B-E runtime
-removal remains open. R02 replacement interop is deferred.
+Status: checkpoints A and B complete. Service/Provider production surfaces are
+removed; C-E remain open. R02 replacement interop is deferred.
 
 ## Target And Authority
 
@@ -14,7 +14,8 @@ This scope supersedes conflicting Service, Provider, async, borrowed-host, and
 JIT requirements in the previous roadmap and architecture. Existing code,
 tests, milestone acceptance records, and subsystem contracts still describe the
 previous implementation until their corresponding removal checkpoint lands.
-This document does not claim that any runtime feature has already been removed.
+Checkpoint B removes Service/Provider; remaining runtime removals must still
+land with their owning checkpoints. Historical records are not current support.
 
 Keep repository artifacts domain-neutral. The purpose of this plan is to reduce
 the language and embedding contract, without reproducing another host ABI.
@@ -109,7 +110,8 @@ is an audit starting point, not proof that the future boundary is implemented.
 
 ## Removal Checklist
 
-R01 is complete at checkpoint A; R02 is deferred. R03-R16 remain open. Remove a
+R01 and R03-R05 are complete at checkpoints A-B; R02 is deferred. R06-R16
+remain open. Remove a
 feature's declarations, public exports, compiler metadata, runtime dispatch,
 portable encoding, tooling projection, examples, and build registrations
 together with its implementation.

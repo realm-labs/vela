@@ -251,7 +251,7 @@ pub(crate) fn check_snapshot(
         assert_eq!(facts.fields().count(), 0);
         assert_eq!(db.schema_db().diagnostics().len(), 1);
         let suffix = if schema["mode"] == "invalid" {
-            "is invalid: unsupported schema artifact format version 99; expected 1; host facts degrade to Any"
+            "is invalid: unsupported schema artifact format version 99; expected 2; host facts degrade to Any"
         } else {
             "is unavailable; host facts degrade to Any"
         };

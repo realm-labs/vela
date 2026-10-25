@@ -22,15 +22,15 @@
     "configError": "source.roots must be an array of strings at bytes {START}..{END}",
     "missingModule": { "code": "hir::unresolved_module", "message": "unresolved module `defs`", "label": "no similar modules found" },
     "missingImport": { "code": "hir::unresolved_import", "message": "unresolved import `resume` in module `defs`", "label": "no similar declarations found" },
-    "schemaOriginal": {"formatVersion":1,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"i64"}},{"owner":"HostCell","name":"gone","fact":{"kind":"primitive","name":"bool"}}]}},
-    "schemaChanged": {"formatVersion":1,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"string"}},{"owner":"HostCell","name":"rank","fact":{"kind":"primitive","name":"bool"}}]}},
+    "schemaOriginal": {"formatVersion":2,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"i64"}},{"owner":"HostCell","name":"gone","fact":{"kind":"primitive","name":"bool"}}]}},
+    "schemaChanged": {"formatVersion":2,"facts":{"types":[{"name":"HostCell","fact":{"kind":"host","name":"HostCell"}}],"fields":[{"owner":"HostCell","name":"value","fact":{"kind":"primitive","name":"string"}},{"owner":"HostCell","name":"rank","fact":{"kind":"primitive","name":"bool"}}]}},
     "schemaStates": [
       {"id":"original","schema":"schemaOriginal","fields":{"value":"i64","gone":"bool","rank":null},"error":null},
       {"id":"changed","schema":"schemaChanged","fields":{"value":"String","gone":null,"rank":"bool"},"error":null},
-      {"id":"invalid-version","text":"{\"formatVersion\":99,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 1; host facts degrade to Any"},
+      {"id":"invalid-version","text":"{\"formatVersion\":99,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 2; host facts degrade to Any"},
       {"id":"truncated","text":"{","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: invalid schema artifact: EOF while parsing an object at line 1 column 1; host facts degrade to Any"},
       {"id":"missing","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is unavailable; host facts degrade to Any"},
-      {"id":"empty","text":"{\"formatVersion\":1,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":null},
+      {"id":"empty","text":"{\"formatVersion\":2,\"facts\":{}}","fields":{"value":null,"gone":null,"rank":null},"error":null},
       {"id":"restored","schema":"schemaOriginal","fields":{"value":"i64","gone":"bool","rank":null},"error":null}
     ]
   }

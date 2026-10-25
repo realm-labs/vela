@@ -13,7 +13,7 @@ pub extern state server: ServerState;
 `state` creates one VM-owned cell per Runtime. Its required initializer runs
 once during Runtime construction and only for newly added cells during reload.
 Initializers are bounded and may construct script values, but cannot read
-state, call host/native/reflection/provider APIs, use capabilities, or suspend.
+state, call host/native/reflection APIs, use capabilities, or suspend.
 All cells are staged transactionally.
 
 Rust can inspect or replace VM state through its fully qualified name:

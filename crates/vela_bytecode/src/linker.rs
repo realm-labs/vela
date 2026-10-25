@@ -30,7 +30,6 @@ use support::{
 pub struct Linker<'registry> {
     registry: Option<&'registry DefinitionRegistry>,
     native_implementations: BTreeSet<FunctionId>,
-    internal_native_implementations: BTreeMap<FunctionId, vela_common::CallableAsyncness>,
 }
 
 impl<'registry> Linker<'registry> {
@@ -44,7 +43,6 @@ impl<'registry> Linker<'registry> {
         Self {
             registry: Some(registry),
             native_implementations: BTreeSet::new(),
-            internal_native_implementations: BTreeMap::new(),
         }
     }
 
@@ -56,17 +54,6 @@ impl<'registry> Linker<'registry> {
 
     pub fn add_native_implementation(&mut self, id: FunctionId) {
         self.native_implementations.insert(id);
-    }
-
-    /// Registers an engine-internal native that is intentionally absent from
-    /// the source-visible definition registry.
-    #[doc(hidden)]
-    pub fn add_internal_native_implementation(
-        &mut self,
-        id: FunctionId,
-        asyncness: vela_common::CallableAsyncness,
-    ) {
-        self.internal_native_implementations.insert(id, asyncness);
     }
 
     #[cfg(any(test, feature = "test-support"))]
@@ -92,11 +79,9 @@ impl<'registry> Linker<'registry> {
         LinkError,
     > {
         let image = crate::ProgramImage::from_program(program);
-        let mut linked = LinkContext::new(self, &image).link_program(&image)?;
-        let package_metadata = package_metadata
-            .map(|metadata| metadata.link(&mut linked))
-            .transpose()
-            .map_err(LinkError::PackageMetadata)?;
+        let linked = LinkContext::new(self, &image).link_program(&image)?;
+        let package_metadata =
+            package_metadata.map(crate::PackageCompilationMetadata::into_artifact);
         let artifact = crate::LinkedArtifact::finish_unbound(image, linked)
             .map_err(LinkError::Verification)?;
         Ok((artifact, package_metadata))
@@ -154,7 +139,7 @@ impl<'registry> Linker<'registry> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum LinkError {
     Verification(crate::verification::VerificationError),
-    PackageMetadata(String),
+
     UnresolvedNative {
         name: String,
         id: FunctionId,
@@ -275,7 +260,7 @@ impl fmt::Display for LinkError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Verification(error) => write!(formatter, "{error}"),
-            Self::PackageMetadata(message) => formatter.write_str(message),
+
             Self::UnresolvedNative { name, id } => {
                 write!(formatter, "unresolved native function {name} ({id:?})")
             }

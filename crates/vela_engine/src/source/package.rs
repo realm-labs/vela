@@ -6,10 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use vela_bytecode::compiler::error::CompileError;
 use vela_bytecode::compiler::{PackageProgramCompilationRequest, compile_package_program};
-use vela_bytecode::{
-    LinkError, LinkedArtifact, PackageArtifactMetadata, PackageCompilationInput,
-    ProviderCompilationInput, ProviderMethodCompilationInput,
-};
+use vela_bytecode::{LinkError, LinkedArtifact, PackageArtifactMetadata, PackageCompilationInput};
 use vela_common::{CapabilitySet, SourceId};
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{HirSourceBuildError, HirSourceSet, build_package_source_set};
@@ -19,13 +16,6 @@ use vela_hot_reload::version::{HotUpdate, ProgramVersion};
 use vela_package::{PackageGraph, PackageGraphError, PackageId, load_package_graph};
 
 use crate::engine::Engine;
-
-mod provider;
-
-pub use provider::{
-    ProviderCatalog, ProviderCatalogError, ProviderDescriptor, ProviderMethodDescriptor,
-    ProviderSelection, ProviderSourceLocation,
-};
 
 static NEXT_PACKAGE_SNAPSHOT: AtomicU64 = AtomicU64::new(1);
 
@@ -44,12 +34,6 @@ pub struct PackageCompilationSnapshot {
 pub struct PackageCompileRequest {
     snapshot: PackageCompilationSnapshotId,
     roots: BTreeSet<PackageId>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct ProviderCompileRequest {
-    packages: PackageCompileRequest,
-    providers: ProviderSelection,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -84,9 +68,6 @@ pub enum EnginePackageErrorKind {
         missing: CapabilitySet,
     },
     RequestFingerprintMismatch,
-    ProviderDiscovery(vela_hir::provider::ProviderDiscoveryError),
-    ProviderCatalog(ProviderCatalogError),
-    ProviderAnalysis(String),
 }
 
 impl PackageCompilationSnapshotId {
@@ -144,41 +125,6 @@ impl PackageCompileRequest {
     }
 }
 
-impl ProviderCompileRequest {
-    #[must_use]
-    pub fn new(packages: PackageCompileRequest, providers: ProviderSelection) -> Self {
-        Self {
-            packages,
-            providers,
-        }
-    }
-
-    #[must_use]
-    pub fn for_selection(
-        snapshot: &PackageCompilationSnapshot,
-        providers: ProviderSelection,
-    ) -> Self {
-        let roots = providers
-            .providers()
-            .iter()
-            .map(|key| key.package().clone());
-        Self {
-            packages: PackageCompileRequest::for_roots(snapshot, roots),
-            providers,
-        }
-    }
-
-    #[must_use]
-    pub const fn packages(&self) -> &PackageCompileRequest {
-        &self.packages
-    }
-
-    #[must_use]
-    pub const fn providers(&self) -> &ProviderSelection {
-        &self.providers
-    }
-}
-
 impl fmt::Display for EnginePackageError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
@@ -214,9 +160,6 @@ impl fmt::Display for EnginePackageError {
             ),
             EnginePackageErrorKind::RequestFingerprintMismatch => formatter
                 .write_str("package hot reload request does not match the active root package set"),
-            EnginePackageErrorKind::ProviderDiscovery(error) => error.fmt(formatter),
-            EnginePackageErrorKind::ProviderCatalog(error) => error.fmt(formatter),
-            EnginePackageErrorKind::ProviderAnalysis(message) => formatter.write_str(message),
         }
     }
 }
@@ -272,33 +215,13 @@ impl Engine {
         snapshot: &PackageCompilationSnapshot,
         request: &PackageCompileRequest,
     ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
-        self.compile_package_request(snapshot, request, &[])
-    }
-
-    pub fn compile_provider_selection(
-        &self,
-        snapshot: &PackageCompilationSnapshot,
-        request: &ProviderCompileRequest,
-    ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
-        if request.providers.snapshot() != snapshot.id {
-            return Err(package_error(EnginePackageErrorKind::SnapshotMismatch {
-                expected: snapshot.id,
-                actual: request.providers.snapshot(),
-            }));
-        }
-        let catalog = self.discover_providers(snapshot)?;
-        catalog
-            .validate_selection(&request.providers)
-            .map_err(|error| package_error(EnginePackageErrorKind::ProviderCatalog(error)))?;
-        let providers = provider_compilation_inputs(snapshot, &request.providers)?;
-        self.compile_package_request(snapshot, &request.packages, &providers)
+        self.compile_package_request(snapshot, request)
     }
 
     fn compile_package_request(
         &self,
         snapshot: &PackageCompilationSnapshot,
         request: &PackageCompileRequest,
-        providers: &[ProviderCompilationInput],
     ) -> Result<Arc<LinkedArtifact>, EnginePackageError> {
         if request.snapshot != snapshot.id {
             return Err(package_error(EnginePackageErrorKind::SnapshotMismatch {
@@ -334,7 +257,6 @@ impl Engine {
             registry: Some(self.compiler_registry()),
             roots: &request.roots,
             packages: &packages,
-            providers,
         })
         .map_err(|error| package_error(EnginePackageErrorKind::Backend(error)))?;
         validate_observed_capabilities(program.package_metadata())?;
@@ -380,44 +302,6 @@ impl Engine {
         .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
     }
 
-    pub fn compile_provider_hot_reload_initial(
-        &self,
-        snapshot: &PackageCompilationSnapshot,
-        request: &ProviderCompileRequest,
-    ) -> Result<ProgramVersion, EnginePackageError> {
-        let artifact = self.compile_provider_selection(snapshot, request)?;
-        initial_version_from_linked_artifact(self.hot_reload_abi(), artifact)
-            .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
-    }
-
-    pub fn compile_provider_hot_reload_update(
-        &self,
-        previous: &ProgramVersion,
-        snapshot: &PackageCompilationSnapshot,
-        request: &ProviderCompileRequest,
-    ) -> Result<HotUpdate, EnginePackageError> {
-        let artifact = self.compile_provider_selection(snapshot, request)?;
-        let previous_request = previous
-            .linked_artifact()
-            .package_metadata()
-            .map(PackageArtifactMetadata::request);
-        let next_request = artifact
-            .package_metadata()
-            .map(PackageArtifactMetadata::request);
-        if previous_request != next_request {
-            return Err(package_error(
-                EnginePackageErrorKind::RequestFingerprintMismatch,
-            ));
-        }
-        update_from_linked_artifact(
-            previous,
-            self.hot_reload_abi(),
-            self.hot_reload_policy(),
-            artifact,
-        )
-        .map_err(|error| package_error(EnginePackageErrorKind::HotReload(error)))
-    }
-
     pub fn compile_package_hot_reload_update_from_previous(
         &self,
         previous: &ProgramVersion,
@@ -430,15 +314,7 @@ impl Engine {
             .request();
         let packages =
             PackageCompileRequest::for_roots(snapshot, fingerprint.roots().iter().cloned());
-        if fingerprint.providers().providers().is_empty() {
-            return self.compile_package_hot_reload_update(previous, snapshot, &packages);
-        }
-        let selection = ProviderSelection::for_snapshot(
-            snapshot.id,
-            fingerprint.providers().providers().iter().cloned(),
-        );
-        let request = ProviderCompileRequest::new(packages, selection);
-        self.compile_provider_hot_reload_update(previous, snapshot, &request)
+        self.compile_package_hot_reload_update(previous, snapshot, &packages)
     }
 
     pub fn compile_package_workspace_hot_reload_update_from_previous(
@@ -510,44 +386,6 @@ fn package_inputs(
             manifest_path: package.manifest_path.clone(),
         })
         .collect()
-}
-
-fn provider_compilation_inputs(
-    snapshot: &PackageCompilationSnapshot,
-    selection: &ProviderSelection,
-) -> Result<Vec<ProviderCompilationInput>, EnginePackageError> {
-    let discovered = vela_hir::provider::discover_providers(snapshot.sources.graph())
-        .map_err(|error| package_error(EnginePackageErrorKind::ProviderDiscovery(error)))?;
-    let mut inputs = Vec::with_capacity(selection.providers().len());
-    for provider in discovered {
-        if !selection.providers().contains(&provider.key) {
-            continue;
-        }
-        let package = snapshot
-            .package_graph
-            .packages()
-            .get(provider.key.package())
-            .expect("selected provider belongs to a loaded package");
-        inputs.push(ProviderCompilationInput {
-            key: provider.key,
-            provider_type: provider.provider_type,
-            provider_type_name: provider.provider_type_name,
-            provider_shape: provider.provider_shape,
-            source: provider.source,
-            methods: provider
-                .methods
-                .into_iter()
-                .map(|method| ProviderMethodCompilationInput {
-                    id: method.id,
-                    name: method.name,
-                    asyncness: method.asyncness,
-                })
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-            package_declared_capabilities: package.required_capabilities,
-        });
-    }
-    Ok(inputs)
 }
 
 fn validate_host_grants(

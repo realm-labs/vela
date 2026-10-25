@@ -9,14 +9,8 @@ mod portable_artifact;
 mod prelude;
 mod reflection_configuration;
 mod reload_base;
+mod removed_declarations;
 mod script_reflection;
-mod service_activation;
-mod service_async;
-mod service_detached_task;
-mod service_interop;
-mod service_scoped_host;
-mod service_selection;
-mod service_source;
-mod service_value_slice;
+
 mod support;
 mod task_stress;

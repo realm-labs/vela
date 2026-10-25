@@ -846,7 +846,7 @@ pub fn preview() { return 1 }";
     let grant_start = schema_text.find("grant").expect("grant marker");
     let preview_start = schema_text.find("preview").expect("preview marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -1002,7 +1002,7 @@ pub fn main() -> i64 {
         .expect("schema source should be indexed");
     let grant_start = schema_text.find("grant").expect("grant marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {

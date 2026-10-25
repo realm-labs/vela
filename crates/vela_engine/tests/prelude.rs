@@ -83,23 +83,6 @@ fn prelude_covers_typed_native_registration() {
 }
 
 #[test]
-fn prelude_covers_service_patch_authoring() {
-    let empty = PatchRevision::empty();
-    let revision = empty
-        .apply(PatchEdit::put(
-            "rules/reward.vela",
-            "pub fn reward() { return 1; }",
-        ))
-        .expect("patch should apply");
-    let patch = ServicePatch::against(&revision)
-        .put("rules/audit.vela", "pub fn audit() {}")
-        .remove("rules/reward.vela");
-
-    assert!(revision.sources().contains("rules/reward.vela"));
-    assert!(matches!(patch, ServicePatch::Edit { .. }));
-}
-
-#[test]
 fn prelude_covers_source_errors() {
     let engine = Engine::builder().build().expect("engine should build");
     let compile_error: EngineSourceError = engine

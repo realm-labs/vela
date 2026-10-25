@@ -1,6 +1,20 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
 //! Stable embedding API for installing schemas and native functions into Vela.
+//!
+//! Service deployment and Provider selection are not embedding APIs:
+//!
+//! ```compile_fail
+//! use vela_engine::service::Service;
+//! ```
+//!
+//! ```compile_fail
+//! use vela_engine::source::ProviderCompileRequest;
+//! ```
+//!
+//! ```compile_fail
+//! use vela_engine::runtime::ProviderHandle;
+//! ```
 
 #![allow(clippy::result_large_err)]
 
@@ -37,7 +51,6 @@ pub mod registration;
 pub mod reload;
 pub mod runtime;
 pub mod schema;
-pub mod service;
 pub mod source;
 pub mod standard;
 pub mod task;

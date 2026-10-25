@@ -182,12 +182,6 @@ impl GenerationBuilder<'_, '_> {
         if self.insert_task_call(executable, body, expression, call, origin)? {
             return Ok(());
         }
-        if let Some(target) = self.service_call_target(executable, body, call, origin)? {
-            self.targets
-                .insert_call(executable, expression, target, origin)
-                .map_err(input_error)?;
-            return Ok(());
-        }
         let placement = self.checked_call_placement(executable, call, origin)?;
         let target = require_analysis_call_target(
             self.executable_analysis(executable)?
@@ -1466,7 +1460,6 @@ mod constructor_arguments;
 mod constructors;
 mod helpers;
 mod host_paths;
-mod service_calls;
 use self::constructor_arguments::{
     require_constructor_slot_identity, unavailable_constructor_default,
 };

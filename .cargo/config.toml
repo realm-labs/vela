@@ -8,7 +8,7 @@ test-fast = [
     "--skip",
     "unified_interop_export_signature_ui",
     "--skip",
-    "service_contract_signature_ui",
+    "removed_service_macros_are_unavailable",
     "--skip",
     "core_language_fixture_executes",
     "--skip",

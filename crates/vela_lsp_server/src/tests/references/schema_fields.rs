@@ -145,7 +145,7 @@ fn open_schema_field_workspace(
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

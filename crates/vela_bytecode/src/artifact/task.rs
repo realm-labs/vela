@@ -66,17 +66,6 @@ pub enum ArtifactTaskOperation {
     feature = "artifact-codec",
     derive(serde::Serialize, serde::Deserialize)
 )]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ArtifactTaskServiceRequirement {
-    /// Use an ordinary capsule when admitted outside Services and retain the
-    /// exact originating Service generation when one is present.
-    InheritOriginatingGeneration,
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArtifactTaskParameter {
     pub contract: Option<vela_mir::MirTypeContract>,
@@ -125,7 +114,6 @@ pub struct ArtifactTaskTarget {
     pub worker_debug_name: String,
     pub worker_signature: ArtifactTaskSignature,
     pub continuation: Option<ArtifactTaskContinuation>,
-    pub service_requirement: ArtifactTaskServiceRequirement,
 }
 
 pub(super) fn collect_task_targets(
@@ -223,7 +211,6 @@ pub(super) fn collect_task_targets(
                         .unwrap_or(task.worker_signature.effect),
                 },
                 continuation,
-                service_requirement: ArtifactTaskServiceRequirement::InheritOriginatingGeneration,
             });
         }
     }

@@ -247,9 +247,6 @@ where
                 target,
                 args: CallArgs::new(),
                 budget,
-                service_dispatcher: None,
-                pinned_service: None,
-                service_scoped_return: None,
                 task_scope: None,
             })
             .map_err(|error| RuntimeBuildError::Initializer {

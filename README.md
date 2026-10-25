@@ -10,8 +10,7 @@ Read the hosted docs or try the browser playground:
 - [Documentation](https://realm-labs.github.io/vela/overview/)
 - [Playground](https://realm-labs.github.io/vela/playground/)
 
-Scripts can read and mutate Rust-owned state with natural syntax while the
-runtime keeps the boundary explicit:
+Scripts operate on script-owned data with ordinary language syntax:
 
 ```vela
 fn handle(player, reward) {
@@ -20,25 +19,24 @@ fn handle(player, reward) {
 }
 ```
 
-The script never receives a real Rust `&mut T`. Host mutation is routed through
-`HostRef`, `HostPath`, `PathProxy`, and write-through `HostAccess`.
+The reduced Rust boundary retains independent synchronous native calls and
+existing value conversions. Converted data is script-owned and has no implicit
+Rust write-back. Replacement opaque-object, conversion and re-entry APIs are
+separate follow-up work, not part of this removal pass.
 
 ## Current Status
 
-Vela is a runnable prototype with the source-to-bytecode-to-VM loop, host
-write-through access, reflection, execution budgets, managed heap/GC
-foundations, module resolution, hot reload, standard-library helpers, standalone
-embedding examples, a browser playground, and measured interpreter baselines.
+Vela is a runnable prototype with a source-to-bytecode-to-interpreter loop,
+script reflection, finite execution budgets, non-moving script GC, ordinary
+modules/packages/traits, script hot reload, standard-library helpers, native LSP
+and editor integrations, a browser playground, and measured interpreter baselines.
 
-Current work is focused on M19.5 performance architecture prep before M20
-inline caches:
-
-- move hot dispatch operands from names to IDs, slots, resolved targets, or path
-  keys;
-- keep VM dispatch split behind focused call/access/object/iteration
-  boundaries;
-- preserve hot reload, host access, reflection, GC, and runtime semantics while
-  preparing cache-ready invariants.
+The active work is the removal-only [runtime simplification pass](docs/runtime-simplification-plan.md).
+Checkpoint B removes Rust/Vela Service hotfixing and Provider discovery/selection;
+ordinary packages, traits and script reload remain. Checkpoints C/D remove script
+async/tasks, caller-borrowed Rust values and transparent host paths. Some examples
+and implementation surfaces still await those owning checkpoints; their presence
+does not establish the target boundary. No replacement features are added here.
 
 See [`docs/progress.md`](docs/progress.md) for the active milestone state.
 
@@ -78,8 +76,8 @@ fn main() {
 
 There are no script-language generics, overload sets, Rust-style borrow syntax,
 script-visible task/coroutine handles, arbitrary `eval`, or runtime monkey
-patching. Executor-neutral `async fn` and `.await` preserve sequential script
-semantics.
+patching. Script `async fn`/`.await` are scheduled for removal; editor worker
+scheduling and protocol cancellation are independent tooling concerns.
 
 ## Repository Layout
 
@@ -91,8 +89,7 @@ semantics.
 - `crates/vela_bytecode`: bytecode compiler, program metadata, and verification.
 - `crates/vela_vm`: interpreter, values, managed heap, budgets, GC roots, and
   runtime execution primitives.
-- `crates/vela_host`: `HostRef`, `HostPath`, `PathProxy`, `HostAccess`, and host
-  state adapter traits.
+- `crates/vela_host`: existing host-boundary support, being reduced by checkpoint D.
 - `crates/vela_reflect`: type registry, reflection records, permissions, and
   controlled read/write/call helpers.
 - `crates/vela_engine`: embedding API, `EngineBuilder`, `Runtime`, call args,
@@ -138,7 +135,7 @@ cargo run --manifest-path examples/Cargo.toml --bin script_state
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin async_basic
-cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
+
 ```
 
 Run the CLI on a simple script:
@@ -187,10 +184,12 @@ GitHub Pages deploys automatically from the Pages workflow after CI succeeds.
 
 - No script-language generics.
 - No function overloading by arity, type hint, or native signature.
-- Scripts never receive real Rust `&mut T` references.
-- Host mutation goes through `HostRef`, `HostPath`, `PathProxy`, and
-  `HostAccess`.
+- No caller-borrowed Rust roots, arguments, returns, views, leases or transparent
+  host paths in the reduced target, including borrowed data hidden in wrappers.
+- No Service hotfixing or Provider entrypoints; ordinary traits/packages stay.
 - Reflection can query metadata and perform controlled reads, writes, and
   calls, but cannot mutate runtime type structure.
-- No monkey patching, MVP JIT, async-frame hot migration, script-visible
-  task/coroutine handles, moving GC, or custom full IDE product.
+- No monkey patching, JIT, script async/tasks, moving GC, structural state
+  migration, or custom full IDE product.
+- Active calls and retained closures keep their exact executable generation
+  across compatible script reloads; old closures are never rebound by name.

@@ -14,7 +14,7 @@ fn uri(file: &str) -> DocumentId {
 
 #[test]
 fn signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries() {
-    verify_fixture("signature-s5", 161);
+    verify_fixture("signature-s5", 101);
 }
 
 #[test]

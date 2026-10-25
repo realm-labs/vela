@@ -207,7 +207,7 @@ pub fn award() { return 4 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

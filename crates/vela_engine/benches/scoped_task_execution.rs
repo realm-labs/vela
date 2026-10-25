@@ -4,18 +4,15 @@ use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
 
-use vela_common::{Capability, CapabilitySet, SourceId};
+use vela_common::{Capability, CapabilitySet};
 use vela_def::FunctionId;
 use vela_engine::engine::Engine;
 use vela_engine::native::{FunctionAccess, NativeFunctionDesc, TypeHint};
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_engine::service::{Service, ServiceRuntimeBinding, ServiceSourceManifest};
 use vela_engine::task::{
     ScopedTask, ScopedTaskCompletion, ScopedTaskHost, ScopedTaskOutcome, TaskAdmissionError,
     TaskPolicy, TaskScope,
 };
-use vela_hir::source_ingestion::build_single_source;
-use vela_macros::{service, service_domain};
 use vela_vm::budget::{CollectionLimits, ExecutionLimits};
 use vela_vm::owned_value::OwnedValue;
 
@@ -33,53 +30,6 @@ fn admit_copy(values: Array) { task::spawn_scoped(copy_worker(values)); }
 fn admit_pending() { task::spawn_scoped(pending_worker()); }
 fn admit_then(value: i64) { task::spawn_scoped_then(ready_worker(value), finish); }
 "#;
-
-const SERVICE_SOURCE: &str = r#"
-async fn service_worker(value: i64) -> i64 {
-    let base = service::base::adjust(value);
-    return service::pinned::audit::record(base);
-}
-
-#[service_impl(task_bench::calculator)]
-impl CalculatorPatch {
-    fn adjust(value: i64) -> i64 {
-        task::spawn_scoped(service_worker(value));
-        return value * 10;
-    }
-}
-"#;
-
-#[service(path = "task_bench::calculator")]
-pub trait CalculatorService: Send + Sync {
-    fn adjust(&self, value: i64) -> i64;
-}
-
-struct RustCalculator;
-
-impl CalculatorService for RustCalculator {
-    fn adjust(&self, value: i64) -> i64 {
-        value + 1
-    }
-}
-
-#[service(path = "task_bench::audit")]
-pub trait AuditService: Send + Sync {
-    fn record(&self, value: i64) -> i64;
-}
-
-struct RustAudit;
-
-impl AuditService for RustAudit {
-    fn record(&self, value: i64) -> i64 {
-        value + 100
-    }
-}
-
-#[service_domain]
-pub struct TaskBenchServices {
-    pub calculator: Service<dyn CalculatorService>,
-    pub audit: Service<dyn AuditService>,
-}
 
 #[derive(Default)]
 struct CaptureHost {
@@ -169,12 +119,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         u64::from(pending)
     });
 
-    let (service_root, service_host) = service_fixture(iterations)?;
-    report("service_nested_dispatch", iterations, || {
-        black_box(service_root.calculator()).adjust(black_box(41));
-        ready_checksum(service_host.take())
-    })?;
-
     let mut completions = Vec::with_capacity(iterations);
     for _ in 0..iterations {
         runtime.call(
@@ -230,34 +174,6 @@ fn ordinary_engine() -> Result<Engine, Box<dyn Error>> {
             },
         )
         .build()?)
-}
-
-fn service_fixture(
-    maximum: usize,
-) -> Result<(TaskBenchServicesRoot, Arc<CaptureHost>), Box<dyn Error>> {
-    let host = Arc::new(CaptureHost::default());
-    let task_scope = TaskScope::new(host.clone(), policy(maximum + WARMUP_ITERATIONS + 8));
-    let app = TaskBenchServices::builder(Engine::builder().capabilities(CapabilitySet::all()))
-        .task_scope(task_scope.clone())
-        .emergency_patch_effect_ceiling(vela_engine::native::EffectSet::task_spawn())
-        .calculator(RustCalculator)
-        .audit(RustAudit)
-        .build()?;
-    let (engine, services) = app.into_parts();
-    let rust = services.pin();
-    let sources = build_single_source(SourceId::new(1), SERVICE_SOURCE)
-        .map_err(|error| format!("{error:?}"))?;
-    let manifest = ServiceSourceManifest::link(sources.graph(), services.schema())?;
-    let artifact = engine.link_compiled_program(engine.compile_source(SERVICE_SOURCE)?)?;
-    let update = manifest.bind_artifact(artifact)?;
-    let candidate = services.stage_snapshot(
-        &rust,
-        update,
-        ServiceRuntimeBinding::for_engine(engine),
-        CallOptions::unbounded().with_task_scope(task_scope),
-    )?;
-    services.activate_if_current(candidate)?;
-    Ok((services.pin(), host))
 }
 
 fn policy(maximum: usize) -> TaskPolicy {

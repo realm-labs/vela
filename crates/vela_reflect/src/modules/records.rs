@@ -84,10 +84,6 @@ pub(super) fn function_record(desc: &FunctionDesc) -> ReflectValue {
                         .unwrap_or(&crate::access::FunctionEffectSet::default()),
                 ),
             ),
-            (
-                "detached_requires_service_generation".to_owned(),
-                bool_value(detached.is_some_and(|target| target.requires_service_generation)),
-            ),
             ("access".to_owned(), function_access_record(desc)),
             ("origin".to_owned(), origin_value(desc.origin)),
             (
@@ -222,4 +218,31 @@ fn param_record(param: &FunctionParamDesc) -> ReflectValue {
             ("defaulted".to_owned(), bool_value(param.has_default)),
         ]),
     )
+}
+
+#[cfg(test)]
+mod removal_tests {
+    use super::*;
+    use crate::modules::{DetachedTargetDesc, DetachedValueMode};
+    use vela_def::FunctionId;
+
+    #[test]
+    fn detached_function_metadata_has_no_service_generation_authority() {
+        let mut desc = FunctionDesc::new(FunctionId::new(1), "worker");
+        desc.detached_target = Some(DetachedTargetDesc {
+            parameter_contracts: vec!["Any".to_owned()],
+            parameter_modes: vec![DetachedValueMode::RuntimeChecked],
+            result_contract: "Any".to_owned(),
+            result_mode: DetachedValueMode::RuntimeChecked,
+            effects: crate::access::FunctionEffectSet::default(),
+        });
+        let ReflectValue::ScriptRecord { fields, .. } = function_record(&desc) else {
+            panic!("function descriptor must be a record");
+        };
+        assert!(!fields.contains_key("detached_requires_service_generation"));
+        assert_eq!(fields["detached_target"], bool_value(true));
+        assert_eq!(fields["name"], string("worker"));
+        assert!(fields.contains_key("detached_effects"));
+        assert!(fields.contains_key("detached_parameter_modes"));
+    }
 }

@@ -36,7 +36,7 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -197,7 +197,7 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {
@@ -358,7 +358,7 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -510,7 +510,7 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {

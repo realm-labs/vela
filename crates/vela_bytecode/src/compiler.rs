@@ -9,7 +9,6 @@ pub mod options;
 mod schema_defaults;
 mod semantic;
 mod semantic_input;
-pub mod service_schema;
 #[cfg(test)]
 #[allow(clippy::result_large_err)]
 mod test_support;
@@ -158,7 +157,6 @@ pub struct PackageProgramCompilationRequest<'a> {
     pub registry: Option<RegistryCompileView<'a>>,
     pub roots: &'a BTreeSet<PackageId>,
     pub packages: &'a [crate::PackageCompilationInput],
-    pub providers: &'a [crate::ProviderCompilationInput],
 }
 
 pub struct FunctionCompilationRequest<'a> {
@@ -185,14 +183,12 @@ pub fn compile_function(
         roots: semantic_input::SemanticRoots::Function(function),
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
-        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: request.options,
         registry: request.registry,
-        service_schema: None,
     })?;
     let (mut code, _) = compile_mir_roots(&input, graph)?;
     match code.len() {
@@ -204,26 +200,7 @@ pub fn compile_function(
 }
 
 pub fn compile_program(request: ProgramCompilationRequest<'_>) -> CompileResult<CompiledProgram> {
-    compile_program_inner(
-        request.sources,
-        request.options,
-        request.registry,
-        None,
-        None,
-    )
-}
-
-pub fn compile_program_with_service_schema(
-    request: ProgramCompilationRequest<'_>,
-    service_schema: &service_schema::ServiceCompilationSchema,
-) -> CompileResult<CompiledProgram> {
-    compile_program_inner(
-        request.sources,
-        request.options,
-        request.registry,
-        None,
-        Some(service_schema),
-    )
+    compile_program_inner(request.sources, request.options, request.registry, None)
 }
 
 pub fn compile_package_program(
@@ -233,8 +210,7 @@ pub fn compile_package_program(
         request.sources,
         request.options,
         request.registry,
-        Some((request.roots, request.packages, request.providers)),
-        None,
+        Some((request.roots, request.packages)),
     )
 }
 
@@ -242,12 +218,7 @@ fn compile_program_inner(
     sources: &HirSourceSet,
     options: &CompilerOptions,
     registry: Option<RegistryCompileView<'_>>,
-    package_request: Option<(
-        &BTreeSet<PackageId>,
-        &[crate::PackageCompilationInput],
-        &[crate::ProviderCompilationInput],
-    )>,
-    service_schema: Option<&service_schema::ServiceCompilationSchema>,
+    package_request: Option<(&BTreeSet<PackageId>, &[crate::PackageCompilationInput])>,
 ) -> CompileResult<CompiledProgram> {
     let graph = sources.graph();
     reject_invalid_graph(graph)?;
@@ -263,26 +234,19 @@ fn compile_program_inner(
         .methods()
         .cloned()
         .collect::<Vec<_>>();
-    let executable_packages = executable_packages(
-        graph,
-        &script_function_symbols,
-        &state_symbols,
-        &methods,
-        semantic.service_impl_catalog(),
-    )?;
+    let executable_packages =
+        executable_packages(graph, &script_function_symbols, &state_symbols, &methods)?;
     let input = semantic_input::prepare_semantic_input(semantic_input::SemanticInputRequest {
         graph,
         roots: semantic_input::SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
-        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options,
         registry,
-        service_schema,
     })?;
 
     let mut program = UnlinkedProgram::new();
@@ -339,9 +303,7 @@ fn compile_program_inner(
     let bytecode = verify_program(program)?;
     let observed = observed_capabilities(&verified_mir, &executable_packages)?;
     let package_metadata = package_request
-        .map(|(roots, packages, providers)| {
-            crate::PackageCompilationMetadata::new(roots, packages, providers, &observed)
-        })
+        .map(|(roots, packages)| crate::PackageCompilationMetadata::new(roots, packages, &observed))
         .transpose()
         .map_err(|message| CompileError::new(CompileErrorKind::RegistrySnapshot(message)))?;
     Ok(CompiledProgram {
@@ -359,7 +321,6 @@ fn executable_packages(
     function_symbols: &BTreeMap<HirDeclId, String>,
     state_symbols: &BTreeMap<HirDeclId, String>,
     methods: &[vela_hir::script_methods::ScriptMethod],
-    service_impls: &vela_hir::service_impl::ServiceImplCatalog,
 ) -> CompileResult<BTreeMap<vela_def::FunctionId, PackageId>> {
     let mut packages = BTreeMap::new();
     for (declaration, symbol) in function_symbols {
@@ -402,24 +363,6 @@ fn executable_packages(
             vela_def::script_function_id(method.owner().package().as_str(), &method.symbol_seed()),
             method.owner().package().clone(),
         );
-    }
-    for implementation in service_impls.implementations() {
-        let package = graph
-            .module_package(implementation.module())
-            .ok_or_else(|| {
-                CompileError::new(CompileErrorKind::RegistrySnapshot(
-                    "service implementation has no package owner".to_owned(),
-                ))
-            })?;
-        for method in implementation.methods() {
-            packages.insert(
-                vela_def::script_function_id(
-                    package.as_str(),
-                    &implementation.method_symbol(method),
-                ),
-                package.clone(),
-            );
-        }
     }
     Ok(packages)
 }
@@ -537,7 +480,7 @@ fn validate_initializer_root(
                         return Err(invalid_state_initializer(
                             state,
                             Some(statement.origin.span),
-                            "native, standard-library, host, provider, reflective, and dynamic calls are not allowed",
+                            "native, standard-library, host, reflective, and dynamic calls are not allowed",
                         ));
                     }
                 }

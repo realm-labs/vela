@@ -22,7 +22,6 @@ use super::execution_host::{DirectContextInvoker, ExecutionHostBoundary, Reentry
 use super::handles::{
     self, RuntimeCallTargetKind, RuntimeMethodResolveContext, RuntimeMethodSelectorKind,
 };
-use super::provider;
 use super::state;
 use super::vm_states::{RuntimeValueRoots, VelaValue};
 use super::{VelaMethod, VelaMethodTarget, unknown_method, value_type_id};
@@ -41,7 +40,6 @@ pub(super) struct ActiveNativeReentry<'execution, 'heap> {
     pub(super) vm_state_values: &'execution mut VmStateValues,
     pub(super) retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
     pub(super) generations: &'execution mut state::RuntimeGenerations,
-    pub(super) service_dispatcher: Option<&'execution dyn crate::service::ServiceCallDispatcher>,
 }
 
 impl ActiveNativeReentry<'_, '_> {
@@ -67,16 +65,6 @@ impl ActiveNativeReentry<'_, '_> {
                     host: handles::RuntimeHostResolver::Adapter(self.host),
                 },
             ),
-            RuntimeCallTargetKind::ProviderMethod(target) => {
-                provider::resolve_provider_reentry_target(
-                    target,
-                    self.runtime_id,
-                    self.artifact,
-                    self.heap,
-                    self.budget,
-                    &self.retained_values,
-                )
-            }
         }
     }
 
@@ -228,7 +216,6 @@ impl ActiveNativeReentry<'_, '_> {
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
                             generations: self.generations,
-                            service_dispatcher: self.service_dispatcher,
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
@@ -354,7 +341,6 @@ impl ActiveNativeReentry<'_, '_> {
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
                             generations: self.generations,
-                            service_dispatcher: self.service_dispatcher,
                         };
                         invoke_prepared_async(&prepared, &mut nested).await
                     };
@@ -396,7 +382,6 @@ impl ActiveNativeReentry<'_, '_> {
                             vm_state_values: &mut *self.vm_state_values,
                             retained_values: std::sync::Arc::clone(&self.retained_values),
                             generations: self.generations,
-                            service_dispatcher: self.service_dispatcher,
                         };
                         invoke_prepared_context(&prepared, &mut nested)
                     };
@@ -492,15 +477,9 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                     vm_state_values: &mut *vm_state_values,
                     retained_values: std::sync::Arc::clone(&retained_values),
                     generations: &mut *generations,
-                    service_dispatcher: self.service_dispatcher,
                 };
-                let service_dispatcher = nested_reentry.service_dispatcher;
-                let mut context = NativeCallContext::new_reentry(
-                    engine,
-                    &mut nested_reentry,
-                    effect_ceiling,
-                    service_dispatcher,
-                );
+                let mut context =
+                    NativeCallContext::new_reentry(engine, &mut nested_reentry, effect_ceiling);
                 context.set_host_provenance(requests, leases);
                 invoke(leases, &mut context)
             })
@@ -589,27 +568,6 @@ struct RuntimeDirectContextInvoker<'execution, 'heap> {
     args: Vec<OwnedValue>,
     function: crate::method::AsyncContextDirectNativeMethodFunction,
     effect_ceiling: vela_common::CapabilitySet,
-    service_dispatcher: Option<&'execution dyn crate::service::ServiceCallDispatcher>,
-}
-
-struct ServiceDirectContextInvoker<'execution, 'heap> {
-    runtime_id: u64,
-    engine: &'execution Engine,
-    registry_image: &'execution ProgramImage,
-    artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
-    vm: &'execution vela_vm::Vm,
-    session: &'execution mut LinkedExecutionSession,
-    access: &'execution mut HostAccess,
-    heap: &'execution mut HeapExecution<'heap>,
-    budget: &'execution mut ExecutionBudget,
-    vm_state_values: &'execution mut VmStateValues,
-    retained_values: std::sync::Arc<std::sync::Mutex<RuntimeValueRoots>>,
-    generations: &'execution mut state::RuntimeGenerations,
-    target: crate::service::ServiceCallTarget,
-    args: Vec<OwnedValue>,
-    requests: vela_host::lease::HostLeaseRequestSet,
-    effect_ceiling: vela_common::CapabilitySet,
-    service_dispatcher: Option<&'execution dyn crate::service::ServiceCallDispatcher>,
 }
 
 impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
@@ -636,59 +594,11 @@ impl DirectContextInvoker for RuntimeDirectContextInvoker<'_, '_> {
                 vm_state_values: &mut *self.vm_state_values,
                 retained_values: self.retained_values,
                 generations: self.generations,
-                service_dispatcher: self.service_dispatcher,
             };
             let engine = self.engine.clone();
-            let service_dispatcher = nested.service_dispatcher;
-            let mut context = NativeCallContext::new_reentry(
-                &engine,
-                &mut nested,
-                self.effect_ceiling,
-                service_dispatcher,
-            );
+            let mut context =
+                NativeCallContext::new_reentry(&engine, &mut nested, self.effect_ceiling);
             (self.function)(self.root, leases, self.args, &mut context).await
-        })
-    }
-}
-
-impl DirectContextInvoker for ServiceDirectContextInvoker<'_, '_> {
-    fn invoke<'invoke, 'lease>(
-        self: Box<Self>,
-        leases: &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-        host: &'invoke mut dyn ExecutionHostBoundary,
-    ) -> vela_vm::NativeCallFuture<'invoke>
-    where
-        Self: 'invoke,
-    {
-        Box::pin(async move {
-            let mut nested = ActiveNativeReentry {
-                runtime_id: self.runtime_id,
-                engine: self.engine,
-                registry_image: self.registry_image,
-                artifact: self.artifact,
-                vm: self.vm,
-                session: self.session,
-                host,
-                access: self.access,
-                heap: self.heap,
-                budget: self.budget,
-                vm_state_values: &mut *self.vm_state_values,
-                retained_values: self.retained_values,
-                generations: self.generations,
-                service_dispatcher: self.service_dispatcher,
-            };
-            let engine = self.engine.clone();
-            let service_dispatcher = nested.service_dispatcher;
-            let mut context = NativeCallContext::new_reentry(
-                &engine,
-                &mut nested,
-                self.effect_ceiling,
-                service_dispatcher,
-            );
-            context.set_host_provenance(&self.requests, leases);
-            context
-                .dispatch_service_async(self.target, &self.args, leases)
-                .await
         })
     }
 }
@@ -697,42 +607,6 @@ pub(super) async fn invoke_prepared_async(
     prepared: &PreparedAsyncCall,
     active: &mut ActiveNativeReentry<'_, '_>,
 ) -> VmResult<OwnedValue> {
-    if let Some(entry) = prepared
-        .native_id()
-        .and_then(|id| active.engine.service_dispatch_native(id))
-        .filter(|entry| entry.asyncness.is_async())
-        .cloned()
-    {
-        crate::engine::check_capabilities(
-            &entry.name,
-            &entry.effects,
-            active.engine.capabilities(),
-        )?;
-        let requests = service_lease_requests(&entry, prepared.args())?;
-        let invoke = ServiceDirectContextInvoker {
-            runtime_id: active.runtime_id,
-            engine: active.engine,
-            registry_image: active.registry_image,
-            artifact: active.artifact,
-            vm: active.vm,
-            session: &mut *active.session,
-            access: &mut *active.access,
-            heap: &mut *active.heap,
-            budget: &mut *active.budget,
-            vm_state_values: &mut *active.vm_state_values,
-            retained_values: std::sync::Arc::clone(&active.retained_values),
-            generations: &mut *active.generations,
-            target: entry.target,
-            args: prepared.args().to_vec(),
-            requests: requests.clone(),
-            effect_ceiling: entry.effects.required_capability_set(),
-            service_dispatcher: active.service_dispatcher,
-        };
-        return active
-            .host
-            .invoke_direct_context(requests, Box::new(invoke))
-            .await;
-    }
     if let Some(entry) = prepared
         .native_id()
         .and_then(|id| active.engine.async_context_host_native_function(id))
@@ -745,12 +619,10 @@ pub(super) async fn invoke_prepared_async(
         let engine = active.engine.clone();
         let function = std::sync::Arc::clone(&entry.function);
         let args = prepared.args().to_vec();
-        let service_dispatcher = active.service_dispatcher;
         let mut context = NativeCallContext::new_reentry(
             &engine,
             active,
             entry.desc.effects.required_capability_set(),
-            service_dispatcher,
         );
         return function(&args, &mut context).await;
     }
@@ -807,7 +679,6 @@ pub(super) async fn invoke_prepared_async(
             args: prepared.args().to_vec(),
             function: std::sync::Arc::clone(function),
             effect_ceiling: entry.desc.effects.required_capability_set(),
-            service_dispatcher: active.service_dispatcher,
         };
         return active
             .host
@@ -833,56 +704,10 @@ pub(super) async fn invoke_prepared_async(
     prepared.invoke().await
 }
 
-fn service_lease_requests(
-    entry: &crate::engine::ServiceDispatchNative,
-    args: &[OwnedValue],
-) -> VmResult<vela_host::lease::HostLeaseRequestSet> {
-    let mut requests =
-        vela_host::lease::HostLeaseRequestSet::with_capacity(entry.parameter_leases.len());
-    for lease in &entry.parameter_leases {
-        let Some(argument) = args.get(lease.index) else {
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "async service host lease parameter",
-            }));
-        };
-        let OwnedValue::HostRef(root) = argument else {
-            if lease.host_only {
-                continue;
-            }
-            return Err(VmError::new(VmErrorKind::TypeMismatch {
-                operation: "async service host lease parameter",
-            }));
-        };
-        requests.push((*root, lease.kind));
-    }
-    Ok(requests)
-}
-
 pub(super) fn invoke_prepared_context(
     prepared: &PreparedContextCall,
     active: &mut ActiveNativeReentry<'_, '_>,
 ) -> VmResult<OwnedValue> {
-    if let Some(entry) = active
-        .engine
-        .service_dispatch_native(prepared.native_id())
-        .cloned()
-    {
-        crate::engine::check_capabilities(
-            &entry.name,
-            &entry.effects,
-            active.engine.capabilities(),
-        )?;
-        let engine = active.engine.clone();
-        let args = prepared.args().to_vec();
-        let service_dispatcher = active.service_dispatcher;
-        let mut context = NativeCallContext::new_reentry(
-            &engine,
-            active,
-            entry.effects.required_capability_set(),
-            service_dispatcher,
-        );
-        return context.dispatch_service(entry.target, &args);
-    }
     let entry = active
         .engine
         .context_host_native_function(prepared.native_id())
@@ -899,12 +724,10 @@ pub(super) fn invoke_prepared_context(
     let engine = active.engine.clone();
     let function = std::sync::Arc::clone(&entry.function);
     let args = prepared.args().to_vec();
-    let service_dispatcher = active.service_dispatcher;
     let mut context = NativeCallContext::new_reentry(
         &engine,
         active,
         entry.desc.effects.required_capability_set(),
-        service_dispatcher,
     );
     function(&args, &mut context)
 }

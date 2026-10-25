@@ -3,7 +3,7 @@
   "id": "signature-s5",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.signature_s5\"\nname = \"signature_s5\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "schema.json": "{\n  \"formatVersion\": 1,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Preview\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Preview\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::current\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::opaque\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"any\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"update\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Preview\",\n        \"name\": \"check\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "schema.json": "{\n  \"formatVersion\": 2,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Preview\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Preview\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"host::current\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"host\",\n            \"name\": \"host::Row\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::opaque\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [],\n          \"returns\": {\n            \"kind\": \"any\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"update\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"i64\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Preview\",\n        \"name\": \"check\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
     "scripts/methods.vela": "/* 中😀 */\nstruct Player { level: i64 }\nimpl Player { fn grant(self, amount: i64, bonus: i64 = 2) -> i64 { return amount + bonus; } }\ntrait Rewardable { fn preview(self, amount: i64, bonus: i64) -> i64 { return amount + bonus; } }\nimpl Rewardable for Player {}\ntrait Adjustable { fn change(self, value: u32, reason: String) -> bool; }\nimpl Adjustable for Player { fn change(self, value: u32, reason: String) -> bool { return true; } }\nfn current() -> Player { return Player { level: 1 }; }\nfn opaque() -> Any { return Player { level: 1 }; }\nasync fn fetch(code: i64, reason: String = \"x\") -> String { return reason; }\nfn main(player: Player, reward: Rewardable, row: host::Row, preview: host::Preview, any: Any, unknown) {\n player.grant(1, bonus = [[inherent]]2);\n current().grant(1, [[source-return]]2);\n player.preview(1, [[trait-default]]2);\n reward.preview(1, [[trait-interface]]2);\n player.change(1, reason = [[trait-override]]\"ok\");\n fetch(reason = \"ok\", code = [[source-async]]1);\n row.update(reason = \"ok\", amount = [[schema-named]]1);\n host::current().update(1, [[schema-return]]\"ok\");\n row.legacy(1, [[schema-legacy]]\"ok\");\n row.legacy(arg1 = [[schema-legacy-named]]\"ok\");\n preview.check(1, [[schema-trait]]\"ok\");\n opaque().grant(1, [[source-any]]2);\n host::opaque().update(1, [[schema-any]]\"ok\");\n any.grant(1, [[any]]2);\n unknown.grant(1, [[unknown]]2);\n row.grant(1, [[wrong-owner]]2);\n missing([[unresolved]]1);\n player.absent([[unknown-member]]1);\n let local = 1; local([[non-callable]]1);\n}\n",
     "scripts/standard.vela": "/* 中😀 */\nfn main(text: String, values: Array<i64>, optional: Option<i64>, result: Result<i64, String>, map: Map<String, i64>, any: Any) {\n text.split_once([[string]]\",\");\n values.filter([[array]]|item| { return item > 0; });\n optional.unwrap_or([[option]]1);\n result.unwrap_or([[result]]1);\n map.insert(\"key\", [[map]]1);\n any.filter([[dynamic-standard]]|item| { return true; });\n}\n"
   },
@@ -114,41 +114,6 @@
         },
         "named": true
       },
-      "base": {
-        "label": "async service::base::handle(amount: i64, reason: String) -> bool",
-        "parameters": [
-          {
-            "name": "amount",
-            "type": "i64",
-            "label": "amount: i64"
-          },
-          {
-            "name": "reason",
-            "type": "String",
-            "label": "reason: String"
-          }
-        ],
-        "owner": {
-          "kind": "Schema",
-          "name": "api::Handler.handle"
-        },
-        "named": false
-      },
-      "peer": {
-        "label": "api::Peer.take(amount: u32) -> bool",
-        "parameters": [
-          {
-            "name": "amount",
-            "type": "u32",
-            "label": "amount: u32"
-          }
-        ],
-        "owner": {
-          "kind": "Schema",
-          "name": "api::Peer.take"
-        },
-        "named": true
-      },
       "state": {
         "label": "api::State::Ready(arg0: i64, arg1: String) -> api::State::Ready",
         "parameters": [
@@ -241,36 +206,6 @@
         "owner": {
           "kind": "Source",
           "name": "api::State::Ready"
-        },
-        "named": false
-      },
-      "base-sibling": {
-        "label": "service::base::other(value: u32) -> ()",
-        "parameters": [
-          {
-            "name": "value",
-            "type": "u32",
-            "label": "value: u32"
-          }
-        ],
-        "owner": {
-          "kind": "Schema",
-          "name": "api::Handler.other"
-        },
-        "named": false
-      },
-      "pinned": {
-        "label": "service::pinned::peer::take(amount: u32) -> bool",
-        "parameters": [
-          {
-            "name": "amount",
-            "type": "u32",
-            "label": "amount: u32"
-          }
-        ],
-        "owner": {
-          "kind": "Schema",
-          "name": "api::Peer.take"
         },
         "named": false
       },
@@ -535,9 +470,9 @@
           {"id":"schema_mixed","file":"scripts/schema_mixed.vela","marker":"cursor","signature":"host-grant","active":1},
           {"id":"schema_alias","file":"scripts/schema_alias.vela","marker":"cursor","signature":"host-grant","active":0},
           {"id":"stdlib_named","file":"scripts/stdlib_named.vela","marker":"cursor","signature":"math","active":1},
-          {"id":"service_named_rejected","file":"scripts/service_named_rejected.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"service_positional","file":"scripts/service_positional.vela","marker":"cursor","signature":"base","active":1},
-          {"id":"service_receiver_named","file":"scripts/service_receiver_named.vela","marker":"cursor","signature":"peer","active":0},
+          {"id":"service_named_rejected","file":"scripts/service_named_rejected.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"service_positional","file":"scripts/service_positional.vela","marker":"cursor","signature":null,"active":0},
+          {"id":"service_receiver_named","file":"scripts/service_receiver_named.vela","marker":"cursor","signature":null,"active":0},
           {"id":"enum_named_rejected","file":"scripts/enum_named_rejected.vela","marker":"cursor","signature":"state","active":0},
           {"id":"enum_positional","file":"scripts/enum_positional.vela","marker":"cursor","signature":"state","active":1},
           {"id":"multiline","file":"scripts/multiline.vela","marker":"cursor","signature":"grant","active":1},
@@ -582,84 +517,6 @@
           {"id":"enum_private","file":"scripts/enum_private.vela","marker":"cursor","signature":null,"active":0},
           {"id":"enum_unimported","file":"scripts/enum_unimported.vela","marker":"cursor","signature":null,"active":0},
           {"id":"reserved_import","file":"scripts/reserved_import.vela","marker":"cursor","signature":null,"active":0}
-        ]
-      },
-      {
-        "fixture": "completion-service-calls",
-        "mode": "full",
-        "queries": [
-          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":"base","active":1},
-          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":"base-sibling","active":0},
-          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":"pinned","active":0},
-          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":"pinned","active":0},
-          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":"base","active":0},
-          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":"base","active":0}
-        ]
-      },
-      {
-        "fixture": "completion-service-calls",
-        "mode": "ordinary",
-        "queries": [
-          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":null,"active":1},
-          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":null,"active":0}
-        ]
-      },
-      {
-        "fixture": "completion-service-calls",
-        "mode": "missing",
-        "queries": [
-          {"id":"base","file":"scripts/base.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"base_second","file":"scripts/base_second.vela","marker":"cursor","signature":null,"active":1},
-          {"id":"base_sibling","file":"scripts/base_sibling.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"pinned","file":"scripts/pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"ordinary_pinned","file":"scripts/ordinary_pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"orphan_base","file":"scripts/orphan_base.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"helper","file":"scripts/helper.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"recursive","file":"scripts/recursive.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"shared_same","file":"scripts/shared_same.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"ambiguous","file":"scripts/ambiguous.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda","file":"scripts/lambda.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"lambda_pinned","file":"scripts/lambda_pinned.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"default","file":"scripts/default.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_service","file":"scripts/missing_service.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_member","file":"scripts/missing_member.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"missing_method","file":"scripts/missing_method.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"wrong_shape","file":"scripts/wrong_shape.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"bad_attribute","file":"scripts/bad_attribute.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"import_helper","file":"scripts/import_helper.vela","marker":"cursor","signature":null,"active":0},
-          {"id":"incomplete","file":"scripts/incomplete.vela","marker":"cursor","signature":null,"active":0}
         ]
       }
     ],

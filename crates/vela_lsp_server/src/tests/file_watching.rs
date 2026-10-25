@@ -132,7 +132,7 @@ fn assert_has_unresolved_import(notification: &JsonValue) {
 
 fn valid_schema_artifact() -> &'static str {
     r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

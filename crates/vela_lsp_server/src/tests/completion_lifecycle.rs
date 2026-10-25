@@ -140,7 +140,7 @@ fn write_schema(path: &std::path::Path, updated: bool) {
     }
     std::fs::write(
         path,
-        json!({"formatVersion":1,"facts":{"types":types}}).to_string(),
+        json!({"formatVersion":2,"facts":{"types":types}}).to_string(),
     )
     .expect("schema");
 }

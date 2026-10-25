@@ -1173,7 +1173,6 @@ const fn script_callee(call: &MirCall) -> Option<FunctionId> {
         | MirCall::NativeFunction { .. }
         | MirCall::StdlibFunction { .. }
         | MirCall::ValueMethod { .. }
-        | MirCall::Service { .. }
         | MirCall::DynamicMethod { .. } => None,
     }
 }

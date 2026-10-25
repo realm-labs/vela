@@ -3,6 +3,11 @@
 Each example is a standalone Cargo bin with its own `main`, so examples do not
 depend on a parameter-dispatched demo runner.
 
+Checkpoint B removes the Service/Provider examples and their executable tests.
+Ordinary packages, traits, native/value calls and script reload remain. The
+async and borrowed-host examples below still describe the implementation awaiting
+checkpoints C/D; they are not the reduced target boundary or replacement APIs.
+
 ```bash
 cargo run --manifest-path examples/Cargo.toml --bin level_up
 cargo run --manifest-path examples/Cargo.toml --bin monster_kill_reward
@@ -14,8 +19,8 @@ cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
-cargo run --manifest-path examples/Cargo.toml --bin service_hard_switch_fixture
-cargo run --manifest-path examples/Cargo.toml --bin service_hotfix_coverage
+cargo run --manifest-path examples/Cargo.toml --bin modules
+cargo run --manifest-path examples/Cargo.toml --bin package_dependency_demo
 ```
 
 Each example directory keeps the Rust entrypoint and script source together:
@@ -42,27 +47,16 @@ hand-write `ScriptHostObject` or `PathSegment` dispatch.
 
 Other useful embedding examples:
 
-- `service_hard_switch_fixture`: the generated Rust-default service baseline.
-  One request pins a complete `GameServices` generation, then generated
-  handler, rule, event, inventory, and reward service contracts drive the
-  request through that same root. The fixture exercises an async handler, a
-  mutable actor, Value DTOs, Array/Map-shaped arguments, business `Result`, and
-  cross-service calls without patch-aware business branches or Vela entry on
-  the Rust-default path. Handler/rule/event roles have no separate replacement
-  API.
-- `service_hotfix_coverage`: the complete generated-service patchability
-  walkthrough. One unchanged async Rust caller runs through RustDefault, a
-  sparse Snapshot, two exact-base Deltas, an old pinned root, rejected stale
-  and ABI-incompatible candidates, a folded Snapshot, and conditional
-  rollback. The same run proves direct, optional, and fallible call-scoped
-  Host returns to Rust, same-generation nested calls, zero-copy Host
-  arguments, call-scoped Host construction/reclamation, owned and shared
-  collection lowering, and rejection of mutable script-owned copy-back.
+- `modules`: ordinary script modules and imports.
+- `package_dependency_demo`: ordinary path-dependency compilation and script
+  reload, without discovery or selection entrypoints.
+- `hot_reload_function_swap` and `hot_reload_function_swap_invalid`: ordinary
+  script replacement and incompatible-update rejection.
 - `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
   assemble `CallArgs`, erase values, or resolve runtime target strings.
-- `async_stateful_reentry`: a mutable state lease held across a Rust service
+- `async_stateful_reentry`: a mutable state lease held across a Rust method
   await, followed by same-session Vela reentry with an explicit mutable
   reborrow. Its actor-shaped container keeps Runtime and host storage disjoint
   without depending on an actor framework or async executor crate.

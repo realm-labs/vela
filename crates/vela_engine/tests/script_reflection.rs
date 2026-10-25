@@ -125,7 +125,7 @@ fn inspect() {
     if target.detached_parameter_modes[0] != "runtime_checked" { return 30; }
     if target.detached_result_contract.unwrap_or("") != "Any" { return 40; }
     if target.detached_result_mode.unwrap_or("") != "runtime_checked" { return 50; }
-    if !target.detached_requires_service_generation { return 60; }
+
     if target.access.reflect_callable { return 70; }
     if !target.detached_effects.reads_time { return 80; }
     return 1;

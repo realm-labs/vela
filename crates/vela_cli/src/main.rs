@@ -21,7 +21,7 @@ struct Cli {
     #[arg(long = "async")]
     async_entry: bool,
 
-    /// Print the sealed host/service schema as JSON without executing `main`.
+    /// Print the sealed host schema as JSON without executing `main`.
     #[arg(long)]
     print_schema: bool,
 

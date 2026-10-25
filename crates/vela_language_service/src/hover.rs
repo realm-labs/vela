@@ -50,7 +50,6 @@ pub enum HoverKind {
     Method,
     Variant,
     Module,
-    Provider,
     Unknown,
 }
 
@@ -128,9 +127,6 @@ impl LanguageServiceDatabases {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
         let graph = self.hir_db().graph();
-        if let Some(provider) = provider_hover(&query, graph, source_id) {
-            return Some(provider);
-        }
         if !lexical_targets::is_symbol_position(&query) {
             return None;
         }
@@ -267,36 +263,6 @@ impl LanguageServiceDatabases {
         }
         stdlib_method_hover(receiver_fact, target.text(), range)
     }
-}
-
-fn provider_hover(
-    query: &QueryContext<'_>,
-    graph: &ModuleGraph,
-    source_id: vela_common::SourceId,
-) -> Option<Hover> {
-    let target = crate::rename::provider_id_rename_target(query, graph, source_id)?;
-    let offset = u32::try_from(target.range.start).ok()?;
-    let provider = vela_hir::provider::discover_providers(graph)
-        .ok()?
-        .into_iter()
-        .find(|provider| provider.source.source == source_id && provider.source.contains(offset))?;
-    let range = diagnostic_range(query.text(), target.range);
-    let detail = DisplayParts::plain(format!(
-        "provider {} for trait {:?}",
-        provider.key.package(),
-        provider.key.service()
-    ));
-    Some(Hover::new(
-        range,
-        target.value.clone(),
-        HoverKind::Provider,
-        detail,
-        Some(
-            "Provider IDs are stable hot-reload ABI keys; renaming this value removes the old provider identity."
-                .to_owned(),
-        ),
-        Some(crate::rename::provider_id_symbol(&target.value)),
-    ))
 }
 
 fn module_hover(

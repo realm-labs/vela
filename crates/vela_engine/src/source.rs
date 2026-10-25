@@ -3,9 +3,7 @@ use std::path::{Path, PathBuf};
 
 use vela_bytecode::compiler::CompiledProgram;
 use vela_bytecode::compiler::error::CompileError;
-use vela_bytecode::compiler::{
-    ProgramCompilationRequest, compile_program, compile_program_with_service_schema,
-};
+use vela_bytecode::compiler::{ProgramCompilationRequest, compile_program};
 use vela_common::SourceId;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::{
@@ -20,9 +18,7 @@ mod package;
 
 pub use package::{
     EnginePackageError, EnginePackageErrorKind, PackageCompilationSnapshot,
-    PackageCompilationSnapshotId, PackageCompileRequest, ProviderCatalog, ProviderCatalogError,
-    ProviderCompileRequest, ProviderDescriptor, ProviderMethodDescriptor, ProviderSelection,
-    ProviderSourceLocation,
+    PackageCompilationSnapshotId, PackageCompileRequest,
 };
 
 pub(crate) use loader::{
@@ -158,11 +154,7 @@ impl Engine {
             options: &options,
             registry: Some(self.compiler_registry()),
         };
-        match self.service_compilation_schema() {
-            Some(schema) => compile_program_with_service_schema(request, schema),
-            None => compile_program(request),
-        }
-        .map_err(EngineSourceError::backend)
+        compile_program(request).map_err(EngineSourceError::backend)
     }
 }
 

@@ -419,7 +419,6 @@ impl SchemaDiagnostic {
 #[derive(Debug, Clone, Default)]
 pub struct SchemaDb {
     facts: RegistryFacts,
-    service_set: Option<crate::SchemaServiceSetFact>,
     source_locations: schema_sources::BoundSchemaLocations,
     diagnostics: Vec<SchemaDiagnostic>,
 }
@@ -436,39 +435,30 @@ impl SchemaDb {
     }
 
     #[must_use]
-    pub const fn service_set(&self) -> Option<&crate::SchemaServiceSetFact> {
-        self.service_set.as_ref()
-    }
-
-    #[must_use]
     pub fn diagnostics(&self) -> &[SchemaDiagnostic] {
         &self.diagnostics
     }
 
     pub fn clear(&mut self) {
         self.facts = RegistryFacts::default();
-        self.service_set = None;
         self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics.clear();
     }
 
     pub fn set_facts(&mut self, facts: RegistryFacts) {
         self.facts = facts;
-        self.service_set = None;
         self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics.clear();
     }
 
     pub fn set_artifact(&mut self, artifact: SchemaArtifact) {
         self.source_locations.replace(artifact.source_locations());
-        self.service_set = artifact.service_set().cloned();
         self.facts = artifact.to_registry_facts();
         self.diagnostics.clear();
     }
 
     pub fn set_missing(&mut self, schema_path: impl Into<String>) {
         self.facts = RegistryFacts::default();
-        self.service_set = None;
         self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is unavailable; host facts degrade to Any",
@@ -478,7 +468,6 @@ impl SchemaDb {
 
     pub fn set_invalid(&mut self, schema_path: impl Into<String>, message: impl Into<String>) {
         self.facts = RegistryFacts::default();
-        self.service_set = None;
         self.source_locations = schema_sources::BoundSchemaLocations::default();
         self.diagnostics = vec![SchemaDiagnostic::new(format!(
             "host schema `{}` is invalid: {}; host facts degrade to Any",

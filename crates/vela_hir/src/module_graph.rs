@@ -180,6 +180,24 @@ impl ModuleGraph {
         let mut impl_method_declarations = Vec::new();
 
         for (item_index, item_kind) in syntax_summary.items() {
+            let attrs = syntax_metadata::attrs(&syntax_summary, item_index);
+            let mut removed_declaration = false;
+            for attr in &attrs {
+                if matches!(attr.name.as_str(), "service_impl" | "provider") {
+                    self.diagnostics.push(
+                        Diagnostic::error(format!(
+                            "#[{}] declarations are no longer supported",
+                            attr.name
+                        ))
+                        .with_code("hir::removed_declaration")
+                        .with_span(attr.span),
+                    );
+                    removed_declaration = true;
+                }
+            }
+            if removed_declaration {
+                continue;
+            }
             match item_kind {
                 SyntaxKind::UseItem => {
                     let Some(import) = syntax_summary.import(item_index) else {

@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use vela_analysis::type_fact::TypeFact;
 use vela_common::{SourceId, Span};
-use vela_hir::attributes::HirAttributeValue;
 use vela_hir::binding::{BindingMap, BindingResolution, LocalBinding};
 use vela_hir::ids::{HirDeclId, HirLocalId};
 use vela_hir::module_graph::{
@@ -53,11 +52,6 @@ struct RenameToken {
     range: TextRange,
 }
 
-pub(crate) struct ProviderIdRenameTarget {
-    pub(crate) range: TextRange,
-    pub(crate) value: String,
-}
-
 impl LanguageServiceDatabases {
     /// Explain malformed replacement text for an otherwise renameable target.
     #[must_use]
@@ -67,11 +61,7 @@ impl LanguageServiceDatabases {
         position: Position,
         new_name: &str,
     ) -> Option<String> {
-        let query = QueryContext::from_databases(self, document_id, position)?;
-        let source_id = query.source_id()?;
-        if provider_id_rename_target(&query, self.hir_db().graph(), source_id).is_some() {
-            return vela_hir::provider::ProviderId::new(new_name.to_owned()).err();
-        }
+        QueryContext::from_databases(self, document_id, position)?.source_id()?;
         (!is_valid_rename_identifier(new_name))
             .then(|| format!("invalid rename identifier `{new_name}`"))
     }
@@ -84,14 +74,6 @@ impl LanguageServiceDatabases {
     ) -> Option<PrepareRename> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
-        if let Some(target) = provider_id_rename_target(&query, self.hir_db().graph(), source_id) {
-            return Some(PrepareRename {
-                document_id: document_id.clone(),
-                range: diagnostic_range(query.text(), target.range),
-                placeholder: target.value.clone(),
-                symbol: provider_id_symbol(&target.value),
-            });
-        }
         if let Some(prepared) = signatures::prepare(self, &query) {
             return Some(prepared);
         }
@@ -131,27 +113,6 @@ impl LanguageServiceDatabases {
     ) -> Option<WorkspaceEdit> {
         let query = QueryContext::from_databases(self, document_id, position)?;
         let source_id = query.source_id()?;
-        if let Some(target) = provider_id_rename_target(&query, self.hir_db().graph(), source_id) {
-            vela_hir::provider::ProviderId::new(new_name.to_owned()).ok()?;
-            let source = self.source_db().records().get(document_id)?;
-            let edit = DocumentTextEdit::new_versioned(
-                document_id.clone(),
-                source.version(),
-                vec![TextEdit::new(
-                    diagnostic_range(query.text(), target.range),
-                    new_name,
-                )],
-            );
-            let risks = vec![RenameRisk {
-                kind: RenameRiskKind::HotReloadAbi,
-                message: format!(
-                    "renaming provider id `{}` removes the installed ProviderKey and adds a new one during hot reload",
-                    target.value
-                ),
-            }];
-            return WorkspaceEdit::checked(vec![edit], risks)
-                .map(|edit| edit.with_symbol(provider_id_symbol(&target.value)));
-        }
         if !is_valid_rename_identifier(new_name) {
             return None;
         }
@@ -365,47 +326,6 @@ impl LanguageServiceDatabases {
             .values()
             .find(|record| record.source_id() == source_id)
     }
-}
-
-pub(crate) fn provider_id_rename_target(
-    query: &QueryContext<'_>,
-    graph: &ModuleGraph,
-    source_id: SourceId,
-) -> Option<ProviderIdRenameTarget> {
-    let offset = u32::try_from(query.cursor().replace_range().end).ok()?;
-    for declaration in graph.declarations() {
-        for attribute in graph.declaration_attrs(declaration.id) {
-            if attribute.name != "provider" {
-                continue;
-            }
-            for argument in &attribute.arguments {
-                let HirAttributeValue::String(value) = &argument.value else {
-                    continue;
-                };
-                if argument.name.as_deref() != Some("id")
-                    || argument.value_span.source != source_id
-                    || offset < argument.value_span.start
-                    || offset > argument.value_span.end
-                {
-                    continue;
-                }
-                let start = argument.value_span.start.checked_add(1)?;
-                let end = argument.value_span.end.checked_sub(1)?;
-                if start > end {
-                    return None;
-                }
-                return Some(ProviderIdRenameTarget {
-                    range: TextRange::new(usize::try_from(start).ok()?, usize::try_from(end).ok()?),
-                    value: value.clone(),
-                });
-            }
-        }
-    }
-    None
-}
-
-pub(crate) fn provider_id_symbol(value: &str) -> SymbolRef {
-    SymbolRef::Source(format!("provider:{value}"))
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

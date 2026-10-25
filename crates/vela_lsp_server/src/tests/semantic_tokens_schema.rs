@@ -46,7 +46,7 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -225,7 +225,7 @@ fn lsp_semantic_tokens_classify_host_and_builtin_function_calls() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -357,7 +357,7 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_function_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -501,7 +501,7 @@ fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -639,7 +639,7 @@ fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -785,7 +785,7 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

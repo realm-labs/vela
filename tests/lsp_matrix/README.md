@@ -7,6 +7,33 @@ workbench routes, independent expected outcomes, fixture identities and minimum
 evidence levels. Fixture IDs are reserved here; B01 and feature batches implement
 the shared fixtures and action drivers. A registered route is not executed proof.
 
+## Checkpoint B Consumer Changes
+
+Service hotfixing and Provider discovery/selection are removed capabilities,
+not language-service or LSP protocol providers. The five `completion-service-*`
+fixtures and their feature-specific catalog test registrations are retired.
+Mixed call, import, expression and signature matrices retain ordinary coverage;
+removed paths have null callable/expected-parameter facts. The known-callable
+mapping list retains 41 ordinary cases; its three removed-call positions are
+covered as explicit null queries in `signature-s5` instead. The Provider-named
+trait/default/return scenarios remain ordinary traits without `#[provider]`.
+Selection keeps removed path spellings only as unresolved, non-executing CST
+ancestry inputs. Schema artifact consumers use format 2 without `serviceSet`.
+`examples/tests/removed_entrypoints.rs` retains source-boundary rejection proof.
+
+Original contracts, accepted unrelated evidence and historical checkpoint
+summaries remain intact. Old Service-specific results are historical, not current
+support or fresh proof. Changed schema fixtures and S5 assertions require fresh
+current-source audits; no native/installed capture is claimed by this removal.
+The consumer guard runs with `node --test editors/vscode/scripts/check-removed-consumers.test.js`
+and in the VS Code CI matrix. It checks retirement, schema format and retained
+ordinary fixture coverage; it does not replace compiler/protocol/native gates.
+
+The language-service and protocol count guards cover the retained 101 signature
+positions (72 positive, 29 null). The independent invalid-schema Node golden
+expects format 2 in its diagnostic. Removed Service positions are not restored
+through replacement metadata or fabricated query cases.
+
 `execution-baseline.json` preserves the initial local contracts. Keep this dense
 requirement data intact when adding coverage. Changed or split requirements need
 an explicit migration in the manifest: exact original and replacement IDs/hashes,

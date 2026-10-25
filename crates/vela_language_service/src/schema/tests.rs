@@ -122,33 +122,7 @@ fn sample_facts() -> RegistryFacts {
 #[test]
 fn schema_export_round_trips_registry_facts() {
     let facts = sample_facts();
-    let service_set = SchemaServiceSetFact::new(
-        "0x100",
-        "fixture::Services",
-        "0x200",
-        "0xabc",
-        [SchemaServiceFact::new(
-            "0x300",
-            "handler",
-            "fixture::handler",
-            "0x400",
-            [SchemaServiceMethodFact::new(
-                "0x500",
-                "handle",
-                "fixture::handler::handle",
-                true,
-                ["host_write".to_owned()],
-                [SchemaServiceParameterFact::new(
-                    "context",
-                    "fixture::Context",
-                    "exclusive_host",
-                )],
-                "Result<fixture::Response, fixture::Error>",
-            )],
-        )],
-    );
-    let artifact =
-        SchemaArtifact::from_registry_facts(&facts).with_service_set(service_set.clone());
+    let artifact = SchemaArtifact::from_registry_facts(&facts);
     let json = artifact
         .to_json()
         .expect("schema artifact should encode as JSON");
@@ -169,23 +143,10 @@ fn schema_export_round_trips_registry_facts() {
         "schema artifact should preserve scoped resource kind and parent: {json}"
     );
     let parsed = SchemaArtifact::from_json(&json).expect("schema artifact should decode from JSON");
-    assert_eq!(parsed.service_set(), Some(&service_set));
     let round_tripped = parsed.to_registry_facts();
     let mut databases = LanguageServiceDatabases::new();
     databases.load_schema_artifact_json("/workspace/schema.json", &json);
-    assert_eq!(databases.schema_db().service_set(), Some(&service_set));
-
-    assert_eq!(
-        round_tripped.trait_fact("fixture::handler"),
-        Some(&TypeFact::trait_type("fixture::handler"))
-    );
-    assert_eq!(
-        round_tripped.trait_method_fact("fixture::handler", "handle"),
-        Some(&TypeFact::function(
-            vec![TypeFact::Unknown],
-            TypeFact::result(TypeFact::Unknown, TypeFact::Unknown)
-        ))
-    );
+    assert_eq!(databases.schema_db().facts(), &facts);
     assert_eq!(
         round_tripped.type_binding_fact("Player"),
         facts.type_binding_fact("Player")
@@ -234,7 +195,7 @@ fn schema_export_round_trips_registry_facts() {
 fn schema_artifact_accepts_docs_metadata() {
     let artifact = SchemaArtifact::from_json(
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -342,6 +303,60 @@ fn schema_hash_compatibility_rejects_stale_facts() {
 }
 
 #[test]
+fn schema_rejects_obsolete_format_and_removed_service_set() {
+    for version in [0, 1, 3] {
+        let json = serde_json::json!({"formatVersion": version, "facts": {}}).to_string();
+        let error = SchemaArtifact::from_json(&json).expect_err("unsupported schema version");
+        assert!(error.message().contains(&format!(
+            "unsupported schema artifact format version {version}; expected 2"
+        )));
+    }
+    for service_set in [
+        serde_json::Value::Null,
+        serde_json::json!({}),
+        serde_json::json!({"services": []}),
+    ] {
+        let json = serde_json::json!({
+            "formatVersion": 2,
+            "facts": {},
+            "serviceSet": service_set,
+        })
+        .to_string();
+        let error =
+            SchemaArtifact::from_json(&json).expect_err("removed metadata must not be ignored");
+        assert!(
+            error.message().contains("unknown field `serviceSet`"),
+            "{}",
+            error.message()
+        );
+        assert!(serde_json::from_str::<SchemaArtifact>(&json).is_err());
+    }
+}
+
+#[test]
+fn rejected_schema_clears_stale_facts_and_current_schema_restores_them() {
+    let facts = sample_facts();
+    let current = SchemaArtifact::from_registry_facts(&facts)
+        .to_json()
+        .expect("current schema");
+    let mut databases = LanguageServiceDatabases::new();
+    for rejected in [
+        r#"{"formatVersion":1,"facts":{}}"#,
+        r#"{"formatVersion":2,"serviceSet":null,"facts":{}}"#,
+        r#"{"formatVersion":2,"serviceSet":{"services":[]},"facts":{}}"#,
+    ] {
+        databases.load_schema_artifact_json("/workspace/schema.json", &current);
+        assert_eq!(databases.schema_db().facts(), &facts);
+        databases.load_schema_artifact_json("/workspace/schema.json", rejected);
+        assert_eq!(databases.schema_db().diagnostics().len(), 1);
+        assert_eq!(databases.schema_db().facts(), &RegistryFacts::default());
+        databases.load_schema_artifact_json("/workspace/schema.json", &current);
+        assert!(databases.schema_db().diagnostics().is_empty());
+        assert_eq!(databases.schema_db().facts(), &facts);
+    }
+}
+
+#[test]
 fn invalid_schema_reports_diagnostic() {
     let error = SchemaArtifact::from_json(r#"{ "formatVersion": 999 }"#)
         .expect_err("unsupported format version should fail");
@@ -360,7 +375,7 @@ fn invalid_schema_metadata_reports_diagnostic() {
     let mut databases = LanguageServiceDatabases::new();
     databases.load_schema_artifact_json(
         "/workspace/target/vela/schema.json",
-        r#"{ "formatVersion": 1, "schemaVersion": " ", "facts": {} }"#,
+        r#"{ "formatVersion": 2, "schemaVersion": " ", "facts": {} }"#,
     );
 
     let diagnostics = databases.schema_db().diagnostics();

@@ -1,5 +1,13 @@
 # Completion and resolve: S5 review
 
+Checkpoint B retires the Service-only argument/call/path/root/parameter matrices
+and their catalog registrations. Mixed call matrices retain ordinary scenarios;
+removed dispatch paths have no callable signature. Provider-named traits in the
+hint/return matrices are ordinary traits with no `#[provider]` attribute. Schema
+artifacts use format 2 without Service metadata. Previous captures establish
+historical behavior only for changed fixtures; fresh current-source audits are
+required, and this edit does not claim new installed/native editor evidence.
+
 Scope: the eight `completion[-resolve]/syntax/S5/{positive,negative}/{service,protocol}`
 obligations. The S5 contract includes source functions/methods, stdlib
 functions/methods, schema functions/methods, named/defaulted arguments, active
@@ -17,7 +25,7 @@ mark its catalog mappings verified.
 | Source inherent/trait/default methods | `completion-package-members`, `completion-members` | Owner-specific parameter/return facts, trait/default methods and aliases; apply call edits and query signature/definition; other owners, missing members, dynamic and erased return receivers have exact empty or remaining sets. |
 | Schema functions and methods | `completion-schema-callable-lifecycle`, `completion-members` | Exact candidates, lazy documentation and edits; sync/async replacement, changed parameters/return owner and removal/restoration; retained resolve payloads cannot return removed docs. Source precedence and schema-only null definitions remain explicit. |
 | Standard functions and methods | `completion-builtin-callable-resolve`, `completion-stdlib-arguments` | Canonical/aliased functions, namespace aliases and String/Array/Map/Option/Result methods; exact builtin identity, complete candidates, edits, applied signatures and null source definitions. Actual builtin items retain no lazy docs, even with colliding schema method documentation. Dynamic, unresolved and missing members produce no guessed candidate. |
-| Named/defaulted parameters | `completion-named-arguments`, `completion-stdlib-arguments`, `completion-service-arguments`, `completion-callable-hints` | Complete available parameter and expression sets, named-role detail, default marker and independent edit; occupied positional/named slots, reordered names, existing equals, unknown targets/owners, views/nested hints and registered native parameter prefixes. Apply/requery keeps the current name editable without duplicating equals. Every actual parameter item lacks docs/payload; repeated protocol resolve preserves the whole item and parse/HIR counters. |
+| Named/defaulted parameters | `completion-named-arguments`, `completion-stdlib-arguments`, `completion-callable-hints` | Complete available parameter and expression sets, named-role detail, default marker and independent edit; occupied positional/named slots, reordered names, existing equals, unknown targets/owners, views/nested hints and registered native parameter prefixes. Apply/requery keeps the current name editable without duplicating equals. Every actual parameter item lacks docs/payload; repeated protocol resolve preserves the whole item and parse/HIR counters. |
 | Active parameter and expected argument facts | `call-parameter-mapping`, `callable-imports` | Explicit signature, semantic parameter index, expected name/type and unchanged syntactic ordinal; named/reordered/unknown/duplicate slots and overflow. Protocol also inserts a non-BMP prefix and verifies the same active slot. |
 | Argument expressions and callable values | `completion-call-expressions`, `completion-callback-contracts` | Complete choices and distinct name/value/call insertion; local shadow/captures, nested calls/blocks/lambdas, incomplete close, future names, source/schema callbacks, local callable and dynamic/missing calls. Source/builtin resolve payloads preserve the supported empty-doc result. |
 | Returned receiver and origin boundaries | `completion-return-flow` | Root/dependency function, method, trait, await, block and local-lambda return chains; exact candidate/return owners and applied targets. Unknown trait owners, Any returns and terminated blocks do not invent members or schema documentation. |

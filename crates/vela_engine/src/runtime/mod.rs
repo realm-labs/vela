@@ -41,10 +41,8 @@ mod options;
 #[cfg(test)]
 mod ownership_proof;
 mod profile_api;
-mod provider;
 mod reentry;
 mod reload_api;
-mod service_egress;
 mod state;
 mod state_api;
 mod task_continuation;
@@ -61,9 +59,7 @@ pub use bytecode_profile::{
     BytecodeProfileSnapshot, BytecodeProfileSummary, FunctionBytecodeProfile,
     ScalarLoopBytecodeProfile, ScalarUnitBytecodeProfile, SuperinstructionBytecodeProfile,
 };
-pub use call_args::{
-    CallArgs, DirectHostIdentity, ServiceScopedReturn, ServiceScopedReturnEnvelope,
-};
+pub use call_args::{CallArgs, DirectHostIdentity};
 pub use call_future::RuntimeCallFuture;
 pub use control::{CallControl, CallSnapshot, CallStatus};
 pub use extern_state_bindings::RuntimeExternStateBindings;
@@ -72,9 +68,7 @@ pub use handles::{
 };
 pub use image::{OwnedImage, RuntimeImage, RuntimeImageStorage, SharedImage};
 pub use initialization::{RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits};
-pub use provider::{ProviderHandle, ProviderMethodTarget};
 pub use reload_api::{ReloadSource, RuntimeReloadError};
-pub use service_egress::ServiceScopedReturnEgress;
 pub use vm_states::{IntoStateValue, RuntimeVmStateStore, VelaValue};
 
 use call_args::call_args_type_error;
@@ -92,13 +86,6 @@ use vm_states::RuntimeValueRoots;
 
 pub type Runtime = RuntimeImpl<OwnedImage>;
 pub type SharedRuntime = RuntimeImpl<SharedImage>;
-
-#[derive(Default)]
-struct RuntimeServiceCall {
-    dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
-    pinned: Option<crate::service::PinnedServiceExecution>,
-    scoped_return: Option<ServiceScopedReturnEgress>,
-}
 
 pub struct RuntimeImpl<I = OwnedImage>
 where
@@ -304,25 +291,7 @@ where
     where
         T: RuntimeCallTarget,
     {
-        self.call_impl(entry, args, options, false)
-    }
-
-    pub(crate) fn call_stable_function<'host>(
-        &mut self,
-        function: vela_def::FunctionId,
-        diagnostic_name: impl Into<String>,
-        args: CallArgs<'host>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue> {
-        self.call_impl(
-            handles::StableVelaFunction {
-                function,
-                diagnostic_name: diagnostic_name.into(),
-            },
-            args,
-            options,
-            false,
-        )
+        self.call_impl(entry, args, options)
     }
 
     fn call_impl<'host, T>(
@@ -330,44 +299,6 @@ where
         entry: T,
         args: CallArgs<'host>,
         options: CallOptions,
-        allow_async_entry: bool,
-    ) -> VmResult<VelaValue>
-    where
-        T: RuntimeCallTarget,
-    {
-        self.call_impl_with_service_dispatcher(entry, args, options, allow_async_entry, None)
-    }
-
-    fn call_impl_with_service_dispatcher<'host, T>(
-        &mut self,
-        entry: T,
-        args: CallArgs<'host>,
-        options: CallOptions,
-        allow_async_entry: bool,
-        service_dispatcher: Option<std::sync::Arc<dyn crate::service::ServiceCallDispatcher>>,
-    ) -> VmResult<VelaValue>
-    where
-        T: RuntimeCallTarget,
-    {
-        self.call_impl_with_service_egress(
-            entry,
-            args,
-            options,
-            allow_async_entry,
-            RuntimeServiceCall {
-                dispatcher: service_dispatcher,
-                ..RuntimeServiceCall::default()
-            },
-        )
-    }
-
-    fn call_impl_with_service_egress<'host, T>(
-        &mut self,
-        entry: T,
-        args: CallArgs<'host>,
-        options: CallOptions,
-        allow_async_entry: bool,
-        service: RuntimeServiceCall,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
@@ -375,8 +306,8 @@ where
         let task_scope = options.task_scope().cloned();
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
-        let target = self.resolve_call_target(target, &mut budget)?;
-        if target.asyncness.is_async() && !allow_async_entry {
+        let target = self.resolve_call_target(target)?;
+        if target.asyncness.is_async() {
             return Err(VmError::new(VmErrorKind::AsyncEntryRequiresCallAsync {
                 name: target.name,
             }));
@@ -396,9 +327,6 @@ where
             target,
             args,
             budget: &mut budget,
-            service_dispatcher: service.dispatcher,
-            pinned_service: service.pinned,
-            service_scoped_return: service.scoped_return,
             task_scope,
         })
     }
@@ -414,7 +342,7 @@ where
         'args: 'call,
     {
         let policy = options.call_policy();
-        RuntimeCallFuture::new_controlled(self.call_impl_async(entry, args, options, None), policy)
+        RuntimeCallFuture::new_controlled(self.call_impl_async(entry, args, options), policy)
     }
 
     async fn call_impl_async<'call, 'args, T>(
@@ -422,13 +350,12 @@ where
         entry: T,
         args: CallArgs<'args>,
         options: CallOptions,
-        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
-        self.call_impl_async_with_budget(entry, args, options, pinned_service)
+        self.call_impl_async_with_budget(entry, args, options)
             .await
             .map(|(value, _)| value)
     }
@@ -438,19 +365,15 @@ where
         entry: T,
         args: CallArgs<'args>,
         options: CallOptions,
-        pinned_service: Option<crate::service::PinnedServiceExecution>,
     ) -> VmResult<(VelaValue, ExecutionBudget)>
     where
         T: RuntimeCallTarget + Send + 'call,
         'args: 'call,
     {
         let task_scope = options.task_scope().cloned();
-        let service_dispatcher = pinned_service
-            .as_ref()
-            .map(|execution| std::sync::Arc::clone(execution.dispatcher()));
         let mut budget = options.budget();
         let target = handles::call_target_sealed::Sealed::into_call_target(entry);
-        let target = self.resolve_call_target(target, &mut budget)?;
+        let target = self.resolve_call_target(target)?;
         let state = &mut self.state;
         let value = Self::call_runtime_args_async(RuntimeCallExecution {
             runtime_id: state.id,
@@ -466,9 +389,6 @@ where
             target,
             args,
             budget: &mut budget,
-            service_dispatcher,
-            pinned_service,
-            service_scoped_return: None,
             task_scope,
         })
         .await?;
@@ -758,21 +678,7 @@ where
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
                     let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
-                    if let Some(egress) = &call.service_scoped_return {
-                        let owned = vela_vm::persistent_value_to_owned_with_host(
-                            &value,
-                            heap.heap,
-                            &execution_host,
-                        )?;
-                        let returned = lifetime::validate_service_scoped_return(
-                            owned,
-                            &egress.identity,
-                            egress.envelope,
-                        )?;
-                        egress.identity.complete_scoped_return(returned);
-                    } else {
-                        lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
-                    }
+                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,
@@ -794,7 +700,6 @@ where
                     detached_task::admit(
                         call.engine,
                         call.task_scope.as_ref(),
-                        call.pinned_service.as_ref(),
                         prepared,
                         heap.heap,
                         budget,
@@ -816,7 +721,6 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
-                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };
@@ -942,7 +846,6 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
-                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_async(&prepared, &mut active).await
                     };
@@ -963,7 +866,6 @@ where
                     detached_task::admit(
                         call.engine,
                         call.task_scope.as_ref(),
-                        call.pinned_service.as_ref(),
                         prepared,
                         heap.heap,
                         budget,
@@ -985,7 +887,6 @@ where
                             vm_state_values,
                             retained_values: std::sync::Arc::clone(&retained_values),
                             generations: &mut *call.generations,
-                            service_dispatcher: call.service_dispatcher.as_deref(),
                         };
                         invoke_prepared_context(&prepared, &mut active)
                     };
@@ -1009,7 +910,6 @@ where
     fn resolve_call_target(
         &mut self,
         target: RuntimeCallTargetKind,
-        budget: &mut ExecutionBudget,
     ) -> VmResult<handles::EntryRequest> {
         match target {
             target @ (RuntimeCallTargetKind::FunctionName(_)
@@ -1032,9 +932,6 @@ where
                     host: handles::RuntimeHostResolver::Slots(&self.state.host_slots),
                 },
             ),
-            RuntimeCallTargetKind::ProviderMethod(target) => {
-                self.resolve_provider_target(target, budget)
-            }
         }
     }
 }

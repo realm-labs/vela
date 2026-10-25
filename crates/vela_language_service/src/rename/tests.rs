@@ -518,7 +518,7 @@ pub fn spawn(player: Player) -> Player {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("Player").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -593,7 +593,7 @@ pub fn main(amount: i64) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "functions": [
                 {
@@ -674,7 +674,7 @@ pub fn main(state: QuestState) -> i64 {
     let target_start = schema_text.find("Active").expect("schema marker");
     let done_start = schema_text.find("Done").expect("schema Done marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -781,7 +781,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("level").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -862,7 +862,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -1128,31 +1128,6 @@ fn state_rename_reports_remove_plus_add_hot_reload_risk() {
     );
     assert!(edit.risks()[0].message().contains("adds a new state"));
     assert_eq!(document_edit(&edit, &document).edits().len(), 2);
-}
-
-#[test]
-fn rename_provider_id_reports_hot_reload_risk() {
-    let document = DocumentId::from("/workspace/scripts/provider.vela");
-    let text = r#"pub trait Service { fn run(self); }
-pub struct Plugin {}
-#[provider(id = "plugin")]
-impl Service for Plugin { pub fn run(self) {} }
-"#;
-    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-    let line = text.lines().nth(2).expect("provider line");
-    let position = Position::new(2, line.find("plugin").expect("provider id"));
-    let prepared = databases
-        .prepare_rename(&document, position)
-        .expect("provider id prepares rename");
-    assert_eq!(prepared.placeholder(), "plugin");
-
-    let edit = databases
-        .rename(&document, position, "plugin-v2")
-        .expect("provider id rename");
-    assert_eq!(edit.risks().len(), 1);
-    assert_eq!(edit.risks()[0].kind(), RenameRiskKind::HotReloadAbi);
-    assert!(edit.risks()[0].message().contains("ProviderKey"));
-    assert_eq!(edit.document_edits()[0].edits()[0].new_text(), "plugin-v2");
 }
 
 #[test]

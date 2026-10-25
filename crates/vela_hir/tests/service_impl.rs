@@ -1,241 +1,114 @@
 use vela_common::SourceId;
-use vela_hir::binding::ServiceLexicalCapability;
+use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_hir::script_methods::{ScriptMethodCatalog, ScriptMethodCatalogMode};
-use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogErrorKind};
 use vela_hir::source_ingestion::build_single_source;
+use vela_package::{ModulePath, PackageId};
 
 #[test]
-fn catalogs_sparse_service_impl_methods_without_dynamic_method_registration() {
-    let sources = build_single_source(
-        SourceId::new(1),
-        r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(turn, player, items) {
-        return items;
+fn rejects_removed_declarations_at_the_attribute_span() {
+    for attribute in [
+        "#[service_impl(app::Inventory)]",
+        "#[service_impl(service = app::Inventory)]",
+        "#[service_impl]",
+        "#[provider(id = \"inventory\")]",
+        "#[provider]",
+        "#[provider(id = \"one\")] #[provider(id = \"two\")]",
+    ] {
+        for declaration in [
+            "impl Patch { fn grant(value) { return value; } }",
+            "impl Grant for Patch { fn grant(self, value) { return value; } }",
+            "fn main() { return 1; }",
+        ] {
+            let source = format!("{attribute}\n{declaration}");
+            let error = build_single_source(SourceId::new(1), &source)
+                .expect_err("removed declarations must not become ordinary declarations");
+            let diagnostic = error
+                .diagnostics()
+                .iter()
+                .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::removed_declaration"))
+                .expect("deliberate removal diagnostic");
+            let span = diagnostic.span.expect("attribute source span");
+            assert_eq!(span.source, SourceId::new(1));
+            assert!(source[span.start as usize..span.end as usize].starts_with("#["));
+            assert!(diagnostic.message.contains("no longer supported"));
+        }
     }
+}
+
+#[test]
+fn removed_impls_never_enter_the_ordinary_method_catalog() {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(2),
+        PackageId::anonymous(),
+        ModulePath::root(),
+        r#"
+struct Patch {}
+trait Grant { fn grant(self); }
+#[service_impl(app::Inventory)]
+impl Patch { fn grant(self) {} }
+#[provider(id = "inventory")]
+impl Grant for Patch { fn grant(self) {} }
+"#,
+    ));
+    assert!(!graph.diagnostics().is_empty());
+    let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
+        .expect("rejected declarations cannot register ordinary methods");
+    assert!(catalog.is_empty());
+}
+
+#[test]
+fn rejects_removed_service_paths_in_calls_values_and_nested_functions() {
+    for expression in [
+        "service::base::grant(value)",
+        "service::pinned::audit::record(value)",
+        "service::pinned::missing::record(value)",
+        "service::base::grant",
+        "service::base",
+        "service::pinned",
+        "service::base::grant::extra(value)",
+        "(|| service::base::grant(value))()",
+        "(|| service::pinned::audit::record(value))()",
+    ] {
+        let source = format!("fn main(value) {{ return {expression}; }}");
+        let error = build_single_source(SourceId::new(3), &source)
+            .expect_err("removed paths cannot dispatch, escape, or be captured");
+        let diagnostic = error
+            .diagnostics()
+            .iter()
+            .find(|diagnostic| diagnostic.code.as_deref() == Some("hir::removed_service_call"))
+            .expect("deliberate removed-path diagnostic");
+        let span = diagnostic.span.expect("path source span");
+        assert_eq!(span.source, SourceId::new(3));
+        assert!(source[span.start as usize..span.end as usize].starts_with("service::"));
+        assert!(diagnostic.message.contains("no longer supported"));
+    }
+}
+
+#[test]
+fn ordinary_traits_methods_and_base_services_names_remain_available() {
+    let sources = build_single_source(
+        SourceId::new(4),
+        r#"
+struct Inventory { value: i64 }
+trait Grant { fn grant(self, base: i64) -> i64; }
+impl Grant for Inventory {
+    fn grant(self, base: i64) -> i64 { return self.value + base; }
+}
+impl Inventory {
+    fn record(self, services: i64) -> i64 { return self.value + services; }
+}
+fn main(base, services) {
+    let value = base.grant(services.record(1));
+    return value;
 }
 "#,
     )
-    .expect("service implementation should enter HIR");
-    let catalog =
-        ServiceImplCatalog::from_graph(sources.graph()).expect("valid service implementation");
-    let implementation = catalog
-        .implementations()
-        .next()
-        .expect("one service implementation");
-    let method = implementation.methods().next().expect("one method");
-
-    assert_eq!(
-        implementation.service_path_text(),
-        "game::inventory::InventoryService"
-    );
-    assert_eq!(implementation.implementation_path(), ["InventoryHotfix"]);
-    assert_eq!(method.name(), "grant");
-    assert_eq!(
-        method
-            .signature()
-            .params
-            .iter()
-            .map(|parameter| parameter.name.as_str())
-            .collect::<Vec<_>>(),
-        ["turn", "player", "items"]
-    );
-    assert_eq!(
-        sources
-            .graph()
-            .impl_method_body(method.node())
-            .expect("method body")
-            .id,
-        method.body()
-    );
-
-    let ordinary = ScriptMethodCatalog::from_graph(
+    .expect("ordinary traits and local names are retained");
+    let catalog = ScriptMethodCatalog::from_graph(
         sources.graph(),
         ScriptMethodCatalogMode::single_source(sources.modules()[0], "test"),
     )
     .expect("ordinary method catalog");
-    assert!(
-        ordinary.is_empty(),
-        "service bodies must not become dynamic methods on InventoryHotfix"
-    );
-}
-
-#[test]
-fn binds_service_capabilities_only_as_direct_call_receivers() {
-    let sources = build_single_source(
-        SourceId::new(3),
-        r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(value) {
-        let granted = service::base::grant(value);
-        return service::pinned::audit::record(granted);
-    }
-}
-"#,
-    )
-    .expect("direct service capability calls should enter HIR");
-    let catalog =
-        ServiceImplCatalog::from_graph(sources.graph()).expect("valid service implementation");
-    let method = catalog
-        .implementations()
-        .next()
-        .and_then(|implementation| implementation.methods().next())
-        .expect("one service method");
-    let bindings = sources
-        .graph()
-        .impl_method_bindings(method.node())
-        .expect("service method bindings");
-
-    let capabilities = bindings
-        .service_capabilities()
-        .map(|(_, capability)| capability)
-        .collect::<Vec<_>>();
-    assert_eq!(
-        capabilities,
-        [
-            ServiceLexicalCapability::Base,
-            ServiceLexicalCapability::Pinned
-        ]
-    );
-}
-
-#[test]
-fn rejects_service_namespaces_outside_their_non_escaping_call_shapes() {
-    let cases = [
-        (
-            r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(value) {
-        let callable = service::base::grant;
-        return callable(value);
-    }
-}
-"#,
-            "hir::invalid_service_capability_use",
-        ),
-        (
-            r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(value) {
-        let deferred = || service::base::grant(value);
-        return deferred();
-    }
-}
-"#,
-            "hir::service_capability_capture",
-        ),
-        (
-            r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(value) {
-        return base.grant(value);
-    }
-}
-"#,
-            "hir::obsolete_service_call_syntax",
-        ),
-    ];
-
-    for (source, expected_code) in cases {
-        let error = build_single_source(SourceId::new(4), source)
-            .expect_err("invalid service capability use should fail HIR ingestion");
-        assert!(
-            error
-                .diagnostics()
-                .iter()
-                .any(|diagnostic| diagnostic.code.as_deref() == Some(expected_code)),
-            "expected {expected_code}, got {:?}",
-            error.diagnostics()
-        );
-    }
-}
-
-#[test]
-fn ordinary_helpers_retain_static_service_capabilities_for_root_linking() {
-    let sources = build_single_source(
-        SourceId::new(17),
-        r#"
-async fn repair(value) {
-    let base = service::base::grant(value);
-    return service::pinned::audit::record(base);
-}
-"#,
-    )
-    .expect("Service origin validation belongs to whole-program compilation");
-    let declaration = sources
-        .graph()
-        .declarations()
-        .find(|declaration| declaration.name == "repair")
-        .expect("repair declaration");
-    let bindings = sources
-        .graph()
-        .function_body(declaration.id)
-        .and_then(|body| sources.graph().bindings_for_body(body.id))
-        .expect("ordinary helper bindings");
-    assert_eq!(
-        bindings
-            .service_capabilities()
-            .map(|(_, capability)| capability)
-            .collect::<Vec<_>>(),
-        [
-            ServiceLexicalCapability::Base,
-            ServiceLexicalCapability::Pinned,
-        ]
-    );
-}
-
-#[test]
-fn base_and_services_remain_ordinary_local_names_inside_service_impls() {
-    build_single_source(
-        SourceId::new(5),
-        r#"
-#[service_impl(game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(base, services) {
-        let combined = base + services;
-        return service::base::grant(combined);
-    }
-}
-"#,
-    )
-    .expect("service namespace must not reserve ordinary local names");
-}
-
-#[test]
-fn rejects_malformed_or_trait_style_service_impl_declarations() {
-    let malformed = build_single_source(
-        SourceId::new(1),
-        r#"
-#[service_impl(service = game::inventory::InventoryService)]
-impl InventoryHotfix {
-    fn grant(value) { return value; }
-}
-"#,
-    )
-    .expect("attribute syntax remains valid");
-    let error =
-        ServiceImplCatalog::from_graph(malformed.graph()).expect_err("named argument is invalid");
-    assert_eq!(error.kind(), &ServiceImplCatalogErrorKind::InvalidAttribute);
-
-    let trait_style = build_single_source(
-        SourceId::new(2),
-        r#"
-#[service_impl(game::inventory::InventoryService)]
-impl PatchTrait for InventoryHotfix {
-    fn grant(value) { return value; }
-}
-"#,
-    )
-    .expect("trait impl syntax remains valid");
-    let error = ServiceImplCatalog::from_graph(trait_style.graph())
-        .expect_err("service_impl is its own declaration form");
-    assert_eq!(
-        error.kind(),
-        &ServiceImplCatalogErrorKind::TraitImplUnsupported
-    );
+    assert_eq!(catalog.len(), 2);
 }

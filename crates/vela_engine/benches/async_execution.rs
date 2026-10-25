@@ -13,9 +13,6 @@ use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_macros::{ScriptHost, methods};
 use vela_vm::owned_value::OwnedValue;
 
-#[path = "async_execution/provider.rs"]
-mod provider;
-
 const DEFAULT_ITERATIONS: usize = 10_000;
 const QUICK_ITERATIONS: usize = 1_000;
 const STABLE_ITERATIONS: usize = 100_000;
@@ -80,7 +77,6 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
     let mut counter = Counter { value: 0 };
     let mut shared_counter = Counter { value: 42 };
     let direct_shared_counter = Counter { value: 42 };
-    let mut provider = provider::ProviderBench::new()?;
 
     report("sync_entry", iterations, || sync_call(&mut sync))?;
     report("ready_async_entry", iterations, || async_call(&mut ready))?;
@@ -118,7 +114,6 @@ fn throughput(iterations: usize) -> Result<(), Box<dyn Error>> {
         ))?;
         owned_i64(&mut shared_method, &output)
     })?;
-    provider.report(iterations)?;
     Ok(())
 }
 

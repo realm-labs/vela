@@ -31,7 +31,7 @@ fn lsp_member_completion_uses_host_schema_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {
@@ -122,7 +122,7 @@ fn lsp_member_completion_converts_utf16_positions_before_query() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {
@@ -188,7 +188,7 @@ fn lsp_member_completion_suppresses_schema_any_function_return_receiver() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {
@@ -325,7 +325,7 @@ fn lsp_member_completion_uses_schema_trait_method_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "traits": [
                         {
@@ -398,7 +398,7 @@ fn lsp_member_completion_uses_schema_function_return_receiver_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {
@@ -499,7 +499,7 @@ fn lsp_member_completion_uses_schema_method_return_receiver_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {
@@ -605,7 +605,7 @@ fn lsp_member_completion_uses_schema_trait_method_return_receiver_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 1,
+                "formatVersion": 2,
                 "facts": {
                     "types": [
                         {

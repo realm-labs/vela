@@ -28,9 +28,9 @@ The fixture first reproduced a byte literal prefix borrowing a registered type
 named `b`. Hover now requires the actual CST Ident/SelfKw token to contain the
 cursor and match its identifier range. The half-open token range prevents a
 preceding identifier from owning punctuation, trivia or EOF. A focused map-entry
-check follows HIR's existing static path-key contract. Specialized provider-ID
-literal hover still runs first; real interpolation expressions retain their CST
-symbol ownership. Completion/signature prefix handling and language/runtime
+check follows HIR's existing static path-key contract. Checkpoint B removes
+specialized Provider-ID literal hover; real interpolation expressions retain
+their CST symbol ownership. Completion/signature prefix handling and language/runtime
 semantics are unchanged.
 
 The schema cache regression previously queried whitespace after `return` and

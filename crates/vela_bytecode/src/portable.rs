@@ -13,9 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-// Version 5 adds portable physical coverage for verifier-selected interpreter
-// units. The hard switch intentionally has no compatibility loader or rewrite.
-const FORMAT_VERSION: u32 = 5;
+// Version 6 removes Service dispatch and task Service-generation requirements.
+// Old formats are rejected before decoding their incompatible payloads.
+const FORMAT_VERSION: u32 = 6;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -48,7 +48,7 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 5.
+/// generations are deliberately not portable in format version 6.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
@@ -389,7 +389,7 @@ impl fmt::Display for PortableArtifactError {
                 write!(formatter, "portable artifact decode failed: {message}")
             }
             Self::UnsupportedPackageMetadata => formatter.write_str(
-                "portable artifact format 5 does not yet encode package/provider runtime metadata",
+                "portable artifact format 6 does not yet encode package runtime metadata",
             ),
             Self::TaskMetadata(message) => {
                 write!(formatter, "portable task metadata is invalid: {message}")
@@ -514,7 +514,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
+    fn portable_v6_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(77),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -551,7 +551,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_rejects_checksum_valid_invalid_selected_coverage() {
+    fn portable_v6_rejects_checksum_valid_invalid_selected_coverage() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(78),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -583,7 +583,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_round_trips_bounded_scalar_plan_tables() {
+    fn portable_v6_round_trips_bounded_scalar_plan_tables() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(79),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -622,7 +622,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_round_trips_and_rejects_corrupted_scalar_range_loops() {
+    fn portable_v6_round_trips_and_rejects_corrupted_scalar_range_loops() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(82),
             "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value + 1 - 1; } return total; }",
@@ -688,7 +688,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_rejects_scalar_plan_count_above_format_limit() {
+    fn portable_v6_rejects_scalar_plan_count_above_format_limit() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(80), "fn main() { return 1; }")
                 .expect("compile scalar program");
@@ -711,7 +711,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_rejects_checksum_valid_invalid_scalar_plan_handle() {
+    fn portable_v6_rejects_checksum_valid_invalid_scalar_plan_handle() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(81),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -749,7 +749,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_round_trips_sealed_task_metadata_and_feature_bits() {
+    fn portable_v6_round_trips_sealed_task_metadata_and_feature_bits() {
         let artifact = portable_task_artifact();
         let [target] = artifact.payload.task_targets.as_ref() else {
             panic!("real task program should seal one target");
@@ -812,7 +812,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v5_rejects_corrupted_task_slots_and_continuation_shape() {
+    fn portable_v6_rejects_corrupted_task_slots_and_continuation_shape() {
         fn assert_link_rejects(
             mut artifact: PortableProgramArtifact,
             corrupt: impl FnOnce(&mut crate::ArtifactTaskTarget),
@@ -854,7 +854,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_program_rejects_corruption_and_pre_task_metadata_formats() {
+    fn portable_program_rejects_corruption_and_obsolete_formats_before_payload_decoding() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(2), "fn main() { return 7; }")
                 .expect("compile program");
@@ -867,8 +867,9 @@ fn main(value: Any) {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        for old_version in [1_u32, 2, 3, 4] {
+        for old_version in [1_u32, 2, 3, 4, 5] {
             let mut old = artifact.encode().expect("encode artifact");
+            old[HEADER_LEN..].fill(0xff);
             old[MAGIC.len()..MAGIC.len() + size_of::<u32>()]
                 .copy_from_slice(&old_version.to_le_bytes());
             assert_eq!(

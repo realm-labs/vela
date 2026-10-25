@@ -1,4 +1,3 @@
-use vela_common::{ServiceCallMode, ServiceId, ServiceMethodId};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 
@@ -115,13 +114,6 @@ pub enum CompileCalleeTarget {
     },
     HostPush {
         path: CompileHostPathTarget,
-    },
-    Service {
-        mode: ServiceCallMode,
-        service: ServiceId,
-        method: ServiceMethodId,
-        debug_name: String,
-        signature: super::CompileSignature,
     },
     DynamicCallable,
     DynamicMethod(DynamicMethodTarget),

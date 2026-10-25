@@ -12,7 +12,7 @@ pub extern state server: ServerState;
 
 `state` 为每个 Runtime 创建一个 VM 拥有的 cell。必需的 initializer 在
 Runtime 构建时执行一次；热更新时只初始化新增 cell。Initializer 有预算限制，
-可以构造脚本值，但不能读取 state、调用 host/native/reflection/provider API、
+可以构造脚本值，但不能读取 state、调用 host/native/reflection API、
 使用 capability 或挂起。所有 cell 都以事务方式暂存和发布。
 
 Rust 通过全限定名称读取或替换 VM state：

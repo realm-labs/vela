@@ -116,29 +116,6 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
                 <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
             }
-
-            fn register_shared_type_closure(
-                builder: ::vela_engine::builder::EngineBuilder,
-            ) -> ::vela_engine::builder::EngineBuilder {
-                <Self as ::vela_engine::type_registration::RustValueType>::
-                    register_value_type_closure(builder)
-            }
-
-            fn push_shared_service_arg<'a>(
-                &'a self,
-                args: &mut ::vela_engine::runtime::CallArgs<'a>,
-            ) {
-                args.push(
-                    <Self as ::vela_engine::args::ToScriptValueRef>::
-                        to_script_value_ref(self),
-                );
-            }
-
-            fn decode_shared_temporary(
-                value: &::vela_vm::owned_value::OwnedValue,
-            ) -> ::vela_vm::error::VmResult<Self> {
-                <Self as ::vela_engine::args::FromScriptArg>::from_script_arg(value)
-            }
         }
 
         impl ::vela_engine::args::IntoScriptArg for #ty {
@@ -289,5 +266,17 @@ mod tests {
         assert!(expanded.contains("ScriptValueSchema for crate :: Quality"));
         assert!(expanded.contains("Self :: Normal"));
         assert!(!expanded.contains("impl crate :: Quality {"));
+        assert!(expanded.contains("VelaSharedBoundary for crate :: Quality"));
+        assert!(expanded.contains("fn vela_shared_type_hint"));
+        assert!(expanded.contains("register_value_type_closure"));
+        assert!(expanded.contains("IntoScriptArg for crate :: Quality"));
+        assert!(expanded.contains("FromScriptArg for crate :: Quality"));
+        for removed in [
+            "register_shared_type_closure",
+            "push_shared_service_arg",
+            "decode_shared_temporary",
+        ] {
+            assert!(!expanded.contains(removed), "unexpected member: {removed}");
+        }
     }
 }

@@ -14,7 +14,7 @@ use crate::engine::Engine;
 
 use super::call_args::call_args_type_error;
 use super::{
-    CallArgs, ProviderMethodTarget, RuntimeExternStateBindings, RuntimeVmStateStore, VelaValue,
+    CallArgs, RuntimeExternStateBindings, RuntimeVmStateStore, VelaValue,
     state::RuntimeGenerations, unknown_function, unknown_method, value_type_id,
 };
 
@@ -97,7 +97,6 @@ impl<T> RuntimeCallTarget for T where T: call_target_sealed::Sealed {}
 
 pub(crate) mod call_target_sealed {
     use super::{RuntimeCallTargetKind, StableVelaFunction, VelaFunction, VelaMethodTarget};
-    use crate::runtime::ProviderMethodTarget;
 
     pub trait Sealed {
         fn into_call_target(self) -> RuntimeCallTargetKind;
@@ -144,12 +143,6 @@ pub(crate) mod call_target_sealed {
             RuntimeCallTargetKind::BoundMethod(self)
         }
     }
-
-    impl Sealed for ProviderMethodTarget {
-        fn into_call_target(self) -> RuntimeCallTargetKind {
-            RuntimeCallTargetKind::ProviderMethod(self)
-        }
-    }
 }
 
 #[doc(hidden)]
@@ -158,7 +151,6 @@ pub enum RuntimeCallTargetKind {
     Function(VelaFunction),
     StableFunction(StableVelaFunction),
     BoundMethod(VelaMethodTarget),
-    ProviderMethod(ProviderMethodTarget),
 }
 
 #[doc(hidden)]
@@ -351,9 +343,9 @@ pub(super) fn resolve_function_target(
                 receiver: None,
             })
         }
-        RuntimeCallTargetKind::BoundMethod(_) | RuntimeCallTargetKind::ProviderMethod(_) => Err(
-            call_args_type_error("call target requires runtime resolution"),
-        ),
+        RuntimeCallTargetKind::BoundMethod(_) => Err(call_args_type_error(
+            "call target requires runtime resolution",
+        )),
     }
 }
 
@@ -380,9 +372,6 @@ pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
     pub(super) target: EntryRequest,
     pub(super) args: CallArgs<'host>,
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
-    pub(super) service_dispatcher: Option<Arc<dyn crate::service::ServiceCallDispatcher>>,
-    pub(super) pinned_service: Option<crate::service::PinnedServiceExecution>,
-    pub(super) service_scoped_return: Option<super::ServiceScopedReturnEgress>,
     pub(super) task_scope: Option<crate::task::TaskScope>,
 }
 

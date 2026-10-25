@@ -19,7 +19,7 @@ pub use profile::{
 pub(crate) use task::collect_compiled_task_targets;
 pub use task::{
     ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation, ArtifactTaskParameter,
-    ArtifactTaskServiceRequirement, ArtifactTaskSignature, ArtifactTaskTarget,
+    ArtifactTaskSignature, ArtifactTaskTarget,
 };
 use task::{collect_task_targets, verify_task_target_table};
 

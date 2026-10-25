@@ -39,7 +39,7 @@ fn lsp_semantic_tokens_classify_schema_trait_method_uses_as_host() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {
@@ -162,7 +162,7 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_function_return() 
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {
@@ -306,7 +306,7 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_method_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

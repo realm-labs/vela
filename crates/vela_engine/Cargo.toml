@@ -6,9 +6,7 @@ version.workspace = true
 autotests = false
 
 [dependencies]
-arc-swap = { workspace = true }
-bincode = { workspace = true, optional = true }
-blake3 = { workspace = true }
+
 parking_lot = { workspace = true }
 serde = { workspace = true, optional = true }
 smallvec = { workspace = true }
@@ -29,7 +27,7 @@ vela_stdlib = { workspace = true }
 vela_vm = { workspace = true }
 
 [features]
-artifact-codec = ["dep:bincode", "dep:serde", "vela_bytecode/artifact-codec"]
+artifact-codec = ["vela_bytecode/artifact-codec"]
 schema-artifact = ["dep:vela_language_service"]
 serde = ["dep:serde", "vela_vm/serde"]
 
@@ -43,9 +41,6 @@ vela_language_service = { workspace = true }
 name = "integration"
 path = "tests/integration.rs"
 
-[[test]]
-name = "service_rust_default"
-path = "tests/service_rust_default.rs"
 
 [[bench]]
 name = "hot_reload"
@@ -71,9 +66,6 @@ harness = false
 name = "interop"
 harness = false
 
-[[bench]]
-name = "service_boundary_baseline"
-harness = false
 
 [[bench]]
 name = "scoped_task_execution"

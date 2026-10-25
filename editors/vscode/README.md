@@ -21,7 +21,10 @@ Configure either:
 
 The extension passes `vela.workspace.roots` and `vela.host.schema` both as
 native launch flags and initialization options. A project `vela.toml` remains
-the authoritative workspace configuration when present.
+the authoritative workspace configuration when present. Host schema artifacts
+use format version 2; the obsolete format 1 Service metadata is not supported.
+Service hotfixing and Provider discovery are removed language/runtime features,
+not LSP capability providers or editor worker scheduling.
 
 ## Automated Editor Tests
 

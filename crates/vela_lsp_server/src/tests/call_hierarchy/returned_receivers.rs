@@ -33,7 +33,7 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -257,7 +257,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {

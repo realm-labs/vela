@@ -65,9 +65,7 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedTraitAbi { .. } => "reload.trait.changed_abi",
             HotReloadErrorKind::RemovedModuleAbi { .. } => "reload.module.removed_abi",
             HotReloadErrorKind::ChangedModuleAbi { .. } => "reload.module.changed_abi",
-            HotReloadErrorKind::ChangedPackageProviderAbi { .. } => {
-                "reload.package_provider.changed_abi"
-            }
+            HotReloadErrorKind::ChangedPackageAbi { .. } => "reload.package.changed_abi",
             HotReloadErrorKind::ChangedStateStorage { .. } => "reload.state.storage_changed",
             HotReloadErrorKind::ChangedStateType { .. } => "reload.state.type_changed",
             HotReloadErrorKind::RemovedStateExport { .. } => "reload.state.export_removed",
@@ -126,7 +124,7 @@ impl HotReloadError {
             | HotReloadErrorKind::ChangedTraitAbi { trait_name, .. } => Some(trait_name.clone()),
             HotReloadErrorKind::RemovedModuleAbi { module, .. }
             | HotReloadErrorKind::ChangedModuleAbi { module, .. } => Some(module.clone()),
-            HotReloadErrorKind::ChangedPackageProviderAbi { target, .. } => Some(target.clone()),
+            HotReloadErrorKind::ChangedPackageAbi { target, .. } => Some(target.clone()),
             HotReloadErrorKind::ChangedStateStorage { state, .. }
             | HotReloadErrorKind::ChangedStateType { state, .. }
             | HotReloadErrorKind::RemovedStateExport { state, .. }
@@ -236,7 +234,7 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedModuleAbi { module, .. } => {
                 format!("module `{module}` changed export ABI")
             }
-            HotReloadErrorKind::ChangedPackageProviderAbi { target, reason, .. } => {
+            HotReloadErrorKind::ChangedPackageAbi { target, reason, .. } => {
                 format!("{target} changed incompatibly: {reason}")
             }
             HotReloadErrorKind::ChangedStateStorage {
@@ -345,8 +343,8 @@ impl HotReloadError {
             HotReloadErrorKind::ChangedModuleAbi { .. } => {
                 Some("preserve existing module exports or restart with an explicit migration".to_owned())
             }
-            HotReloadErrorKind::ChangedPackageProviderAbi { .. } => Some(
-                "preserve the package roots, selected providers, provider targets, methods, and capability requirements or explicitly restage the runtime".to_owned(),
+            HotReloadErrorKind::ChangedPackageAbi { .. } => Some(
+                "preserve the package roots, compiled packages, and capability requirements or explicitly restage the runtime".to_owned(),
             ),
             HotReloadErrorKind::ChangedStateStorage { .. } => Some(
                 "preserve the state storage kind or restart with an explicit migration".to_owned(),
@@ -408,7 +406,7 @@ impl HotReloadError {
             | HotReloadErrorKind::AddedFunctionParametersDenied { .. }
             | HotReloadErrorKind::NewFunctionDenied { .. }
             | HotReloadErrorKind::RemovedFunction { .. } => None,
-            HotReloadErrorKind::ChangedPackageProviderAbi { source_span, .. } => {
+            HotReloadErrorKind::ChangedPackageAbi { source_span, .. } => {
                 source_span.as_deref().copied()
             }
             HotReloadErrorKind::ChangedStateStorage { source_span, .. }
@@ -426,9 +424,7 @@ impl HotReloadError {
     #[must_use]
     pub fn manifest_path(&self) -> Option<&Path> {
         match &self.kind {
-            HotReloadErrorKind::ChangedPackageProviderAbi { manifest_path, .. } => {
-                manifest_path.as_deref()
-            }
+            HotReloadErrorKind::ChangedPackageAbi { manifest_path, .. } => manifest_path.as_deref(),
             _ => None,
         }
     }
@@ -589,7 +585,7 @@ pub enum HotReloadErrorKind {
         new: Vec<ModuleExportAbi>,
         source_span: Option<Box<Span>>,
     },
-    ChangedPackageProviderAbi {
+    ChangedPackageAbi {
         target: String,
         reason: String,
         source_span: Option<Box<Span>>,

@@ -12,19 +12,10 @@ pub(crate) fn specs(name: &str, crlf: bool) -> Vec<Spec> {
         spec.id = format!("{}-{mode}", spec.id);
         match mode {
             "full" => {}
-            "ordinary" => {
-                let mut schema: Value =
-                    serde_json::from_str(&spec.files["schema.json"]).expect("schema JSON");
-                schema
-                    .as_object_mut()
-                    .expect("artifact")
-                    .remove("serviceSet");
-                spec.files.insert("schema.json".into(), schema.to_string());
-            }
             "missing" => {
                 spec.files.insert(
                     "schema.json".into(),
-                    json!({"formatVersion":1,"facts":{}}).to_string(),
+                    json!({"formatVersion":2,"facts":{}}).to_string(),
                 );
             }
             other => panic!("unreviewed schema mode {other}"),

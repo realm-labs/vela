@@ -5,7 +5,6 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::script_methods::{
     ScriptMethodCatalog, ScriptMethodCatalogError, ScriptMethodCatalogMode,
 };
-use vela_hir::service_impl::{ServiceImplCatalog, ServiceImplCatalogError};
 use vela_hir::source_ingestion::{HirSourceSet, HirSourceSetKind};
 use vela_mir::{MirBuildError, MirEvaluatedConstant, MirSourceOrigin};
 
@@ -18,7 +17,6 @@ pub(super) struct SemanticCompilation<'a> {
     modules: &'a [ModuleId],
     kind: HirSourceSetKind,
     script_methods: ScriptMethodCatalog,
-    service_impls: ServiceImplCatalog,
 }
 
 impl<'a> SemanticCompilation<'a> {
@@ -34,14 +32,11 @@ impl<'a> SemanticCompilation<'a> {
         };
         let script_methods = ScriptMethodCatalog::from_graph(graph, catalog_mode)
             .map_err(script_method_catalog_error)?;
-        let service_impls =
-            ServiceImplCatalog::from_graph(graph).map_err(service_impl_catalog_error)?;
         Ok(Self {
             graph,
             modules,
             kind,
             script_methods,
-            service_impls,
         })
     }
 
@@ -157,10 +152,6 @@ impl<'a> SemanticCompilation<'a> {
         &self.script_methods
     }
 
-    pub(super) const fn service_impl_catalog(&self) -> &ServiceImplCatalog {
-        &self.service_impls
-    }
-
     fn modules(&self) -> &[ModuleId] {
         self.modules
     }
@@ -217,17 +208,6 @@ fn module_const_declarations(graph: &ModuleGraph, module: ModuleId) -> Vec<HirDe
 
 fn script_method_catalog_error(error: ScriptMethodCatalogError) -> CompileError {
     let span = error.origin().span;
-    CompileError::new(CompileErrorKind::MirInput(Box::new(
-        MirBuildError::InconsistentInput {
-            origin: MirSourceOrigin::declaration(error.declaration(), span),
-            message: error.to_string(),
-        },
-    )))
-    .with_span(span)
-}
-
-fn service_impl_catalog_error(error: ServiceImplCatalogError) -> CompileError {
-    let span = error.span();
     CompileError::new(CompileErrorKind::MirInput(Box::new(
         MirBuildError::InconsistentInput {
             origin: MirSourceOrigin::declaration(error.declaration(), span),

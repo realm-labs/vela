@@ -254,29 +254,6 @@ fn expand_struct(
             fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
                 <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
             }
-
-            fn register_shared_type_closure(
-                builder: ::vela_engine::builder::EngineBuilder,
-            ) -> ::vela_engine::builder::EngineBuilder {
-                <Self as ::vela_engine::type_registration::RustValueType>::
-                    register_value_type_closure(builder)
-            }
-
-            fn push_shared_service_arg<'a>(
-                &'a self,
-                args: &mut ::vela_engine::runtime::CallArgs<'a>,
-            ) {
-                args.push(
-                    <Self as ::vela_engine::args::ToScriptValueRef>::
-                        to_script_value_ref(self),
-                );
-            }
-
-            fn decode_shared_temporary(
-                value: &::vela_vm::owned_value::OwnedValue,
-            ) -> ::vela_vm::error::VmResult<Self> {
-                <Self as ::vela_engine::args::FromScriptArg>::from_script_arg(value)
-            }
         }
 
         impl ::vela_engine::args::IntoScriptArg for #ident {
@@ -538,29 +515,6 @@ fn expand_enum(
 
             fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
                 <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
-            }
-
-            fn register_shared_type_closure(
-                builder: ::vela_engine::builder::EngineBuilder,
-            ) -> ::vela_engine::builder::EngineBuilder {
-                <Self as ::vela_engine::type_registration::RustValueType>::
-                    register_value_type_closure(builder)
-            }
-
-            fn push_shared_service_arg<'a>(
-                &'a self,
-                args: &mut ::vela_engine::runtime::CallArgs<'a>,
-            ) {
-                args.push(
-                    <Self as ::vela_engine::args::ToScriptValueRef>::
-                        to_script_value_ref(self),
-                );
-            }
-
-            fn decode_shared_temporary(
-                value: &::vela_vm::owned_value::OwnedValue,
-            ) -> ::vela_vm::error::VmResult<Self> {
-                <Self as ::vela_engine::args::FromScriptArg>::from_script_arg(value)
             }
         }
 
@@ -956,6 +910,37 @@ mod tests {
     use quote::quote;
 
     use super::expand_result;
+
+    #[test]
+    fn value_codecs_keep_shared_hints_without_service_members() {
+        for item in [
+            quote! {
+                #[vela(path = "host::Record")]
+                struct Record { count: i64 }
+            },
+            quote! {
+                #[vela(path = "host::Decision")]
+                enum Decision { Pending, Granted { count: i64 } }
+            },
+        ] {
+            let expanded = expand_result(item)
+                .expect("Value codec expands")
+                .to_string();
+
+            assert!(expanded.contains("VelaSharedBoundary for"));
+            assert!(expanded.contains("fn vela_shared_type_hint"));
+            assert!(expanded.contains("register_value_type_closure"));
+            assert!(expanded.contains("IntoScriptArg for"));
+            assert!(expanded.contains("FromScriptArg for"));
+            for removed in [
+                "register_shared_type_closure",
+                "push_shared_service_arg",
+                "decode_shared_temporary",
+            ] {
+                assert!(!expanded.contains(removed), "unexpected member: {removed}");
+            }
+        }
+    }
 
     #[test]
     fn rejects_skipped_fields_that_cannot_be_reconstructed() {

@@ -340,7 +340,6 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("detached_effects", fixed_record(ReflectEffectSet)),
             ("detached_parameter_contracts", strings()),
             ("detached_parameter_modes", strings()),
-            ("detached_requires_service_generation", TypeFact::BOOL),
             ("detached_result_contract", TypeFact::Any),
             ("detached_result_mode", TypeFact::Any),
             ("detached_target", TypeFact::BOOL),

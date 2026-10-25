@@ -1040,7 +1040,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_method() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -1068,7 +1068,7 @@ fn schema_with_player_method() -> &'static str {
 
 fn schema_with_player_function_and_method() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -1106,7 +1106,7 @@ fn schema_with_player_function_and_method() -> &'static str {
 
 fn schema_with_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -1139,7 +1139,7 @@ fn schema_with_quest_state_tuple_variant() -> &'static str {
 
 fn schema_with_rewardable_trait_method() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "traits": [
                 {

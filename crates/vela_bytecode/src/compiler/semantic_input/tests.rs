@@ -180,14 +180,12 @@ fn prepare_source_inner(
         roots,
         script_function_symbols: &script_function_symbols,
         script_methods,
-        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
         registry,
-        service_schema: None,
     })?;
     Ok(SemanticFixture {
         input,

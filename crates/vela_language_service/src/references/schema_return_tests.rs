@@ -167,7 +167,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -240,7 +240,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "preview".len();
     let artifact = serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {

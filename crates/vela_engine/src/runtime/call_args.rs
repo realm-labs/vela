@@ -66,13 +66,11 @@ impl<'program, 'heap, 'budget> CallArgRuntime<'program, 'heap, 'budget> {
 
 /// Captures the call-scoped HostRef assigned to one direct host argument.
 ///
-/// Generated adapters use this token to prove that a returned HostRef is the
-/// exact direct Rust origin before returning that already-live Rust borrow.
+/// The identity token records the assigned root for a direct host argument.
 #[doc(hidden)]
 #[derive(Default)]
 struct DirectHostIdentityState {
     host_ref: Option<HostRef>,
-    scoped_return: Option<ServiceScopedReturn>,
 }
 
 #[derive(Clone, Default)]
@@ -83,34 +81,6 @@ impl DirectHostIdentity {
     pub fn host_ref(&self) -> Option<HostRef> {
         self.0.lock().host_ref
     }
-
-    pub(super) fn prepare_scoped_return(&self) {
-        self.0.lock().scoped_return = None;
-    }
-
-    pub(super) fn complete_scoped_return(&self, returned: ServiceScopedReturn) {
-        self.0.lock().scoped_return = Some(returned);
-    }
-
-    pub(super) fn take_scoped_return(&self) -> Option<ServiceScopedReturn> {
-        self.0.lock().scoped_return.take()
-    }
-}
-
-#[doc(hidden)]
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum ServiceScopedReturnEnvelope {
-    Direct,
-    Option,
-    Result,
-}
-
-#[doc(hidden)]
-#[derive(Debug)]
-pub enum ServiceScopedReturn {
-    Borrowed,
-    Empty,
-    Error(OwnedValue),
 }
 
 impl<'a> CallArgs<'a> {

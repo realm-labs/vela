@@ -264,7 +264,7 @@ pub fn grant() { return 1 }";
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -326,7 +326,7 @@ pub fn preview() { return 1 }";
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

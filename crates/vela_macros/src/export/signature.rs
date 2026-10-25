@@ -60,7 +60,6 @@ impl EffectName {
 pub(crate) enum ParameterMode {
     Value,
     ReadOnlyValueBorrow,
-    StorageDirectedShared,
     SharedHost,
     ExclusiveHost,
     HiddenContext,
@@ -97,7 +96,6 @@ pub(crate) enum TypeShape {
     Option(Box<TypeShape>),
     Result(Box<TypeShape>, Box<TypeShape>),
     Value(Type),
-    StorageDirectedShared(Type),
     Host(Type, HostAccess),
     BorrowedCollection(BorrowedCollectionShape),
     ReceiverHost,
@@ -176,45 +174,35 @@ pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false, false, false, false)
+    classify_signature(signature, additional_effects, false, false)
 }
 
 pub(crate) fn classify_method(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, true, false, false)
+    classify_signature(signature, additional_effects, true, false)
 }
 
 pub(crate) fn classify_method_with_host_collection_returns(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, true, false, true)
-}
-
-pub(crate) fn classify_service_method(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, false, true, false)
+    classify_signature(signature, additional_effects, true, true)
 }
 
 fn classify_signature(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
     allow_receiver: bool,
-    receiver_is_borrow_origin: bool,
-    allow_named_lifetimes: bool,
     host_collection_returns: bool,
 ) -> Result<ClassifiedSignature> {
     let mut parameters: Vec<ClassifiedParameter> = Vec::new();
     let mut host_origins = Vec::new();
     let mut receiver_access = None;
     for input in &signature.inputs {
-        let is_receiver = matches!(input, FnArg::Receiver(_));
         let classified = match input {
-            FnArg::Typed(parameter) => classify_parameter(parameter, allow_named_lifetimes)?,
+            FnArg::Typed(parameter) => classify_parameter(parameter)?,
             FnArg::Receiver(receiver) if allow_receiver => {
                 if !parameters.is_empty() {
                     return Err(syn::Error::new_spanned(
@@ -233,9 +221,7 @@ fn classify_signature(
                 } else {
                     HostAccess::Shared
                 };
-                if receiver_is_borrow_origin {
-                    receiver_access = Some(access);
-                }
+                receiver_access = Some(access);
                 ClassifiedParameter {
                     name: "self".to_owned(),
                     ty: TypeShape::ReceiverHost,
@@ -266,15 +252,9 @@ fn classify_signature(
         }
         if matches!(
             classified.mode,
-            ParameterMode::StorageDirectedShared
-                | ParameterMode::SharedHost
-                | ParameterMode::ExclusiveHost
-        ) && (!is_receiver || receiver_is_borrow_origin)
-        {
-            let visible_index = parameters
-                .len()
-                .saturating_sub(usize::from(allow_receiver && !receiver_is_borrow_origin));
-            let index = u16::try_from(visible_index).map_err(|_| {
+            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
+        ) {
+            let index = u16::try_from(parameters.len()).map_err(|_| {
                 syn::Error::new_spanned(input, "exported callable has too many parameters")
             })?;
             host_origins.push((index, classified.mode));
@@ -291,11 +271,8 @@ fn classify_signature(
             "borrowed host return has no receiver or host-parameter provenance",
         ));
     }
-    let (return_shape, error_mode) = classify_return_type(
-        &signature.output,
-        allow_named_lifetimes,
-        host_collection_returns,
-    )?;
+    let (return_shape, error_mode) =
+        classify_return_type(&signature.output, host_collection_returns)?;
     let host_return = host_return_access(&return_shape)?;
     let mode = if let Some(child) = host_return {
         if signature.asyncness.is_some() {
@@ -314,9 +291,7 @@ fn classify_signature(
                 ));
             };
             let parent = match parent_mode {
-                ParameterMode::StorageDirectedShared | ParameterMode::SharedHost => {
-                    HostAccess::Shared
-                }
+                ParameterMode::SharedHost => HostAccess::Shared,
                 ParameterMode::ExclusiveHost => HostAccess::Exclusive,
                 _ => unreachable!("host origins contain only host modes"),
             };
@@ -380,10 +355,7 @@ fn type_contains_reference(ty: &Type) -> bool {
     }
 }
 
-fn classify_parameter(
-    parameter: &PatType,
-    allow_named_lifetimes: bool,
-) -> Result<ClassifiedParameter> {
+fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
     let name = param_name(parameter);
     if type_ident(&parameter.ty).is_some_and(|ident| ident == "NativeCallContext") {
         let Type::Reference(reference) = parameter.ty.as_ref() else {
@@ -406,9 +378,7 @@ fn classify_parameter(
         });
     }
     if let Type::Reference(reference) = parameter.ty.as_ref() {
-        if !allow_named_lifetimes {
-            reject_explicit_lifetime(reference)?;
-        }
+        reject_explicit_lifetime(reference)?;
         if is_str(&reference.elem) {
             if reference.mutability.is_some() {
                 return Err(syn::Error::new_spanned(
@@ -441,14 +411,6 @@ fn classify_parameter(
             });
         }
         let host_ty = direct_host_type(&reference.elem)?;
-        if access == HostAccess::Shared && allow_named_lifetimes {
-            return Ok(ClassifiedParameter {
-                name,
-                ty: TypeShape::StorageDirectedShared(host_ty),
-                mode: ParameterMode::StorageDirectedShared,
-                rust_ty: Some(parameter.ty.as_ref().clone()),
-            });
-        }
         return Ok(ClassifiedParameter {
             name,
             ty: TypeShape::Host(host_ty, access),
@@ -470,7 +432,6 @@ fn classify_parameter(
 
 fn classify_return_type(
     output: &ReturnType,
-    allow_named_lifetimes: bool,
     host_collection_returns: bool,
 ) -> Result<(TypeShape, ErrorMode)> {
     let ReturnType::Type(_, ty) = output else {
@@ -478,25 +439,19 @@ fn classify_return_type(
     };
     if let Some(inner) = wrapper_inner_type(ty, &["VmResult"]) {
         return Ok((
-            classify_return_shape(inner, allow_named_lifetimes, host_collection_returns)?,
+            classify_return_shape(inner, host_collection_returns)?,
             ErrorMode::RuntimeResult,
         ));
     }
     Ok((
-        classify_return_shape(ty, allow_named_lifetimes, host_collection_returns)?,
+        classify_return_shape(ty, host_collection_returns)?,
         ErrorMode::Value,
     ))
 }
 
-fn classify_return_shape(
-    ty: &Type,
-    allow_named_lifetimes: bool,
-    host_collection_returns: bool,
-) -> Result<TypeShape> {
+fn classify_return_shape(ty: &Type, host_collection_returns: bool) -> Result<TypeShape> {
     if let Type::Reference(reference) = ty {
-        if !allow_named_lifetimes {
-            reject_explicit_lifetime(reference)?;
-        }
+        reject_explicit_lifetime(reference)?;
         if is_str(&reference.elem) {
             return Err(syn::Error::new_spanned(
                 ty,
@@ -519,7 +474,6 @@ fn classify_return_shape(
     if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
         return Ok(TypeShape::Option(Box::new(classify_return_shape(
             inner,
-            allow_named_lifetimes,
             host_collection_returns,
         )?)));
     }
@@ -530,9 +484,7 @@ fn classify_return_shape(
         return tuple
             .elems
             .iter()
-            .map(|element| {
-                classify_return_shape(element, allow_named_lifetimes, host_collection_returns)
-            })
+            .map(|element| classify_return_shape(element, host_collection_returns))
             .collect::<Result<Vec<_>>>()
             .map(TypeShape::Tuple);
     }
@@ -545,11 +497,7 @@ fn classify_return_shape(
             ));
         };
         return Ok(TypeShape::Result(
-            Box::new(classify_return_shape(
-                ok,
-                allow_named_lifetimes,
-                host_collection_returns,
-            )?),
+            Box::new(classify_return_shape(ok, host_collection_returns)?),
             Box::new(classify_owned_type(err)?),
         ));
     }
@@ -879,7 +827,6 @@ fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
         | TypeShape::Map(_, _)
         | TypeShape::Set(_)
         | TypeShape::Value(_)
-        | TypeShape::StorageDirectedShared(_)
         | TypeShape::ReceiverHost => Ok(None),
     }
 }

@@ -19,9 +19,6 @@ impl QueryContext<'_> {
         if path.len() > 1 && path[0] == "task" {
             return stdlib_callable_facts(&path.join("::"));
         }
-        if let Some(callables) = self.service_callable_facts(databases, path) {
-            return callables;
-        }
         let Some(first) = path.first() else {
             return Vec::new();
         };
@@ -72,11 +69,6 @@ impl QueryContext<'_> {
             return Vec::new();
         }
         let external = imported.as_deref().unwrap_or(path);
-        if imported.is_some()
-            && let Some(callables) = self.service_callable_facts(databases, external)
-        {
-            return callables;
-        }
         if let Some(declaration) = module.and_then(|module| {
             [
                 DeclarationKind::Function,

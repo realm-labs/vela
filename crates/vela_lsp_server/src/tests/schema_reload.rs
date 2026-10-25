@@ -189,6 +189,88 @@ fn schema_delete_clears_stale_host_completion_and_publishes_diagnostic() {
 }
 
 #[test]
+fn schema_watch_rejects_old_format_and_removed_service_set_then_recovers() {
+    let root = temp_workspace();
+    let schema_path = root.join("schema.json");
+    let valid = schema_with_player_field("level", "i64");
+    fs::write(&schema_path, &valid).expect("initial schema");
+    let main_uri = file_uri(&root.join("scripts/main.vela"));
+    let text = "fn main(player: Player) { player. }";
+    let position = text.find(". }").expect("member dot") + 1;
+    let mut server = TestServer::new();
+    let _ = request::<lsp_types::request::Initialize>(
+        &mut server,
+        1,
+        serde_json::json!({
+            "processId": null,
+            "rootUri": file_uri(&root),
+            "initializationOptions": {"host": {"schema": file_uri(&schema_path)}},
+            "capabilities": {}
+        }),
+    );
+    let _ = notify::<lsp_types::notification::DidOpenTextDocument>(
+        &mut server,
+        serde_json::json!({"textDocument": {
+            "uri": main_uri, "languageId": "vela", "version": 1, "text": text
+        }}),
+    );
+    let mut id = 2;
+    for (rejected, reason) in [
+        (
+            r#"{"formatVersion":1,"facts":{}}"#,
+            "unsupported schema artifact format version 1; expected 2",
+        ),
+        (
+            r#"{"formatVersion":2,"serviceSet":null,"facts":{}}"#,
+            "unknown field `serviceSet`",
+        ),
+        (
+            r#"{"formatVersion":2,"serviceSet":{"services":[]},"facts":{}}"#,
+            "unknown field `serviceSet`",
+        ),
+    ] {
+        for (bytes, expected) in [(rejected, Some(reason)), (valid.as_str(), None)] {
+            fs::write(&schema_path, bytes).expect("replace schema");
+            let notifications =
+                notification_values(notify::<lsp_types::notification::DidChangeWatchedFiles>(
+                    &mut server,
+                    serde_json::json!({"changes": [{"uri": file_uri(&schema_path), "type": 2}]}),
+                ));
+            if let Some(reason) = expected {
+                assert_document_has_diagnostic_code(
+                    &notifications,
+                    &main_uri,
+                    "schema::unavailable",
+                );
+                assert!(notifications.iter().any(|notification| {
+                    notification["params"]["diagnostics"]
+                        .as_array()
+                        .is_some_and(|diagnostics| {
+                            diagnostics.iter().any(|diagnostic| {
+                                diagnostic["message"]
+                                    .as_str()
+                                    .is_some_and(|message| message.contains(reason))
+                            })
+                        })
+                }));
+            }
+            let completion = response_value(request::<lsp_types::request::Completion>(
+                &mut server,
+                id,
+                serde_json::json!({"textDocument": {"uri": main_uri}, "position": {"line": 0, "character": position}}),
+            ));
+            id += 1;
+            if expected.is_some() {
+                assert_no_completion(&completion, "level");
+            } else {
+                assert_completion(&completion, "level", 5, "i64");
+            }
+        }
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
 fn editor_config_maps_to_workspace_config() {
     let root = temp_workspace();
     let schema_path = root.join("target").join("vela").join("schema.json");
@@ -443,7 +525,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_field(name: &str, kind: &str) -> String {
     serde_json::json!({
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {

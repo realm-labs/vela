@@ -58,9 +58,6 @@ mod relevance;
 mod schema_function;
 mod schema_type;
 #[cfg(test)]
-mod service_parameter_tests;
-mod service_path;
-#[cfg(test)]
 mod service_path_tests;
 mod source_address;
 mod source_declaration;
@@ -153,9 +150,7 @@ impl LanguageServiceDatabases {
                 .then(|| empty_completion_list(context));
         }
         let analysis = completion_analysis(self, &query, &context);
-        let mut items = if let Some(items) = service_path::completion_items(self, &query, &context)
-            .or_else(|| task_path::completion_items(&query, &context))
-        {
+        let mut items = if let Some(items) = task_path::completion_items(&query, &context) {
             items
         } else {
             match analysis.context_kind() {

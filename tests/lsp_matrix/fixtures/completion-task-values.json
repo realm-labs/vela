@@ -3,7 +3,7 @@
   "id": "completion-task-values",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.task_eligibility\"\nname = \"task_eligibility\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "schema.json": "{\"formatVersion\":1,\"facts\":{\"executionEffectCeiling\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":true},\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}]}}",
+    "schema.json": "{\"formatVersion\":2,\"facts\":{\"executionEffectCeiling\":{\"readsHost\":true,\"writesHost\":false,\"emitsEvents\":false,\"readsTime\":false,\"usesRandom\":false,\"readsIo\":false,\"writesIo\":false,\"readsReflection\":false,\"writesReflection\":false,\"callsReflection\":false,\"spawnsTasks\":true},\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}}]}}",
     "scripts/scalar.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: i64) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",
     "expected/scalar.txt": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: i64) { task::spawn_scoped(worker([[failure:start]]zz_value[[failure:end]])); }\n",
     "scripts/erased.vela": "/* 中😀 */ async fn worker(value: Any) -> Any { return value; } fn main(zz_value: Any) { task::spawn_scoped(worker([[replace:start]]zz_v[[cursor]][[replace:end]])); }\n",

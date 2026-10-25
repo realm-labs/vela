@@ -122,24 +122,11 @@ pub trait VelaHostBoundary: ScriptHostSchema {
 
 impl<T: ScriptHostSchema> VelaHostBoundary for T {}
 
-/// One nominal Rust type that may satisfy a shared service parameter from
-/// either sealed Value storage or sealed Host storage.
-///
-/// Implementations own all representation-specific operations so generated
-/// service code never guesses whether `&T` means a decoded invocation-local
-/// Value or a leased Host object.
+/// Type-hint metadata for a shared Rust parameter.
 pub trait VelaSharedBoundary: Sized + 'static {
     const STORAGE: StoragePolicy;
 
     fn vela_shared_type_hint() -> TypeHint;
-
-    fn register_shared_type_closure(
-        builder: crate::builder::EngineBuilder,
-    ) -> crate::builder::EngineBuilder;
-
-    fn push_shared_service_arg<'a>(&'a self, args: &mut crate::runtime::CallArgs<'a>);
-
-    fn decode_shared_temporary(value: &vela_vm::owned_value::OwnedValue) -> VmResult<Self>;
 }
 
 impl<T> VelaSharedBoundary for T
@@ -150,22 +137,6 @@ where
 
     fn vela_shared_type_hint() -> TypeHint {
         TypeHint::Host(Self::script_host_type_desc().key)
-    }
-
-    fn register_shared_type_closure(
-        builder: crate::builder::EngineBuilder,
-    ) -> crate::builder::EngineBuilder {
-        builder
-    }
-
-    fn push_shared_service_arg<'a>(&'a self, args: &mut crate::runtime::CallArgs<'a>) {
-        args.push_positional_host_ref(self);
-    }
-
-    fn decode_shared_temporary(_value: &vela_vm::owned_value::OwnedValue) -> VmResult<Self> {
-        Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "storage-directed shared Host argument",
-        }))
     }
 }
 
@@ -350,7 +321,6 @@ pub enum CallableKind {
     RustTraitMethod,
     VelaFunction,
     VelaMethod,
-    VelaProviderMethod,
 }
 
 impl CallableKind {
@@ -361,7 +331,6 @@ impl CallableKind {
             Self::RustTraitMethod => "rust_trait_method",
             Self::VelaFunction => "vela_function",
             Self::VelaMethod => "vela_method",
-            Self::VelaProviderMethod => "vela_provider_method",
         }
     }
 }

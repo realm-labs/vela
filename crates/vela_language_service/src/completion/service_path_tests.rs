@@ -5,24 +5,14 @@ use crate::{
 };
 
 #[test]
-fn service_path_matrix_owns_exact_candidates_and_edits() {
-    run_matrix("completion-service-paths");
-}
-
-#[test]
 fn task_path_matrix_owns_operations_and_whole_identifier_edits() {
     run_matrix("completion-task-paths");
-}
-
-#[test]
-fn service_root_matrix_owns_contextual_namespaces_and_edits() {
-    run_matrix("completion-service-roots");
 }
 
 fn run_matrix(name: &str) {
     for (crlf, mode) in [false, true]
         .into_iter()
-        .flat_map(|crlf| ["full", "missing", "ordinary", "empty"].map(|mode| (crlf, mode)))
+        .flat_map(|crlf| ["full", "missing"].map(|mode| (crlf, mode)))
     {
         let mut spec = load(name);
         if crlf {
@@ -32,20 +22,6 @@ fn run_matrix(name: &str) {
         }
         if mode == "missing" {
             spec.files.remove("schema.json");
-        }
-        if mode == "ordinary" {
-            let mut schema: serde_json::Value =
-                serde_json::from_str(&spec.files["schema.json"]).expect("schema");
-            schema.as_object_mut().expect("object").remove("serviceSet");
-            spec.files
-                .insert("schema.json".to_owned(), schema.to_string());
-        }
-        if mode == "empty" && spec.oracle["schemaIndependent"] != true {
-            let mut schema: serde_json::Value =
-                serde_json::from_str(&spec.files["schema.json"]).expect("schema");
-            schema["serviceSet"]["services"] = serde_json::json!([]);
-            spec.files
-                .insert("schema.json".to_owned(), schema.to_string());
         }
         let fixture = FixtureWorkspace::new(&spec).expect("fixture");
         let db = databases(&fixture);
@@ -191,64 +167,4 @@ fn update_sources(db: &mut LanguageServiceDatabases, fixture: &FixtureWorkspace)
         &files,
         &Workspace::new().snapshot(),
     ));
-}
-
-#[test]
-fn service_root_lifecycle_matches_fresh_origin_and_schema_queries() {
-    for crlf in [false, true] {
-        let mut spec = load("completion-service-roots");
-        if crlf {
-            for text in spec.files.values_mut() {
-                *text = text.replace('\n', "\r\n");
-            }
-        }
-        let mut fixture = FixtureWorkspace::new(&spec).expect("fixture");
-        let mut db = databases(&fixture);
-        let file = "scripts/root_import_helper.vela";
-        let source = fixture.document(file).expect("helper").clone();
-        let point = position(&source.text, source.markers["cursor"].start.byte);
-        for state in spec.oracle["lifecycle"].as_array().expect("states") {
-            let caller = state["caller"].as_str().expect("caller");
-            fixture
-                .disk
-                .get_mut("scripts/root_import_caller.vela")
-                .expect("caller")
-                .text = if crlf {
-                caller.replace('\n', "\r\n")
-            } else {
-                caller.to_owned()
-            };
-            update_sources(&mut db, &fixture);
-            let schema = state["schema"].as_str().expect("schema");
-            db.load_schema_artifact_json("/workspace/schema.json", schema);
-            assert_eq!(
-                db.schema_db().diagnostics().is_empty(),
-                state["invalid"] != true
-            );
-            let result = db.completion_items(&uri(file), point);
-            let labels = result.items().iter().map(|i| i.label()).collect::<Vec<_>>();
-            assert_eq!(
-                serde_json::json!(labels),
-                state["labels"],
-                "CRLF={crlf}: {state}"
-            );
-            for item in result.items() {
-                assert_eq!(
-                    item.symbol(),
-                    Some(&CompletionSymbol::Builtin(format!(
-                        "service::{}",
-                        item.label()
-                    )))
-                );
-                assert!(
-                    db.completion_documentation(item.resolve_payload().expect("resolve"))
-                        .is_none()
-                );
-            }
-            let mut fresh = LanguageServiceDatabases::new();
-            update_sources(&mut fresh, &fixture);
-            fresh.load_schema_artifact_json("/workspace/schema.json", schema);
-            assert_eq!(result, fresh.completion_items(&uri(file), point), "{state}");
-        }
-    }
 }

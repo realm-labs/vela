@@ -1,0 +1,5 @@
+error[E0433]: cannot find `service_domain` in `vela_macros`
+ --> tests/ui/removed/service_domain.rs:1:16
+  |
+1 | #[vela_macros::service_domain(context = RequestContext)]
+  |                ^^^^^^^^^^^^^^ could not find `service_domain` in `vela_macros`

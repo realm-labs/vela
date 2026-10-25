@@ -86,7 +86,7 @@ impl HotReloadDiagnosticDetail {
             | HotReloadErrorKind::RemovedMethodAbi { .. }
             | HotReloadErrorKind::RemovedTraitAbi { .. }
             | HotReloadErrorKind::RemovedModuleAbi { .. }
-            | HotReloadErrorKind::ChangedPackageProviderAbi { .. }
+            | HotReloadErrorKind::ChangedPackageAbi { .. }
             | HotReloadErrorKind::ChangedStateStorage { .. }
             | HotReloadErrorKind::ChangedStateType { .. }
             | HotReloadErrorKind::RemovedStateExport { .. }

@@ -29,6 +29,7 @@ mod test_compile_support;
 mod function_abi;
 mod function_policy;
 mod method_abi;
+mod package_abi;
 mod registry_manifest;
 mod runtime_reports;
 mod schema_abi;

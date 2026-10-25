@@ -9,7 +9,7 @@
     "scripts/method_result.vela": "/* 中😀 */\nasync fn run(handle: host::Handle) { (handle.work_make(1).await).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
     "scripts/function_signature.vela": "/* 中😀 */\nasync fn run() { native::work_make([[cursor]]1); }\n",
     "scripts/method_signature.vela": "/* 中😀 */\nasync fn run(handle: host::Handle) { handle.work_make([[cursor]]1); }\n",
-    "schema.json": "{\"formatVersion\":1,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}",
+    "schema.json": "{\"formatVersion\":2,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}",
     "scripts/local.vela": "/* 中😀 */\npub struct Local { [[field:start]]zz_local[[field:end]]: i64 }\npub fn produce() -> Local { Local { zz_local: 1 } }\npub fn [[function:start]]work_source[[function:end]](zz_local: i64) -> i64 { zz_local }\n",
     "scripts/source.vela": "/* 中😀 */\nfn run() { local::produce().[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
     "scripts/source_call.vela": "/* 中😀 */\nfn run() { local::[[replace:start]]work_[[cursor]][[replace:end]]; }\n",
@@ -22,7 +22,7 @@
       {
         "id": "initial",
         "schema": {
-          "formatVersion": 1,
+          "formatVersion": 2,
           "facts": {
             "types": [
               {
@@ -478,7 +478,7 @@
       {
         "id": "restore_deleted",
         "schema": {
-          "formatVersion": 1,
+          "formatVersion": 2,
           "facts": {
             "types": [
               {
@@ -935,7 +935,7 @@
       {
         "id": "restore_malformed",
         "schema": {
-          "formatVersion": 1,
+          "formatVersion": 2,
           "facts": {
             "types": [
               {
@@ -1392,7 +1392,7 @@
       {
         "id": "restore_unsupported",
         "schema": {
-          "formatVersion": 1,
+          "formatVersion": 2,
           "facts": {
             "types": [
               {

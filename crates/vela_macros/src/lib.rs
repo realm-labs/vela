@@ -12,11 +12,6 @@ mod hash;
 mod host_object;
 mod methods;
 mod script_host;
-mod service;
-mod service_domain;
-#[path = "service_domain/emission.rs"]
-mod service_domain_emission;
-mod service_domain_input;
 mod signature;
 mod trait_export;
 mod value;
@@ -62,18 +57,6 @@ pub fn external_value_enum(input: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn trait_export(attr: TokenStream, input: TokenStream) -> TokenStream {
     trait_export::expand(attr.into(), input.into()).into()
-}
-
-/// Declares one Rust default service trait and its sealed Vela ABI schema.
-#[proc_macro_attribute]
-pub fn service(attr: TokenStream, input: TokenStream) -> TokenStream {
-    service::expand(attr.into(), input.into()).into()
-}
-
-/// Generates one atomic service domain configured with Rust default instances.
-#[proc_macro_attribute]
-pub fn service_domain(attr: TokenStream, input: TokenStream) -> TokenStream {
-    service_domain::expand(attr.into(), input.into()).into()
 }
 
 /// Generates declaration-only UFCS adapters for an existing external trait

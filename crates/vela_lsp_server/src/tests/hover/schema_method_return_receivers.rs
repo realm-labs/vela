@@ -133,7 +133,7 @@ fn lsp_hover_reports_schema_trait_method_on_schema_method_return_receiver() {
 
 fn schema_with_inventory_method_return() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {
@@ -172,7 +172,7 @@ fn schema_with_inventory_method_return() -> &'static str {
 
 fn schema_with_rewardable_method_return() -> &'static str {
     r#"{
-        "formatVersion": 1,
+        "formatVersion": 2,
         "facts": {
             "types": [
                 {

@@ -4,38 +4,34 @@ use std::path::{Path, PathBuf};
 use vela_package::load_package_graph;
 
 use crate::{
-    DocumentId, HoverKind, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
+    DocumentId, LanguageServiceDatabases, Position, SourceFileSnapshot, Workspace,
     assemble_package_project_sources,
 };
 
 #[test]
-fn definition_follows_provider_to_service_trait_across_package() {
-    let fixture = ProviderToolingFixture::new("definition");
+fn definition_follows_ordinary_trait_across_package() {
+    let fixture = TraitToolingFixture::new("definition");
     let databases = fixture.databases();
-    let line = fixture
-        .plugin_text
-        .lines()
-        .nth(3)
-        .expect("provider impl line");
+    let line = fixture.plugin_text.lines().nth(2).expect("trait impl line");
     let definition = databases
         .definition(
             &fixture.plugin_document,
-            Position::new(3, line.find("CommandProvider").expect("service use")),
+            Position::new(2, line.find("CommandTrait").expect("trait use")),
         )
-        .expect("provider service definition");
+        .expect("trait definition");
 
     assert_eq!(definition.document_id(), &fixture.api_document);
     fixture.remove();
 }
 
 #[test]
-fn references_find_service_provider_impls_across_packages() {
-    let fixture = ProviderToolingFixture::new("references");
+fn references_find_ordinary_trait_impls_across_packages() {
+    let fixture = TraitToolingFixture::new("references");
     let databases = fixture.databases();
     let line = fixture.api_text.lines().next().expect("trait line");
     let references = databases.references(
         &fixture.api_document,
-        Position::new(0, line.find("CommandProvider").expect("trait declaration")),
+        Position::new(0, line.find("CommandTrait").expect("trait declaration")),
         true,
     );
 
@@ -49,39 +45,29 @@ fn references_find_service_provider_impls_across_packages() {
 }
 
 #[test]
-fn workspace_symbols_expose_package_provider_identity() {
-    let fixture = ProviderToolingFixture::new("symbols");
-    let databases = fixture.databases();
-    let symbols = databases.workspace_symbols("command");
-
+fn removed_provider_attribute_has_no_identity_tooling() {
+    let document = DocumentId::from("/workspace/plugin.vela");
+    let text = "pub trait CommandTrait { fn run(self); }\npub struct Command {}\n#[provider(id = \"command\")]\nimpl CommandTrait for Command { pub fn run(self) {} }\n";
+    let mut databases = LanguageServiceDatabases::new();
+    databases.update(&crate::assemble_project_sources(
+        &crate::WorkspaceConfig::workspace([crate::WorkspaceRoot::from("/workspace")]),
+        &[SourceFileSnapshot::new(document.clone(), text)],
+        &Workspace::new().snapshot(),
+    ));
+    let position = Position::new(2, 18);
+    assert!(databases.hover(&document, position).is_none());
+    assert!(databases.prepare_rename(&document, position).is_none());
     assert!(
-        symbols
-            .iter()
-            .any(|symbol| symbol.name() == "dev.vela.plugin::command"),
-        "{symbols:?}"
+        databases
+            .rename(&document, position, "replacement")
+            .is_none()
     );
-    fixture.remove();
+    assert!(databases.workspace_symbols("command").iter().all(|symbol|
+        !matches!(symbol.symbol(), crate::SymbolRef::Source(identity) if identity.starts_with("provider:"))
+    ));
 }
 
-#[test]
-fn hover_exposes_package_provider_identity() {
-    let fixture = ProviderToolingFixture::new("hover");
-    let databases = fixture.databases();
-    let line = fixture.plugin_text.lines().nth(2).expect("provider line");
-    let hover = databases
-        .hover(
-            &fixture.plugin_document,
-            Position::new(2, line.find("command").expect("provider id")),
-        )
-        .expect("provider hover");
-
-    assert_eq!(hover.kind(), HoverKind::Provider);
-    assert_eq!(hover.label(), "command");
-    assert!(hover.detail().contains("dev.vela.plugin"));
-    fixture.remove();
-}
-
-struct ProviderToolingFixture {
+struct TraitToolingFixture {
     root: PathBuf,
     api_document: DocumentId,
     plugin_document: DocumentId,
@@ -89,14 +75,14 @@ struct ProviderToolingFixture {
     plugin_text: String,
 }
 
-impl ProviderToolingFixture {
+impl TraitToolingFixture {
     fn new(name: &str) -> Self {
         let root = std::env::temp_dir().join(format!(
             "vela_provider_tooling_{name}_{}",
             std::process::id()
         ));
-        let api_text = "pub trait CommandProvider { fn run(self) -> i64; }\n".to_owned();
-        let plugin_text = "use api::api::CommandProvider\npub struct Command {}\n#[provider(id = \"command\")]\nimpl CommandProvider for Command { pub fn run(self) -> i64 { return 1; } }\n".to_owned();
+        let api_text = "pub trait CommandTrait { fn run(self) -> i64; }\n".to_owned();
+        let plugin_text = "use api::api::CommandTrait\npub struct Command {}\nimpl CommandTrait for Command { pub fn run(self) -> i64 { return 1; } }\n".to_owned();
         write_file(
             &root.join("api/vela.toml"),
             "[package]\nid = \"dev.vela.api\"\nname = \"api\"\nversion = \"0.1.0\"\n[source]\nroots = [\"src\"]\n",

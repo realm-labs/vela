@@ -19,13 +19,6 @@ pub use crate::runtime::{
     RuntimeReloadError, VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
-pub use crate::service::{
-    PatchEdit, PatchRevision, PatchRevisionChecksum, PatchSources, Service,
-    ServiceDomainBuildError, ServiceDryRunReport, ServicePatch, ServicePatchError,
-    ServicePatchWorkspaceError, ServiceUpdateBundle,
-};
-#[cfg(feature = "artifact-codec")]
-pub use crate::service::{PortableServiceBundleError, PortableServiceUpdateBundle};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::type_registration::VelaType;
 pub use crate::{args, host};

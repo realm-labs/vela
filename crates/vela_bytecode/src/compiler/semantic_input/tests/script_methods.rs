@@ -167,14 +167,12 @@ fn main() {
         roots: SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
-        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
         registry: None,
-        service_schema: None,
     })
     .expect("qualified record semantic input");
     let targets = input.targets();
@@ -272,14 +270,12 @@ fn prepare_modules(sources: &[ModuleSource]) -> PreparedSemanticInput {
         roots: SemanticRoots::Program,
         script_function_symbols: &script_function_symbols,
         script_methods: semantic.script_method_catalog(),
-        service_impls: semantic.service_impl_catalog(),
         type_symbols: &type_symbols,
         state_symbols: &state_symbols,
         evaluated_constants: &evaluated_constants,
         schema_defaults: &schema_defaults,
         options: &options,
         registry: None,
-        service_schema: None,
     })
     .expect("module semantic input")
 }

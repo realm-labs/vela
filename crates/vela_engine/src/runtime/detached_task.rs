@@ -16,7 +16,6 @@ use crate::task::{
 pub(super) fn admit(
     engine: &Engine,
     scope: Option<&TaskScope>,
-    pinned_service: Option<&crate::service::PinnedServiceExecution>,
     prepared: PreparedTaskCall,
     parent_heap: &vela_vm::heap::ScriptHeap,
     parent_budget: &mut vela_vm::budget::ExecutionBudget,
@@ -42,26 +41,9 @@ pub(super) fn admit(
             })
             .with_source_span(prepared.source_span())
         })?;
-    let generation = match pinned_service {
-        Some(service) => crate::task::TaskGeneration::Service {
-            executable: prepared.owner().generation(),
-            service_set: service.service_set(),
-            service_generation: service.generation(),
-        },
-        None => crate::task::TaskGeneration::Ordinary {
-            executable: prepared.owner().generation(),
-        },
+    let generation = crate::task::TaskGeneration::Ordinary {
+        executable: prepared.owner().generation(),
     };
-    if let Some(service) = pinned_service
-        && (service.artifact().generation() != prepared.owner().generation()
-            || service.artifact().checksum() != prepared.owner().checksum())
-    {
-        return Err(VmError::new(VmErrorKind::TaskAdmissionDenied {
-            reason: "active Service execution artifact does not own the sealed task target"
-                .to_owned(),
-        })
-        .with_source_span(prepared.source_span()));
-    }
     let task_id = scope.allocate_task_id().ok_or_else(|| {
         VmError::new(VmErrorKind::TaskAdmissionDenied {
             reason: "task scope diagnostic identifier space is exhausted".to_owned(),
@@ -92,22 +74,12 @@ pub(super) fn admit(
         });
     let required = required_capabilities(detached_effects);
     let artifact_ceiling = required.with(Capability::TaskSpawn);
-    let capsule = match pinned_service {
-        Some(service) => TaskExecutionCapsule::for_service_generation(
-            engine.clone(),
-            Arc::clone(service.artifact()),
-            engine.capabilities(),
-            artifact_ceiling,
-            scope.policy().clone(),
-            service.clone(),
-        ),
-        None => TaskExecutionCapsule::ordinary(
-            engine.clone(),
-            Arc::clone(prepared.owner()),
-            TaskAuthorityCeilings::ordinary(engine.capabilities(), artifact_ceiling),
-            scope.policy().clone(),
-        ),
-    }
+    let capsule = TaskExecutionCapsule::ordinary(
+        engine.clone(),
+        Arc::clone(prepared.owner()),
+        TaskAuthorityCeilings::ordinary(engine.capabilities(), artifact_ceiling),
+        scope.policy().clone(),
+    )
     .with_runtime_pool(scope.runtime_pool());
     let capsule = Arc::new(capsule);
     let available = capsule.effective_capabilities();
@@ -184,7 +156,6 @@ async fn run_child(
             },
             CallArgs::from_detached_image(args),
             options,
-            capsule.pinned_service().cloned(),
         )
         .await
         .map_err(worker_failure)?;

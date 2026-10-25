@@ -52,7 +52,6 @@ pub struct DetachedTargetDesc {
     pub result_contract: String,
     pub result_mode: DetachedValueMode,
     pub effects: FunctionEffectSet,
-    pub requires_service_generation: bool,
 }
 
 impl FunctionParamDesc {

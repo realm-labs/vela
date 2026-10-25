@@ -34,7 +34,7 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -171,7 +171,7 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -284,7 +284,7 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -422,7 +422,7 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {
@@ -564,7 +564,7 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "traits": [
                     {
@@ -708,7 +708,7 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 1,
+            "formatVersion": 2,
             "facts": {
                 "types": [
                     {

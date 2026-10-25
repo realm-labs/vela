@@ -21,7 +21,7 @@ fn resolve_preserves_actual_candidate_and_tracks_schema_docs_across_client_profi
         let schema = root.join("schema.json");
         let schema_uri = lsp_types::Url::from_file_path(&schema).expect("schema URI");
         let schema_text = |docs: &str| {
-            json!({"formatVersion":1,"facts":{"types":[{
+            json!({"formatVersion":2,"facts":{"types":[{
                 "name":"Player", "fact":{"kind":"host","name":"Player"},"docs":docs
             }]}})
             .to_string()

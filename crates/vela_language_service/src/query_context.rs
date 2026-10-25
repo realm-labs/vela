@@ -28,7 +28,6 @@ mod callable;
 mod hir_cursor;
 mod imports;
 mod locals;
-mod service_call;
 mod source_type;
 use hir_cursor::refine_cursor_with_hir;
 pub(crate) use source_type::source_origins_for_source_range;
@@ -1185,6 +1184,3 @@ mod tests {
         assert_eq!(callable.params()[1].name(), "arg1");
     }
 }
-
-#[cfg(test)]
-mod service_call_tests;

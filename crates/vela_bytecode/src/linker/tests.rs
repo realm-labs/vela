@@ -39,7 +39,7 @@ fn linker_fails_on_unresolved_native_calls() {
 }
 
 #[test]
-fn linker_accepts_explicit_internal_native_without_source_definition() {
+fn linker_rejects_hidden_native_targets_without_source_definitions() {
     let native = FunctionId::new(101);
     let mut code = UnlinkedCodeObject::new("main", 1);
     let cache_site = code.push_cache_site(CacheSiteKind::NativeCall, InstructionOffset(0));
@@ -55,19 +55,15 @@ fn linker_accepts_explicit_internal_native_without_source_definition() {
     let mut program = UnlinkedProgram::new();
     program.insert_function(code);
     let registry = DefinitionRegistry::new();
-    let mut linker = Linker::with_registry(&registry);
-    linker.add_internal_native_implementation(native, CallableAsyncness::Sync);
-
-    let linked = linker
+    let error = Linker::with_registry(&registry)
+        .with_native_implementation(native)
         .link_test_program(&program)
-        .expect("explicit internal native should bypass only source lookup");
-    let linked_native = linked
-        .native_function(NativeHandle::new(0))
-        .expect("internal native side-table entry");
+        .expect_err("hidden natives cannot bypass source registry validation");
 
-    assert_eq!(linked_native.id, native);
-    assert_eq!(linked_native.asyncness, CallableAsyncness::Sync);
-    assert_eq!(linked.debug_name(linked_native.debug_name), "__internal");
+    assert!(matches!(
+        error,
+        LinkError::UnresolvedNative { name, id } if name == "__internal" && id == native
+    ));
 }
 
 #[test]
