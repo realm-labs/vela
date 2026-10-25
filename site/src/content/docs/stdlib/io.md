@@ -53,6 +53,7 @@ let engine = Engine::builder()
     .build()?;
 ```
 
-Use I/O helpers for tools, demos, and controlled scripts. Server gameplay
-scripts should usually communicate through host APIs, events, or explicit
-state adapters instead of direct filesystem access.
+Use I/O helpers for tools, demos, and controlled scripts. Host business logic
+can instead exchange script-owned data through existing synchronous native
+calls and explicit results. These calls retain their declared effect and
+capability checks; they do not expose transparent Rust state adapters.

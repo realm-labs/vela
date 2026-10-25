@@ -7,6 +7,33 @@ workbench routes, independent expected outcomes, fixture identities and minimum
 evidence levels. Fixture IDs are reserved here; B01 and feature batches implement
 the shared fixtures and action drivers. A registered route is not executed proof.
 
+## Checkpoint E Inventory Join (Pending Re-Audit)
+
+[Inventory review](reviews/checkpoint-e-inventory.md) and its
+[exact contract journal](reviews/checkpoint-e-inventory.json) reconcile the actual
+reduced protocol and grammar with the existing execution migrations. Every
+original obligation ID and owner remains; `execution-baseline.json` is unchanged.
+The manifest names exact old/new hashes for 224 changed contracts and four
+unchanged S10 contracts whose scoped-view test evidence was retired. Historical
+assertions/test links are preserved, with 158 proof records explicitly pending.
+
+B02–B08 are reopened with their original acceptance snapshots intact. Unaffected
+B00/B01/B09 acceptance, completed children, profile audits and native artifact
+references are preserved; the next task is B02. No native capture was refreshed.
+Bare inventory auditing is usable, but strict acceptance and parent E closure
+remain pending.
+
+## Checkpoint E Site/Editor Cleanup (Scoped, Not Acceptance)
+
+[Checkpoint E evidence](reviews/checkpoint-e-site-editor.md) records the bilingual
+owned-value documentation regression, removed extern-state grammar/highlighting,
+regenerated parser and error corpus, and non-destructive Zed cache validation.
+Package validators and source-level checks are not installed/native proof.
+Affected pre-removal captures remain stale. That source-only cleanup preserved
+acceptance flags; the subsequent inventory join above explicitly reopens affected
+contracts without discarding historical evidence. Parent final gates/status
+still own E closure.
+
 ## Checkpoint D Consumer Changes
 
 Tooling now uses strict schema **4** and retained registered Value facts. Host,

@@ -1,6 +1,7 @@
 "use strict";
 
 const fs = require("fs");
+const { checkGrammarCheckout } = require("./check-grammar-checkout");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..");
@@ -107,7 +108,7 @@ const grammarRoot = path.resolve(root, "..", "tree-sitter-vela");
 assert(fs.existsSync(path.join(grammarRoot, "grammar.js")), "tree-sitter grammar.js is missing");
 assert(fs.existsSync(path.join(grammarRoot, "tree-sitter.json")), "tree-sitter.json is missing");
 assert(fs.existsSync(path.join(grammarRoot, "src", "parser.c")), "generated parser.c is missing");
-assert(!fs.existsSync(path.join(root, "grammars", "vela")), "Zed grammar checkout directory must not contain source files");
+checkGrammarCheckout(repositoryRoot);
 assert(fs.existsSync(path.join(root, "languages", "vela", "highlights.scm")), "highlights query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "brackets.scm")), "brackets query is missing");
 assert(fs.existsSync(path.join(root, "languages", "vela", "indents.scm")), "indents query is missing");
@@ -139,7 +140,6 @@ for (const capture of [
   "@type",
   "@property",
   "@constant",
-  "@constant.builtin",
   "@variable.parameter",
   "@variable.special",
   "@string.special",
@@ -163,7 +163,7 @@ assert(
   !highlights.includes("\n(identifier) @variable"),
   "Zed highlights query must not use a bare identifier fallback that overrides declarations"
 );
-const variableFallbackCapture = highlights.indexOf("(let_statement name: (identifier) @variable)");
+const variableFallbackCapture = highlights.indexOf("(binding_pattern (identifier) @variable)");
 assert(variableFallbackCapture >= 0, "Zed highlights query must include a local variable declaration capture");
 const pathExpressionFallbackCapture = highlights.indexOf("(path_expression (path (identifier) @variable))");
 assert(pathExpressionFallbackCapture >= 0, "Zed highlights query must include an expression path variable fallback");

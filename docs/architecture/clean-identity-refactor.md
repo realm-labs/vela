@@ -1,7 +1,7 @@
 # Clean Identity Refactor
 
-This document is the architecture entrypoint for the breaking definition
-registry and linked-bytecode refactor. The executable checklist lives in
+This document records retained definition-registry and linked-bytecode identity
+contracts. The historical refactor checklist lives in
 [definition-registry-linked-bytecode-refactor-plan.md](../archive/definition-registry-linked-bytecode-refactor-plan.md).
 
 ## Policy
@@ -22,13 +22,12 @@ may be deleted or replaced as part of the refactor:
 
 Product compatibility still matters where it is part of the language contract:
 hot reload ABI checks, schema ABI checks, source-spanned diagnostics,
-HostAccess validation, reflection permissions, execution budgets, GC roots, and
-external host safety invariants must remain enforced.
+native effect/capability checks, reflection permissions, execution budgets, GC
+roots, runtime-affinity and owned-value boundary invariants remain enforced.
 
 ## Target Shape
 
-The architecture target separates four concepts that are currently mixed in
-several paths:
+The architecture separates four concepts:
 
 ```text
 source spelling        names from source text
@@ -37,10 +36,10 @@ runtime dispatch key   dense handles, slots, and linked targets
 diagnostic name        debug/reflection names in side tables
 ```
 
-The desired pipeline is:
+The retained pipeline is:
 
 ```text
-stdlib / host / script declarations
+stdlib / owned native/value / script declarations
         |
 DefinitionRegistry
         |
@@ -60,9 +59,10 @@ The runtime image/state split in
 [runtime-image-state-refactor-plan.md](../archive/runtime-image-state-refactor-plan.md)
 is supporting context for this refactor. `ProgramVersion` and runtime images
 should own linked code, debug tables, runtime handle layouts, profile metadata,
-and cache invalidation metadata. Per-runtime mutable state such as VM/extern state,
-script heap roots, retained runtime values, and inline caches remains
-runtime-local.
+and immutable cache/profile layouts. Script heap roots, VM state and retained
+runtime values remain runtime-local. Generation-stable mutable caches/profiles
+use exact-generation execution data; optional lane-local storage requires measured
+need. Old frames/closures keep their owner rather than rebasing handles.
 
 ## Phase 0 Test Inspection
 
@@ -70,5 +70,5 @@ Task 0.1 searched the repository for legacy ID compatibility tests. Existing
 `standard_id_dispatch` and `standard_string_id_dispatch` tests exercise current
 ID-based stdlib dispatch behavior through manifest-derived stdlib method IDs;
 they do not assert that old raw numeric ID values are a compatibility contract.
-Tests that assert raw legacy ID numbers should be removed or rewritten when
-found.
+Update obsolete raw-ID expectations with the owning format/identity change;
+retain safety and rejection coverage rather than deleting tests to pass.

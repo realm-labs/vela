@@ -19,7 +19,7 @@ fn add_one(values) {
 
 ## Captures
 
-Closures capture script-visible values from their surrounding scope. Captured host values remain host references or path proxies; a closure does not turn host state into GC-owned script memory or expose Rust `&mut T`.
+Closures capture script-owned values from their surrounding scope, including values produced by existing Rust value conversions. Capturing a value does not create an implicit Rust write-back path. Caller-borrowed Rust data cannot be captured or retained by a script closure.
 
 ```vela
 fn above(limit: i64, values) {

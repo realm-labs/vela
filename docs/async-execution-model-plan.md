@@ -1,5 +1,20 @@
 # Async Execution Model Architecture Plan
 
+> **HISTORICAL ONLY — SUPERSEDED, NOT FUTURE WORK.**
+> This entire document is an in-place historical record. Its old status labels,
+> acceptance claims, examples, requirements and `/goal` prompts are not current
+> support or authorization to resume the feature. A–D removed Service/Provider,
+> script async/tasks, borrowed-host/projection/path/lease surfaces and dependent
+> registrations through D commit `226900e81`. No independent opaque runtime
+> survived. Replacement objects/conversion/re-entry design is separately deferred,
+> not a continuation of this plan. Follow [goal](goal.md),
+> [architecture](architecture.md) and the
+> [removal plan](runtime-simplification-plan.md). A–E removal implementation
+> and software gates are complete; see [current progress](progress.md) and the
+> [acceptance report](archive/runtime-simplification-acceptance.md).
+> Strict/native Input/Render coverage remains incomplete. Kept at this path to
+> preserve historical links.
+
 > **M20.75 extension:** the original track deliberately excluded detached
 > work. The later
 > [host-scoped detached async execution plan](host-scoped-detached-async-execution-plan.md)

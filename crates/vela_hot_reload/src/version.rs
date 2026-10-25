@@ -28,16 +28,26 @@ impl PartialEq for GenerationToken {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct RestrictedJitInput<'a> {
-    pub generation: vela_bytecode::ExecutableGenerationId,
-    pub handle: vela_bytecode::ScriptFunctionHandle,
-    pub linked: &'a vela_bytecode::LinkedCodeObject,
-    pub mir_owner: &'a vela_mir::OwnedVerifiedMirProgram,
-    pub mir_function: vela_mir::MirFunctionId,
-    pub eligibility: vela_mir::MirJitEligibility,
-}
-
+/// An immutable linked interpreter generation with retained verified MIR.
+/// Restricted-JIT preparation APIs are unavailable:
+///
+/// ```compile_fail
+/// use vela_hot_reload::version::RestrictedJitInput;
+/// ```
+///
+/// ```compile_fail
+/// # use vela_hot_reload::version::ProgramVersion;
+/// # fn prepare(version: &ProgramVersion, handle: vela_bytecode::ScriptFunctionHandle) {
+/// version.restricted_jit_input(handle);
+/// # }
+/// ```
+///
+/// ```compile_fail
+/// # use vela_hot_reload::version::ProgramVersion;
+/// # fn prepare(version: &ProgramVersion) {
+/// version.restricted_entry_jit_input("main");
+/// # }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct ProgramVersion {
     pub id: ProgramVersionId,
@@ -162,30 +172,6 @@ impl ProgramVersion {
     #[must_use]
     pub fn executable_generation_id(&self) -> vela_bytecode::ExecutableGenerationId {
         self.artifact.generation()
-    }
-
-    #[must_use]
-    pub fn restricted_jit_input(
-        &self,
-        handle: vela_bytecode::ScriptFunctionHandle,
-    ) -> Option<RestrictedJitInput<'_>> {
-        let layout = self.artifact.mir_executable(handle)?;
-        let mir_owner = self.verified_mir().root(layout.root)?.as_ref();
-        let linked = self.artifact.program().function(handle)?;
-        Some(RestrictedJitInput {
-            generation: self.artifact.generation(),
-            handle,
-            linked,
-            mir_owner,
-            mir_function: layout.function,
-            eligibility: vela_mir::restricted_jit_eligibility(mir_owner, layout.function),
-        })
-    }
-
-    #[must_use]
-    pub fn restricted_entry_jit_input(&self, name: &str) -> Option<RestrictedJitInput<'_>> {
-        let handle = self.artifact.program().entry_point_by_name(name)?;
-        self.restricted_jit_input(handle)
     }
 
     #[must_use]

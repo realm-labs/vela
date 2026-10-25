@@ -1,3 +1,0 @@
-fn main(player) {
-    return player.level;
-}

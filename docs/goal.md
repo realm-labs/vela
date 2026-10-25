@@ -11,15 +11,18 @@ The [runtime simplification plan](runtime-simplification-plan.md) defines the
 accepted removal-only pass and checkpoints A-E. This file is the consolidated
 product roadmap; [architecture.md](architecture.md) is the technical contract.
 They supersede conflicting old milestone, subsystem, and execution-plan targets.
-[progress.md](progress.md) records implementation evidence and gaps, including
-old capabilities awaiting removal; those records do not reinstate removed goals.
+[progress.md](progress.md) records implementation evidence and gaps; historical
+records do not reinstate removed goals.
 
-**Documentation is not runtime removal.** Checkpoint A changes requirements,
-not executable behavior. Service/Provider, async/tasks, borrowed-host access,
-and related machinery still require their owning removal checkpoints. Missing
-value/object capabilities are deferred follow-up work, not removal prerequisites.
-Do not implement a replacement opaque-object system, new value-conversion API,
-or new re-entry model in this pass.
+**A–D runtime removals are implemented** through D commit `226900e81`.
+Service/Provider, script async/tasks, borrowed-host access, transparent paths and
+dependent bindings are gone. The supported Rust boundary is existing synchronous
+owned-value native APIs only; no independent opaque-object runtime survived D.
+Replacement objects, new conversion APIs and a new re-entry model are separately
+deferred, not removal prerequisites. **A-E removal implementation and software
+acceptance are complete**; the [acceptance report](archive/runtime-simplification-acceptance.md)
+records the full workspace gates and installed-editor partitions without
+claiming complete strict/native LSP coverage.
 
 ## Product Goals
 
@@ -31,11 +34,11 @@ or new re-entry model in this pass.
    manifests, workspaces, and path dependencies without Service or Provider
    discovery, selection, or special compilation entrypoints.
 3. **Reduced synchronous Rust boundary.** Retain existing synchronous native
-   calls and value conversions only where they are independent of removed
-   capabilities. Serialized data is script-owned; changes do not implicitly
-   write back to Rust. Existing opaque constructors/methods may remain only if
-   they satisfy the reduced boundary without a replacement system. Host state
-   stays outside script GC and cannot depend on a caller-stack borrow.
+   calls and existing owned value conversions. Serialized data is script-owned;
+   changes do not implicitly write back to Rust. Native host-read/write effects
+   and permission checks remain. There is no opaque-object runtime, constructor
+   or Rust receiver surface. Host state stays outside script GC; replacement
+   object/conversion/re-entry design requires separately authorized follow-up.
 4. **Reliable script hot reload.** Preserve stable semantic identities, ABI
    checks, safe-point activation, and compatible script state. New entry calls
    use new code; active calls and retained closures own their exact old
@@ -113,10 +116,13 @@ is separately deferred; see the [boundary follow-up questions](runtime-simplific
 /goal Treat docs/goal.md as the product roadmap, docs/architecture.md as the
 technical contract, docs/runtime-simplification-plan.md as the removal-only
 checkpoint plan, and docs/progress.md as implementation evidence and gaps.
-Complete the authorized checkpoint in the A-E removal sequence with the smallest
-verifiable changes. Remove Service/Provider, script async/tasks, caller-borrowed
-Rust roots/arguments/returns/views, transparent host paths/leases, dependent
-bindings, and JIT-only preparation; do not preserve them through wrappers.
+A-E removal implementation and software gates are complete; use current
+progress and docs/archive/runtime-simplification-acceptance.md for evidence and
+remaining strict/native Input/Render gaps. Advance only the authorized retained
+task with the smallest verifiable changes. Do not restore Service/Provider,
+script async/tasks, caller-borrowed Rust roots/arguments/returns/views,
+transparent host paths/leases, dependent bindings or JIT-only preparation,
+including through wrappers.
 Do not build replacement opaque objects, conversion APIs, or a re-entry model.
 Retain the dynamic language, ordinary modules/packages/traits, existing
 independent synchronous native/value calls, script reflection, non-moving GC,
@@ -135,10 +141,14 @@ reactivating the archived roadmap or treating deferred interop as approved work.
 
 ## Milestones And Checkpoints
 
-The active sequence is the [runnable removal checkpoints](runtime-simplification-plan.md#runnable-checkpoints),
-not the old M7-M23 feature schedule. Each checkpoint must leave the retained
-synchronous language runnable; format rejection belongs with the checkpoint
-that changes the format, not a later cleanup.
+The [runnable removal checkpoints](runtime-simplification-plan.md#runnable-checkpoints)
+A–E are complete for removal implementation and software gates, not the old
+M7-M23 feature schedule. [Current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md) record proof
+and the separate strict/native Input/Render gaps. The table below records each
+checkpoint's target and required proof. Each checkpoint retained a runnable
+synchronous language; format rejection belongs with the checkpoint that changes
+the format, not a later cleanup.
 
 | Checkpoint | Target | Required proof |
 |---|---|---|
@@ -173,6 +183,7 @@ Passing old baseline tests alone does not prove that removed entrypoints are gon
 The [old goal and detailed milestone snapshot](archive/goal-before-runtime-simplification.md)
 preserves previous product targets, `/goal`, and acceptance demos as historical
 implementation context, not active requirements or proof of current support.
-Detailed subsystem docs and old execution plans have the same limited authority
-where they conflict with the removal contract; see the
+Active subsystem docs describe the reduced baseline. In-place historical plans
+carry explicit notices; their old status labels and prompts are not active work.
+See the
 [architecture reference policy](architecture.md#subsystem-references-and-old-implementation-contracts).

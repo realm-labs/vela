@@ -5,6 +5,20 @@
 //! MIR is generation-local compiler state. It preserves stable HIR and
 //! definition identities, but its arena IDs are deliberately not runtime or
 //! serialization identities.
+//!
+//! Restricted-JIT preparation is not part of the interpreter contract:
+//!
+//! ```compile_fail
+//! use vela_mir::MirJitEligibility;
+//! ```
+//!
+//! ```compile_fail
+//! use vela_mir::MirJitIneligibility;
+//! ```
+//!
+//! ```compile_fail
+//! use vela_mir::restricted_jit_eligibility;
+//! ```
 
 mod arena;
 mod budget;
@@ -17,7 +31,6 @@ mod facts;
 mod function;
 mod ids;
 mod input;
-mod jit;
 mod liveness;
 mod operations;
 mod origin;
@@ -63,7 +76,6 @@ pub use input::{
     CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget,
     MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
-pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
     MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirIdentityOp,

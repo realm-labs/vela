@@ -1,227 +1,103 @@
-## Hot Reload First
+# Script Hot Reload
 
-### Immutable Generation Pins
+Hot reload replaces script code, not Rust implementations or host objects.
+The post-D contract retains ordinary packages, compatible script state, stable
+ABI checks and **exact old executable generations**.
 
-`ProgramVersion` owns one same-generation verified-MIR bundle and linked
-artifact. A closure stores its creation-generation executable owner together
-with its dense handle, and a frame pins the owner selected at call entry until
-that frame exits. An accepted safe-point reload changes only the generation
-used for subsequent entry calls. Existing frames and host-retained closures
-continue on their old code, including old nested calls and old cache/profile
-sidecars. Stable function names and IDs are ABI comparison keys, never an
-implicit closure-migration mechanism.
+## Immutable Generation Pins
 
-### Core Model
+`ProgramVersion` owns the linked artifact and same-generation verified MIR.
+Stable names/IDs are semantic and ABI keys, not executable addresses. Dense
+function/method handles, state slots, caches, profile sites and physical plans
+are qualified by their immutable owner.
 
-```rust
-pub struct Runtime {
-    image: RuntimeImage,
-    hot_reload: HotReloadRuntime,
-    state: RuntimeState,
-}
+A new public entry resolves through the active generation. A frame pins its
+entry owner until exit; a closure pins its creation owner. Nested script and
+native dispatch use the pinned artifact, never the active generation's
+similarly named declaration or reused handle. Retained closures must never be
+silently rebound by stable name.
 
-pub struct ProgramVersion {
-    pub id: ProgramVersionId,
-    artifact: Arc<LinkedArtifact>,
-    verified_mir: Arc<OwnedVerifiedMirBundle>,
-}
-```
+## Safe Points And Activation
 
-### Function Calls Use Indirection
+The host stages a candidate and activates it at an explicit synchronous safe
+point, for example between application calls. Source ingestion, compilation and
+linking failures are structured Engine errors. Linked ABI/policy outcomes are
+reported by the reload staging path.
 
-Calling:
+Activation is transactional per Runtime: publish the candidate code, state maps,
+staged cells and execution-data ownership only after all checks succeed. A
+rejected or stale candidate leaves the active image, state, dispatch, caches and
+plans unchanged. Activation does not switch bytecode midway through a frame.
 
-```rust
-billing.on_invoice_paid(account, invoice)
-```
+## State And Top-Level Effects
 
-Internally uses:
+Module declarations include imports, constants, functions, types, traits,
+attributes and VM-owned `state` with restricted initializers. There are no
+extern host-state bindings. Arbitrary module-level I/O, random operations or
+application mutations are not a reload initialization mechanism.
 
-```text
-FunctionSymbolId("billing.on_invoice_paid")
-```
+State compatibility compares stable `StateId` and exact normalized contracts.
+Existing compatible cells survive without rerunning their initializers. Added
+state is staged before activation; incompatible contracts reject. Renaming a
+state declaration is remove plus add. Removing a public state export or making
+it private rejects; private removal and private-to-public promotion remain
+separate from storage preservation.
 
-At public entry-call time:
+Initializer edits are reported as new-Runtime behavior rather than resetting
+existing state. Initializer fingerprints include reachable static script helper
+calls, nested closure/default executables and cycle-safe graph traversal.
+Staged graph copying is transaction-budgeted and preserves internal aliases and
+cycles; it is not a new external serialization contract.
 
-```text
-stable function name/ID -> active ProgramVersion -> owner-qualified handle
-```
+Old-generation slot maps retain state needed by old closures, including state
+removed from the active generation. Reclamation follows live generation
+ownership transitively; a removed closure-valued state root must not keep itself
+alive indefinitely. Reload checks may reclaim dead generations even when no
+update is pending. Script GC and retained-value release must agree with this
+liveness computation.
 
-Hot reload replaces the active immutable generation at a safe point. Closure
-and nested calls do not repeat this lookup: they resolve their dense handle
-against the immutable linked owner pinned by the closure or active frame.
+## ABI Checks
 
-### Old Stack And New Stack
+Body/local/private-helper changes can reload without changing exported
+contracts. Function/method parameter and return contracts, stable identities,
+type/variant/field contracts, effects, access and package policy participate in
+compatibility checks. Permission expansion needs explicit host approval, not a
+silent intersection with existing grants.
 
-Rules:
+Do not assume a schema change implies structural migration of live values.
+Stable field/variant identities support compatibility comparison, not arbitrary
+field deletion, ID reuse or object migration. Source spans in rejected ABI
+reports identify candidate declarations when available.
 
-```text
-currently executing old functions continue on old generation-owned code
-new calls use the newly published generation
-old generations are released after old frames, closures, and retained values exit
-updates take effect only at safe points
-```
+## Packages
 
-One Engine deployment weakly registers mutable execution data by exact
-`ExecutableGenerationId`. Accepted reload publishes a fresh immutable artifact
-and therefore fresh cache/profile storage; it never clears or rebases old
-slots. Actor-local generation entries retain only state ownership sets and an
-`Arc` to the matching shared execution data while old frames, closures,
-suspended calls, or retained values can still execute it. Liveness subtracts
-linked-artifact owners reachable only from inactive state roots and closes
-transitively over state reachable by live generations; a removed closure-valued
-state therefore cannot retain its own generation entry. A normal Runtime
-reload check performs reclamation even when no update is pending: it first
-collects released retained values, then prunes dead generation entries and
-their old-only VM/extern state roots. The Engine's weak registry entry
-disappears when the last shared execution-data owner is gone.
+Reload rebuilds the ordinary manifest/source graph and reapplies its canonical
+root fingerprint. Package identity, public dependency contracts and capability
+requirements stay checked before image advance. Ordinary dependency body edits
+can update new calls while old closures retain their original graph owner.
+There is no Provider selection fingerprint, Service generation, Rust-default
+composition, publication/folding/rollback or host-object migration.
 
-Selected superinstructions, scalar blocks, scalar range-loop metadata, and
-their physical profile layout follow the same owner. Active frames, retained
-closures, suspended async roots, detached workers, and Service generations keep
-their exact old plans through the artifact they already pin; new roots use the
-new artifact's plans. Rejected, stale, staged, and rolled-back candidates do not
-mutate active plans or counters. A compatible reload may select a different
-physical plan without changing semantic ABI, but the artifact checksum and
-executable generation necessarily change.
+## Caches And Physical Plans
 
-The same immutable artifact also maps verified MIR functions to linked handles.
-Future M22 compilation may consume the read-only restricted-JIT input on a
-ProgramVersion without rebuilding HIR or analysis. Published machine code must
-belong to that generation; tier selection remains runtime-local, and old code
-is invalidated by owner lifetime rather than name rebasing.
+Generation-shared execution data is weakly registered by exact executable
+identity. Fresh activation gets fresh caches/profile ownership; old frames and
+closures keep their matching data. Rejected/stale candidates cannot clear or
+rebase active counters.
 
-The first version does not switch bytecode in the middle of an executing function.
+Superinstructions, scalar blocks, range-loop plans, source points, coverage and
+physical profile layouts follow the same artifact lifetime. A compatible reload
+may choose different interpreter plans without changing semantic ABI, but the
+executable checksum/generation changes. There is no JIT compilation contract.
 
-### Safe Points
+## Regression Proof
 
-Suggested safe points:
-
-```text
-event end
-tick boundary
-explicit runtime.activate_reload()
-```
-
-Avoid interrupting arbitrary instructions to replace function bodies.
-
-### Top-Level Side Effects
-
-Module top-level code may include:
-
-```text
-const
-struct
-enum
-trait
-fn
-use
-attribute
-state with a restricted initializer
-extern state declaration
-```
-
-Disallow or strictly limit:
-
-```text
-register_event(...)
-spawn_task(...)
-open_file(...)
-state_counter += 1
-network call
-random call
-```
-
-Event registration should happen through attributes and reflection scanning:
-
-```rust
-#[event("invoice.paid")]
-pub fn on_invoice_paid(ctx, account, invoice) {
-    // ...
-}
-```
-
-### Hot Reload ABI Checks
-
-State changes compare stable `StateId`, storage kind, and exact normalized type
-contract. Existing compatible cells and extern bindings are preserved without
-rerunning initializers. Added VM state is initialized in a temporary staging
-runtime; added extern state must have a staged, type-compatible host binding.
-Storage or type changes reject. A rename is reported as remove plus add, and an
-initializer edit is reported even when it does not reject. Added-state values
-move from staging to the live heap through one transaction-budgeted graph copy
-that preserves aliases and cycles across all staged roots. State preservation
-is separate from export compatibility: private removal and private-to-public
-promotion are compatible, while removing an existing public state export or
-downgrading it to private rejects the update. Initializer change reporting
-fingerprints the transitive statically called script-function graph, including
-calls reached through nested closure and parameter-default executables. Paired
-visited nodes terminate recursive graphs, and unrelated helpers remain outside
-the fingerprint, so edits to permitted reachable helpers are reported as
-new-Runtime-only behavior.
-
-Activation is transactional per Runtime: the candidate image, slot maps,
-staged cells, extern bindings, and sidecar are published together only after
-every check succeeds. Old generation slot maps keep removed state reachable
-for old frames, closures, retained values, and suspended executions; pruning
-occurs only after the final generation owner expires.
-
-Package artifacts retain canonical ordinary roots and selected provider keys.
-Reload rebuilds a package snapshot and reapplies that fingerprint before
-artifact comparison. Selected provider keys, target types, service method IDs,
-package identities, and capability requirements are runtime ABI; unselected
-discovery entries are not. Provider-created closures retain their creation
-artifact, while logical Runtime provider handles resolve stable keys against
-the active image for each new call.
-
-Function changes allowed:
-
-```text
-function body changes
-local variable changes
-new private helper functions
-new public functions
-```
-
-Function changes rejected:
-
-```text
-exported event function removes parameters
-exported event function reorders parameters
-effect permissions expand without host approval
-return semantics are incompatible
-```
-
-Struct changes allowed:
-
-```text
-new field with default
-field rename with unchanged FieldId
-field order changes
-new methods
-```
-
-Struct changes rejected or requiring migration:
-
-```text
-deleted field
-FieldId reuse
-incompatible field type hint
-default value cannot be constructed
-```
-
-Enum changes allowed:
-
-```text
-new variant
-variant rename with unchanged VariantId
-new variant field with default
-```
-
-Enum changes requiring caution or rejection:
-
-```text
-deleted variant
-changed existing variant field structure
-VariantId reuse
-```
+[Engine reload tests](../../crates/vela_engine/tests/hot_reload.rs) cover retained
+closures across handle-layout changes, old state removed from the new image,
+and old native dispatch after accepted/rejected updates. Ordinary package and
+runtime safe-point tests complement them; see
+[validation](../validation.md). Historical removed-feature success tests do not
+establish current support. [Current progress](../progress.md) and the
+[acceptance report](../archive/runtime-simplification-acceptance.md) record
+completed A–E software gates, separately from incomplete strict/native
+Input/Render coverage.

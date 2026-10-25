@@ -6,7 +6,7 @@ description: "Standard library overview for Vela."
 The Vela standard library is split between always-available value helpers and
 host-installed capabilities. Pure helpers work on script-owned values such as
 strings, arrays, maps, sets, bytes, `Option`, `Result`, and numbers. Host
-helpers such as time, random, context events, and I/O are installed by the
+helpers such as time, random, and I/O are installed by the
 embedding application so scripts cannot accidentally depend on process-global
 state.
 
@@ -64,14 +64,16 @@ The default standard natives do not grant nondeterministic or process-affecting
 effects. Hosts opt into capabilities through the engine builder.
 
 ```vela
-fn main(ctx: Context) {
+fn main() {
     let now = time::now();
     let roll = math::random(1, 6);
-    ctx.emit("roll.finished", roll);
     return roll;
 }
 ```
 
-In this example, `time::now`, `math::random`, and `Context.emit` only work when
-the host registers the corresponding time, random, context schema, and event
-capabilities. Sandboxed filesystem and stdout helpers are similarly opt-in.
+In this example, `time::now` and `math::random` only work when the host installs
+the corresponding natives and grants time and random capabilities. Sandboxed
+filesystem and stdout helpers are similarly opt-in. Independent synchronous
+natives use the existing owned-value API, and their declared effects still
+require authorization; script field and collection mutations do not implicitly
+write back to Rust.

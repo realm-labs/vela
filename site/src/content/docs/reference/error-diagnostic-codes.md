@@ -24,7 +24,7 @@ failures.
 ## Host And Reflection Errors
 
 Host and reflection errors cover field not found, field not writable,
-permission denied, required capability missing, stale host ref generation,
+permission denied, required capability missing,
 unknown reflected item, and reflect-call denial.
 
 ## Hot Reload Errors

@@ -96,6 +96,32 @@ test("N/A requires a reason and cannot conceal mapped evidence", () => {
   assert.throws(() => model.validateCatalog(catalog, sources), /invalid or conflicting exemption/);
 });
 
+test("reviewed syntax axes cannot diverge from the protocol dimensions", () => {
+  const { catalog, sources } = fixture();
+  catalog.syntax = { S1: structuredClone(catalog.syntaxDimensions[0]) };
+  model.validateCatalog(catalog, sources);
+  catalog.syntax.S1.surface = "unreviewed replacement";
+  assert.throws(() => model.validateCatalog(catalog, sources), /syntax axis contract differs/);
+});
+
+test("explicitly stale evidence remains pending even when old tests pass", () => {
+  const { catalog, sources } = fixture();
+  const proof = { requirement: "definition/environments/utf16/protocol", assertion: "historical exact range",
+    tests: [{ layer: "protocol", name: "old-test" }],
+    pendingReview: { migration: "review-reduced-contract", contractHash: "a".repeat(64), reason: "recapture retained value facts" } };
+  catalog.evidence = [proof];
+  const requirements = model.validateCatalog(catalog, sources);
+  const result = (states) => model.assess(requirements, [proof], { protocol: [] },
+    { protocol: new Map(states) }).find((item) => item.id === proof.requirement);
+  assert.equal(result([]).status, "unreviewed");
+  assert.equal(result([["old-test", "ok"]]).status, "unreviewed");
+  assert.equal(result([["old-test", "FAILED"]]).status, "failed");
+  assert.equal(result([["old-test", "ignored"]]).status, "failed");
+  assert.deepEqual(result([]).historicalEvidence, proof);
+  proof.pendingReview.reason = "";
+  assert.throws(() => model.validateCatalog(catalog, sources), /invalid pending evidence review/);
+});
+
 test("cargo parser distinguishes discovery, execution and ignored tests", () => {
   assert.deepEqual(model.testNames("a::b: test\r\na::bench: benchmark\r\n1 test, 1 benchmark\r\n"), ["a::b"]);
   assert.deepEqual([...model.testResults("test a::b ... ok\r\ntest a::c ... ignored, expensive\r\ntest a::d ... FAILED\n")],

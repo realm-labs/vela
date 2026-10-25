@@ -1,5 +1,20 @@
 # Object Equality And Ordering Semantics Implementation Plan
 
+> **HISTORICAL PLAN / REVIEW — NOT THE ACTIVE BASELINE.**
+> All status labels, measurements, prompts and future-work lists below describe
+> the pre-simplification revision, not current support or acceptance. Retained
+> script-language/GC/state/interpreter work is governed by
+> [goal](goal.md) and [architecture](architecture.md) and needs
+> current scoped authorization; do not replay this mixed plan. A–D removed
+> Service/Provider, script async/tasks, borrowed hosts/paths/leases and dependent
+> bindings through `226900e81`. No opaque runtime survived; replacements and
+> new conversion/re-entry design are separately deferred. JIT is not a retained
+> track. A–E removal implementation and software gates are complete; see
+> [current progress](progress.md) and the
+> [acceptance report](archive/runtime-simplification-acceptance.md).
+> Strict/native Input/Render coverage remains incomplete. This record stays in
+> place so relative links and historical anchors retain their original base.
+
 > **Track:** M20 runtime semantics and collection-key continuation
 > **Document status:** Codex execution plan
 > **Compatibility policy:** breaking pre-release equality behavior is allowed.

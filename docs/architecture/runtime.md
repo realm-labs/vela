@@ -1,629 +1,140 @@
+# Runtime, Bytecode, And GC
+
+Vela executes synchronously through one linked-bytecode interpreter. This is
+an active post-D contract; [architecture.md](../architecture.md) owns the
+cross-subsystem boundary. A–E removal implementation and software gates are
+complete; see [current progress](../progress.md) and the
+[acceptance report](../archive/runtime-simplification-acceptance.md).
+Strict/native Input/Render coverage remains incomplete.
+
 ## Executable Generation Ownership
 
-Verified MIR is an immutable generation-owned backend contract. A
-`ProgramVersion` retains the exact owned verification seal used by bytecode
-emission; future JIT work consumes that seal without rebuilding HIR, analysis,
-or MIR from bytecode. The seal contains program-point facts, guard-success
-refinements, value liveness, root-live-before safepoints, lexical debug
-availability, and the backend-neutral execution schedule.
+`ProgramVersion` owns an immutable linked artifact and its verified MIR.
+Generation-owned data includes code, indexes, dense executable handles, source
+maps, root/budget analysis, cache/profile layouts, and physical interpreter
+plans. Stable semantic IDs compare declarations across generations; dense
+handles, instruction offsets, MIR IDs, cache sites and plan offsets are valid
+only with their exact owner.
 
-Generation-owned immutable data consists of verified MIR, linked code,
-`ProgramImage` indexes, executable handles, cache/profile layouts, source maps,
-and future compiled artifacts. Actor-local mutable data consists of the script
-heap, roots, persistent Vela `state`, extern-state bindings, active/suspended
-execution state, HostRef leases, and the actor's adopted generation. Per-call
-budget counters, capabilities, cancellation, and tracing belong to the active
-`ExecutionSession`.
+A frame pins the generation selected at entry. A closure keeps its creation
+owner, including nested script/native dispatch and state slots. New public
+entry calls use the active generation. Reload must never rebind old closures
+by name or apply a new generation's plan to an old handle.
 
-Verified-MIR-selected superinstructions, compact scalar blocks, and scalar
-range-loop metadata are immutable `LinkedCodeObject` content. Dense plan,
-source-point, exit, and operand handles are valid only with that exact linked
-artifact. Ordinary linked instructions remain the complete fallback for every
-ineligible operation. `drive_linked_frame` is the sole production frame driver:
-it either executes an ordinary instruction or enters the focused scalar
-executor and resumes at a verified ordinary instruction offset. Selected units
-do not own calls, HostAccess, reflection, heap work, suspension, or a second VM.
-
-Selected execution preserves MIR execution-unit sites and source points rather
-than deriving either from physical dispatch count. Initial scalar units contain
-no allocation or safepoint, so untouched register roots remain visible to the
-same frame and GC can run only after the unit returns to an ordinary boundary.
-Checked arithmetic, runtime entry tags, partial writes, traps, and conditional
-edge/backedge charges remain ordered exactly as in ordinary execution.
-
-Cache entries, profile counters, hotness, and tier selection are execution
-metadata rather than actor semantics. Their ownership is selected by what each
-entry depends on:
-
-```text
-statically resolvable fact       -> immutable linked artifact
-generation-stable shared fact   -> generation-shared synchronized slot
-measured polymorphic hot site    -> optional execution-lane sidecar
-actor-identity-dependent fact   -> actor-local sparse or lazy state
-```
-
-Every mutable execution-metadata slot is qualified by its executable
-generation. A default actor Runtime must not eagerly allocate arrays sized to
-all cache sites or every bytecode instruction merely because it references a
-large shared program. Full instruction profiling is opt-in and is aggregated
-per generation or execution lane unless a concrete diagnostic explicitly
-requires actor-local counters.
-
-The linked artifact seals one immutable physical profile layout. Opt-in
-generation execution data owns saturating counters for ordinary instruction
-hits, superinstruction hits and eliminated dispatches, scalar block entries and
-logical subpoints, and scalar loop entries, iterations, exits, and charged
-backedges. Runtimes share that exact-generation data; default execution
-allocates no counter array, runtime-pool reset clears mutable counters without
-copying plans, and reload publishes fresh profile ownership instead of rebasing
-old counters.
-
-The linker emits one `LinkedArtifact`. Its canonical flattened records allocate
-`ProgramImage` indexes, linked function handles, generation-global cache IDs,
-and profile layout together. `RuntimeImage` references that artifact; it does
-not rebuild or rebase cache operands by function name. Multiple actor runtimes
-share the immutable artifact while retaining isolated heap, roots, Vela state,
-extern bindings, leases, and active executions. Sharing an artifact does not
-imply sharing script-visible mutable state.
-
-Unlinked bytecode is a compiler, verifier, linker, and test-fixture format. It
-is never interpreted. Every runtime entry links first, then executes through
-the single linked instruction loop; frames and closures retain an
-`Arc<LinkedArtifact>` so nested calls and retained closures cannot resolve
-generation-local handles against a different program version.
-
-Portable program, Service artifact, and Service deployment formats use version
-5 for selected physical plans. The payload contains bounded compact operations,
-sources, exits, coverage, feature bits, and profile layout needed to link
-without MIR. Versions 1 through 4 reject before linking or activation; loaders
-do not infer plans, reconstruct MIR, or expand selected units into a legacy
-instruction stream.
-
-Stable semantic IDs (`FunctionId`, `MethodId`, `TypeId`, `FieldId`,
-`VariantId`, and schema/shape identities) may be compared across generations.
-Dense executable handles, MIR IDs, cache sites, profile slots, bytecode
-offsets, and compiled-entry indexes are generation-local and are valid only
-with their immutable owner.
+Runtime-local mutable data owns the script heap, roots, VM `state`, retained
+values, and active execution. Independent Runtimes can share one artifact
+without sharing script-visible mutable state. Per-call limits, counters,
+capabilities, cancellation and tracing belong to the execution session.
 
 ## Struct, Record, And Enum Memory Model
 
-### Record
+Script records have stable type/shape identity and field slots; enums have
+stable type/variant identity and payload fields. Known field access lowers to
+linked slots with validated shape assumptions; dynamic access uses script
+metadata. Pattern matching checks variants and binds payloads. These are
+script-owned aggregates, not transparent Rust objects.
 
-Script structs are dynamic values with stable shapes:
-
-```rust
-struct Position {
-    x
-    y
-}
-```
-
-Runtime:
-
-```rust
-ObjRecord {
-    shape_id: ShapeId,
-    fields: Vec<Value>,
-}
-```
-
-Field access:
-
-```rust
-pos.x
-```
-
-Compiles to:
-
-```text
-GET_FIELD_CONST r_dst, r_obj, shape=Position, field=x, slot=0
-```
-
-If the shape matches, the VM reads the slot directly. Otherwise it falls back to the slow path.
-
-### Enum
-
-```rust
-enum Damage {
-    Physical { amount }
-    Magical { amount, element }
-    True { amount }
-}
-```
-
-Runtime:
-
-```rust
-ObjEnum {
-    enum_id: TypeKey,
-    variant_id: VariantId,
-    fields: Vec<Value>,
-}
-```
-
-`match` compiles into tag checks and field bindings.
+See [language semantics](language.md) for equality and iteration and
+[primitive contracts](primitives-type-hints-and-guards.md) for exact tags,
+container hints and guards. Mutable heap values use runtime-qualified identity
+for map/set keys; semantic comparison traits are a separate operation.
 
 ## VM And Bytecode
 
-Use register-based bytecode:
+The compiler emits register-based unlinked bytecode. The verifier and linker
+seal it into a `LinkedArtifact` before execution. Unlinked bytecode is an
+intermediate/fixture format, never an alternate runtime path.
 
-```text
-LOAD_CONST      r0, const#10
-GET_HOST_FIELD  r1, account, FieldId(balance)
-ADD             r2, r1, r0
-SET_HOST_FIELD  account, FieldId(balance), r2
-RETURN          ()
-```
+Values include exact scalar tags and references to script heap objects such as
+strings, bytes, arrays, maps, sets, records, enums, closures and iterators. There
+is no Rust object/borrow/path value variant. Detached `OwnedValue` conversion
+is an explicit boundary, not a host write-through operation.
 
-Benefits:
-
-```text
-fewer instructions
-local optimization is easier
-field and method access can be specialized
-good fit for later inline caches
-```
-
-Method calls have two linked bytecode shapes. Statically known receivers keep
-the resolved `CallMethodId`/`MethodDispatchHandle` fast path. Unknown receivers
-with a source-static method name link as `CallDynamicMethod`, then resolve at
-runtime through guarded standard-value, script-method, or host-method targets.
-Dynamic method failures are runtime errors with the original call span, not
-link-time rejection of ordinary source code.
-
-### Value Layout
-
-Runtime execution uses four explicit value layers:
-
-```text
-Value       VM runtime slot; Copy; scalars or handles only
-OwnedValue  heap-detached Rust boundary/materialized value
-HeapValue   non-moving script heap object referenced by GcRef
-HostValue   host-adapter boundary value copied across ScriptStateAdapter
-HostCallValue detached structural value for erased Host calls and owned fields
-```
-
-`HostValue` keeps scalars, strings, bytes, and handles cheap for ordinary
-field/path reads and writes. A schema-declared owned-value field may also carry
-one complete `HostCallValue` replacement in `HostValue::Detached`.
-`HostCallValue` carries detached tuples, collections, records, and enums so a
-non-`'static` erased Host object can use the ordinary typed Value codecs without
-retaining VM heap objects. The receiving typed adapter remains responsible for
-validating the declared field shape.
-
-The engine embedding layer also exposes `VelaValue`, a runtime-managed handle
-to a `Value` pinned in a specific `Runtime`'s persistent heap roots. Hosts use
-it when a script return value should be passed back to later script calls
-without materializing an `OwnedValue`. `VelaValue` cannot cross runtime
-instances; Rust must explicitly materialize through `value_to_owned` when it
-needs a heap-detached copy.
-
-The runtime slot stays compact and is guarded by tests to remain at or below
-32 bytes on 64-bit targets:
-
-```rust
-pub enum ScalarValue {
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
-    U8(u8),
-    U16(u16),
-    U32(u32),
-    U64(u64),
-    F32(f32),
-    F64(f64),
-}
-
-pub enum Value {
-    Missing,
-    Unit,
-    Bool(bool),
-    Scalar(ScalarValue),
-    Range(RangeValue),
-    HeapRef(GcRef),
-    HostRef(HostRef),
-}
-```
-
-`OwnedValue`, `HostValue`, and bytecode constants use the same `ScalarValue`
-model at their boundaries. All non-scalar script objects live in `HeapValue`:
-`Value::Missing` is not a language value and must not cross public boundaries;
-it is reserved for VM and bytecode call/default plumbing such as omitted
-arguments before default substitution. Owned values, host values, serde
-conversion, playground JSON, reflection data, and user-visible results use
-`()`, `Option`, `Result`, or a structured value instead.
-
-```rust
-pub enum HeapValue {
-    String(String),
-    Bytes(Vec<u8>),
-    Array(Vec<Value>),
-    Map(ScriptMap),
-    Set(ScriptSet),
-    Record { type_name: String, fields: ScriptFields<Value> },
-    Enum { enum_name: String, variant: String, fields: ScriptFields<Value> },
-    Closure(ClosureValue),
-    Iterator(IteratorState),
-    PathProxy(PathProxy),
-}
-```
-
-`ScriptMap` and `ScriptSet` preserve original runtime key/element `Value`s,
-but lookup, uniqueness, and removal are driven by `ValueKey`. Immutable leaf
-keys compare by value, script heap objects and host refs compare by identity,
-and transient non-data values are rejected before mutation. Map and set keying
-does not call user comparison traits or any script-visible hash hook.
-
-`HeapValue::Iterator` stores one-shot cursor state. Iterator state may point at
-script heap sources such as arrays, sets, maps, and strings by `GcRef`, may own
-copied `Value` snapshots from safe boundaries, and may wrap lazy adapter state
-such as `map`, `filter`, `take`, and `skip`. It must trace script heap
-references that it stores or protects, including callback closures and source
-containers, but it must not trace Rust host state as script-owned memory.
-
-Collection-backed iterator sources read current heap slots lazily while keeping
-the source identity and initial traversal extent. Map views snapshot key order
-for traversal and read values from the source map when each item is produced.
-Iterator adapters are also one-shot: creating an adapter takes the source
-iterator state, and terminal methods consume it.
-
-Iterator object allocation charges heap memory like other script heap values.
-Stepping an iterator and invoking callbacks still runs through normal VM budget
-and call-depth checks. Final collection materialization, such as
-`collect_array()`, charges output heap allocation and collection growth at the
-allocation or mutation boundary; lazy adapters do not charge collection growth
-for intermediate values they do not materialize.
-
-Only consider the following after profiling proves `Value` overhead is too high:
-
-```text
-16-byte tagged value
-NaN boxing
-pointer tagging
-specialized arrays
-```
+Known method receivers use stable method IDs and linked dispatch handles.
+Unknown receivers with a source-static method name use guarded dynamic
+standard-value/script-method resolution. Missing dynamic methods produce
+source-spanned runtime errors; see [dynamic dispatch](dynamic_method_dispatch.md).
 
 ### Execution Session And Frames
 
-Every Runtime call constructs one execution-owned host boundary and drives one
-`ExecutionSession`. The session owns the explicit linked VM frame stack, return
-continuations, pending comparison/callback/iterator operations, execution
-budget, heap/GC context, and generation roots for the outer call. Function,
-closure, script-method, provider, guard, comparison, collection-callback, and
-iterator calls push frames and resume their parent operation after return.
+One frame driver owns synchronous calls, returns, callback frames, nested calls,
+roots and error unwinding. Existing synchronous native re-entry uses that
+session, including its pinned artifact, heap, budgets and capabilities; this
+pass adds no new re-entry model. There are no suspended frames, native futures,
+script background roots or continuation queues.
 
-VM ownership follows those semantic boundaries. `execution_session.rs` owns
-session/frame/continuation definitions and start policy, `async_resume.rs` owns
-prepared async boundaries and result resumption, and `execution_reentry.rs`
-owns child push/abort policy. `linked_execution.rs` retains the single frame
-driver, exhaustive linked-opcode dispatch, frame preparation, and root glue; it
-does not duplicate session, resume, or reentry policy.
+### Physical Plans And Execution Metadata
 
-Production linked execution does not recursively invoke the interpreter. The
-remaining `execute_linked_call` name is a non-recursive root driver shim over
-the session loop. Call depth remains a logical frame budget rather than a Rust
-stack limit, so deeply nested script and callback calls fail only at the
-configured language budget.
+Verified-MIR-selected superinstructions, scalar blocks and scalar range-loop
+plans are immutable linked code. Every selected unit retains explicit coverage,
+source points, exits and logical execution-unit charges. Ineligible operations
+use ordinary instructions. The scalar executor returns to a verified ordinary
+instruction boundary; it is not a second VM.
 
-Await is preserved as explicit verified MIR and linked resume control flow.
-Known async calls require await, sync entry calls reject declared async entries,
-and non-awaited dynamic or reflected async targets trap before invocation.
-`call` and `call_async` enter this same session driver. `call_async` returns a
-scoped `Send` future that may borrow Runtime, call arguments, and a fallback
-adapter for the invocation lifetime; it does not require Runtime ownership or
-`'static` inputs. The driver returns `Pending` immediately when a registered
-Rust future does, and resumes only when its caller polls again. Core runtime
-crates contain no executor or Tokio dependency.
+Scalar units preserve entry tag checks, checked arithmetic, partial writes,
+trap ordering, backedge charges and root visibility. Heap work, native calls,
+reflection and GC safepoints remain ordinary interpreter boundaries. Plan
+selection is an interpreter optimization, not preparation for machine code.
 
-`CallOptions` may attach one `CallControl` and a host-clock deadline. The
-control reports created/running/pending/terminal state plus poll count, and
-cancellation wakes the last registered task waker. Cancellation or deadline
-expiry is observed at a Runtime-future poll boundary and immediately drops the
-inner execution, so the existing frame, lease, root, and adapter RAII cleanup
-remains authoritative. Completed host effects are not rolled back. Core crates
-still own no timer: if an awaited Rust future supplies no wake, the embedding
-executor must arrange a wake at the deadline or cancel through `CallControl`.
+Statically resolvable facts belong in the artifact. Generation-stable mutable
+cache facts use synchronized generation-qualified execution data. Profiling is
+opt-in; a default Runtime must not allocate a counter array proportional to
+all instructions/cache sites. An execution-lane sidecar needs measurement and
+explicit host ownership, not an assumed OS-thread identity. Accepted reloads
+publish fresh execution data; old owners retain their old caches/counters/plans.
 
-Before polling an awaited target, the session checks the ExecutionHost's
-complete active scoped-resource table. A scoped child cannot cross suspension;
-the author must execute `host::release` or `host::try_release` first. A dead or
-unreachable but unreleased Vela local still blocks await, and an
-immediately-ready future gets no exception. Escape validation separately
-rejects call-scoped children inside state values, closures, aggregates,
-PathProxy roots, and the final root result. Dynamic and reflection calls do not
-form alternate lifetime domains: they return through the same frame, heap, host
-adapter, and root-boundary checks.
+### Portable Formats
 
-Restricted JIT input marks declared async and await-containing MIR functions
-with `MirJitIneligibility::Async`. The future backend boundary remains the same
-verified MIR plus linked artifact, including the await operation, safepoint,
-and resume edge; there is no compiled async execution path in the MVP.
-
-Engine registration has one async family beside each supported native boundary.
-Their factories are `Send + Sync + 'static`, while the returned
-`NativeCallFuture<'call>` may borrow invocation arguments and host execution
-state for `'call`. `#[vela_macros::export]`, `export_module`, and `methods`
-emit the same contract for Rust `async fn`.
-
-`#[vela_macros::methods]` also supports async `&self`/`&mut self` methods. Runtime
-atomically acquires Rust-only `HostLeaseRef`/`HostLeaseMut` scopes for the
-receiver and any typed `&T`/`&mut T` host parameters. Mutable-origin call
-bindings require `Send` and use one owned exclusive root guard. A shared
-receiver is a temporary `&T` view reborrowed from that guard, not a concurrent
-shared root lease. The same mutable origin therefore cannot enter two Rust
-method calls at once, even when both methods have shared receivers. RAII
-restores the root on return, error, cancellation, unwind, or failed
-multi-acquisition. Async Host methods may hold the guard across suspension only
-through a scoped `Send` future. Runtime-owned VM state and adapters without the
-requested erased receiver capability fail closed with `HostLeaseUnsupported`.
-Neither lease wrapper is a Vela value or reflection type.
-
-An active `NativeCallContext` can call a sync child with `call`, call a sync or
-async child with `call_async`, and bind a script method target. Reentry pushes a
-marker and child frame on the same session, so it inherits the pinned artifact,
-heap, VM/extern state, host boundary, exact generation execution-data view,
-remaining budgets, capabilities, and cancellation state. Child `CallArgs`
-receive new HostRefs from the execution's
-single allocator and are invalid after the child scope exits. A mutable method
-must explicitly reborrow its lease into child arguments; the raw parent HostRef
-remains busy while the exclusive lease is live.
-
-A heap value returned by reentry is admitted to the active `HeapExecution`
-before child frame roots are truncated. The VM creates its dynamic-root
-registry lazily on the first such return and includes admitted roots in the
-complete root set freshly marked before every sweep slice. Runtime cross-call
-retention stores the weak active-root guard in a sparse sidecar keyed by the
-existing `VelaValue` root ID; dropping the last shared handle removes the guard,
-and session teardown invalidates the registry. Ordinary calls allocate neither
-the registry nor a per-value token.
-
-Async suspension does not change hot-reload ownership. The outer execution and
-all nested frames, providers, closures, and reentry retain one
-`Arc<LinkedArtifact>`. A cloneable `HotReloadStagingHandle` may replace only the
-pending-update slot while `call_async` holds its scoped mutable Runtime borrow;
-it cannot activate an update or mutate the active image. After the outer future
-completes or is dropped, the embedding host calls `Runtime::activate_reload` at
-its existing explicit safe point. No suspended frame, register file, native
-future, or host lease migrates generations.
-
-Provider calls use the same target and driver. One pure resolver validates the
-Runtime-bound provider handle and reads method dispatch, callable asyncness,
-receiver shape, parameter names, and defaults from the pinned
-`LinkedArtifact`. Outer and reentry callers allocate and root the fresh
-receiver only after that shared resolution, so both paths report identical
-metadata and validation failures.
-
-### Host-Scoped Detached Roots
-
-M20.75 adds detached roots without changing `call`/`call_async`, awaited
-same-session reentry, or Runtime exclusivity. A task builtin prepares a
-statically linked async call, recursively detaches its arguments, reserves
-finite scope capacity, and gives an owned child future to the host-provided
-task scope. Each active child drives the existing execution session in a fresh
-or provably clean leased Runtime. Core crates still own no executor.
-
-The child shares only immutable Engine registry and `LinkedArtifact` authority.
-It owns separate VM state cells, extern bindings, heap, roots, HostRef table,
-leases, budgets, cancellation, and tracing state. HostRef, HostPath, PathProxy,
-HostAccess-backed views, scoped leases, closures/upvalues, live Host iterators,
-Runtime-bound `VelaValue`, and host contexts cannot cross admission. Owned
-managed graphs are copied into a budgeted transfer image with aliases and
-cycles preserved. That Runtime-independent `DetachedValueImage`, rather than a
-Runtime-bound `VelaValue`, is also the worker result and continuation input
-boundary.
-
-The host task scope owns bounded admission, executor polling, deadlines,
-cancellation, terminal observation, and optional continuation delivery. A
-continuation is a new synchronous Runtime root entered only when the host can
-reacquire its context at a safe point. It receives an owned outcome and fresh
-registered Host/Value arguments; it never receives the worker Runtime or a
-borrow held by the worker. The complete contract is
-[host-scoped detached async execution](../host-scoped-detached-async-execution-plan.md).
-
-A scope may keep a bounded idle Runtime cache keyed by exact Engine deployment
-and linked-artifact identity. Returning a Runtime clears all mutable VM, heap,
-root, HostRef, lease, extern, budget, cancellation, and tracing state; checkout
-reruns artifact initialization before executing user code. A failed reset or
-initialization discards the entry. Scope-local task IDs, structured lifecycle
-events, and saturating metrics are host observability only: observer failure is
-contained, every admitted task has one terminal worker outcome, and no ID or
-control handle becomes a Vela value.
+Portable program format is **8**, Rust-binding schema is **7**, and tooling
+schema is **4**. Readers reject incompatible versions before payload use,
+linking or activation. Physical-plan coverage and operands are verified even
+when a payload checksum is valid. Do not reconstruct MIR, synthesize removed
+facts or add a legacy interpreter to load old artifacts.
 
 ### Execution Budget
 
-The VM charges backend-neutral execution units at explicit MIR semantic points:
+Verified MIR records logical execution-unit points for backedges, iterator
+steps, calls, allocations and dynamic work. Bytecode carries these points as
+immutable metadata; charging is not simply one unit per physical dispatch.
+Runtime-sized callback, collection guard and iterator work uses the same
+counter. A failing charge traps before its associated effect; effects already
+completed before a later trap are not rolled back.
 
-```rust
-pub struct ExecutionLimits {
-    pub execution_unit_limit: u64,
-    pub memory_limit_bytes: usize,
-    pub max_call_depth: usize,
-    pub collection_limits: CollectionLimits,
-}
+Execution limits cover units, memory, call depth and collection growth.
+Allocation and in-place growth must be charged when limits are finite. Native
+calls retain declared cost/effect accounting. Cancellation and deadlines are
+host controls on synchronous execution, not script scheduling.
 
-pub struct ExecutionBudget {
-    limits: ExecutionLimits,
-    counters: ExecutionCounters,
-    flags: BudgetFlags,
-}
-```
-
-Verified MIR records positive execution-unit points for CFG backedges,
-iterator steps, calls, dynamic work, allocations, HostAccess, and reflection.
-The bytecode backend attaches those points to semantic operations as immutable
-execution-unit metadata; the VM does not charge implicitly per dispatched
-opcode. Runtime-sized callback, iterator,
-and container-guard work adds units through the same counter. A charge traps
-before its associated effect, while effects completed before a later charge
-trap remain committed.
-
-Budgets prevent:
-
-```text
-infinite loops
-unbounded memory growth
-recursive stack overflow
-unbounded array/map/set growth
-too many state writes in a single event
-```
-
-Execution limits are immutable configuration for a run, counters are mutable
-runtime state, and budget flags are precomputed from the limits. Hot paths test
-the flags instead of reinterpreting sentinel limit values. `usize::MAX` /
-`u64::MAX` still mean "disabled" at the public constructor boundary.
-
-Heap allocation and in-place heap collection growth charge the memory budget
-when `memory_limit_bytes` is finite. `ExecutionBudget::unbounded()` disables
-instruction, memory, call-depth, and collection-growth bookkeeping, so hot
-paths can run without budget bookkeeping when the host intentionally chooses
-that mode. Arrays and sets charge collection memory by script-visible element
-count, and maps charge by script-visible entry keys plus stored values. Hosts
-can set collection length limits in addition to, or independently from, the
-byte budget when a script should not be allowed to build arbitrarily large
-arrays, maps, or sets.
+Explicit unbounded host options still exist; production embedders should select
+finite limits. Removing obsolete machinery must not introduce a new unbudgeted
+loop or bypass a budget on an optimized path.
 
 ## Threading Model
 
-Vela is a single-threaded scripting language from the script author's point of
-view. The primary embedding contract is one logical Vela `Runtime` owned by one
-actor. That Runtime contains the actor's Vela state and heap and executes at
-most one actor turn at a time. The actor mailbox already supplies exclusive
-ownership, so ordinary execution uses `&mut Runtime` directly and must not put
-the Runtime behind `Arc<Mutex<Runtime>>`.
+One mutable Runtime executes at most one call tree at a time. Rust hosts own
+scheduling and may run independent Runtimes on different workers. Exclusive
+ownership can move between workers; cache correctness must not depend on an
+OS-thread-local owner. Scripts have no threads, locks, atomics, async/await,
+tasks or shared-memory concurrency.
 
-An actor Runtime is not an OS-thread-local Runtime. `Runtime` is `Send`, so the
-host scheduler may move the actor between workers, and a scoped
-`RuntimeCallFuture` may be polled by different executor workers while the actor
-turn remains exclusively borrowed. Correctness must therefore never depend on
-OS thread-local cache state or a stable worker assignment.
-
-The language does not expose:
-
-```text
-thread creation
-shared-memory concurrency
-locks or atomics
-script-visible task/coroutine handles or manual resume
-channels
-parallel iterators
-```
-
-If a host application needs concurrency, the Rust host owns it. Many actors and
-therefore many independent actor Runtimes may execute concurrently on different
-workers. Each actor invocation still observes a single-threaded VM boundary.
-Vela `async fn` and `.await` preserve sequential script semantics; suspension
-keeps the actor turn exclusively owned and does not make its Runtime
-concurrently callable or expose threads or shared memory to scripts.
-Host-scoped detached roots may execute concurrently only because each owns a
-different isolated Runtime and transferable values. They do not turn the
-parent actor Runtime or its VM state into shared memory.
-
-Allowed host-level concurrency models:
-
-```text
-one logical Runtime per actor
-many actor Runtimes scheduled on one worker or execution lane
-an actor Runtime moved between workers only under exclusive actor ownership
-host async tasks that call into Vela only at explicit scheduling points
-background IO that returns copied data or HostRef handles to later script calls
-bounded host-scoped Vela child tasks, each with an isolated Runtime
-```
-
-The shared deployment generation contains immutable code, metadata, schemas,
-source maps, cache/profile layouts, and the shared hot-reload ABI. Each exact
-Engine deployment weakly registers generation-qualified execution data. That
-data owns one typed synchronized cache slot per linked cache site and optional
-aggregate atomic instruction counters; Actor Runtimes retain only handles for
-generations they can still execute. A host may additionally use measured
-execution-lane sidecars.
-`WorkerExecutionSidecars` is an optional performance implementation, not a
-semantic layer and not a requirement that an actor remain on one worker. It is
-valid only when benchmarks show that generation-shared slots contend and the
-host can provide an explicit stable execution-lane identity. Reload publishes
-a new immutable generation and new generation-qualified metadata instead of
-clearing or rebasing old slots in place.
-
-Required boundaries:
-
-```text
-do not call the same Runtime concurrently from multiple threads
-do not share script GC objects across runtimes or threads
-do not let native functions store borrowed Value references after a call
-do not expose host locks, atomics, or thread handles to scripts
-do not mutate the same host object set concurrently through multiple runtimes
-```
-
-Runtime-managed `VelaValue` handles are also `Send` and may be moved with host
-messages, but they remain bound to the runtime that created them. Passing a
-`VelaValue` to another runtime is a runtime type error.
-
-Data crossing host threads must be copied, serialized, or represented by stable
-host handles such as `HostRef`. Cross-thread conflict resolution, ordering,
-locking, database transactions, actor mailboxes, and network IO are host
-responsibilities, not Vela language features.
-
-Hot reload follows the same rule: the host publishes a deployment generation,
-and each actor Runtime adopts it only at its own safe point. Existing actor
-turns and suspended sessions retain their prior generation.
+`VelaValue` is a retained script value tied to its creating Runtime, not a
+Rust-object handle or a cross-Runtime sharing mechanism. Cross-Runtime data
+exchange requires explicit owned conversion. Host work may finish externally
+and supply owned inputs to a later synchronous call.
 
 ## GC
 
-GC manages:
+The current collector is non-moving mark-sweep over script objects with explicit
+roots and bounded collection controls. Roots include frames, closures, retained
+runtime values and state needed by live executable generations. Root refresh
+and graph traversal must remain correct between collection steps and mutations.
 
-```text
-string objects
-arrays
-maps
-sets
-records
-enums
-closures
-upvalues
-iterators
-call frame objects
-```
+Old-only state/code may be reclaimed only when no live owner can use it. A
+removed closure-valued state root must not keep its own generation alive forever.
+GC and generation liveness therefore share an ownership contract; see
+[hot reload](hot-reload.md).
 
-GC does not manage:
-
-```text
-Rust Player
-Rust World
-Rust Inventory
-database objects
-network connections
-```
-
-Scripts hold only `HostRef` values for host state.
-
-First-version GC:
-
-```text
-non-moving mark-sweep
-arena allocation
-explicit root stack
-event/tick boundary step_gc
-configurable GC budget
-```
-
-API:
-
-```rust
-runtime.step_gc(GcBudget::micros(200));
-runtime.collect_full_gc();
-runtime.set_gc_config(GcConfig {
-    max_pause_micros: 500,
-    heap_growth_factor: 1.5,
-});
-```
-
-Moving GC is deferred because it complicates:
-
-```text
-GcRef stability
-host bridge
-debugger
-reflection objects
-call frames
-FFI/native functions
-```
+Rust host state, files, connections and application storage are outside script
+GC. Neither moving GC nor structural state migration is supported. A production
+incremental-collector redesign requires separate scoped work; historical plans
+do not establish that it is implemented.

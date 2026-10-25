@@ -8,7 +8,16 @@ actual F12/back and palette input for UX02, with exact editor state and passive
 request/response checks. UX03 modifier-click and Peek routes have local
 input/render proof; the checkpoint records the platform and revision, while
 the remaining local families stay pending. The current catalog has 27 feature-level `editor/smoke` cells.
-Neither those cells nor the 1327 initial requirements certify this matrix.
+Neither those cells nor the historical 1327 initial requirements certify this
+matrix. A–D runtime removals require affected syntax/schema evidence to be
+recaptured on the reduced synchronous language. Retain ordinary packages,
+script reflection and native host-read/write effect metadata; removed
+Service/Provider, async/tasks and borrowed/path surfaces have rejection and
+no-advertising coverage only. A–E removal implementation and software gates
+are complete; [current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md) record 27
+installed checks passed in same-provenance partitions, the aggregate npm timeout,
+and the separate incomplete strict/native Input/Render coverage.
 
 This document extends [the strategy](lsp-test-strategy.md) and is executed through
 [execution plan](lsp-test-execution-plan.md). Scenario IDs remain stable.

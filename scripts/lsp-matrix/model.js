@@ -78,6 +78,14 @@ function validateCatalog(catalog, sources) {
   if (JSON.stringify(syntaxDimensions(sources.protocol)) !== JSON.stringify(catalog.syntaxDimensions)) {
     throw new Error("syntax dimension contract changed: review applicability and assertions");
   }
+  // Only explicitly reviewed syntax axes participate in execution hashing;
+  // legacy unchanged axes keep their original contract identities.
+  for (const [id, contract] of Object.entries(catalog.syntax || {})) {
+    const dimension = catalog.syntaxDimensions.find((item) => item.id === id);
+    if (!dimension || JSON.stringify(contract) !== JSON.stringify(dimension)) {
+      throw new Error(`syntax axis contract differs from reviewed dimension: ${id}`);
+    }
+  }
   const classified = catalog.grammarGroups.flatMap((group) => group.productions).sort();
   if (JSON.stringify(classified) !== JSON.stringify(catalog.grammarRules)) {
     throw new Error("every grammar production needs exactly one semantic group");
@@ -125,6 +133,10 @@ function validateCatalog(catalog, sources) {
     if (!keys.includes(item.requirement) || !item.assertion || !item.tests?.length) {
       throw new Error(`invalid evidence: ${item.requirement}`);
     }
+    if (item.pendingReview && (!item.pendingReview.reason?.trim() ||
+        !item.pendingReview.migration?.trim() || !/^[a-f0-9]{64}$/.test(item.pendingReview.contractHash))) {
+      throw new Error(`invalid pending evidence review: ${item.requirement}`);
+    }
     const requirement = obligations(catalog).find((row) => row.id === item.requirement);
     for (const test of item.tests) {
       if (test.layer !== requirement.layer || !test.name) throw new Error(`wrong evidence layer: ${item.requirement}`);
@@ -149,6 +161,11 @@ function assess(requirements, evidence, available, results = {}, exemptions = []
     if (exemption) return { ...requirement, status: "not_applicable", reason: exemption.reason };
     const proof = evidenceById.get(requirement.id);
     if (!proof) return { ...requirement, status: "unreviewed" };
+    if (proof.pendingReview) {
+      const failed = proof.tests.some((test) => ["FAILED", "ignored"].includes(results[test.layer]?.get(test.name)));
+      return { ...requirement, status: failed ? "failed" : "unreviewed",
+        reason: proof.pendingReview.reason, historicalEvidence: proof };
+    }
     for (const test of proof.tests) {
       if (!available[test.layer]?.includes(test.name)) throw new Error(`stale test reference: ${test.layer}:${test.name}`);
     }

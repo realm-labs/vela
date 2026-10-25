@@ -4,8 +4,9 @@ description: "Vela Set 方法文档。"
 ---
 
 Set 通过和 Map key 相同的 `ValueKey` 策略存储唯一脚本值。unit、bool、
-有限数字、char、string 和 bytes 等不可变叶子值按值比较；脚本堆对象和
-host ref 按身份比较；`PathProxy` 等临时值会在修改前被拒绝。
+有限数字、char、string 和 bytes 等不可变叶子值按值比较；脚本 array、map、
+set、record、enum、closure 和 iterator 按身份比较。tuple、range 和非有限浮点数
+会在修改前被拒绝作为 key。这些值由脚本拥有；Set 修改不会隐式写回 Rust。
 
 ## 构造和成员检查
 

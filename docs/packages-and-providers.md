@@ -1,4 +1,4 @@
-# Packages And Service Providers
+# Ordinary Packages
 
 Vela package loading is static, manifest-driven, and host-controlled. Scripts
 cannot scan directories, load source at runtime, or mutate package/type
@@ -38,7 +38,7 @@ Script module identity is always `PackageId + ModulePath`:
 
 ```vela
 use crate::helpers::normalize
-use inventory_api::api::InventoryProvider
+use inventory_api::api::normalize
 ```
 
 `crate::` stays in the current package. A dependency alias crosses into one
@@ -48,13 +48,13 @@ remains internal to one generation; stable script IDs include `PackageId`.
 
 ## Compilation
 
-Ordinary roots do not require provider discovery:
+Ordinary roots compile directly:
 
 ```rust
 let snapshot = engine.load_package_workspace("app/vela.toml")?;
 let app = PackageId::new("com.example.app")?;
 let artifact = engine.compile_package(&snapshot, &app)?;
-let mut runtime = Runtime::from_linked_artifact(engine, artifact);
+let mut runtime = Runtime::from_linked_artifact(engine, artifact)?;
 ```
 
 The root and transitive path dependencies enter one package-aware HIR,
@@ -62,48 +62,10 @@ compiler, linker, and `LinkedArtifact` pipeline.
 
 ## Providers
 
-Providers are public zero-field records exported by resolved trait impls:
-
-```vela
-pub struct SortInventory {}
-
-#[provider(id = "sort_inventory")]
-impl InventoryProvider for SortInventory {
-    pub fn run(self, value: i64) -> i64 { return value + 1; }
-}
-```
-
-The service is inferred from the trait. Identity is `PackageId +
-ServiceTraitId + ProviderId`. Discovery reads a sealed snapshot without
-executing script, native, reflection, or HostAccess code:
-
-```rust
-let catalog = engine.discover_providers(&snapshot)?;
-let key = catalog.providers()[0].key().clone();
-let selection = catalog.select([key.clone()])?;
-let request = ProviderCompileRequest::for_selection(&snapshot, selection);
-let artifact = engine.compile_provider_selection(&snapshot, &request)?;
-```
-
-Only selected providers enter runtime ABI. The linker seals `ProviderKey ->
-TypeHandle -> MethodId -> MethodDispatchHandle` in the same artifact generation
-as bytecode and verified MIR. Each call creates a fresh zero-field receiver and
-uses normal budgets, GC roots, HostAccess, capabilities, tracing, and profiling:
-
-```rust
-let handle = runtime.provider_handle(&key)?;
-let value = runtime.call(
-    handle.method(service_method_id),
-    CallArgs::new(),
-    CallOptions::unbounded(),
-)?;
-```
-
-Handles are bound to one Runtime and contain stable keys, never linked handles.
-Provider methods use the same sealed call target and `Runtime::call`/
-`Runtime::call_async` surface as functions and bound methods. Outer calls and
-same-session reentry share one pure resolver over the pinned linked artifact;
-only receiver allocation and root admission differ afterward.
+Provider discovery, catalogs, selection, provider-specific compilation, handles
+and ABI facts were removed in B. The old Provider examples are historical,
+not an optional package mode or future work. Ordinary public records, traits,
+impls, functions, imports and path dependencies remain supported without them.
 
 ## Capabilities And Reload
 
@@ -116,7 +78,7 @@ observed package effects ⊆ manifest requirements ⊆ Engine grants
 Requirements are never silently intersected away. Dynamic calls remain
 runtime-gated. Capability expansion during reload requires explicit restaging.
 
-Reload rebuilds manifests/sources and reapplies the previous root/provider
+Reload rebuilds manifests/sources and reapplies the previous ordinary root
 fingerprint:
 
 ```rust
@@ -126,10 +88,11 @@ let update = engine.compile_package_workspace_hot_reload_update_from_previous(
 )?;
 ```
 
-Body changes are accepted. Selected provider removal, target/service/method ABI
-changes, root/selection changes, and unapproved capability expansion are
-rejected without image advance. Unselected additions do not change ABI. Old
-frames and provider-created closures retain their artifact; new calls through
-existing logical handles resolve against the accepted image.
+Compatible body changes are accepted. Public ABI, package/root identity and
+unapproved capability expansion are checked before image advance. Rejection
+leaves the active image unchanged. Old frames and closures retain their exact
+artifact, nested dispatch, state and plans; new entry calls use the accepted
+image. No structural state migration or host-object migration is implied.
 
-See `package_dependency_demo` and `plugin_provider_demo` under `examples`.
+See [package_dependency_demo](../examples/src/bin/package_dependency_demo/main.rs).
+The historical filename of this document does not imply Provider support.

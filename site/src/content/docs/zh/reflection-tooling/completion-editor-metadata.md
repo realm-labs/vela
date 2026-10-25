@@ -21,7 +21,7 @@ semantic tokens -> tokens + resolved symbols
 
 ## 补全质量
 
-已知 host ref、已知 script record、type hint 和 narrowed enum variant 应提
+已知 script record、注册的 Value schema、type hint 和 narrowed enum variant 应提
 供精确补全。未知动态值会退化为 `Any`，而不是阻止 bytecode 生成。
 
 ## Source Origins

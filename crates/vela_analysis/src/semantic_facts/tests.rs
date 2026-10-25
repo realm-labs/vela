@@ -148,10 +148,7 @@ fn borrowed_collection_source_is_rejected_before_owned_method_resolution() {
         ));
         graph.resolve_imports();
         assert!(graph.diagnostics().iter().any(|diagnostic| {
-            diagnostic
-                .code
-                .as_deref()
-                .is_some_and(|code| code.starts_with("syntax::removed_"))
+            diagnostic.code.as_deref() == Some("hir::removed_host_type_hint")
         }));
     }
 }

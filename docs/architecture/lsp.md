@@ -1,7 +1,7 @@
 # Native LSP Architecture
 
 Vela's language server is a full native LSP capability track that may land
-before the MVP and may progress in parallel with M19/M20 optimization. It
+independently of interpreter optimization. It
 should deliver diagnostics, completion, signature help, hover, go to
 definition, symbols, semantic tokens, references, rename, code actions,
 formatting, inlay hints, source overlays, static host schema facts, and
@@ -20,8 +20,8 @@ existing host boundary, reflection, and hot-reload contracts.
 Package projects are assembled through `vela_package`, never an LSP-specific
 manifest parser. ProjectState retains package/module ownership and direct
 dependency aliases for completion, definition, references, symbols, hover, and
-rename-risk projection. Provider tooling is metadata-only and must not execute
-scripts or host code.
+rename-risk projection. Tooling uses static script/native/value metadata and
+must not execute scripts or host code. Service/Provider tooling is removed.
 
 ```text
 VS Code / Zed / JetBrains / CLI
@@ -300,18 +300,24 @@ increasing workspace generations so stale query results can be discarded.
 
 ## Project Configuration
 
-The preferred project file is `vela.toml`:
+The project file is `vela.toml`, parsed by the shared package loader. For an
+ordinary root package with optional static native/value metadata:
 
 ```toml
-[workspace]
+[package]
+id = "com.example.app"
+name = "app"
+version = "0.1.0"
+
+[source]
 roots = ["scripts"]
 
 [host]
 schema = "target/vela/schema.json"
 ```
 
-The first implementation may support only one root. Multiple roots should be a
-planned extension of the same model, not a separate mode.
+Multiple roots retain independent package/module and dirty-overlay ownership;
+configuration changes advance snapshots rather than mutating worker inputs.
 
 Fallback behavior:
 
@@ -335,7 +341,7 @@ The schema artifact should carry copied metadata:
 stable TypeId, FieldId, MethodId, VariantId, TraitId, FunctionId
 qualified names and display names
 type hints and builtin container contracts
-callable parameter names, required/defaulted status, return types and asyncness
+synchronous callable parameter names, required/defaulted status and return types
 field and method access metadata
 EffectSet and required capabilities
 docs and declaration origins
@@ -345,7 +351,7 @@ schema hash or version
 
 Function, method and trait-method entries may carry a `signature` object. Its
 parameter and return types must agree with the entry's function fact; parameter
-names, requirement markers and asyncness participate in the schema hash. Known
+names and requirement markers participate in the schema hash. Known
 parameter declaration spans round-trip with the metadata. Missing signatures
 preserve the type-only format and do not create authoritative parameter names.
 Named-argument completion uses source declarations or explicit registry
@@ -356,30 +362,15 @@ Standard-library callable names and default markers come from the same static
 `vela_stdlib` manifest used for registration, while analysis retains specialized
 parameter and return types. This crate contains backend-neutral metadata and
 registry definitions; reading its constants does not execute a host or native
-function. Provider-injected APIs and variable-arity reflection shapes need their
-own explicit metadata. Reserved-word parameter labels may appear in signatures
+function. Variable-arity reflection shapes need their own explicit metadata. Reserved-word parameter labels may appear in signatures
 but cannot become invalid `name = value` edits.
 
-Service-set metadata projects names, required parameters, asyncness and nested
-parameter/return types into the same callable facts. All service owners are
-registered before hints are resolved, so service ordering does not affect
-cross-service references. Projection uses the registration hint parser and
-shared type conversion, with exact schema name lookup; the wire-specific tuple
-and collection mutation shapes normalize to structured registration hints.
-Unknown named types retain unknown leaves rather than borrowing short names.
-Duplicate parameter names and malformed service hints are rejected.
-
-Compiler-owned `service::base` / `service::pinned` calls share service callable
-facts between signature help and expected-argument analysis. They accept only
-positional arguments, so completion inserts expressions rather than `name =`
-labels. Base ownership follows resolved declaration calls back to a unique
-service origin, with cycle detection; pinned targets use exact service-set
-member names. Nested function/default bodies and ambiguous or missing origins
-supply no service signature. Ordinary same-name schema functions cannot replace
-these capabilities. Individual HIR service declarations remain queryable when a
-neighboring service attribute is malformed; full compiler catalogs still fail
-on those errors. Lossless recovery retains methods inside unclosed impl/trait
-bodies while preserving missing-delimiter diagnostics.
+Tooling schema version is **4**. Current facts describe retained synchronous
+script/native/value declarations only. Service sets, Provider selection,
+callable asyncness, scoped resources, host paths and borrowed receivers are not
+current schema categories. Obsolete versions reject rather than projecting
+removed facts. Native host-read/write effects and permission metadata remain.
+No independent opaque-object runtime or replacement object schema is implied.
 
 When the schema is absent or stale, tooling should degrade to `Any` and report
 schema diagnostics. It must not invent host facts or read host state.
@@ -477,11 +468,11 @@ only through explicit data structures.
 The LSP must preserve these product contracts:
 
 ```text
-no Rust &mut exposure
+no caller-borrowed Rust data or opaque-object runtime
 no host state under script GC
 no runtime TypeRegistry mutation
 no monkey patching
-no bypass of HostAccess, reflection policy, or capability metadata
+no bypass of native effect/capability checks or reflection policy
 ```
 
 ## WASM Boundary

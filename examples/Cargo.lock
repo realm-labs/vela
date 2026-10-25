@@ -368,7 +368,6 @@ version = "0.1.0"
 dependencies = [
  "parking_lot",
  "serde",
- "smallvec",
  "vela_analysis",
  "vela_bytecode",
  "vela_common",
@@ -376,7 +375,6 @@ dependencies = [
  "vela_hir",
  "vela_host",
  "vela_hot_reload",
- "vela_mir",
  "vela_package",
  "vela_reflect",
  "vela_registry",
@@ -391,9 +389,7 @@ dependencies = [
  "serde",
  "vela_bytecode",
  "vela_common",
- "vela_def",
  "vela_engine",
- "vela_host",
  "vela_hot_reload",
  "vela_macros",
  "vela_package",
@@ -416,7 +412,6 @@ name = "vela_host"
 version = "0.1.0"
 dependencies = [
  "vela_common",
- "vela_def",
 ]
 
 [[package]]
@@ -472,7 +467,6 @@ dependencies = [
  "vela_host",
  "vela_package",
  "vela_registry",
- "vela_syntax",
 ]
 
 [[package]]

@@ -1697,5 +1697,2322 @@
       ]
     }
   ],
-  "migrations": []
+  "migrations": [
+    {
+      "id": "checkpoint-e-s1-owned-state",
+      "reason": "A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only.",
+      "preservedBehavior": "Keep every S1 positive and negative service/protocol obligation, ordinary functions, parameters, structs, enums, traits, impls, imports and VM state. Removed declarations require rejection/recovery, never a replacement binding or missing-proof deletion.",
+      "from": [
+        {
+          "id": "did-open/syntax/S1/positive/service",
+          "owner": "B08",
+          "contractHash": "1141898e22f90fdadacc5eea5f39280312238fd243a47113c9e995d98e1d3f84"
+        },
+        {
+          "id": "did-open/syntax/S1/positive/protocol",
+          "owner": "B08",
+          "contractHash": "3aa56deac439ac0ee74134c0436076ba70bbef12b93013af2446b15ed37d49a6"
+        },
+        {
+          "id": "did-open/syntax/S1/negative/service",
+          "owner": "B08",
+          "contractHash": "41b7e325a6faabf64f3da3550242363695e19dc4624234a5c80508d45fad719b"
+        },
+        {
+          "id": "did-open/syntax/S1/negative/protocol",
+          "owner": "B08",
+          "contractHash": "29818a49af3bfbaf05738e608c4e7117c013a0a0d7277d7d7e2c8cd1cbbd4a4d"
+        },
+        {
+          "id": "did-change/syntax/S1/positive/service",
+          "owner": "B08",
+          "contractHash": "b1c758a11e04e5db76028325fc8545754cca417ff776c36a3f5d9bdbc6f53e0b"
+        },
+        {
+          "id": "did-change/syntax/S1/positive/protocol",
+          "owner": "B08",
+          "contractHash": "d8b8cb634b20983fd53eae7d4e18600de94b9e33dc202134b9987063f6774c6f"
+        },
+        {
+          "id": "did-change/syntax/S1/negative/service",
+          "owner": "B08",
+          "contractHash": "d805c587ef771bf03f7bd2f7da200c61779c155e269060983209180c4ab26b7e"
+        },
+        {
+          "id": "did-change/syntax/S1/negative/protocol",
+          "owner": "B08",
+          "contractHash": "da231f197cf211db1a1faf3da6a792e11b81150f176a6e6bc605e6f5e3df129c"
+        },
+        {
+          "id": "diagnostics/syntax/S1/positive/service",
+          "owner": "B05",
+          "contractHash": "6602066102729aca3656af106072c62649ae832e39d02391152975e3867b1d61"
+        },
+        {
+          "id": "diagnostics/syntax/S1/positive/protocol",
+          "owner": "B05",
+          "contractHash": "a8a5e3534ba96d0e4bc76eee24beddfcbae319f37b8e25e9e6aeef52e4a2c536"
+        },
+        {
+          "id": "diagnostics/syntax/S1/negative/service",
+          "owner": "B05",
+          "contractHash": "1670dd4a762d104a5d707b69bcaf3b4b9afcce7abf9656314ea621daf6e9ea94"
+        },
+        {
+          "id": "diagnostics/syntax/S1/negative/protocol",
+          "owner": "B05",
+          "contractHash": "fd8717a915b13c7dd738964828c17576d4d070eacea46a3f14f40ecab1f0a5cc"
+        },
+        {
+          "id": "completion/syntax/S1/positive/service",
+          "owner": "B03",
+          "contractHash": "9cb09245292df8cb6c406d76b5aba5e63401b7c4be16fa406a3777b0de112811"
+        },
+        {
+          "id": "completion/syntax/S1/positive/protocol",
+          "owner": "B03",
+          "contractHash": "5f86d9274cccf10e824b9cc06c515342d5c7658daa2a3689a314fabfcb9cf9f4"
+        },
+        {
+          "id": "completion/syntax/S1/negative/service",
+          "owner": "B03",
+          "contractHash": "56c7f2501a339e447f8ae8bbeef07b0125a458a5f289032a7b94163a93565418"
+        },
+        {
+          "id": "completion/syntax/S1/negative/protocol",
+          "owner": "B03",
+          "contractHash": "c5264627db38da44fe8f1abee6fe0bf0d8150b6c533f029dd184e48a77fef378"
+        },
+        {
+          "id": "hover/syntax/S1/positive/service",
+          "owner": "B07",
+          "contractHash": "ca9d0b2d25313b391cec43bf90050cc0474eb253e4372d22f3ff629b016aae8f"
+        },
+        {
+          "id": "hover/syntax/S1/positive/protocol",
+          "owner": "B07",
+          "contractHash": "8ff5f3a7bb16b6bea5482b51f38da0ae014bb388d21cbf2c0d5ad77e6cbe4263"
+        },
+        {
+          "id": "hover/syntax/S1/negative/service",
+          "owner": "B07",
+          "contractHash": "fbe948a08fdf69803c9313317e08e57fb9597fd6025613dcf4161f4e06d0d500"
+        },
+        {
+          "id": "hover/syntax/S1/negative/protocol",
+          "owner": "B07",
+          "contractHash": "3616b0fcc2d848916f37c8fa8dc965d406eeed931e11a1ad513769e91c4afab6"
+        },
+        {
+          "id": "definition/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "eb20146b501c0c87b99c276db4504956d8e0fb2929c917517bda8398e77cb874"
+        },
+        {
+          "id": "definition/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "29e5b7b034421f81861e7dcb4307909729acde2df05ca45cb893cb50f0acd3ad"
+        },
+        {
+          "id": "definition/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "851251270a273815d7afb4c830970e4484cc8ad827151ec90ba51e71da76fdca"
+        },
+        {
+          "id": "definition/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "d3a67d77321dff6b559e4dd417fb1229bae42f04e2d082347cfc4e57f66151c0"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "f69a7590b69b8bcc88e93d5b90936c79e7ab83ee84fd7cef8ec3bd38937387f7"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "a0c53748a67bf6cd5d3fafb63a7062933543c1a06945680b8c1a6ed397d02e20"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "115a9da8ab4c0b0ac849ffaa20b8d5eea354c2d9de89cd8cbed147cd1cccacc9"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "c6e1ce1882183813f40874391bf088e05847bced6409ca3addb8cff233e6ece5"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "42f0b1b93628570a3fef8d6c97a8df62a42bb3a542c9359eb9f1cf548e3fa9be"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "1cdd9035950a0bf8e0e6f195ed4d2bf7698b5be2edbc6e94aafbd88abbca14aa"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "8d59093237315c96e856f8e22b8b0f985e77169845d30bcba2c4c32a20597ba4"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "7042f5b5e6ba707f30bb82403e7caed5c872ed20227ecb571d06934f1822dc89"
+        },
+        {
+          "id": "implementation/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "c49f87250ede3e673ad522f5eb077d616d6db461cfa1b66e1e30e6a72d7904f6"
+        },
+        {
+          "id": "references/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "e3c31d9acf8b8cc852ea8d81bbd82b76efb73c9c3c01f25a21874d5bdce75a9e"
+        },
+        {
+          "id": "references/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "1365a69b29918c502880a8c99dc4fae8c424c19bfd78087951f338b087c4163d"
+        },
+        {
+          "id": "references/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "cc6c7e894b149378ee4b101cce7b55037f06eab2c0f005f4f141d73965413288"
+        },
+        {
+          "id": "references/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "0d4c2bd50dfdd27e93b70f481d7862699685ca9c479edaa69eb62d66e46fd241"
+        },
+        {
+          "id": "highlight/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "5abea6dd1c5b326cc83346b149a0d4e2e7fbf0f09ed88562bb5adbd529cff2d5"
+        },
+        {
+          "id": "highlight/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "fd2648ed74f83ad5d5f6f285955948bb5c8cfbab9fbed009fa482707741ba11b"
+        },
+        {
+          "id": "highlight/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "025aa9b093ca631c89845059986dedfb6c21cec5c36708d75cfeb646337daa38"
+        },
+        {
+          "id": "highlight/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "f5534ce600d28d6665d1576a7b97600047f417f6156098120631f3e77a7a26e7"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "64cdd82c7af8dba8fea2dfe5193a81fed28d0af40bb1da2ae9c723d93f2a6031"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "5f27f1d54d36dee5e3fc53ba6af23f238d63ac62721ff1ba7e7d738743b77126"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "bb1985afaab26d7042e83f659c0ad44ab35bfb398bd06b6727c12d8ccea895f3"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "78633d15a29dc3bb097430e754c62137ee4d1e8fc15c2bc2fc59bca917ece4c0"
+        },
+        {
+          "id": "rename/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "f4a1c2ab2c34d50225f4d794c3b71645e9283aa06913f79dbb4b1fa2139e6895"
+        },
+        {
+          "id": "rename/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "2ed3d126e4756186ed0eda7fff52838820a64c76a2200836a1a6d4cc8c878be6"
+        },
+        {
+          "id": "rename/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "eb0a5efcf02ba9479613514c8e6e479944e1531f3dfb90cb613c8c5623fabd14"
+        },
+        {
+          "id": "rename/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "3ac7fc6b1ee10903275d254405a7a29b1c69549decd2ccccb9abf1a86c385a53"
+        },
+        {
+          "id": "code-action/syntax/S1/positive/service",
+          "owner": "B05",
+          "contractHash": "85fe61d389312bb13c78e8d98c148670d79776eb731fe8374ef28d9242fa64dd"
+        },
+        {
+          "id": "code-action/syntax/S1/positive/protocol",
+          "owner": "B05",
+          "contractHash": "89e314f9c38086a7f6d3b48ebeb158e1f734dced6333600e20a0bbc67939e64d"
+        },
+        {
+          "id": "code-action/syntax/S1/negative/service",
+          "owner": "B05",
+          "contractHash": "4180e53321888a42dd4b14184bcc85fd8dd6b57df82492b4165fcc19602d5051"
+        },
+        {
+          "id": "code-action/syntax/S1/negative/protocol",
+          "owner": "B05",
+          "contractHash": "87de0b8f71859fccb0fb5e1f18ed9c94616c90fc2e53fccf3172823d651e5e9b"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "72ee3474aa5bf0741cceae72713291854ac1b8a8945cec30aed0f2df17feca88"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "643ad871d480752cfa6ca9137a66f18055863fc68f541d7266d05ba92d13b054"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "1d6c793251e457459ee3d2565056f3243a19a8d24c787438c1326839bdfeae06"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "29a535e8b630f92ddbaea21a3ec506c16ba5c2a755881ceee2dc95fc65fd4ba5"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "8734983dffe756d09de02e2835ed6389b994941edb5968dda7fef5b1c48b0d30"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "d1c5387e8a8c8a49cd77b5b229601a6b5ab3e5809685481a1a72caa32da45faa"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "117d5467b64a6ccf2febeae7b006e6cc17f3e67d6bacd44a05b608537de30d09"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "665a0298a526587f87f0559970650fcd286cf50c2174d7f6899289b721d699a5"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "496ea9829618c5845ce0d6d5ec66b0d986271610d99699a786cadbe6f8914238"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "732225edf2d674d66729c5a584b788e983a8f11258427993a96aadb7bc8b7781"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "853af4dcc643bc74dbb990478bb8253f7c0e754ef6cddcbd5a3117606f4fede2"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "6679d438ffcbacfcabf972f3a12149f1e5ccb2e4e7d59f8f055c19b4633507d8"
+        },
+        {
+          "id": "document-symbol/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "7934b1554d1b3b2f79befcca1b64b0b794bfc1589075d60f28c565708c1f46c2"
+        },
+        {
+          "id": "document-symbol/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "61b7d7ea5511cf4c25f35c38f28f62ac1dbe6ca0b3e0bd6b2f2ffeef50a07da6"
+        },
+        {
+          "id": "document-symbol/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "dffda7c3e52b6504316bf6040e8e8251a673f220e9c6219531a22bf0aa11f7b9"
+        },
+        {
+          "id": "document-symbol/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "cf0f02452f4af6eb42f771e6d1309453eb72ff7447140b459293f682e8588667"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "4df841ba4f3a019c72aab9f7e662b473e7e2357bcfab2a82bbd634e9b7267c03"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "ee9754839e8fb42dd1cc5871a36d23b9ba4b800371dca4f1c55b0ce1cb114b64"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "d506faca9ce0fec939c1f2806b807f6518bcc72db999824be070c0ff9ec41bc8"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "e8463c74a4e4b2ab0656b33e70af7ece6d3ea505587946d912177ccc3146ab37"
+        },
+        {
+          "id": "folding/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "b573f0ac9100bf7062eb582f383e657f625d74461e3e5fc1236a4c6ca56b934d"
+        },
+        {
+          "id": "folding/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "bd2e1bc936d57ab90784831a8028d1cc3d20640d88f2306efe147bd58d5a9a7e"
+        },
+        {
+          "id": "folding/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "c007016fadcaa5f0baf9c3061040710a86a00a8f7bc51da89b2dfba55ef3cba1"
+        },
+        {
+          "id": "folding/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "588e01c48685142209896b93693946c0641bd9142b915d43c53d6144d5385b2d"
+        },
+        {
+          "id": "selection/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "0559c58e1faf6fd59d8a9a66818cf15ae114c1520f2374c1f037a9bd353ba462"
+        },
+        {
+          "id": "selection/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "7437c39bd3d19c892091dc4bbf69fe8f046e6696be668c006f009b1a076c3d86"
+        },
+        {
+          "id": "selection/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "5952e4a1cf6b8494f50fdfa992d4ab0afd00643609854fb4dd529dd7ce778acd"
+        },
+        {
+          "id": "selection/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "0800e748e004948d57c5137ed3ce3c7a2325de22eb232b3a9ab284c8c1be7fc8"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "50e9e8a2a03a230b3c13492c499a9dca0e1c85a153bf3d6ae8ec3235da39bff5"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "f5e0f0b2350fb61ce3865c202f9ebb9468cd5522b349e445812f97f51744fcdc"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "bd37064399849472c3adcd8772493f89d97b3e1bf67b1cc7de84158980c2692b"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "646195e83782cb65325aaa4b37ec0e352ff54a43e8e7e5fd93fcd9556c393b8a"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "78bf07d50698423098b3deb3f7c1bd64277315e77e50d4ea6e85d9f9a7ee1e5b"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "f27f871b91f2c302196cb551e7ad128ab38a183e7fe4c3fe6d2a53ddca287b34"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "aae65db397d4ba20d22f530c9947dca054c2c00a7302c05e91ad452e93aa72bf"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "661a54ecd59f7d2601770e57863b2657d4a8849b2766b492c2998116d5df6e56"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "128015bee101c389cde2e9aceb0548260a8118cac33a201a0f071e8adcc7670a"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "fccbf29fddd2eab8746f9f72ae196192bd14479ae89a343d7ad5f89e582a577c"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "39912c21a88ecb6f513b4fb9f09f192e82c75b8172645ae0b97f971ebdcdaa1b"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "9837827b34ab9179344f2c8d6ea754acbc5f3afe77e9ed2cb4b63cc32316e490"
+        },
+        {
+          "id": "formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "1c41ef2d154d4ac071f2ccc91878ac1167b69f8552683510beaa4406843f3e1e"
+        },
+        {
+          "id": "formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "1e3797879a6b0054300b00c956a0cd0cac80ab69666d9beb90ee1d44a91bb642"
+        },
+        {
+          "id": "formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "64658fc132303aaf97c08e76f2ba52bac6c1fcf7932da9281f60c95c0fd1438d"
+        },
+        {
+          "id": "formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "47193166311ddce9732573b97cce6b4071ea8991c9eacd5ea8c85b3e4a33ab0b"
+        },
+        {
+          "id": "range-formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "fa54f30ab5be3feacded010cea286c27b61cf3f95ef4188e494cb2098d4d3211"
+        },
+        {
+          "id": "range-formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "b72ffc80c67e8acdfac93c5fa51aea89a5b51748bce4892e88fa70bddd9ddf6a"
+        },
+        {
+          "id": "range-formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "b700a423b4b5b0b4602d9aa8dc0580900239e43f95a7f3d2b38134ea3695199c"
+        },
+        {
+          "id": "range-formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "82f0c81b9604a4b311ac242c4a5cfd60363b5c4560cd18dab0ffb5f8c8187b21"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "530afcd5f4d5d3ecadedcf00e68592dad266451ab66774516390d13855ed77ae"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "802bdc4feb73c3833d0f2b5cc3e1ce235c8db83c5bef73fd72762a9d75a442bb"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "535e7022663347f9726b36238ea8dd381c7b2789c4bd98c0cec9994a52184be9"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "a625da1f8c39be917568c5b3790acbc95652565071c942ead94e07beb9f9528f"
+        }
+      ],
+      "to": [
+        {
+          "id": "did-open/syntax/S1/positive/service",
+          "owner": "B08",
+          "contractHash": "adddca4516e242467ee297e26ad6e8bd1f2afe8fd72721a89e4a3b5ecdf6b5ad"
+        },
+        {
+          "id": "did-open/syntax/S1/positive/protocol",
+          "owner": "B08",
+          "contractHash": "82e080655cdd25264e039427aee0dc3e6281770711d2359596a0195e1682a57b"
+        },
+        {
+          "id": "did-open/syntax/S1/negative/service",
+          "owner": "B08",
+          "contractHash": "dbb7d2caa6ecdc284ab2c681b2aae272e9271e729b32e965214262d9cbd23ccb"
+        },
+        {
+          "id": "did-open/syntax/S1/negative/protocol",
+          "owner": "B08",
+          "contractHash": "337e83ada015a921f9209c43b47ea94f59e64eed77041b66b5997f5569c0c677"
+        },
+        {
+          "id": "did-change/syntax/S1/positive/service",
+          "owner": "B08",
+          "contractHash": "a3311822c64cfd7c1bebf1b28380893924d095b6c1a84eeb45fa504d610fb006"
+        },
+        {
+          "id": "did-change/syntax/S1/positive/protocol",
+          "owner": "B08",
+          "contractHash": "d1b688c1fbac5146cc2d8ad56afa9256fd6e3828b578d124ea39e64fca1e01d6"
+        },
+        {
+          "id": "did-change/syntax/S1/negative/service",
+          "owner": "B08",
+          "contractHash": "23e4ad395caa1b0eaa65b79b50990b321d36783059640e81959e7753850d7ca9"
+        },
+        {
+          "id": "did-change/syntax/S1/negative/protocol",
+          "owner": "B08",
+          "contractHash": "017a059275e06d4ae18b83c11d552b390f93961fb490587359972ea3d481a909"
+        },
+        {
+          "id": "diagnostics/syntax/S1/positive/service",
+          "owner": "B05",
+          "contractHash": "4f5dcc377241674e86e887fd5d383ceced2bd8b5e56c9996fab47b87c236f834"
+        },
+        {
+          "id": "diagnostics/syntax/S1/positive/protocol",
+          "owner": "B05",
+          "contractHash": "c3836ae7fdd0f5d2551ca9b29726ace67189f700cd3ef8aed4aa6d949121cb12"
+        },
+        {
+          "id": "diagnostics/syntax/S1/negative/service",
+          "owner": "B05",
+          "contractHash": "df9d9d42317d47222d12d31c59e6a5427f17daa8f13ec1ded517d7f48ea58af9"
+        },
+        {
+          "id": "diagnostics/syntax/S1/negative/protocol",
+          "owner": "B05",
+          "contractHash": "e976649dbde5095f7f740c18efa64b62ac3aff47a1aa2b4724e37d7dde1a90ef"
+        },
+        {
+          "id": "completion/syntax/S1/positive/service",
+          "owner": "B03",
+          "contractHash": "02551cd78bed5bd194c2681615421c8c22f6b7be2540f94bd7f6464047e1afaa"
+        },
+        {
+          "id": "completion/syntax/S1/positive/protocol",
+          "owner": "B03",
+          "contractHash": "d9e09e89f4f7ab32bb34181cc26ed6ccdc2e39ea36818387ab6257c5f8d4e028"
+        },
+        {
+          "id": "completion/syntax/S1/negative/service",
+          "owner": "B03",
+          "contractHash": "7fccd2570de8b497a15561670e63f1277e6dc965ee226e74b577e20c44c0b3a2"
+        },
+        {
+          "id": "completion/syntax/S1/negative/protocol",
+          "owner": "B03",
+          "contractHash": "275a3799a413b392ac0fd0e568deb4306799e5708cd0eef8662080459a036b1a"
+        },
+        {
+          "id": "hover/syntax/S1/positive/service",
+          "owner": "B07",
+          "contractHash": "624b86a39a3babd9bb8d01bbb7e6fabf9df53f69b3ed8646fbc7f63418cacf71"
+        },
+        {
+          "id": "hover/syntax/S1/positive/protocol",
+          "owner": "B07",
+          "contractHash": "d60dab27b95fb3cad9750923dd6cb589ac75bd2e075ba4d2d2814265cbd2183c"
+        },
+        {
+          "id": "hover/syntax/S1/negative/service",
+          "owner": "B07",
+          "contractHash": "ab19637b2300c7a640dc344ad4acb2ff6bd411f0aeedf7d9be9c69f325671269"
+        },
+        {
+          "id": "hover/syntax/S1/negative/protocol",
+          "owner": "B07",
+          "contractHash": "23b91805b3e50bbe99bfbf49d1128c3daaba622f262faa319ab522b0c1a08e95"
+        },
+        {
+          "id": "definition/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "81d1c1f978d21027c5d36b9e7ec94c914d503cd8f3caa53c173e36b0c9c524ef"
+        },
+        {
+          "id": "definition/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "80487f5999f06ab3a2b855e862023c5fbb5ef763cdbf6de9912096e50ebbaccf"
+        },
+        {
+          "id": "definition/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "ed66adea574a882b420ae5bc470f603380c7f13d6d74b7107d5e51f5fbefa36f"
+        },
+        {
+          "id": "definition/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "9b357ca00ddc36bdf2a7492c34935edfdf25bb0255f488037ef10173e4eb0dfc"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "38f1ba639eca741e7264bc40f733c71b887b30dc2ef34756042c8b18e9aa3a90"
+        },
+        {
+          "id": "declaration/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "7f8459e887c0891295176e182c90d1dac33127986639d512fa46a871b8ef6cf2"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "b5dfe6513b2feeacdd389c39b6b9d05b9bf73976dbd66325f0089cf93b2f3eb0"
+        },
+        {
+          "id": "declaration/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "5f58fe5693388361867c5842276c8d8c96ab589f4bdde474b239f1c483f8f08a"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/service",
+          "owner": "B02",
+          "contractHash": "6e1b0522eea546ca371bed6ecf767b86d8b27de4af320adcec251436e47b96cd"
+        },
+        {
+          "id": "type-definition/syntax/S1/positive/protocol",
+          "owner": "B02",
+          "contractHash": "d56ea327a8f7b7f02d23895c8f51e2bdcdcded41f4a82d30f2021e12cb8430e4"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/service",
+          "owner": "B02",
+          "contractHash": "1ebc08302fb6ba1a15bcd9133f2e884c5f1a32d318abd1d1b6a7f250dd4e32dd"
+        },
+        {
+          "id": "type-definition/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "40ac2c59cedf7a42a7e389c6b8d8bc5008483bbe52be6671c50e00530396b764"
+        },
+        {
+          "id": "implementation/syntax/S1/negative/protocol",
+          "owner": "B02",
+          "contractHash": "0e9f7732dd4a379cc32dc9e383162bd51720f2ec9a1f63050327b464a98441da"
+        },
+        {
+          "id": "references/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "ae799993ca23bbd18cced9418e000a5a87b45e1db5407c8d16fa64616221a60e"
+        },
+        {
+          "id": "references/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "d24dbb799757793bdd76d81f9c8587c8fab038569e99178b0e2ebee001614ec5"
+        },
+        {
+          "id": "references/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "0fb4850476786812e4029306d8a799467fb58a4f110afc349ff6f28354cf8fcc"
+        },
+        {
+          "id": "references/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "95dfd4dd4f389009a84fc8236d5025e6e34e041255b14d6c429d941f139ce943"
+        },
+        {
+          "id": "highlight/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "4966bdedcc6d60409e6ab1a93d84aca053bad65e8e472a25456960f47139cabd"
+        },
+        {
+          "id": "highlight/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "69da2cd435d14e971b6cbc1eec4716503ed4669386d063b5a7c77218818d549b"
+        },
+        {
+          "id": "highlight/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "60a75be741f53bf95825f2a9e3bb94f4a40ff711b186585fcdf496653f92334d"
+        },
+        {
+          "id": "highlight/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "1ab1890321f87a4c61cd5d713e22ac2f3e6f42659819bf80caddfc96fc705a8e"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "a6ab0e44b5ad812aa214abd4b2962462285ba694b2ffc8b5958e281414877cab"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "938a161fa1bdd8a171618c15961fb83b253a3f62d9bd23f2d3bede38f168475c"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "e728281d5083385d6246494966293dc68d3539cc327d1eeaa017b194a128333f"
+        },
+        {
+          "id": "prepare-rename/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "0e3ff147aa5868e0f576bc89e4625f824e05b78f7b534eb6b6da441160694240"
+        },
+        {
+          "id": "rename/syntax/S1/positive/service",
+          "owner": "B04",
+          "contractHash": "c24a57ddb7a98097ce4bf8ab278729f2267f0b98dfffeb240f65486932923d8c"
+        },
+        {
+          "id": "rename/syntax/S1/positive/protocol",
+          "owner": "B04",
+          "contractHash": "801a5d6066cfb839ea43d86532632fbff1ac04e297dd89fca0196fc39ca6fdc8"
+        },
+        {
+          "id": "rename/syntax/S1/negative/service",
+          "owner": "B04",
+          "contractHash": "33d7a9a3a2f084006d87ce86c337d70b4ed708286e705989d76d521a38f81f55"
+        },
+        {
+          "id": "rename/syntax/S1/negative/protocol",
+          "owner": "B04",
+          "contractHash": "d5898ad5d410ec61e5171d1043f65910a75e7b7920515fd004cac4d84cc862b3"
+        },
+        {
+          "id": "code-action/syntax/S1/positive/service",
+          "owner": "B05",
+          "contractHash": "d2a363901605517589cd7a73762b436919911d4ff9df964a8ddfa66b19744c27"
+        },
+        {
+          "id": "code-action/syntax/S1/positive/protocol",
+          "owner": "B05",
+          "contractHash": "7d1bcc99b9202bd0fab82114f5b7f28f0131135ae68a56b19834fe2599162664"
+        },
+        {
+          "id": "code-action/syntax/S1/negative/service",
+          "owner": "B05",
+          "contractHash": "5081510cf565b30a48452d2a4cb98c9a54298b271cacd12cf0ecbab7d76e5e95"
+        },
+        {
+          "id": "code-action/syntax/S1/negative/protocol",
+          "owner": "B05",
+          "contractHash": "1a03b72017db5ddb9ff9eea08882d0ee7abd9689cd581de5430be111fb20fbb6"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "84e7dddd3e0a0a6dc6abe7327ba6eb2881c6282d707ac74c0f8968eb7ed93306"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "c3004ea08608f464d383754e0e68fe55a6c56a31f0a3345d30b62c0efc9881fa"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "a740354f220747f4fe022b9316a203320ea7ad85e4db0e6c98d341306348f815"
+        },
+        {
+          "id": "prepare-call-hierarchy/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "88f6315b59a5c0b5ba6a85ffaf7807578f7b2a91c58a94351e6659c5d281f073"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "0fc089ca7ddd7618712f25f4ea733e574df8776873dd52d76e9268f19ef129a6"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "93e14d414b1a807ce9961a0faae87340332a19b1b1de172b753e4b6b48a2b4da"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "174030be9382bb44927c44e943dd9f2b659de99d60eeeafec5d2fdd357f5073b"
+        },
+        {
+          "id": "incoming-calls/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "f426eb1fbd974a00c198a51936a6ed8aab0352295e8ddf4ab165cbb7e7ffc5a4"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/positive/service",
+          "owner": "B11",
+          "contractHash": "208d3a38fe292204fb3d899ba5b7bca3abeb7f175d8ac3a608decedcb345ce23"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/positive/protocol",
+          "owner": "B11",
+          "contractHash": "2f22bde2c69ad7a1523a509939de3a4be1e2073a387cf9b46bc9ee39dd80fbdc"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/negative/service",
+          "owner": "B11",
+          "contractHash": "c181a80380df13266a718b8ed2690efb7a324535a17ec19e422fe0616ae3bebe"
+        },
+        {
+          "id": "outgoing-calls/syntax/S1/negative/protocol",
+          "owner": "B11",
+          "contractHash": "225de47cd53dcf75adaad0761151b60d0bf8c0edb86e845006b4738cf4ebb78e"
+        },
+        {
+          "id": "document-symbol/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "54f16d8f6419b3c3b156a9ac854696acabeae42edb0bd02b591db744cfb01920"
+        },
+        {
+          "id": "document-symbol/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "146c19f3a25700887f5e57ff0fcbeefe718f1e71ae7a26839a5f8d00f7370d6c"
+        },
+        {
+          "id": "document-symbol/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "8a054975479df7c760c92805237bb7d4a2be89d95a5448c8ad7cfe9321f28486"
+        },
+        {
+          "id": "document-symbol/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "0f7b024e6a77f3ef945517922f4b57fea7de28ef372a614049f7e16f2d52ab33"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "17349daa0ed23a49fed2e77c5905a348ec99a2937f3fcd33f0699495f72fc0a0"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "ef1e068badb78592138a01c766b6f24c642587c28046eafd50ae0e955444cda7"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "48735e5c93c8513cec604ceda3240bce919c117ce7c0d89e38a92c2fe48ae14b"
+        },
+        {
+          "id": "workspace-symbol/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "8297b3ae02b6e450bbcb4b53f45d7e4ba619cdd39c00f60eaf5b53d9a6948d59"
+        },
+        {
+          "id": "folding/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "596475f323c702a1ea5785bb95a341dbc5ea28f97103ea1e6ab3b98f3c633815"
+        },
+        {
+          "id": "folding/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "71ccc101082c4631e7a29e90f62fd8e206affa022cd0d096bb1307bd4f56effc"
+        },
+        {
+          "id": "folding/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "d87fc5e516dbfb1eea01def411d14faf03b4a8e374380bc33d4a95ba621f6970"
+        },
+        {
+          "id": "folding/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "f7a2e54b3c88013274b25b8c8889908560c07dcdcf4cf734ec698f050d1130b2"
+        },
+        {
+          "id": "selection/syntax/S1/positive/service",
+          "owner": "B10",
+          "contractHash": "e457bd7903cd7c09a2fa662fec10eac64357700052f5c4835884737aad1e23fd"
+        },
+        {
+          "id": "selection/syntax/S1/positive/protocol",
+          "owner": "B10",
+          "contractHash": "7220740eba31ea916fe30d68e53185d81eec70a6581fcd329e51b598c3fd448b"
+        },
+        {
+          "id": "selection/syntax/S1/negative/service",
+          "owner": "B10",
+          "contractHash": "4421d9faf8138ad8166bb16420530b7c20d41ddae2df0ede7df13863bc616aad"
+        },
+        {
+          "id": "selection/syntax/S1/negative/protocol",
+          "owner": "B10",
+          "contractHash": "cf2ae3cb4a7bbd34c0bba1a1f1d3dc33ae44aa13e0a5f4745974991372ed1bc7"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "de6844ff8ba9b930133f9f71efbefad29aa1f5643dd46b44b9f8049845a5d60a"
+        },
+        {
+          "id": "tokens-full/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "4719d0e66bb19249fbd6ef52fd596d5fa95e6bcf0d14a5e33c648559361b90cf"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "e4612a76a6ecb50de47d1726c668ed019b755e73bdb204e7d1a072fd72b17169"
+        },
+        {
+          "id": "tokens-full/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "6ff7774f1f1d6cffd2fe72bed44b7c0666d9ca5443445de576eeffb82a0ca4dc"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "8d6811b6e121d29d8d41a6682574a6c4b3e9233fbcc913fe541ef4551c2f088c"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "c66a97b5d166a465f6f05dfbd5b9b38856b502415606c754d4d33be2031b4cda"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "9050deeec5ca5876645a53ff31c285bde45888fcf0617f9f09f1c09f4d8056cb"
+        },
+        {
+          "id": "tokens-delta/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "916160aa4d28198bdb35b0d2169987d629e836292fb71158a65f7de87a5e07c6"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/service",
+          "owner": "B06",
+          "contractHash": "46984c8386076495e91a35107453dc036e3f504744163146c81fa4f523a14560"
+        },
+        {
+          "id": "tokens-range/syntax/S1/positive/protocol",
+          "owner": "B06",
+          "contractHash": "17de33fb87eaa6457ae4332944b77bedad93de7268ebd9816f1946bc1b24aaae"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/service",
+          "owner": "B06",
+          "contractHash": "c9fb6f6634428ee8be2ba5f92bfe25609609da62264e7ff3d23529045b113ca2"
+        },
+        {
+          "id": "tokens-range/syntax/S1/negative/protocol",
+          "owner": "B06",
+          "contractHash": "c499eb750bdf002efa1f5e13d37032d2b5651cff683dbcaa015caf0ad6596116"
+        },
+        {
+          "id": "formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "d8297f4489d4a5f9e2ee1504389bcea2730825a109643ae56301cef39612fa01"
+        },
+        {
+          "id": "formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "89d7bc23ad3fc2d650cf802ced1c06e2a688624ea6cba7bbaa72cb472be2f8ca"
+        },
+        {
+          "id": "formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "1abf3ff14320e94fd916d20ecf4ed054d97a64c7b0b0be5370013441f7f241ea"
+        },
+        {
+          "id": "formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "bd895a1caa19ca8bfc64e0571806eae392286e754e08b49d939699de4f3bb9b1"
+        },
+        {
+          "id": "range-formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "5503107e641752bf6de18df2290657aed99fc0c78b6845ae0d45529c7ea78e32"
+        },
+        {
+          "id": "range-formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "f73d28104d6407973ec363cba638f52f0fcd080017b0f01604f260d58331dc50"
+        },
+        {
+          "id": "range-formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "76d8a1b26eea82e8454362e006e8d2015159d31e87dfc3e6987b2df7a32b65b9"
+        },
+        {
+          "id": "range-formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "2e028068457cc9cfc3b85737c8baf7f24989c019109c24993009063374794cfd"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/positive/service",
+          "owner": "B12",
+          "contractHash": "b6af91ee3480a2ef8ceab4be10324020a43247cb5966b89c32417b747c16344d"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/positive/protocol",
+          "owner": "B12",
+          "contractHash": "ef4a6aa4d94af1b0839807b0c0251ac6a2ff0809bf1d91d5b516870c4d3e7efd"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/negative/service",
+          "owner": "B12",
+          "contractHash": "f2c5875a3716fbab1476e6e58a4d564abb6d9df6b1a23107717e5325ddb27a59"
+        },
+        {
+          "id": "on-type-formatting/syntax/S1/negative/protocol",
+          "owner": "B12",
+          "contractHash": "c87b53d399da5db6f67a16be77cfa897e3f38329b809b4efe39da4b1588603fc"
+        }
+      ]
+    },
+    {
+      "id": "checkpoint-e-s3-owned-values",
+      "reason": "D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage.",
+      "preservedBehavior": "Keep every S3 positive and negative service/protocol obligation and runtime-independent schema ownership/navigation. Retire only borrowed/Host success claims; preserve rejection and all ordinary type-position coverage.",
+      "from": [
+        {
+          "id": "diagnostics/syntax/S3/positive/service",
+          "owner": "B05",
+          "contractHash": "818d9789e9ec37cb99a2ec2fa4bfa4f5e943300232994192cd1842948260839a"
+        },
+        {
+          "id": "diagnostics/syntax/S3/positive/protocol",
+          "owner": "B05",
+          "contractHash": "ce767fce7f57e9d7ea4562c6a2d30bf531b308bee21110bf29a43cd424a29fc5"
+        },
+        {
+          "id": "diagnostics/syntax/S3/negative/service",
+          "owner": "B05",
+          "contractHash": "de7827a119bae748a877a1c5680d58da6a9187e3b938cc88f083604f9006ca71"
+        },
+        {
+          "id": "diagnostics/syntax/S3/negative/protocol",
+          "owner": "B05",
+          "contractHash": "9e834c3a3ee98ccbd519d1b29ad44cddad5da351b211f99d8b103cc28cf915fd"
+        },
+        {
+          "id": "completion/syntax/S3/positive/service",
+          "owner": "B03",
+          "contractHash": "252609075fb0b7a332b2776631dff28488161180a3937f811305f2864d5d51a8"
+        },
+        {
+          "id": "completion/syntax/S3/positive/protocol",
+          "owner": "B03",
+          "contractHash": "481076292a9a1963b14b9c43f6118e1f0de9907a47459b3720b1494f91a25000"
+        },
+        {
+          "id": "completion/syntax/S3/negative/service",
+          "owner": "B03",
+          "contractHash": "ae3a8c17a93fabb3cbc2868fcdb1fcec73c10e2a0aaaf854268b6f345fa157ad"
+        },
+        {
+          "id": "completion/syntax/S3/negative/protocol",
+          "owner": "B03",
+          "contractHash": "06e7ee5db12f1bd738ec95a5e59196fdae2812636a6d9b0c0f2ae6c4e4dc508d"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/positive/service",
+          "owner": "B03",
+          "contractHash": "48c4e6bbec72839baf07ab916b616d3769c31680a7ea04cd5079d74e9d4e7ffa"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/positive/protocol",
+          "owner": "B03",
+          "contractHash": "87cc7666c0a98baf6c815860fa278cac549a8d36d47f2ba6094c807e05026b74"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/negative/service",
+          "owner": "B03",
+          "contractHash": "acbf110cd530ae55f556ee34c0caa20dd25129cd46f503443b6acfe76692939c"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/negative/protocol",
+          "owner": "B03",
+          "contractHash": "db6fa3becd1735235eccce096bdeb98d470eedc5dec5fd3785a5aae1c3de5108"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/service",
+          "owner": "B07",
+          "contractHash": "1bba2f4272cbc5f9763aa1fa218728fc48016748e6e3450bc14a05cf93f24b0f"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/protocol",
+          "owner": "B07",
+          "contractHash": "5dcfc0a0e32344da7dc2fcfb4a6b144f76bc9215a19f388ac6ec2f67a33c8ef2"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/service",
+          "owner": "B07",
+          "contractHash": "b63841dbff8336545c6d1b32246eca8839f1d456019607d8416e564757bfaacc"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/protocol",
+          "owner": "B07",
+          "contractHash": "7b5b919286d5e32474aff3a52493181f7458f793307b30472ba9b335a94ccb11"
+        },
+        {
+          "id": "hover/syntax/S3/positive/service",
+          "owner": "B07",
+          "contractHash": "d53004f96e665c8babff6e2776cdcf0a624cc7328904ae7b339412f334f8ee6e"
+        },
+        {
+          "id": "hover/syntax/S3/positive/protocol",
+          "owner": "B07",
+          "contractHash": "2ddce0b3686a28f21bcbbd43c246f70851849406fb38871c34d6aceab526fc35"
+        },
+        {
+          "id": "hover/syntax/S3/negative/service",
+          "owner": "B07",
+          "contractHash": "38a4fe1e27c571aa7728ea158ffc7ce8ca36c6a32f63f2c9d4a6b274a2208304"
+        },
+        {
+          "id": "hover/syntax/S3/negative/protocol",
+          "owner": "B07",
+          "contractHash": "53407cd5d9456fc16f9c826d27ddf2458fe695f0ea4b7117f5c415a1bb3b7c07"
+        },
+        {
+          "id": "definition/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "2706d9b36d598987b5ed46364965eec56336ee09f8435ebe956f47933e867b51"
+        },
+        {
+          "id": "definition/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "1fc71dfa255d4029fe023d3de673ce23e58eaf0f232ee989d803cd90e943e775"
+        },
+        {
+          "id": "definition/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "f01ee26e5a1e1873fb0aef4bd22206b6339281ea1e127e31ccc4ce0af846c4dc"
+        },
+        {
+          "id": "definition/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "bbad62f571adf4c1dd9b630428ad9b9435d70b4c1792e40b741e11a3bd0ba169"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "285e09828326ac50b415a8907748683384283f74f45be8e79bf1599b64dba5d3"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "be5f43abcd248e0baf256ed4b4f23e698d59106628f2e49b8aac5b6b125794e6"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "b363862bddf592fe7ef18eedc825306141891210e9af84c5a4e4c8c6f520760a"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "9a3cc6eed4afbafbdbf3bc8d8dbe361315c80b1f0f35aff7f81832c7f26bb344"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "8a6de0f1692a4d1a5b06cdffc93163099e7070db9cd04b30fee630ddab493e61"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "5cacd119d632a506d988302d252d3033fccff7b39a9d3a98f316b55cf851f05c"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "f27a9b98819963b689ae3b468b97a504e78cb3f0e017806d5e37f15120847fcb"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "847250d01d0cc9be3d0f95dfe3a141506220b5c7f9e99d67a07329b69f63ffc9"
+        },
+        {
+          "id": "implementation/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "b23456f3248cf6bf71f3c98637b9cb43437a5ded9187c8516bba115355e0d2de"
+        },
+        {
+          "id": "references/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "ba16ce50174f3cf954f307819dde00190c772f884309700035c05b6ef25fb2f0"
+        },
+        {
+          "id": "references/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "612d239f36f6104c1fd0b292270741fdfa3b0cd77d08c2398748562892bae403"
+        },
+        {
+          "id": "references/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "069e8a9d8a02a66a8eef35362d5b93f028afb264047c56d4e171797c9e849603"
+        },
+        {
+          "id": "references/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "0ecc8e2210e9b538c18e72870b004b2b126ed9b5228368593988134741868325"
+        },
+        {
+          "id": "highlight/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "0efd417571b4b44a766539b57273843ee4b0232c71360e6addb2179d9d024c11"
+        },
+        {
+          "id": "highlight/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "3b68bc3cfa6ae31bc4002d9ee2c8b9f6f676189746fa6ec9d1bab0e80cd52199"
+        },
+        {
+          "id": "highlight/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "1817add0f864415179ab737d3800894a6b8c6651c0ca87c9863e086496e93cad"
+        },
+        {
+          "id": "highlight/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "4b3795968052e91f799689494551137ed0262ceae0c3df0ac2af4ab304eae106"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "fea05411ac20c6fb958d5615d17d6c64434016047a7c9457104f96d2e3f37e05"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "89c551ed01994aea1ebf98ccbad9ab998700846cee361f25fbe80b57736d387b"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "e13b90cbd5e1c0a75579e987f443d5ef96c9af0c5635e593046041a33088654d"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "570e44cde329b7b2b14b1c0989342cde34fba3f4acdfc09aed734294942e06ab"
+        },
+        {
+          "id": "rename/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "1854cb99d8a0b2a2069304c25043b0e84c1077c6eaf4ef39eadf7935f9988076"
+        },
+        {
+          "id": "rename/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "5c4dcb832cdb047f8a7bcb3989022d511848896f4cfc8747b556502cacfe2bc8"
+        },
+        {
+          "id": "rename/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "3409597fbff184481c6701499796d69e69c9664b512da1bb941d766295cd9776"
+        },
+        {
+          "id": "rename/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "f28c14e8c7cd40d0dc3f78bafb7aae9a463f17505221127604c15c4e1b5453a0"
+        },
+        {
+          "id": "code-action/syntax/S3/positive/service",
+          "owner": "B05",
+          "contractHash": "40595624e71e5c89ed4802a94b7eafd303b7ccfd623063936600e34ea91473a4"
+        },
+        {
+          "id": "code-action/syntax/S3/positive/protocol",
+          "owner": "B05",
+          "contractHash": "c8743e2c45e732a907c26330495c76c7420cdefae30d590b6f6949052e72ceb5"
+        },
+        {
+          "id": "code-action/syntax/S3/negative/service",
+          "owner": "B05",
+          "contractHash": "e10a1fa62516039c7c1829450f4a43417dfe25acea608ed0bcfcfc7a60643762"
+        },
+        {
+          "id": "code-action/syntax/S3/negative/protocol",
+          "owner": "B05",
+          "contractHash": "162aefb809fe0662069b61ed555958d40017f22b7659d64c096de18e77efaab8"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/positive/service",
+          "owner": "B10",
+          "contractHash": "1638d50d322244ca5c4df98db91ef7e5925f2e9baf3a3dc0428564074095d7da"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/positive/protocol",
+          "owner": "B10",
+          "contractHash": "d5d084824a383744464513146d9e902f26c1a1a4dfd1758fa36b8917d37d5ecd"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/negative/service",
+          "owner": "B10",
+          "contractHash": "a39fba86c50fb4b6b06f1159e1cbf8a84afa1cec00a73079c476d7e94102a581"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/negative/protocol",
+          "owner": "B10",
+          "contractHash": "c177d1c94bf68cd0b35007fe405597a594b650938b19cd628f34c20d019f84be"
+        },
+        {
+          "id": "selection/syntax/S3/positive/service",
+          "owner": "B10",
+          "contractHash": "e912ce727b2311c14e3d7b006588ba40f5d8d286752af9ff11c7b350fff04e5d"
+        },
+        {
+          "id": "selection/syntax/S3/positive/protocol",
+          "owner": "B10",
+          "contractHash": "c16e97d4c6cf6a9f5e0862785cd1a09c7d5d95d3a94f841058de424c61d43d22"
+        },
+        {
+          "id": "selection/syntax/S3/negative/service",
+          "owner": "B10",
+          "contractHash": "b8a4b24606b0f0a84a7c5e5fa0a0bfb6800782aabe946934b53021134cf31585"
+        },
+        {
+          "id": "selection/syntax/S3/negative/protocol",
+          "owner": "B10",
+          "contractHash": "b11aa40bd59c8b025490305898ebbf4dfbfefc5dbdeaf49c65ff137752f5b1fe"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "73bf93244a54b7f9c69a258b2c17fe32bb29e5c96ab29d4b6eee3c98daa3468b"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "600e66bd8c558f19206092d6a76aa05c16d1792464feb27f5e14d05257d22246"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "5d084c69282eb2b238bc3e08e577b9f9112584f9133fea53f073439b6dc38abd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "470b3d2ddf37264d990359b170477ae35dd3175e451a74ca97d39450253726cd"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "da97aa7a6ac30f4ca272bab748e5d262cd623dee0f2199deaa15b9c0d074274d"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "11730638c0037ed32e45ea7a2832aefa8d491d1146a3d92a14c3d72e91634cf8"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "fcd25a92682108a2f69f15ab3a4e770637496c960f06f7bf02280fa79dec2d98"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "3ce68a6f40511fcd9e044220de06cd3b25148085d588b9811b96f49b8fa0bdce"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "d1e42d5e34f46150ce1d7cf67625d3c9fbc54c2eae5e342bc5f9681dce6637ec"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "f304770c21801161353956e5434db6df1ba2229bc4a3608a8f14f9b82cba3358"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "1e6b71e1622b6d873fbf3c1f8133a0db13f803630904a8956bae1b4c0e1e545b"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "032d59932fffc83bb2fd1dfe76b4a2257907933e5c8c8543003f9c77024ba042"
+        }
+      ],
+      "to": [
+        {
+          "id": "diagnostics/syntax/S3/positive/service",
+          "owner": "B05",
+          "contractHash": "c573906a5bdd92ecdc4085ca92eaffa9f270923c449e4519595bccce67c68f31"
+        },
+        {
+          "id": "diagnostics/syntax/S3/positive/protocol",
+          "owner": "B05",
+          "contractHash": "3b3103141657658be89fb8d05f8d286a3ea6dbcaeae7234c5318e85433b586ac"
+        },
+        {
+          "id": "diagnostics/syntax/S3/negative/service",
+          "owner": "B05",
+          "contractHash": "bae79f523026769bc4c6a0d9e29b44cc3b1393d3f72a274a830e2c6fc0ae6ce2"
+        },
+        {
+          "id": "diagnostics/syntax/S3/negative/protocol",
+          "owner": "B05",
+          "contractHash": "1db65c96a46384dda634a3f85418b6674e6e472f0bba989408c8cf334e7e6683"
+        },
+        {
+          "id": "completion/syntax/S3/positive/service",
+          "owner": "B03",
+          "contractHash": "b00c71e523e4b2e88259db8d1bf0eab97fc8036d272a7299643bd60394ceccfe"
+        },
+        {
+          "id": "completion/syntax/S3/positive/protocol",
+          "owner": "B03",
+          "contractHash": "c703706ef46540eac77152203f73f2fbe759110c3ab5340cac9fdd6a61be4cd2"
+        },
+        {
+          "id": "completion/syntax/S3/negative/service",
+          "owner": "B03",
+          "contractHash": "9b23ab953c663a14d313218e1e6bd654d827e89a3c46e29970303975c9621dcf"
+        },
+        {
+          "id": "completion/syntax/S3/negative/protocol",
+          "owner": "B03",
+          "contractHash": "00441ec4ac7fa6ce3a08f153b350ad9506b6cb0ddd6d5d34bd80eae0f142a3b3"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/positive/service",
+          "owner": "B03",
+          "contractHash": "0b1b7540f5a716606b5c9a1a908e54efc2805272e9d22e00e81785e4ff1e0f78"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/positive/protocol",
+          "owner": "B03",
+          "contractHash": "b24ee00a137e8717c3e0edea6135d72076b8119d652f6376faa3288649f7628d"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/negative/service",
+          "owner": "B03",
+          "contractHash": "4d8afbed108bac610496e7094d1476e5dd9bead9878e70deeb32da8cd73c10a4"
+        },
+        {
+          "id": "completion-resolve/syntax/S3/negative/protocol",
+          "owner": "B03",
+          "contractHash": "3cfe0693fdbfb7fed8d8f47e8594757f9cd571c8596b5b016f8fda27ff69924c"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/service",
+          "owner": "B07",
+          "contractHash": "0d0762aba4f5d9be5519285b91d0d6f22ba9339030195c78065f36825e009dc6"
+        },
+        {
+          "id": "signature-help/syntax/S3/positive/protocol",
+          "owner": "B07",
+          "contractHash": "769662f390b81dbf8a7277fea5611c0ee59fd654f8ab11ad721c29c6e0d8bfab"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/service",
+          "owner": "B07",
+          "contractHash": "7beab3acc1b55398e774f477971461efc5215eebfd7b98af8cc948cbffab15ec"
+        },
+        {
+          "id": "signature-help/syntax/S3/negative/protocol",
+          "owner": "B07",
+          "contractHash": "59b0c4f9a2dd11ee5e1a165cfe873e9f48808d53a5f1712ee612bdce2a4d36b0"
+        },
+        {
+          "id": "hover/syntax/S3/positive/service",
+          "owner": "B07",
+          "contractHash": "b023d4c3b0b4622fed531b00ae0db0b2a9974d1271d1a90c8c9e7db5a109dc04"
+        },
+        {
+          "id": "hover/syntax/S3/positive/protocol",
+          "owner": "B07",
+          "contractHash": "bc4881402adab4e2095d4c67102fd0cebd32ec9e37188b417a49319306f74d64"
+        },
+        {
+          "id": "hover/syntax/S3/negative/service",
+          "owner": "B07",
+          "contractHash": "a66e38678a63e485da3d78cf41f5821b2d6431e1e7dfb96a657b57904320a818"
+        },
+        {
+          "id": "hover/syntax/S3/negative/protocol",
+          "owner": "B07",
+          "contractHash": "4983b946beabb18a6155858384054b124839a4cd5897e04e736ab49f5784ce8c"
+        },
+        {
+          "id": "definition/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "c90fa4e51b1f2e88c6c0c8588c92169877bdd8ef4dd92b16549faba1da15f25f"
+        },
+        {
+          "id": "definition/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "c816e9fe6bf92a43a6613cdacd4a6e21edeeab3b2132d1569a50fe10d843d07d"
+        },
+        {
+          "id": "definition/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "77012ab759a2652a630cd750386333fc518a31ef5c5fcdd28ae0b250858445f6"
+        },
+        {
+          "id": "definition/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "537c533476f7bda0b969de0a3eddcc04346c8c582253e8403959f11690a5b867"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "c09ca69024db9af6b7f78ab70ada5d905796c7d11c15c7a5d116c64f97ed0481"
+        },
+        {
+          "id": "declaration/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "221eed537ca1e800ff5a4732e33071ba087a3bcfc9c4dad7bc95aa6288d592a3"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "bd926922bfb53c75543875b3109d877b57c592d4509cc5013cf3d08fe7ebe1b7"
+        },
+        {
+          "id": "declaration/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "ffe0c6b292b85c4b75b5ab7241aaa85973b1c5f284d3886b2d1d22115f90e4c8"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/service",
+          "owner": "B02",
+          "contractHash": "2d0d95fe5f4c5a497e0d1fac4f88607b48d6803cc7623ea7deec54eb04f29cbe"
+        },
+        {
+          "id": "type-definition/syntax/S3/positive/protocol",
+          "owner": "B02",
+          "contractHash": "1d09a5f4ac9b9a20b3a17f3cc6b9cf8292509c3ef3aedf2e5d864ec2cd52be95"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/service",
+          "owner": "B02",
+          "contractHash": "a53db025c1b8bb288434615168f5f61e0c6fdcd4b230528633a77c89ab3f6d2a"
+        },
+        {
+          "id": "type-definition/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "fdb28a89328b9299a9274b3585e216a932115dfd2c361bf3885d9261364ebce0"
+        },
+        {
+          "id": "implementation/syntax/S3/negative/protocol",
+          "owner": "B02",
+          "contractHash": "4ce2943926716fc98b5e3c42fc2e1d09d0a4df1a6648241ab3105fcc35856409"
+        },
+        {
+          "id": "references/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "e5cde5628b1960ed352fbc7f90eefdb39bd532af872a38d927dac13203e2dcb2"
+        },
+        {
+          "id": "references/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "d50cf41177a200dbfaafa138d5fd899193faeeb170d7fee097df48d1f66185db"
+        },
+        {
+          "id": "references/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "0ee8d93e491c5e583cc36506a3eeae94b95493849a1470e3d49060cb466fc85a"
+        },
+        {
+          "id": "references/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "2bbb888269283e8f1dc0b0c18d8bb90e3a031c49a186b16d21409f4ce5725520"
+        },
+        {
+          "id": "highlight/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "89afdce289ed1ece71d2842eb5bf14be4f9e6f01e77bf6abb5711de75ab1e478"
+        },
+        {
+          "id": "highlight/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "41971c324044bae999e92680fea7cb19c3edc9c64517bda7fe1ba6a5dddf49be"
+        },
+        {
+          "id": "highlight/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "23e45385205171b9d11786fc0872b892a7eec9d714093a09529f164220fba6c9"
+        },
+        {
+          "id": "highlight/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "44e6c6321c313c9af3055f1d87543c14ff15b49e8bafd0678f827b807b1d19a7"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "d6582bc2258b5f0626e63745607f6d795ee381b59e5f73cf13b0d74b7f5c4cad"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "7f4bb5bb5b8f10cc52544682228fa2db72e1ac3e2b600d0062f3c9cf7ffbe2c0"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "e4bb2bbbb7c5df47269dda9ab57bbbde84dfeb2e059a51b7537e95b4143f911b"
+        },
+        {
+          "id": "prepare-rename/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "d7c40a5d86d3b3a5461dd475e9885f25bc64e5f1a46960f3f7fb2a879724581d"
+        },
+        {
+          "id": "rename/syntax/S3/positive/service",
+          "owner": "B04",
+          "contractHash": "601918fa4da787301dc6eed371a29a1ffc1917abaa63727c9ab10c61086fe23e"
+        },
+        {
+          "id": "rename/syntax/S3/positive/protocol",
+          "owner": "B04",
+          "contractHash": "657f1aba58d531008f206508a9cafac7a5e2de4e3a84863ef146f10a3a98186c"
+        },
+        {
+          "id": "rename/syntax/S3/negative/service",
+          "owner": "B04",
+          "contractHash": "04fe6f60dc653a1734581932204a2c1da916bd0d779b7af9cd3a80e115f96e11"
+        },
+        {
+          "id": "rename/syntax/S3/negative/protocol",
+          "owner": "B04",
+          "contractHash": "6c33df19a9c456f2a34eee8338b9cec8167e1954286b4dc49df177cdd659d973"
+        },
+        {
+          "id": "code-action/syntax/S3/positive/service",
+          "owner": "B05",
+          "contractHash": "20ee6fdd70ac66fa29f033adc5521bf080b6bb6f104625b0dfd6dafbac75dc3b"
+        },
+        {
+          "id": "code-action/syntax/S3/positive/protocol",
+          "owner": "B05",
+          "contractHash": "508322e1b07bdba78118785a5df3ffc843fb2405b37e50bb88be42811c21bdcb"
+        },
+        {
+          "id": "code-action/syntax/S3/negative/service",
+          "owner": "B05",
+          "contractHash": "05562e8d5039677ec04bbd09b044c9466e1a48398bc63ea8e9677e621cf7bbe2"
+        },
+        {
+          "id": "code-action/syntax/S3/negative/protocol",
+          "owner": "B05",
+          "contractHash": "e7fa2c992432089a12a4cad5c36c8f7228feb495fd22e5f39be50074dd3f382e"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/positive/service",
+          "owner": "B10",
+          "contractHash": "165fe02d939d3e44a8f2b6a2a280b970b8414ce0d3ab23e1a06470870adcaaba"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/positive/protocol",
+          "owner": "B10",
+          "contractHash": "c3936965f321444f269432fd679874f906c6ce1a53a4317451745850118bae79"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/negative/service",
+          "owner": "B10",
+          "contractHash": "a35671c5c27284e12e2fd639fe9f0e75a1eea8da4bd6dd93ed27620799b7001a"
+        },
+        {
+          "id": "workspace-symbol/syntax/S3/negative/protocol",
+          "owner": "B10",
+          "contractHash": "f8a030dfaf550c409e33bfc522780ef69cf2c9eb930fe540cbbc0a520bc28651"
+        },
+        {
+          "id": "selection/syntax/S3/positive/service",
+          "owner": "B10",
+          "contractHash": "c1ee3e753cafd061f7c00a3efde35a5a67b12a5e40b5651445e37e696e2088e3"
+        },
+        {
+          "id": "selection/syntax/S3/positive/protocol",
+          "owner": "B10",
+          "contractHash": "deddcc3cc06eceea93bfdf5c72b08c2704a8f34e5a835a1038b84fee5ac780df"
+        },
+        {
+          "id": "selection/syntax/S3/negative/service",
+          "owner": "B10",
+          "contractHash": "64670405d5868e70662070c3388943ed8cbfbce68a4a706797924b2134835198"
+        },
+        {
+          "id": "selection/syntax/S3/negative/protocol",
+          "owner": "B10",
+          "contractHash": "12215ad4b4879d863bae0fe8926869e3be7e812f35bbc4dbb2ad87f0f8993c51"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "980e492d3b2960be797140797e34f326a70e1d423e713ba031b9de8481942869"
+        },
+        {
+          "id": "tokens-full/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "2ad174af7446edae18a1f439fd100bc9903950516597ad95f326e53203a747b2"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "6a0c520afd809c492ea1a7ff1e16d0d0c3bde8527cdc9763709c739a645221bd"
+        },
+        {
+          "id": "tokens-full/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "ce6d09202e413242bca72d4d777c89ab8d2ef852fe7a6f891768da05c82b9995"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "18c9cdc64a778145f2a962fc18f824247b3a2bf1147dd72af555aa4c82183e76"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "0ec3f7769649c5ab5e1c3d4eccbc0bbc7db4002786933e6ebcbcf6898c1197a0"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "5912ac72e4779e2a8f69e0c8f64ccdc6744f219d5708c6ab3a72e3818e90a8a2"
+        },
+        {
+          "id": "tokens-delta/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "b6a3749ed6f15f8bdcd2faf57a601972da5e02a2789f0cc2edabf1f54d3c3881"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/service",
+          "owner": "B06",
+          "contractHash": "7ba39c5e2de98825cff98032abe9ddf1cea848b3f19cc8c8195029d5ae0f576e"
+        },
+        {
+          "id": "tokens-range/syntax/S3/positive/protocol",
+          "owner": "B06",
+          "contractHash": "844d354b11f3592338e294f1d65fc0de3f8d09169af3fc71bc099f2256da6e20"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/service",
+          "owner": "B06",
+          "contractHash": "1bb7983ef325aeb7d69d088e7634fe0abb5a3da3eab6fbc0690026404d3bd530"
+        },
+        {
+          "id": "tokens-range/syntax/S3/negative/protocol",
+          "owner": "B06",
+          "contractHash": "5d0842e875d2a95ef8aa1304314887539cb810302103dfe1800af2d9a8420fea"
+        }
+      ]
+    },
+    {
+      "id": "checkpoint-e-inlay-script-members",
+      "reason": "The reviewed protocol row 35 replaces removed host-path type facts with script member type facts; S3 is also the owned-value contract.",
+      "preservedBehavior": "Keep all inlay syntax, polarity, service/protocol, lifecycle, encoding, URI and editor-smoke IDs and batch ownership. Parameter/local/lambda/script-member/variant/range hints and unknown/Any/schema suppression remain required; no implicit host-path hints or fresh native proof are claimed.",
+      "from": [
+        {
+          "id": "inlay/syntax/S2/positive/service",
+          "owner": "B13",
+          "contractHash": "3c7952974b2dfb7062d35eed6e2c276ccd11501a94fc92026bade70d8d3c452f"
+        },
+        {
+          "id": "inlay/syntax/S2/positive/protocol",
+          "owner": "B13",
+          "contractHash": "dc029303e4340e41b27a71fc82b2bf05ba5dc26ceb3420da4519bb5e7c3778c6"
+        },
+        {
+          "id": "inlay/syntax/S2/negative/service",
+          "owner": "B13",
+          "contractHash": "6d1f9cce422252f90c9c6bdde25b2c734e98992c5afb34ecaa87e72012b4d247"
+        },
+        {
+          "id": "inlay/syntax/S2/negative/protocol",
+          "owner": "B13",
+          "contractHash": "dbbb982729e77c2fd7a145ee1358d115485d2a12b13ceb2edbef5cd0bd23b166"
+        },
+        {
+          "id": "inlay/syntax/S3/positive/service",
+          "owner": "B13",
+          "contractHash": "a0306f100f234dd9d8756c25dbb23f1bfb3d08dcaa24714c919abb64fadbfe45"
+        },
+        {
+          "id": "inlay/syntax/S3/positive/protocol",
+          "owner": "B13",
+          "contractHash": "f88fa79babea0d678a713d6470450af838ec57af886f63babdb97e0250d652ae"
+        },
+        {
+          "id": "inlay/syntax/S3/negative/service",
+          "owner": "B13",
+          "contractHash": "079e25621870f6687a987af525a610628cc69408938071d75e4180a99189f6ab"
+        },
+        {
+          "id": "inlay/syntax/S3/negative/protocol",
+          "owner": "B13",
+          "contractHash": "7aed3cfa1f456cf719b16c3c52fd03a5db6353a8d66c9efd9f0b8ac7beaeeef5"
+        },
+        {
+          "id": "inlay/syntax/S4/positive/service",
+          "owner": "B13",
+          "contractHash": "5813af8ac10306dbe83f96aa294166a7a4a3e22bf4094b49ff5b4ab07b51488b"
+        },
+        {
+          "id": "inlay/syntax/S4/positive/protocol",
+          "owner": "B13",
+          "contractHash": "3364b5bc3f5c35bf0f6a5182e50e632d42aeafd495c6c1ef4e4f2150bbfcec6f"
+        },
+        {
+          "id": "inlay/syntax/S4/negative/service",
+          "owner": "B13",
+          "contractHash": "80911fde1706b3ca64516c50a2f8a5ed86d64629a66da759a7ac543b9296eb98"
+        },
+        {
+          "id": "inlay/syntax/S4/negative/protocol",
+          "owner": "B13",
+          "contractHash": "586d0b557631ee610864ce1413baf9cb2706f757b7cf79b82091113a1a816993"
+        },
+        {
+          "id": "inlay/syntax/S5/positive/service",
+          "owner": "B13",
+          "contractHash": "8fd58a0297493e05ad263f007eb44b28986b81563f9548e121d3edeae9b9b37c"
+        },
+        {
+          "id": "inlay/syntax/S5/positive/protocol",
+          "owner": "B13",
+          "contractHash": "31c7c980e7f21e7d43f5a4faf6292595cd0c795ac2678c9a88fb04507949a42e"
+        },
+        {
+          "id": "inlay/syntax/S5/negative/service",
+          "owner": "B13",
+          "contractHash": "db800321c7279c941d8083641c8d2731af287c1ccd1dfd0428a27ed48066f6be"
+        },
+        {
+          "id": "inlay/syntax/S5/negative/protocol",
+          "owner": "B13",
+          "contractHash": "efe67e37a439a3e815c5ebe782f5f43308c0b527754be673abe87babde12cc10"
+        },
+        {
+          "id": "inlay/syntax/S6/positive/service",
+          "owner": "B13",
+          "contractHash": "8fee08efe514fa69854e0c261d12e18491052a9b9627c2b97d7abed8bc83b227"
+        },
+        {
+          "id": "inlay/syntax/S6/positive/protocol",
+          "owner": "B13",
+          "contractHash": "888796609d0e59d2dfaf8ad99dee1c8e089ee79d0ff9b5ceb24c3275e689a546"
+        },
+        {
+          "id": "inlay/syntax/S6/negative/service",
+          "owner": "B13",
+          "contractHash": "91abda85a39d36204bacc7a15e808bd21d84f7b961bfdd52c0b656fd8e0a9954"
+        },
+        {
+          "id": "inlay/syntax/S6/negative/protocol",
+          "owner": "B13",
+          "contractHash": "ff2469605ca8ccd045a4e447be717829904106213f8971ef7c58f367df471472"
+        },
+        {
+          "id": "inlay/syntax/S9/positive/service",
+          "owner": "B13",
+          "contractHash": "2420b1ef7a4660f2b8d3e3c10b94cef81872f107a04c4a2566fc18e9b0ba2332"
+        },
+        {
+          "id": "inlay/syntax/S9/positive/protocol",
+          "owner": "B13",
+          "contractHash": "21c2b0e5dd5cb4d79ba2e9a5d2160231595d2a3e3847edee16cb332d8d5a62db"
+        },
+        {
+          "id": "inlay/syntax/S9/negative/service",
+          "owner": "B13",
+          "contractHash": "1e2df0056d5c27f165340b5a29916e9686a5ba81de91f5ba9f76493e807b6808"
+        },
+        {
+          "id": "inlay/syntax/S9/negative/protocol",
+          "owner": "B13",
+          "contractHash": "a4edb800b8fdb08e7aba5cca0c3b44f20647a23a7b37b1b7d9dd7c447f64fb6c"
+        },
+        {
+          "id": "inlay/syntax/S10/positive/service",
+          "owner": "B13",
+          "contractHash": "5ebca63e482e2ca1814a6adaa0f15f75cb7c2d476f1c8acf00fd4af235fae03d"
+        },
+        {
+          "id": "inlay/syntax/S10/positive/protocol",
+          "owner": "B13",
+          "contractHash": "579f757df83e8cf046513a740735e6cb0f1e4db21d2cc2310c58aeabc6f8e7ad"
+        },
+        {
+          "id": "inlay/syntax/S10/negative/service",
+          "owner": "B13",
+          "contractHash": "c173887911ba9b6a0a1a6accc52ad99d2d2eff0005f9a27badb1a459d40f74b2"
+        },
+        {
+          "id": "inlay/syntax/S10/negative/protocol",
+          "owner": "B13",
+          "contractHash": "472a0b9bc4d1eca0271d8bb75eec21151328d052e400e417a37e0062196f72f2"
+        },
+        {
+          "id": "inlay/syntax/S11/positive/service",
+          "owner": "B13",
+          "contractHash": "8a93f66617f8d03413f01411c890921bcd968460582a0804d8a505dd9df2285f"
+        },
+        {
+          "id": "inlay/syntax/S11/positive/protocol",
+          "owner": "B13",
+          "contractHash": "23a1280d14db23c38fdf11f38112535fe6fc79215ee87aea022bb90c5902e29d"
+        },
+        {
+          "id": "inlay/syntax/S11/negative/service",
+          "owner": "B13",
+          "contractHash": "893da81064a936e3868ea3e4d7977841ab8be9deb8946b321206821d957b5c41"
+        },
+        {
+          "id": "inlay/syntax/S11/negative/protocol",
+          "owner": "B13",
+          "contractHash": "df3d245b3e75c86c1e77af1679fcbcb71493904f3b701f42633bffdc5dfe7048"
+        },
+        {
+          "id": "inlay/states/dirty/protocol",
+          "owner": "B13",
+          "contractHash": "d5833e12e80b39447238956f736578b3c702a2b7d9ac8cd64c508a209e938fc3"
+        },
+        {
+          "id": "inlay/states/close_restore/protocol",
+          "owner": "B13",
+          "contractHash": "9ded5464bc1af8f0a57fff588a41ac6c48d35787afeb1cda306150a2de283f13"
+        },
+        {
+          "id": "inlay/states/repeat/protocol",
+          "owner": "B13",
+          "contractHash": "d955a778ed0c8e7c6eb501b15ac3de848efeee0699529851c9847d7228ee222d"
+        },
+        {
+          "id": "inlay/states/recovery/protocol",
+          "owner": "B13",
+          "contractHash": "fe5a9b17e927c6f2d4cb667c48abfbcb2b109dc44dfa27030158befe16e6c6e1"
+        },
+        {
+          "id": "inlay/states/unresolved/protocol",
+          "owner": "B13",
+          "contractHash": "158390e24348ab4b248c46099bd7a06d8f6b933db8e082e79fe6e8247fcedc3c"
+        },
+        {
+          "id": "inlay/states/dynamic/protocol",
+          "owner": "B13",
+          "contractHash": "5ec2454945ab2b0d2f0269f709ff7622e9ba1e49415b679eed2cdaabc59ca3d9"
+        },
+        {
+          "id": "inlay/states/missing_schema/protocol",
+          "owner": "B13",
+          "contractHash": "e841068fadbf1fceebad13ba3b7ca488ab8ca0517418ebf646fcf936254b29c6"
+        },
+        {
+          "id": "inlay/states/stale_schema/protocol",
+          "owner": "B13",
+          "contractHash": "8a186135604dac23c3707c2712212d6e3e153b06e2e259b4db6e9db6c220f8de"
+        },
+        {
+          "id": "inlay/states/dependency_change/protocol",
+          "owner": "B13",
+          "contractHash": "79160d9c5bdefc1cda57dac37c48e92f8294a746e49cc464c65d435959e9fefa"
+        },
+        {
+          "id": "inlay/states/dependency_delete/protocol",
+          "owner": "B13",
+          "contractHash": "037a5b136edc2101038d8d35d0adf8fc6cdf710c9f9319c4b352c7dee487daa4"
+        },
+        {
+          "id": "inlay/environments/utf16/protocol",
+          "owner": "B13",
+          "contractHash": "6aaa53289a6d7e9b4ea30d70f0a8625a94eb42141fd77f2f5d8920279a4f429d"
+        },
+        {
+          "id": "inlay/environments/crlf/protocol",
+          "owner": "B13",
+          "contractHash": "8a96b172dcf55f3087223c0c7d5c5fb41d90ef709f25cabe25a1f29c1f40439f"
+        },
+        {
+          "id": "inlay/environments/encoded_uri/protocol",
+          "owner": "B13",
+          "contractHash": "3030ff7c02351a4d33dfaa04b08904af98340c6923248acf2b429e0f779f96c4"
+        },
+        {
+          "id": "inlay/editor/smoke",
+          "owner": "B13",
+          "contractHash": "c51dd07731bdf5cdb8b15d8c56e86f575d93accfaa6b886770ceec20fc5812f0"
+        }
+      ],
+      "to": [
+        {
+          "id": "inlay/syntax/S2/positive/service",
+          "owner": "B13",
+          "contractHash": "28e313672e6d89c7096714a0932f12967f2d8b275cf7fbfc82f944e112d5fa24"
+        },
+        {
+          "id": "inlay/syntax/S2/positive/protocol",
+          "owner": "B13",
+          "contractHash": "b30a49465464ba3843224424768641bd9e7630b3c51f9b43ef113f5654cfba27"
+        },
+        {
+          "id": "inlay/syntax/S2/negative/service",
+          "owner": "B13",
+          "contractHash": "bb1000ccb37199c97f22873d74e64061d75c2c2d738680d2ab0a66f94b7d02f9"
+        },
+        {
+          "id": "inlay/syntax/S2/negative/protocol",
+          "owner": "B13",
+          "contractHash": "ad74c2f061df633dbb7bc2e156f801c07e4e192bb6cc8303afde4ba596311cad"
+        },
+        {
+          "id": "inlay/syntax/S3/positive/service",
+          "owner": "B13",
+          "contractHash": "4ab45a9ed70ea6e74c8ff3410037309c74f81bf1a04cbc4e840dd95227117ebd"
+        },
+        {
+          "id": "inlay/syntax/S3/positive/protocol",
+          "owner": "B13",
+          "contractHash": "131d6f327386cf5e1b0e98821c31191f0c8609964b28c7021bb8f23f49e7dc22"
+        },
+        {
+          "id": "inlay/syntax/S3/negative/service",
+          "owner": "B13",
+          "contractHash": "2ba0a8a74d18b5f96be12c7a4cecef6c15ab0a030f66c68a2d77c630edf88d16"
+        },
+        {
+          "id": "inlay/syntax/S3/negative/protocol",
+          "owner": "B13",
+          "contractHash": "9a661ccb2d6105c54164cd9977280d8497f027039ea0061fd684633c04499a7d"
+        },
+        {
+          "id": "inlay/syntax/S4/positive/service",
+          "owner": "B13",
+          "contractHash": "95cd86079e207edb87ee114c2dacf6e50ffe58b1b58d3bb3e74fb8290c588d29"
+        },
+        {
+          "id": "inlay/syntax/S4/positive/protocol",
+          "owner": "B13",
+          "contractHash": "96668015dc813f6f9c0a19dc09d530b62a94c70286efe7dd8999626061d4d2ab"
+        },
+        {
+          "id": "inlay/syntax/S4/negative/service",
+          "owner": "B13",
+          "contractHash": "5b24ec8056c1d452ce5266bf7304d99f4e8f88a83b6963d97d12d7bfbe643f5a"
+        },
+        {
+          "id": "inlay/syntax/S4/negative/protocol",
+          "owner": "B13",
+          "contractHash": "14c38ed76d109d00f1928ae2701fdeab55df355594c0d3f0a480e585d7ce2279"
+        },
+        {
+          "id": "inlay/syntax/S5/positive/service",
+          "owner": "B13",
+          "contractHash": "0b2b192757121e8800fb8d583bf88c0d6d6295e97e45ce677319a15977913bd4"
+        },
+        {
+          "id": "inlay/syntax/S5/positive/protocol",
+          "owner": "B13",
+          "contractHash": "1bd439ecf59b17aab146d0a2b2b8563a87224df76fd49e3ceeba1a4bb8e559b3"
+        },
+        {
+          "id": "inlay/syntax/S5/negative/service",
+          "owner": "B13",
+          "contractHash": "0b8e3af440d0b9c7a6f5f1570a7f92ff9b9a7b447f4bafe80651cb0b220ec188"
+        },
+        {
+          "id": "inlay/syntax/S5/negative/protocol",
+          "owner": "B13",
+          "contractHash": "df703785a725084cfee6e7e599bbfb7b706e932113ea215aeac98449fa693a26"
+        },
+        {
+          "id": "inlay/syntax/S6/positive/service",
+          "owner": "B13",
+          "contractHash": "60f55ecc50a36aed9b8da75bb2317eaa4fe87acd06aa8da0f77abe4986659d46"
+        },
+        {
+          "id": "inlay/syntax/S6/positive/protocol",
+          "owner": "B13",
+          "contractHash": "d522b74bf2fee0fabccf289e1c22fa5dae9f45b6cc33fb1091cc926382bfc3a1"
+        },
+        {
+          "id": "inlay/syntax/S6/negative/service",
+          "owner": "B13",
+          "contractHash": "b2f2bd819a19861feccb93e4aa6c20df2a31ef3a6ae341f88d6f5b63ee5edd43"
+        },
+        {
+          "id": "inlay/syntax/S6/negative/protocol",
+          "owner": "B13",
+          "contractHash": "dd986195ac42bff94836a57de8cb3e652675fe6a7201b5e3e1c94a1004d145d0"
+        },
+        {
+          "id": "inlay/syntax/S9/positive/service",
+          "owner": "B13",
+          "contractHash": "9226b367e55d77d9a2a18f884544edccaae073a5578263cff1a3ae1c2fa4bfc7"
+        },
+        {
+          "id": "inlay/syntax/S9/positive/protocol",
+          "owner": "B13",
+          "contractHash": "714fc0e06554e0fcdf57cc5eb1aebd3043ef4cf4b80f9ed0a75b55066960cfaa"
+        },
+        {
+          "id": "inlay/syntax/S9/negative/service",
+          "owner": "B13",
+          "contractHash": "fa0374befc5d61b0fd1ab4f27619069e80395d2c44008ea0f7dabcbb99a96f75"
+        },
+        {
+          "id": "inlay/syntax/S9/negative/protocol",
+          "owner": "B13",
+          "contractHash": "bee385a4b863e0e342b4f4a34657fb46fd731ec2286d006e1e244078bc623bf0"
+        },
+        {
+          "id": "inlay/syntax/S10/positive/service",
+          "owner": "B13",
+          "contractHash": "7aa6096841de704f58ca2047bca9d7dac964226b1d3a730a9588ee94868903c2"
+        },
+        {
+          "id": "inlay/syntax/S10/positive/protocol",
+          "owner": "B13",
+          "contractHash": "fd9f238c2a43c7a5fc1d6e91793039c6e47ea23010977113febe2d3f2f9a4123"
+        },
+        {
+          "id": "inlay/syntax/S10/negative/service",
+          "owner": "B13",
+          "contractHash": "78b853b373fa290c12c43a5da110540a0d4131286edb68b44e9cb078a1ed8a16"
+        },
+        {
+          "id": "inlay/syntax/S10/negative/protocol",
+          "owner": "B13",
+          "contractHash": "9837ee8656cafdb9d39ae0ca910704432c212200ce349dbf4480b28017948b4a"
+        },
+        {
+          "id": "inlay/syntax/S11/positive/service",
+          "owner": "B13",
+          "contractHash": "f85049448342039a68dca161de7fe892412b5926efab5053e1c481cf090105ff"
+        },
+        {
+          "id": "inlay/syntax/S11/positive/protocol",
+          "owner": "B13",
+          "contractHash": "3f8e6e0204d583ea0a7b2688e221b22947c57d01761d672758d4779e77114330"
+        },
+        {
+          "id": "inlay/syntax/S11/negative/service",
+          "owner": "B13",
+          "contractHash": "34777e6288955ed0155551bb220bf491c867299c3b643f70ee1dccccaf07fca3"
+        },
+        {
+          "id": "inlay/syntax/S11/negative/protocol",
+          "owner": "B13",
+          "contractHash": "8a637a95f05b5a711c0bb6806ee3cdc809038afd02e7bb0e71d4450e2aa4fd21"
+        },
+        {
+          "id": "inlay/states/dirty/protocol",
+          "owner": "B13",
+          "contractHash": "4ee491c6e481b6679e67982676c37e9e502ffe2e5ddbb15db05282385670bb47"
+        },
+        {
+          "id": "inlay/states/close_restore/protocol",
+          "owner": "B13",
+          "contractHash": "d53c5d81918d4db4e2dcc94dc8155caea2a9e127e33b7f3180a954da7e0bf3cb"
+        },
+        {
+          "id": "inlay/states/repeat/protocol",
+          "owner": "B13",
+          "contractHash": "41fc43ddbd58173fb7c2d00465d977cd93a9eb85f470b380a37afc99b8c4ddcc"
+        },
+        {
+          "id": "inlay/states/recovery/protocol",
+          "owner": "B13",
+          "contractHash": "5d8fa429e2429c413918f3d0a2dea8eacd6374fa3cd3ac87d681855db1ed0507"
+        },
+        {
+          "id": "inlay/states/unresolved/protocol",
+          "owner": "B13",
+          "contractHash": "a207b12d3e20be7b41652a3aafccb93b952ffb508966528bed5939fa5bbf03d2"
+        },
+        {
+          "id": "inlay/states/dynamic/protocol",
+          "owner": "B13",
+          "contractHash": "037f5c105267f6b4819c1985770f9eb33e4ab3dd74ff22ea5e2019916ec5646b"
+        },
+        {
+          "id": "inlay/states/missing_schema/protocol",
+          "owner": "B13",
+          "contractHash": "1f516b388677713c43f7ddfbb4ad21c42a7339e939e047507df95fca33be457e"
+        },
+        {
+          "id": "inlay/states/stale_schema/protocol",
+          "owner": "B13",
+          "contractHash": "021e89462a260bc901e05389a9ea085a893fd347ac9cba7f7da2382d124897e6"
+        },
+        {
+          "id": "inlay/states/dependency_change/protocol",
+          "owner": "B13",
+          "contractHash": "f7c8ca91a04014b0ea6125374c287e4fa1ff27a6cba602bce8f29eab7e891c34"
+        },
+        {
+          "id": "inlay/states/dependency_delete/protocol",
+          "owner": "B13",
+          "contractHash": "b2c282dea7a3eeeb878900151f0e597bd4d201b89201011f2c43c298521b67dd"
+        },
+        {
+          "id": "inlay/environments/utf16/protocol",
+          "owner": "B13",
+          "contractHash": "054cfbfc564026a2462140df2eab0abc2c552b8c37767e6f9e390d74996bf02a"
+        },
+        {
+          "id": "inlay/environments/crlf/protocol",
+          "owner": "B13",
+          "contractHash": "00197a379df90de2b022417de0c6ccc40030c01dad5619249e6be6e2432a75eb"
+        },
+        {
+          "id": "inlay/environments/encoded_uri/protocol",
+          "owner": "B13",
+          "contractHash": "24ac5fac2eaa5a744df7d4f8015908b5c238cb579c50570a835b96a20a08dfc5"
+        },
+        {
+          "id": "inlay/editor/smoke",
+          "owner": "B13",
+          "contractHash": "fbdec010546d4a92b5a4dd377db4a92d5012e1ba07f2355985b429274d6cc745"
+        }
+      ]
+    },
+    {
+      "id": "checkpoint-e-retired-view-hover-proof",
+      "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review.",
+      "preservedBehavior": "Preserve all four hover S10 positive/negative service/protocol IDs, original hashes, assertions and historical test links. Record replacement tests as candidates only; these obligations remain unreviewed until current-source proof is reviewed.",
+      "from": [
+        {
+          "id": "hover/syntax/S10/positive/service",
+          "owner": "B07",
+          "contractHash": "1d1890fabbb73cc97fe75f6bf2fd386338e78038210710e29d56db6756c4545d"
+        },
+        {
+          "id": "hover/syntax/S10/positive/protocol",
+          "owner": "B07",
+          "contractHash": "18c3356c120032d8791139aa2616b9699034025606a812374dd9f8aaf944d098"
+        },
+        {
+          "id": "hover/syntax/S10/negative/service",
+          "owner": "B07",
+          "contractHash": "5c62c61f726422c9dc40af448a17dbeb36f8cf5c7b793615777574d7edb5edd5"
+        },
+        {
+          "id": "hover/syntax/S10/negative/protocol",
+          "owner": "B07",
+          "contractHash": "3b362c1b950202ca8be4b91ad3a907371f1b6b689d6f31dcf670477104139d08"
+        }
+      ],
+      "to": [
+        {
+          "id": "hover/syntax/S10/positive/service",
+          "owner": "B07",
+          "contractHash": "1d1890fabbb73cc97fe75f6bf2fd386338e78038210710e29d56db6756c4545d"
+        },
+        {
+          "id": "hover/syntax/S10/positive/protocol",
+          "owner": "B07",
+          "contractHash": "18c3356c120032d8791139aa2616b9699034025606a812374dd9f8aaf944d098"
+        },
+        {
+          "id": "hover/syntax/S10/negative/service",
+          "owner": "B07",
+          "contractHash": "5c62c61f726422c9dc40af448a17dbeb36f8cf5c7b793615777574d7edb5edd5"
+        },
+        {
+          "id": "hover/syntax/S10/negative/protocol",
+          "owner": "B07",
+          "contractHash": "3b362c1b950202ca8be4b91ad3a907371f1b6b689d6f31dcf670477104139d08"
+        }
+      ]
+    }
+  ]
 }

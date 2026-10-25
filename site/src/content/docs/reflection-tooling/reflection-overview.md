@@ -25,11 +25,11 @@ fn main(player: Player) {
 ## Controlled Operations
 
 Reflection can perform controlled reads, writes, and calls when the active
-policy permits them. Those operations still go through the same runtime and host
-access boundaries as normal script code.
+policy permits them. Those operations use the same script-value boundaries as
+normal script code; reflection cannot reconstruct removed host paths.
 
 Reflection is not a bypass around value permissions, execution budgets, capability
-checks, read-only fields, or stale host reference validation.
+checks or read-only fields.
 
 ## What Reflection Cannot Do
 

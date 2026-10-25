@@ -3,7 +3,9 @@ title: "Trait 和 Trait 方法"
 description: "Vela Trait 和 Trait 方法文档。"
 ---
 
-Trait 是运行时协议，用来描述脚本类型或宿主类型可以实现的方法。它支持动态 protocol-style 分发，但不是把 Rust trait 直接搬进脚本语法。
+Trait 是运行时协议，用来描述脚本类型可以实现的方法。它支持动态
+protocol-style 分发，但不是把 Rust trait 直接搬进脚本语法，也不提供 Rust
+宿主对象的 trait receiver 或方法注册。
 
 ## Trait 声明
 

@@ -10,7 +10,7 @@ iterator 创建。集合增长仍然受 VM 执行预算和集合预算检查。
 
 基础查询使用 `len`、`is_empty`、`first`、`last`、`contains` 和
 `index_of`。`contains` 和 `index_of` 使用 `ValueKey` 容器等价规则：
-不可变叶子值按值比较，脚本堆对象和 host ref 按 identity 比较。可能找不到值
+不可变叶子值按值比较，可作为 key 的脚本堆对象按 identity 比较。可能找不到值
 的方法返回 `Option`。当查询需要通过 `==`/`PartialEq` 使用业务相等时，使用
 `find`、`any`、`filter` 等 predicate helper。
 

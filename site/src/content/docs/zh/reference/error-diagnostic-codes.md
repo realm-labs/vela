@@ -22,7 +22,7 @@ failures。
 ## Host 和 Reflection Errors
 
 host 和 reflection errors 覆盖 field not found、field not writable、
-permission denied、required capability missing、stale host ref generation、
+permission denied、required capability missing、
 unknown reflected item 和 reflect-call denial。
 
 ## Hot Reload Errors

@@ -19,14 +19,13 @@
   "use"
 ] @keyword
 
-(state_declaration ["extern" "state"] @keyword)
+(state_declaration "state" @keyword)
 
 (visibility) @keyword
 
 (boolean_literal) @boolean
 
 ; Variables
-(let_statement name: (identifier) @variable)
 (binding_pattern (identifier) @variable)
 (path_expression (path (identifier) @variable))
 

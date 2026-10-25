@@ -1,0 +1,385 @@
+{
+  "version": 1,
+  "id": "checkpoint-e-reduced-inventory",
+  "baseRevision": "226900e81",
+  "reason": "Review the actual E reduced protocol/grammar contract; retain the original execution baseline and every required ID. Exact superseded and replacement execution hashes are in the three manifest migrations.",
+  "preserved": {
+    "executionBaselineSha256": "bd00e36bb79cfb5efa01f3ea5875d7b40e138a94563afcab19d25cbce8f1cc06",
+    "featureFiles": {
+      "features/lifecycle.json": "085bb7e8ec9de7d4205bec891191643caaeb37a09999a3ac106f5864a2239505",
+      "features/navigation.json": "d6439e4219ba2c17ec0fb0797eeaa3a13e65f4f5f2f75bf7f6ad3e4b95e83877",
+      "features/authoring.json": "915d259cef00d3f6018d6fe49adcda0f9da5f010870f7353912c14b005ac2c3c",
+      "features/workspace.json": "e1dd7d205964f7456938a1afb5c9937ece0d655e356dd6f694b1791908bda798"
+    },
+    "catalogEvidenceSha256": "55e205cbc2fca1de9131ef51667c7b38aecc90ff066a4aca4098d2f0a1e189f5",
+    "exemptionsSha256": "f79390ce8236bd9643814efcb4e78e9a90ce8f6d35ac04d86d9c95bec1fa2762",
+    "unchangedExecutionContracts": 1253,
+    "interactionsSha256": "26b30c242d1fc4ec684b122398063a9a03286461fdd1d671033c82d051a81d99",
+    "batchOwnershipSha256": "394249275c4d4da55dff824afd80c37e3e14c370a349364a35e47c5753fa88d4"
+  },
+  "protocolChanges": [
+    {
+      "row": 35,
+      "feature": "inlay",
+      "from": {
+        "id": "protocol/textDocument/inlayHint",
+        "contract": {
+          "name": "`textDocument/inlayHint`",
+          "capability": "`inlayHintProvider`",
+          "syntax": [
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S9",
+            "S10",
+            "S11"
+          ],
+          "positive": "Parameter names, local type facts, lambda parameter facts, host-path type facts, tuple-variant payload names, requested range.",
+          "negative": "Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints."
+        },
+        "contractHash": "aa9e444c1a427ce98f358fb4d32d04ee1099879372319d37de1a8a9a29a7f56a"
+      },
+      "to": {
+        "id": "protocol/textDocument/inlayHint",
+        "contract": {
+          "name": "`textDocument/inlayHint`",
+          "capability": "`inlayHintProvider`",
+          "syntax": [
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S9",
+            "S10",
+            "S11"
+          ],
+          "positive": "Parameter names, local type facts, lambda parameter facts, script member type facts, tuple-variant payload names, requested range.",
+          "negative": "Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints."
+        },
+        "contractHash": "ce740b3415875dfd2427130cdbe3e96e1f8aafbed7d584c3e217286d4b23138a"
+      },
+      "reason": "The reviewed protocol row 35 replaces removed host-path type facts with script member type facts; S3 is also the owned-value contract."
+    }
+  ],
+  "syntaxChanges": [
+    {
+      "id": "S1",
+      "from": {
+        "contract": {
+          "id": "S1",
+          "name": "Top-level declarations",
+          "surface": "`pub`, `use`, `const`, contextual `state`, `extern state`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
+        },
+        "contractHash": "93de858f9b3602addb0165dced976c4bff76beb73dab5058da33a01cd4c2a80f"
+      },
+      "to": {
+        "contract": {
+          "id": "S1",
+          "name": "Top-level declarations",
+          "surface": "`pub`, `use`, `const`, VM-owned contextual `state`, synchronous `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
+        },
+        "contractHash": "3617bb54d3f0827ed94cd79a1706c0556c87f15b2354f98355e384e62cdd5345"
+      },
+      "reason": "A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+    },
+    {
+      "id": "S3",
+      "from": {
+        "contract": {
+          "id": "S3",
+          "name": "Type positions",
+          "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema host types, traits, missing type facts, dynamic `Any` and unknown."
+        },
+        "contractHash": "14989df21ca35d35fbbecbfbb1cac1fd13fb300ad28e5b1f727da6cd5d5272d6"
+      },
+      "to": {
+        "contract": {
+          "id": "S3",
+          "name": "Type positions",
+          "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema value types, traits, missing type facts, dynamic `Any` and unknown."
+        },
+        "contractHash": "0d61788031b79fb23af5a036c41e578a1711e7d48905af852296ff0278b237b3"
+      },
+      "reason": "D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+    }
+  ],
+  "sourceChanges": [
+    {
+      "file": "docs/grammar.ebnf",
+      "from": "bea64bde444fa2294f06ddbf307f8ebaa890d06ecdd52d871c6933f453bce833",
+      "to": "c005493d1eefab75bd0fc6e1602077c17ee70ef05c3e3c44a2dd2d341617247d",
+      "reason": "Remove await/extern productions, async/extern keywords and async function/trait modifiers; document script-owned assignment, retaining all other productions."
+    }
+  ],
+  "retiredGrammar": [
+    {
+      "id": "grammar/await_suffix",
+      "group": "expressions",
+      "syntax": [
+        "S2",
+        "S4",
+        "S5",
+        "S7",
+        "S14"
+      ],
+      "definition": "await_suffix    = \".\", ws, \"await\" ;",
+      "contractHash": "290b2b83f423b68d773e0fce3f42ce890fbea0401ca341dd68106aacc059601f",
+      "reason": "C removes script await; retain synchronous call, field, index and try suffixes and explicit malformed async/await rejection.",
+      "retainedNegativeRequirements": [
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol"
+      ]
+    },
+    {
+      "id": "grammar/extern_state_decl",
+      "group": "items",
+      "syntax": [
+        "S1",
+        "S4",
+        "S8"
+      ],
+      "definition": "extern_state_decl\n                = \"extern\", ws, contextual_state_kw, ws, IDENT, ws,\n                  type_annotation, ws, item_term ;",
+      "contractHash": "c6d74ed22f5533768d2c18424db89586383f32bceee3942492de28bac830e4aa",
+      "reason": "D removes dependent extern host bindings; retain initialized VM-owned state and extern syntax rejection/recovery.",
+      "retainedNegativeRequirements": [
+        "completion/syntax/S9/negative/service",
+        "completion/syntax/S9/negative/protocol"
+      ]
+    }
+  ],
+  "previousCheckpoint": {
+    "acceptedIds": [
+      "B00",
+      "B01",
+      "B02",
+      "B03",
+      "B04",
+      "B05",
+      "B06",
+      "B07",
+      "B08",
+      "B09"
+    ],
+    "nextTask": "B10.45",
+    "activeChild": "B10.45",
+    "profileAuditsSha256": "cbfe8203dee82bb09d8d346752f73316bb407cbeb94503528f54e6b956704afa",
+    "completedChildrenSha256": "ecb20e4e1d0669862fd11e50d5c61f33886b03ab6cc1e959bcd7d73eb92bbc9d",
+    "artifactsSha256": "bb0fe3e9440c52604e35d58ef8d48d4bc1c2684bef6a0ccfa66da807e3c2c48f",
+    "openIssuesSha256": "6c82a98686d6e08bd2df3597e775422cdcfabeda5c1f46243d088cd8414d21d0",
+    "acceptanceSha256": {
+      "B00": "4b959f275d20e2d8b4a8fa969ccf38852d0d901a72a4c50b9de455d59e2dd04b",
+      "B01": "0ad277de048b72d7b0f3f54a59801aba0c0e843a75ec09500fdd04e1ad26c4a7",
+      "B02": "9beee638b4f7cdb0b885376981575ac65d3f3b11351c99138a1d8a6554253456",
+      "B03": "9abb3282841d0abd2c7b2af9ab2f433177eb1a0268a65a477e066e15a577b8e7",
+      "B04": "aacf26aac6425b71c3ff24f28d370cfcf036b12098a1ebde76a6e51a82fa62cb",
+      "B05": "02019d489713cd45c96f230b725a1d99e06214a898725b81ccd1d2794ba947f3",
+      "B06": "4731b30f0fb4d18133a630f8d8197f5e1acddbe1ce99e839e1c4d5579552914a",
+      "B07": "c88cf05f2f870a813b013bae913108438253caa449b504ba39ee4280d947eb54",
+      "B08": "9353b1d2ae54a652e64ec1a74d0e8ddc0e778a80a35c0f2eb8857d16edc31723",
+      "B09": "cf3ac8ba50720055b0b17ba86131bf2dfefce48986e69060dc30e3227851a93c"
+    }
+  },
+  "migrations": [
+    {
+      "id": "checkpoint-e-s1-owned-state",
+      "count": 105
+    },
+    {
+      "id": "checkpoint-e-s3-owned-values",
+      "count": 73
+    },
+    {
+      "id": "checkpoint-e-inlay-script-members",
+      "count": 46
+    },
+    {
+      "id": "checkpoint-e-retired-view-hover-proof",
+      "count": 4,
+      "unchangedContracts": true
+    }
+  ],
+  "pendingEvidence": [
+    "tokens-full/syntax/S3/positive/service",
+    "tokens-full/syntax/S3/positive/protocol",
+    "tokens-full/syntax/S3/negative/service",
+    "tokens-full/syntax/S3/negative/protocol",
+    "tokens-delta/syntax/S3/positive/service",
+    "tokens-delta/syntax/S3/positive/protocol",
+    "tokens-delta/syntax/S3/negative/service",
+    "tokens-delta/syntax/S3/negative/protocol",
+    "tokens-range/syntax/S3/positive/service",
+    "tokens-range/syntax/S3/positive/protocol",
+    "tokens-range/syntax/S3/negative/service",
+    "tokens-range/syntax/S3/negative/protocol",
+    "tokens-full/syntax/S1/positive/service",
+    "tokens-full/syntax/S1/positive/protocol",
+    "tokens-full/syntax/S1/negative/service",
+    "tokens-full/syntax/S1/negative/protocol",
+    "tokens-delta/syntax/S1/positive/service",
+    "tokens-delta/syntax/S1/positive/protocol",
+    "tokens-delta/syntax/S1/negative/service",
+    "tokens-delta/syntax/S1/negative/protocol",
+    "tokens-range/syntax/S1/positive/service",
+    "tokens-range/syntax/S1/positive/protocol",
+    "tokens-range/syntax/S1/negative/service",
+    "tokens-range/syntax/S1/negative/protocol",
+    "diagnostics/syntax/S1/positive/service",
+    "diagnostics/syntax/S1/negative/service",
+    "diagnostics/syntax/S1/positive/protocol",
+    "diagnostics/syntax/S1/negative/protocol",
+    "diagnostics/syntax/S3/positive/service",
+    "diagnostics/syntax/S3/negative/service",
+    "diagnostics/syntax/S3/positive/protocol",
+    "diagnostics/syntax/S3/negative/protocol",
+    "code-action/syntax/S1/positive/service",
+    "code-action/syntax/S1/negative/service",
+    "code-action/syntax/S1/positive/protocol",
+    "code-action/syntax/S1/negative/protocol",
+    "code-action/syntax/S3/positive/service",
+    "code-action/syntax/S3/negative/service",
+    "code-action/syntax/S3/positive/protocol",
+    "code-action/syntax/S3/negative/protocol",
+    "references/syntax/S1/positive/service",
+    "references/syntax/S1/positive/protocol",
+    "references/syntax/S1/negative/service",
+    "references/syntax/S1/negative/protocol",
+    "highlight/syntax/S1/positive/service",
+    "highlight/syntax/S1/positive/protocol",
+    "highlight/syntax/S1/negative/service",
+    "highlight/syntax/S1/negative/protocol",
+    "prepare-rename/syntax/S1/positive/service",
+    "prepare-rename/syntax/S1/positive/protocol",
+    "prepare-rename/syntax/S1/negative/service",
+    "prepare-rename/syntax/S1/negative/protocol",
+    "rename/syntax/S1/positive/service",
+    "rename/syntax/S1/positive/protocol",
+    "rename/syntax/S1/negative/service",
+    "rename/syntax/S1/negative/protocol",
+    "references/syntax/S3/positive/service",
+    "references/syntax/S3/positive/protocol",
+    "references/syntax/S3/negative/service",
+    "references/syntax/S3/negative/protocol",
+    "highlight/syntax/S3/positive/service",
+    "highlight/syntax/S3/positive/protocol",
+    "highlight/syntax/S3/negative/service",
+    "highlight/syntax/S3/negative/protocol",
+    "prepare-rename/syntax/S3/positive/service",
+    "prepare-rename/syntax/S3/positive/protocol",
+    "prepare-rename/syntax/S3/negative/service",
+    "prepare-rename/syntax/S3/negative/protocol",
+    "rename/syntax/S3/positive/service",
+    "rename/syntax/S3/positive/protocol",
+    "rename/syntax/S3/negative/service",
+    "rename/syntax/S3/negative/protocol",
+    "implementation/syntax/S1/negative/protocol",
+    "implementation/syntax/S3/negative/protocol",
+    "definition/syntax/S3/positive/service",
+    "definition/syntax/S3/positive/protocol",
+    "definition/syntax/S3/negative/service",
+    "definition/syntax/S3/negative/protocol",
+    "declaration/syntax/S3/positive/service",
+    "declaration/syntax/S3/positive/protocol",
+    "declaration/syntax/S3/negative/service",
+    "declaration/syntax/S3/negative/protocol",
+    "type-definition/syntax/S3/positive/service",
+    "type-definition/syntax/S3/positive/protocol",
+    "type-definition/syntax/S3/negative/service",
+    "type-definition/syntax/S3/negative/protocol",
+    "definition/syntax/S1/positive/service",
+    "definition/syntax/S1/positive/protocol",
+    "definition/syntax/S1/negative/service",
+    "definition/syntax/S1/negative/protocol",
+    "declaration/syntax/S1/positive/service",
+    "declaration/syntax/S1/positive/protocol",
+    "declaration/syntax/S1/negative/service",
+    "declaration/syntax/S1/negative/protocol",
+    "type-definition/syntax/S1/positive/service",
+    "type-definition/syntax/S1/positive/protocol",
+    "type-definition/syntax/S1/negative/service",
+    "type-definition/syntax/S1/negative/protocol",
+    "completion/syntax/S3/positive/service",
+    "completion/syntax/S3/positive/protocol",
+    "completion/syntax/S3/negative/service",
+    "completion/syntax/S3/negative/protocol",
+    "completion-resolve/syntax/S3/positive/service",
+    "completion-resolve/syntax/S3/positive/protocol",
+    "completion-resolve/syntax/S3/negative/service",
+    "completion-resolve/syntax/S3/negative/protocol",
+    "completion/syntax/S1/positive/service",
+    "completion/syntax/S1/positive/protocol",
+    "completion/syntax/S1/negative/service",
+    "completion/syntax/S1/negative/protocol",
+    "signature-help/syntax/S3/positive/service",
+    "signature-help/syntax/S3/positive/protocol",
+    "signature-help/syntax/S3/negative/service",
+    "signature-help/syntax/S3/negative/protocol",
+    "hover/syntax/S3/positive/service",
+    "hover/syntax/S3/positive/protocol",
+    "hover/syntax/S3/negative/service",
+    "hover/syntax/S3/negative/protocol",
+    "hover/syntax/S1/positive/service",
+    "hover/syntax/S1/positive/protocol",
+    "hover/syntax/S1/negative/service",
+    "hover/syntax/S1/negative/protocol",
+    "did-open/syntax/S1/positive/service",
+    "did-open/syntax/S1/positive/protocol",
+    "did-open/syntax/S1/negative/service",
+    "did-open/syntax/S1/negative/protocol",
+    "did-change/syntax/S1/positive/service",
+    "did-change/syntax/S1/positive/protocol",
+    "did-change/syntax/S1/negative/service",
+    "did-change/syntax/S1/negative/protocol",
+    "document-symbol/syntax/S1/positive/service",
+    "document-symbol/syntax/S1/positive/protocol",
+    "document-symbol/syntax/S1/negative/service",
+    "document-symbol/syntax/S1/negative/protocol",
+    "workspace-symbol/syntax/S1/positive/service",
+    "workspace-symbol/syntax/S1/positive/protocol",
+    "workspace-symbol/syntax/S3/positive/service",
+    "workspace-symbol/syntax/S3/positive/protocol",
+    "workspace-symbol/syntax/S3/negative/service",
+    "workspace-symbol/syntax/S3/negative/protocol",
+    "workspace-symbol/syntax/S1/negative/service",
+    "workspace-symbol/syntax/S1/negative/protocol",
+    "folding/syntax/S1/positive/service",
+    "folding/syntax/S1/positive/protocol",
+    "folding/syntax/S1/negative/service",
+    "folding/syntax/S1/negative/protocol",
+    "selection/syntax/S1/positive/service",
+    "selection/syntax/S1/positive/protocol",
+    "selection/syntax/S1/negative/service",
+    "selection/syntax/S1/negative/protocol",
+    "selection/syntax/S3/positive/service",
+    "selection/syntax/S3/positive/protocol",
+    "selection/syntax/S3/negative/service",
+    "selection/syntax/S3/negative/protocol",
+    "hover/syntax/S10/positive/service",
+    "hover/syntax/S10/positive/protocol",
+    "hover/syntax/S10/negative/service",
+    "hover/syntax/S10/negative/protocol"
+  ],
+  "reopenedBatches": [
+    "B02",
+    "B03",
+    "B04",
+    "B05",
+    "B06",
+    "B07",
+    "B08"
+  ],
+  "retiredTestReferences": [
+    {
+      "id": "service:hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries",
+      "replacementCandidate": "hover::type_matrix_tests::hover_type_matrix_preserves_retained_hints_and_removed_view_rejections_and_degraded_boundaries",
+      "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+    },
+    {
+      "id": "protocol:tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries",
+      "replacementCandidate": "tests::hover::type_matrix::hover_type_matrix_preserves_retained_hints_and_removed_view_rejections_and_degraded_boundaries",
+      "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+    }
+  ]
+}

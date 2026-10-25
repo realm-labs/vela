@@ -44,7 +44,7 @@ function assertAncestry(rows, parent) {
 function metadataArtifact(schema) {
   const facts = structuredClone(schema);
   for (const entries of Object.values(facts)) for (const entry of entries) delete entry.sourceSpan;
-  return { formatVersion: 1, facts };
+  return { formatVersion: 4, facts };
 }
 
 module.exports = { document, expected, count, assertAncestry, metadataArtifact };

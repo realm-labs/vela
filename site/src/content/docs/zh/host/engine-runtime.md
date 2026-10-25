@@ -8,8 +8,9 @@ runtime 来执行这些定义。
 
 ## Engine
 
-`Engine` 保存已注册的 host types、native functions、host methods、
-reflection policy、capability 默认值、standard natives 和 hot-reload policy。
+`Engine` 保存已注册的 Value 类型和独立同步 native 函数、reflection policy、
+capability 默认值、standard natives 和 hot-reload policy。native 调用只通过
+现有自有值 API 传递数据，不注册 Rust receiver 方法。
 
 ```rust
 let engine = Engine::builder()
@@ -30,8 +31,9 @@ Builder API 保持显式，这样 schemas、effects 和 reflection metadata 都�
 ## Runtime
 
 `Runtime` 拥有一个 program image 的执行状态。它是可变的，因为一次调用
-可能分配脚本值、更新 VM state、填充 inline caches、应用热更新，并通过
-调用参数或 adapter 修改宿主状态。
+可能分配脚本值、更新 VM state、填充 inline caches，以及应用和激活脚本热更新。
+调用参数和适配器不会提供 Rust 写穿；现有转换产生脚本自有数据，修改不会隐式
+写回 Rust。独立同步 native 函数自身仍可执行声明并获准的宿主 effects。
 
 ```rust
 let program = engine.compile_source(source)?;

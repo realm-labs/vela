@@ -57,6 +57,41 @@ fn runs_linked_program_basic_arithmetic_without_unlinked_code() {
 }
 
 #[test]
+fn linked_execution_reports_result_and_execution_units_with_finite_budget() {
+    let compiled = compile_test_program(
+        SourceId::new(1),
+        "fn helper(value) { return value + 1; } fn main() { return helper(41); }",
+    )
+    .expect("source should compile");
+    let artifact = vela_bytecode::Linker::new()
+        .link_compiled_program(compiled)
+        .expect("program should link");
+    let vm = Vm::new();
+    let mut complete = ExecutionBudget::new(1, usize::MAX, usize::MAX);
+
+    assert_eq!(
+        vm.run_linked_program_with_budget(&artifact, "main", &[], &mut complete),
+        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(42)))
+    );
+    assert_eq!(complete.execution_units_consumed(), 1);
+    assert_eq!(complete.current_call_depth(), 0);
+
+    let mut exhausted = ExecutionBudget::new(0, usize::MAX, usize::MAX);
+    let error = vm
+        .run_linked_program_with_budget(&artifact, "main", &[], &mut exhausted)
+        .expect_err("call must exhaust a zero execution-unit budget");
+    assert_eq!(
+        error.kind(),
+        VmErrorKind::BudgetExceeded {
+            budget: crate::budget::ExecutionBudgetKind::ExecutionUnits,
+            limit: 0,
+        }
+    );
+    assert_eq!(exhausted.execution_units_consumed(), 0);
+    assert_eq!(exhausted.current_call_depth(), 0);
+}
+
+#[test]
 fn linked_execution_rejects_undersized_inline_cache_provider() {
     struct EmptyInlineCaches;
 

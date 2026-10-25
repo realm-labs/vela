@@ -94,11 +94,26 @@ test("removed spellings in selection sources are diagnosed nonexecuting recovery
   }
 });
 
-test("editor grammar does not advertise script async or await keywords", () => {
+test("editor grammars keep ordinary state without removed extern, async or await keywords", () => {
   const grammar = fs.readFileSync(path.join(root, "editors/tree-sitter-vela/grammar.js"), "utf8");
-  assert.doesNotMatch(grammar, /["'](?:async|await)["']/);
-  const textmate = fs.readFileSync(path.join(root, "editors/vscode/syntaxes/vela.tmLanguage.json"), "utf8");
-  assert.doesNotMatch(textmate, /\basync\b|\bawait\b/);
+  assert.doesNotMatch(grammar, /["'](?:async|await|extern)["']/);
+  const generated = JSON.parse(fs.readFileSync(path.join(root, "editors/tree-sitter-vela/src/node-types.json"), "utf8"));
+  assert.ok(!generated.some((node) => ["extern", "async", "await"].includes(node.type)));
+  const state = generated.find((node) => node.type === "state_declaration");
+  assert.equal(state.fields.value.required, true);
+  for (const file of ["editors/vscode/syntaxes/vela.tmLanguage.json", "site/src/syntax/vela.tmLanguage.json"]) {
+    const textmate = fs.readFileSync(path.join(root, file), "utf8");
+    assert.doesNotMatch(textmate, /\basync\b|\bawait\b|\bextern\b/, file);
+    const declarations = JSON.parse(textmate).repository.declarations.patterns;
+    const stateRule = declarations.find((rule) => rule.match.includes("(state)"));
+    const match = new RegExp(stateRule.match).exec("state count: i64 = 0");
+    assert.deepEqual(match.slice(1), ["state", "count"], file);
+    assert.equal(stateRule.captures[1].name, "keyword.declaration.vela", file);
+    assert.match(stateRule.captures[2].name, /^variable\./, file);
+  }
+  const highlights = fs.readFileSync(path.join(root, "editors/zed/languages/vela/highlights.scm"), "utf8");
+  assert.doesNotMatch(highlights, /"(?:extern|async|await)"/);
+  assert.match(highlights, /\(state_declaration "state" @keyword\)/);
 });
 
 test("removed example bins stay retired while ordinary consumer entrypoints remain", () => {
@@ -129,7 +144,7 @@ test("checkpoint D retires borrowed success expectations and dependent example r
     for (const query of retired) {
       assert.deepEqual(query.parameters, [], query.id);
       assert.equal(query.signature, null, query.id);
-      assert.ok(query.expectedDiagnostic.startsWith("syntax::removed_"), query.id);
+      assert.ok(["hir::removed_host_type_hint", "syntax::removed_host_borrow"].includes(query.expectedDiagnostic), query.id);
     }
   }
   for (const name of ["host_type_methods", "host_iterable", "interop_round_trip", "level_up", "stale_host_ref"]) {

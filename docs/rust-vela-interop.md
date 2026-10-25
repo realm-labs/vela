@@ -1,194 +1,89 @@
 # Rust/Vela Interop
 
-> **Accepted hard switch — 2026-07-31:** retained scoped Host capabilities move
-> to authored strict `host::release` or idempotent `host::try_release`, and every
-> admitted generated Service gains a complete typed Rust
-> `service::base::method(...)` path. Pinned cross-Service calls use
-> `service::pinned::service_name::method(...)`; bare `base` and `services`
-> receivers are removed. The final behavior, supported shapes, and rejected
-> shapes are defined in the
-> [final interop contract](rust-vela-interop-final-shape-hard-switch-plan.md).
-> Repository proof is in the
-> [acceptance report](archive/rust-vela-interop-hard-switch-acceptance-2026-07-31.md).
-
-> **Active direction — 2026-07-23:** ordinary export/binding and
-> HostRef/re-entry remain the general Rust/Vela call model. The sole Rust
-> hotfix model is the generated service generation in
-> [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
-
-Ordinary bidirectional interop is the default integration model. Rust exports
-ordinary functions and methods, Vela calls them with normal source syntax, and
-Rust calls public Vela declarations through generated typed bindings. A
-service trait, provider, manual `CallArgs`, erased value, or runtime target
-string is not required.
-
-The runnable primary example is `examples/src/bin/interop_round_trip`. The
-generated Rust-default service baseline for the hard switch is
-`examples/src/bin/service_hard_switch_fixture`; it pins one whole service
-generation and keeps the default call chain on direct Rust trait dispatch.
-The complete target service authoring and deployment surface is collected in
-[Rust/Vela Service Patchability — Final Usage Shape](rust-vela-service-patchability-usage.md).
+The supported baseline after D (`226900e81`) is synchronous calls with owned
+values. **No independent opaque-object runtime survived D.** Replacement
+objects, new conversion APIs and a new re-entry model are separately deferred;
+this guide does not design or promise them. A–E removal implementation and
+software gates are complete; see [current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md). Strict/native
+Input/Render coverage remains incomplete.
 
 ## Export Rust To Vela
 
-Use `#[vela_macros::export]` for a scattered free function and
-`#[vela_macros::methods]` for an explicit method group:
+Use the existing owned-value export/registration paths. For example:
 
-```rust,ignore
-#[vela_macros::export(path = "game::normalize")]
-pub fn normalize(amount: i64) -> i64 {
-    amount.max(0)
+```rust
+#[vela_macros::export(path = "app::normalize")]
+pub fn normalize(value: i64) -> i64 {
+    value.max(0)
 }
-
-#[vela_macros::methods(path = "game::Player")]
-impl Player {
-    pub fn grant(&mut self, amount: i64) -> i64 {
-        self.level += amount;
-        self.level
-    }
-}
-```
-
-Register the generated type, method, and module objects explicitly:
-
-```rust,ignore
-let mut bindings = VelaBindings::new();
-bindings
-    .register_type(Player::vela_type())
-    .register_methods(Player::vela_methods());
-bindings.register_module(vela_function_normalize());
 
 let engine = Engine::builder()
-    .register_bindings(bindings)
-    .capability(Capability::HostRead)
-    .capability(Capability::HostWrite)
+    .install_registration(vela_function_normalize())
     .build()?;
 ```
 
-Vela uses the same call syntax as it does for Vela targets:
+Scripts call `app::normalize(value)` normally. Explicit native descriptors and
+typed/context-aware synchronous native registration remain supported. Native
+metadata includes stable identity, parameter/return contracts, effects, access,
+docs and source origins. See [native registration](architecture/host-and-registration.md)
+and the [native example](../examples/src/bin/native_function/main.rs).
 
-```vela
-let amount = game::normalize(input);
-player.grant(amount);
-```
+Owned Rust values and existing value derives/conversions are distinct from
+host-object registration. No Host derive, Rust receiver method, borrowed
+parameter/result, factory arena or transparent Rust-field projection is part of
+this boundary. Rust may borrow its own state internally for one native invocation,
+but the borrow cannot become a script value or retained wrapper.
 
-Schema generators that own local Rust types can keep their ordinary model
-files free of Vela derives and wrapper methods. They emit one companion module
-containing declaration-only `#[vela_macros::external_host]` groups (and
-`external_value_enum!` declarations for unit enums), then expose one function
-that installs every generated registration function. The declaration bodies
-may delegate to existing inherent methods or directly read generated fields;
-the macro emits private extension dispatch rather than `vela_get`-style
-inherent methods. `&T`, `Option<&T>`, and borrowed collections use the same
-scoped-return adapters as `#[vela_macros::methods]`.
+## Call Vela From Rust
 
-Generated read-only fields can be grouped without changing the Rust model:
+Compile ordinary source/modules/packages, construct a Runtime and call a public
+script function synchronously using `Runtime::call` and `CallArgs`. Existing
+generated Rust bindings use the compiler-owned `RustBindingSchema`, stable
+callable identities and contract fingerprints for supported value signatures.
+Generated bindings are not a Service or Provider entrypoint.
 
-```rust,ignore
-#[vela_macros::external_host(
-    path = "config::Item",
-    register = "register_item"
-)]
-impl Item {
-    vela_fields! {
-        id: i32 = self.id;
-        #[host_collection]
-        rewards: &[Reward] = self.rewards.as_slice();
-    }
-}
-```
+Runtime-managed `VelaValue` results stay rooted in their creating Runtime. They
+can be reused by later calls on that Runtime, explicitly detached with
+`value_to_owned`, or deserialized with `from_value` when the `serde` feature is
+enabled. Runtime affinity, script type/identity and lifetime checks remain.
 
-Vela observes the same member distinction as Rust: data is read as
-`item.id`, and behavior is called as `table.get(id)`. A method or property that
-produces a scoped Host return must be bound to a named local and explicitly
-released. Scalar and owned-value HostPath chaining remains valid; unnameable
-scoped-result chains such as `config.tables().item().get(id)?.id` are rejected.
+With serde, `CallArgs::with_serde_value` serializes an input into script-owned
+data, even though serialization itself reads a Rust reference. Script edits do
+not implicitly mutate the source Rust value. Rust must explicitly receive and
+decode a result. See [serde_value](../examples/src/bin/serde_value/main.rs).
 
-Shared and exclusive Rust references infer `host_read` and `host_write`.
-`effects(...)` adds exceptional effects but cannot remove signature-inferred
-effects. A trusted Rust body receiving `&mut T` has ordinary field-level Rust
-authority for that invocation; direct Vela path writes still use fine-grained
-`HostAccess` checks.
+## Effects, Budgets And Nested Calls
 
-Existing Rust types that cannot or should not implement a Vela trait use the
-same registration flow. No application newtype is required:
+Owned-value native APIs can still read/write application state internally.
+**Native host-read/write effects and permissions remain**, along with I/O,
+event, reflection, random/time and other retained capability checks. Pure value signatures
+do not justify falsely declaring an effectful Rust body pure. Reflection calls
+must satisfy both reflection policy and native capability checks.
 
-```rust,ignore
-#[derive(vela_macros::ScriptHost)]
-#[vela(path = "game::Actor")]
-struct Actor {
-    #[vela(host = "game::Outbox")]
-    outbox: VecDeque<Frame>,
-}
+Existing synchronous `NativeCallContext` re-entry remains on the active session,
+sharing its exact executable owner, heap, budgets, capabilities, cancellation
+and tracing. This is retained behavior, not approval for a new re-entry model.
+Native implementations are trusted Rust and must bound their own work.
 
-let len = registered_host_method_desc("game::Outbox", "len")
-    .returns(TypeHint::i64());
+## Script State And Reload
 
-bindings
-    .register_type(TypeRegistration::<VecDeque<Frame>>::host("game::Outbox"))
-    .register_method(MethodRegistration::shared(
-        len,
-        |outbox: &VecDeque<Frame>, _args| Ok(OwnedValue::i64(outbox.len() as i64)),
-    ));
-```
+Ordinary VM-owned `state` and explicit Rust reads/updates remain. There are no
+extern-state host bindings or implicit Rust write-through. Compatible script
+state survives reload; new entries use new code, while active frames and retained
+closures keep their exact old code, nested dispatch, state, caches and plans.
+Stable names never rebind old closures. See [hot reload](architecture/hot-reload.md).
 
-`TypeRegistration`, `MethodRegistration`, and `VelaBindings` remain the only
-user-facing registration model. `#[vela(host = ...)]` only projects the
-borrowed field; it does not implicitly publish all Rust methods or container
-operations. Each concrete generic instantiation has its own explicit stable
-Vela path and selected method set.
+## Formats And Removed Surfaces
 
-## Generate Typed Rust Bindings
+Current versions are portable program **8**, Rust-binding schema **7**, tooling
+schema **4**. Obsolete versions reject before payload use/linking/activation;
+there is no legacy execution wrapper.
 
-The compiler-owned `RustBindingSchema` is the only generator input. A build
-script compiles the same Vela source, then calls
-`RustBindingsBuilder::new(program.binding_schema()).generate()` and writes the
-result to `OUT_DIR`. The application includes that generated file and binds it
-to an explicit Runtime:
-
-```rust,ignore
-include!(concat!(env!("OUT_DIR"), "/vela_bindings.rs"));
-
-let mut package = vela_bindings::bind(&mut runtime)?;
-let mut module = package.dev_vela_anonymous_root_module();
-let result = module.apply(&mut player, 5)?;
-```
-
-Generated calls use stable callable identities and validate schema and
-callable fingerprints. Compatible body reload re-resolves the stable target;
-parameter, mode, return, effect, or async ABI changes fail before invocation.
-Runtime grants and allowlists are deployment policy and do not change the
-callable fingerprint.
-
-For nested Rust-to-Vela calls, bind the same generated surface through
-`vela_bindings::bind_active(&mut NativeCallContext)`. This pushes a child into
-the current execution session and retains its artifact, heap, state, host
-boundary, budgets, capabilities, tracing, cancellation, and lease provenance.
-
-## Host References And Errors
-
-Authored signatures use supported values plus ordinary `&T` and `&mut T`.
-Generated code internally creates exact call-scoped HostRefs and acquires all
-host leases atomically before any Rust reference exists. Conflicting shared and
-exclusive aliases fail before the body. Borrowed host returns remain scoped to
-the root call tree. Authored `host::release(value)` and
-`host::try_release(value)` are the only early-release paths; the latter returns
-`false` only when the scoped alias group was already released in this root.
-Unconditional root teardown is the safety backstop. Compiler liveness and
-lexical scope do not release them.
-
-Synchronous generated exports and the target service ABI admit direct borrows,
-`Option<&T>`, and `Result<&T, E>`. `Some`/`Ok` retain the same child HostRef;
-`None`/`Err` retain none, and service error type `E` requires bidirectional
-owned Value lowering. Borrowed Result/Option payloads remain forbidden across
-async suspension or inside owned containers.
-
-Interop failures identify the callable and relevant parameter where possible.
-Debug ABI failures by comparing the generated binding's recorded source origin
-with the current Vela declaration. Alias, expired provenance, capability,
-effect-ceiling, budget, cancellation, and reload failures are Runtime errors;
-they do not trigger a second execution path or an automatic retry.
-
-Low-level `Runtime::call`, `Runtime::call_async`, `CallArgs`, and runtime values
-remain available for genuinely dynamic tools. Ordinary statically known calls
-should use generated bindings.
+Service/Provider execution, script async/await and tasks, caller-borrowed roots,
+arguments/returns/views, transparent host paths, leases/release, dependent host
+registrations and JIT are removed. Historical Service/interop/projection/async
+plans are explicitly superseded records, not future work to resume. The
+[runtime simplification plan](runtime-simplification-plan.md) owns removal scope;
+[validation.md](validation.md) owns commands. Missing objects/conversions/re-entry
+design require a separately authorized follow-up.

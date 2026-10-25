@@ -7,6 +7,7 @@
   "main": "grammar.js",
   "scripts": {
     "generate": "tree-sitter generate",
+    "test": "tree-sitter test",
     "parse:fixtures": "tree-sitter parse ../../../site/src/syntax/fixtures/complete.vela ../../../tests/fixtures/lsp_highlighting/showcase.vela ../../../tests/fixtures/**/*.vela ../../../examples/src/**/*.vela"
   },
   "devDependencies": {

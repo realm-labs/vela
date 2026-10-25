@@ -9,7 +9,10 @@ server over stdio. Language intelligence remains implemented by
 The Tree-sitter grammar source lives outside this extension directory at
 `../tree-sitter-vela`. Zed checks grammar repositories out under
 `grammars/<name>` while compiling a dev extension, so `grammars/vela` is kept
-as an ignored build/cache directory rather than a source directory.
+as an ignored build/cache directory rather than a source directory. The package
+validator rejects tracked duplicate sources there, not the presence of a local
+checkout. It does not clean, reset, or update that checkout; local modifications
+must be preserved.
 
 ## Server Binary
 
@@ -63,7 +66,9 @@ From the repository root:
 
 ```bash
 node editors/zed/scripts/validate-package.js
+node --test editors/zed/scripts/check-grammar-checkout.test.js
 cd editors/tree-sitter-vela
 npx --yes tree-sitter-cli@0.25.10 generate
+npx --yes tree-sitter-cli@0.25.10 test
 npx --yes tree-sitter-cli@0.25.10 parse --quiet ../../site/src/syntax/fixtures/complete.vela
 ```

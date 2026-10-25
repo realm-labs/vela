@@ -21,7 +21,6 @@
     "attr_path",
     "attr_value",
     "attribute",
-    "await_suffix",
     "binary_int",
     "binding_pattern",
     "block",
@@ -44,7 +43,6 @@
     "exponent",
     "expr",
     "expr_stmt",
-    "extern_state_decl",
     "field_sep",
     "field_suffix",
     "for_binding",
@@ -135,7 +133,7 @@
     "ws"
   ],
   "syntaxSources": {
-    "docs/grammar.ebnf": "bea64bde444fa2294f06ddbf307f8ebaa890d06ecdd52d871c6933f453bce833",
+    "docs/grammar.ebnf": "c005493d1eefab75bd0fc6e1602077c17ee70ef05c3e3c44a2dd2d341617247d",
     "crates/vela_syntax/src/syntax_kind.rs": "c94e2920778c978c924913d71ed5052bd5dd8a4b285e1b314ffd587f289a1b04",
     "crates/vela_syntax/src/token.rs": "5c2b585b0648e3b9d314eef50647bcf971d540dd0f2c452bcb3e2348616d8a5f",
     "crates/vela_syntax/src/ast.rs": "bd503110406ebfb6e48f8e481b380033df84b1011c821db3ad457c2f3d9c72df"
@@ -203,7 +201,6 @@
         "default_value",
         "enum_decl",
         "enum_variant",
-        "extern_state_decl",
         "field_sep",
         "function_decl",
         "impl_decl",
@@ -280,7 +277,6 @@
         "array_literal",
         "assign_op",
         "assignment",
-        "await_suffix",
         "block_expr",
         "call_suffix",
         "comparison",
@@ -349,7 +345,7 @@
     {
       "id": "S1",
       "name": "Top-level declarations",
-      "surface": "`pub`, `use`, `const`, contextual `state`, `extern state`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
+      "surface": "`pub`, `use`, `const`, VM-owned contextual `state`, synchronous `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
     },
     {
       "id": "S2",
@@ -359,7 +355,7 @@
     {
       "id": "S3",
       "name": "Type positions",
-      "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema host types, traits, missing type facts, dynamic `Any` and unknown."
+      "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema value types, traits, missing type facts, dynamic `Any` and unknown."
     },
     {
       "id": "S4",
@@ -416,5 +412,17 @@
       "name": "Rust-analyzer-style authoring core",
       "surface": "Structured `CompletionAnalysis`, path/type/dot/declaration/call/pattern/statement contexts, expected type/name, unified member index, and editor-neutral item rendering before LSP projection."
     }
-  ]
+  ],
+  "syntax": {
+    "S1": {
+      "id": "S1",
+      "name": "Top-level declarations",
+      "surface": "`pub`, `use`, `const`, VM-owned contextual `state`, synchronous `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`."
+    },
+    "S3": {
+      "id": "S3",
+      "name": "Type positions",
+      "surface": "Primitive hints, builtin containers, `Option`/`Result`, source types, schema value types, traits, missing type facts, dynamic `Any` and unknown."
+    }
+  }
 }

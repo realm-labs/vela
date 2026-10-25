@@ -10,6 +10,17 @@ npm ci
 npm run dev
 ```
 
+Documentation checks:
+
+```bash
+npm run test:syntax
+npm run test:docs
+```
+
+`test:docs` checks placeholders and the reduced-surface contract: bilingual key
+semantics, removal-note navigation, and no removed syntax in runnable examples.
+It does not claim runtime or installed-editor acceptance.
+
 Build the playground WASM package before testing the playground route:
 
 ```bash

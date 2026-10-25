@@ -4,7 +4,17 @@ Status: local coverage goal active; the machine-readable checkpoint owns batch s
 The [strategy](lsp-test-strategy.md) owns required behavior and P0-P5 acceptance.
 This plan owns work boundaries and verification checkpoints. Follow
 [goal.md](goal.md), [architecture.md](architecture.md), and repository agent
-instructions throughout. The implementation baseline is commit `33451ec80`.
+instructions throughout. The original review baseline was commit `33451ec80`;
+the runtime baseline is now A–D through `226900e81`. Retained synchronous
+language/native-value/tooling partitions remain active. Service/Provider,
+async/tasks, borrowed/path and extern-binding success partitions are retired,
+not deferred LSP requirements. The reviewed
+[inventory migration](../tests/lsp_matrix/reviews/checkpoint-e-inventory.md)
+records affected contracts and reopened evidence while preserving unrelated proof.
+A–E removal implementation and software gates are complete; see
+[current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md). Strict/native
+Input/Render coverage remains incomplete; the native checkpoint resumes at B02.
 
 The [VS Code interaction matrix](lsp-vscode-interaction-matrix.md) is also a
 required acceptance contract. Its UX01-UX24 scenarios distinguish provider,
@@ -43,8 +53,9 @@ Use this prompt to start later in a client that supports `/goal`:
 Read the checkpoint, resume the first incomplete local batch, and complete
 B00-B15, then B17-B19 in order; keep B16 deferred. Select the registered local
 development profile for the current Windows or macOS machine. For each batch, add independent assertions, fix exposed
-defects, run its acceptance checks, and create small, coherent Conventional Commits.
-Record the LSP-Batch ID and validation results in each commit body.
+defects and run its acceptance checks within the current request's ownership.
+Create small, coherent Conventional Commits only when explicitly authorized.
+Record the LSP-Batch ID and actual validation results in the authorized handoff.
 Do not pass acceptance by deleting requirements, weakening assertions,
 ignoring tests, or marking defects as N/A. Continue until full local acceptance.
 If interrupted, preserve a resumable checkpoint. Additional environments are
@@ -91,8 +102,9 @@ they do not excuse gaps in earlier batches.
 | B19 | Full local acceptance | B00-B15 and B17-B18 accepted, whole-repository checks pass, full strict local matrix and mandatory local interaction routes pass on the recorded profile, generated/scale evidence passes, and a durable report records commands, revisions and artifacts with B16 explicitly deferred. |
 
 B00/B01 are infrastructure gates, not claims of semantic coverage. The current
-41 feature IDs are assigned once across B02-B13. The initial 1327 obligations
-are a starting inventory, not a frozen denominator or the final P5 workload.
+41 protocol feature IDs are assigned once across B02-B13. The pre-removal
+1327 obligations are historical inventory, not a frozen/current denominator or
+the final P5 workload; reconcile removed syntax/schema partitions explicitly.
 B14, B15, B17 and B18 must register additional local requirements before claiming
 their acceptance.
 

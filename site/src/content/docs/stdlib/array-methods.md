@@ -11,7 +11,7 @@ growth is still checked by the VM's execution and collection budgets.
 
 Use `len`, `is_empty`, `first`, `last`, `contains`, and `index_of` for basic
 queries. `contains` and `index_of` use `ValueKey` container equivalence:
-immutable leaf values compare by value, while script heap objects and host refs
+immutable leaf values compare by value, while keyable script heap objects
 compare by identity. Methods that may not find a value return `Option`. Use
 predicate helpers such as `find`, `any`, and `filter` when the query should use
 business equality through `==`/`PartialEq`.

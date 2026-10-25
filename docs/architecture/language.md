@@ -1,109 +1,53 @@
 ## Language Semantics
 
-The first grammar draft lives in [grammar.ebnf](../grammar.ebnf). It is the syntax
-target for the parser milestones before semantic validation and lowering.
+The reduced synchronous grammar lives in [grammar.ebnf](../grammar.ebnf).
+Parser/token tests additionally specify literals and recovery behavior.
 
 Parser implementations should preserve source spans for every token and AST
-node. A future LSP needs this for diagnostics, completion replacement ranges,
+node. The native LSP needs this for diagnostics, completion replacement ranges,
 go-to-definition, rename, hover, and incremental reparsing. The compiler may
 lower into a simpler AST/HIR, but the syntax layer should keep a lossless CST or
 equivalent token tree with comments and newlines.
 
-Example script. `Account`, `Invoice`, and event names are host-registered
-domain concepts, not builtin language or stdlib items:
+Example script values and ordinary traits are independent of Rust objects:
 
-```rust
-use billing::account::Account
-use billing::invoice::Invoice
-
-struct PaymentAdjustment {
-    code
-    amount
+```vela
+struct Adjustment { amount: i64 }
+trait Scored { fn score(self) -> i64; }
+impl Scored for Adjustment {
+    pub fn score(self) -> i64 { return self.amount; }
 }
-
-enum WorkflowState {
-    None
-    Active { workflow_id, count }
-    Finished { workflow_id }
-}
-
-trait Auditable {
-    fn audit(self, message)
-}
-
-#[event("invoice.paid")]
-pub fn on_invoice_paid(ctx, account, invoice) {
-    account.balance += invoice.amount
-
-    if account.balance >= ctx.config.preferred_balance {
-        account.status = "preferred"
-        ctx.emit("account.preferred", account.id, account.balance)
-    }
-
-    let adjustments = ctx.config.payment_adjustments
-        .iter()
-        .filter(|a| a.kind == invoice.kind)
-        .map(|a| PaymentAdjustment {
-            code: a.code,
-            amount: a.amount,
-        })
-        .collect_array()
-
-    for adjustment in adjustments {
-        account.ledger.add(adjustment.code, adjustment.amount)
-    }
-
-    for index, adjustment in adjustments {
-        ctx.log("adjustment.index", index)
-    }
-
-    match account.workflow {
-        WorkflowState::Active { workflow_id, count } => {
-            account.workflow = WorkflowState::Active {
-                workflow_id,
-                count: count + 1,
-            }
-        }
-        _ => {}
-    }
+fn main() {
+    let items = [Adjustment { amount: 2 }, Adjustment { amount: 3 }];
+    return items.iter().map(|item| item.score()).collect_array();
 }
 ```
 
 ### Persistent State Declarations
 
-Module-level mutable state is explicit about ownership:
+Module-level mutable state is VM-owned:
 
 ```vela
 state attempts: i64 = 0;
-pub extern state account: Account;
 ```
 
 `state` is contextual at module-item head and remains a legal identifier in
-parameters, locals, fields, and expressions. It requires an explicit type and
-initializer and creates one VM-owned cell per Runtime. `extern` is reserved;
-`extern state` requires an explicit type, forbids an initializer, and resolves
-to a host binding. Vela may mutate fields below an extern root through
-HostAccess but cannot assign a replacement root.
+parameters, locals, fields and expressions. It requires an explicit type and
+restricted initializer and creates one VM-owned cell per Runtime. There are no
+extern-state host bindings or implicit Rust write-through.
 
-State identity is derived from package, module, and declaration name. Public
-visibility controls resolution/export, not storage ownership. A declaration
-rename therefore changes identity and hot reload treats it as remove plus add.
+Identity is derived from package, module and declaration name. Public visibility
+controls resolution/export, not ownership. Renaming is remove plus add. Compatible
+cells survive reload without rerunning initializers; retained old closures keep
+their old-generation state map.
 
-### Async Functions And Await
+### Synchronous Calls
 
-Module functions and script methods may be declared with `async fn`. Await is
-the postfix call-expression form `.await` and is legal only inside an async
-function. A statically known async target must be awaited; a non-awaited dynamic
-call traps before invocation if it resolves to an async target. Awaited dynamic
-calls may resolve to either sync or async targets. Sync-only callback methods
-reject async callbacks.
-
-Callable asyncness is semantic metadata, not syntax rediscovered by backends.
-It is retained through HIR, analysis, registries, reflection, verified MIR, and
-linked execution. Await is an explicit control-flow boundary with a destination
-and resume edge. Awaited synchronous targets complete in the current drive;
-registered Rust futures suspend the same frame driver and resume only when the
-embedding executor polls the scoped Runtime future again.
+Functions, methods and callbacks execute synchronously. There are no script
+async declarations, await expressions, tasks or continuations. Rust hosts may
+complete external work and provide owned values to a later call. Native
+host-read/write effects and permissions remain. There is no caller-borrowed,
+transparent-path or opaque-object value surface after D.
 
 ### Equality And Ordering
 
@@ -123,9 +67,9 @@ semantics but do not satisfy `Eq` or `Ord`, so float sorting and float
 `Eq`/`Ord` derivation are deferred until a later total-float-order or explicit
 partial-sort design.
 
-Reference identity comparison for script heap objects and host refs uses
+Reference identity comparison for supported script heap objects uses
 `===` and `!==`. These operators are not overloadable, do not call user
-comparison traits, and must not read host state. Statically known non-reference
+comparison traits, and does not inspect Rust state. Statically known non-reference
 operands are rejected; dynamic non-reference operands fail with a source-spanned
 runtime error.
 
@@ -204,9 +148,8 @@ function
 closure
 record / struct-like value
 enum / tagged union
-host ref
-path proxy
-trait/protocol object
+iterator
+script trait dispatch
 ```
 
 ### Iteration
@@ -268,8 +211,8 @@ Iterator<T>       allowed as a builtin iterator contract
 Option<T>         allowed as a builtin Option contract
 Result<T, E>      allowed as a builtin Result contract
 Player<T>         not supported
-Map<PathProxy, V> not supported because PathProxy is transient
-Set<Function>     not supported until callable identity has an explicit policy
+Map<Range, V>     not supported because range keys are not admitted
+Set<Range>        not supported because range keys are not admitted
 ```
 
 Dynamic enum definitions can still model Option and Result:
@@ -299,8 +242,8 @@ Script and standard-library APIs should prefer `Option` for expected missing
 data and `Result` for expected recoverable failure. They should not use `()`
 as the normal "not found" or "failed" result. Statement-only blocks,
 no-result native calls, and explicit `return;` produce `()`. Reflection
-metadata gaps and Rust `Option<T>` host interop should use `Option::None`
-once that structured boundary is available.
+metadata gaps and existing owned Rust `Option<T>` conversion use structured
+Option values, not an implicit unit sentinel.
 
 ### Strings
 
@@ -328,8 +271,8 @@ Supported:
 inherent impl methods on script types
 trait method declarations
 trait default methods
-host type implementations
 script type implementations
+registered builtin/value trait facts
 runtime implements checks
 dynamic trait method dispatch
 ```

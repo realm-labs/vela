@@ -8,13 +8,19 @@ scripting language in Rust for domain-neutral host business logic. Treat
 removal-only checkpoint plan. These supersede conflicting old subsystem plans,
 milestone targets, and agent examples.
 
-The current pass removes Service/Provider, script async/tasks, caller-borrowed
-Rust roots/arguments/returns/views, transparent host paths/leases, dependent
-bindings, and JIT-only preparation. It does not implement replacement opaque
-objects, new conversion APIs, or a new re-entry model. Missing interop features
-are a separate follow-up, not removal prerequisites. Checkpoint A documentation
-does not establish completed runtime removal; existing code/tests and historical
-acceptance records may still describe the old implementation.
+Checkpoints A-D are implemented through D commit `226900e81`: Service/Provider,
+script async/tasks, caller-borrowed Rust roots/arguments/returns/views,
+transparent host paths/leases and dependent bindings are removed. Existing
+synchronous owned-value native APIs are the supported Rust boundary; no
+independent opaque-object runtime survived D. Native host-read/write effects
+and permissions remain. Replacement objects, new conversion APIs and a new
+re-entry model are separately deferred, not removal prerequisites. A-E removal
+implementation and software gates are complete; see the
+[acceptance report](docs/archive/runtime-simplification-acceptance.md) and
+[current progress](docs/progress.md) for exact proof. Installed checks passed in
+same-provenance partitions; the aggregate npm run timed out, and strict/native
+Input/Render coverage remains incomplete. Historical plans/records do not
+reinstate removed capabilities.
 
 ## Start Of Each Turn
 
@@ -50,9 +56,9 @@ needed updates to the owner instead of editing excluded files.
   access through aliases, reflection, or replacement calls. Remove dependent
   registrations and extern bindings instead of inventing a new binding model.
 - Retain existing independent synchronous native calls and value conversion.
-  Serialized data is script-owned and has no implicit Rust write-back. Retain an
-  existing opaque surface only if it meets the reduced boundary without new
-  machinery; keep type, identity, invalidation, lifetime, and permission checks.
+  Serialized data is script-owned and has no implicit Rust write-back. No
+  independent opaque runtime remains; do not introduce an object surface here.
+  Keep retained type, identity, lifetime, runtime-affinity and permission checks.
   Rust may borrow internally for one native invocation, never as a script value.
 - Do not restore Service hotfixing, Provider entrypoints, script async/await,
   detached tasks/continuations, JIT, or JIT-only preparation. Do not add a

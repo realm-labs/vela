@@ -15,9 +15,7 @@ description: "查询 Vela type、module、function、field 和 method。"
 let player_type = reflect::type_info("Player");
 let current_type = reflect::type_of(player);
 
-if reflect::kind(player_type) == "host" {
-    return reflect::fields(player_type);
-}
+return reflect::fields(player_type);
 ```
 
 ## 成员和 Variant

@@ -1133,13 +1133,8 @@ name = "vela_bindgen_compile_test"
 version = "0.1.0"
 dependencies = [
  "vela_bindgen",
- "vela_common",
- "vela_def",
  "vela_engine",
- "vela_host",
  "vela_macros",
- "vela_reflect",
- "vela_vm",
 ]
 
 [[package]]
@@ -1168,7 +1163,6 @@ dependencies = [
  "vela_common",
  "vela_def",
  "vela_engine",
- "vela_host",
  "vela_language_service",
  "vela_macros",
  "vela_reflect",
@@ -1197,7 +1191,6 @@ version = "0.1.0"
 dependencies = [
  "parking_lot",
  "serde",
- "smallvec",
  "stats_alloc",
  "vela_analysis",
  "vela_bytecode",
@@ -1208,7 +1201,6 @@ dependencies = [
  "vela_hot_reload",
  "vela_language_service",
  "vela_macros",
- "vela_mir",
  "vela_package",
  "vela_reflect",
  "vela_registry",
@@ -1231,10 +1223,8 @@ dependencies = [
 name = "vela_host"
 version = "0.1.0"
 dependencies = [
- "serde",
  "syn",
  "vela_common",
- "vela_def",
 ]
 
 [[package]]
@@ -1293,7 +1283,6 @@ dependencies = [
  "quote",
  "syn",
  "trybuild",
- "vela_bytecode",
  "vela_common",
  "vela_def",
  "vela_engine",
@@ -1346,7 +1335,6 @@ dependencies = [
  "vela_host",
  "vela_package",
  "vela_registry",
- "vela_syntax",
 ]
 
 [[package]]

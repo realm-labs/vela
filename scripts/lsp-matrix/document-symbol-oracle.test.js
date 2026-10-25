@@ -83,7 +83,7 @@ test("installed source lifecycle filters only schema actions and retains indepen
 
 test("installed metadata setup keeps known string facts and leaves the source-backed schema oracle intact", () => {
   const original = structuredClone(specs.ownership.oracle.schema), artifact = oracle.metadataArtifact(original);
-  assert.equal(artifact.formatVersion, 1);
+  assert.equal(artifact.formatVersion, 4);
   assert.deepEqual(Object.fromEntries(Object.entries(artifact.facts).map(([key, values]) => [key, values.length])),
     { types: 4, traits: 1, functions: 2, fields: 5, methods: 3, traitMethods: 1, variants: 3 });
   assert(artifact.facts.fields.every(field => field.fact.kind === "primitive" && field.fact.name === "string"));

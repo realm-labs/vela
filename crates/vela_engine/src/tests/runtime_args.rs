@@ -1,3 +1,4 @@
+#[cfg(feature = "serde")]
 use std::collections::BTreeMap;
 
 use vela_common::SourceId;

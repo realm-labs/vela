@@ -7,7 +7,7 @@
 > [`rust-vela-interop-post-review-2026-07-17.md`](rust-vela-interop-post-review-2026-07-17.md).
 
 This report records the original acceptance-run evidence for
-[`rust-vela-interop-model-plan.md`](../rust-vela-interop-model-plan.md). The
+[`rust-vela-interop-model-plan.md`](rust-vela-interop-model-plan-superseded-2026-07-23.md). The
 plan's durable product contract remains in the main document; this archive
 keeps the test, audit, and measurement detail out of `progress.md`.
 

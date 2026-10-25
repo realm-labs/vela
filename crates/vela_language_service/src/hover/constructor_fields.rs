@@ -36,17 +36,17 @@ pub(super) fn hover(
             record
                 .fields()
                 .iter()
-                .any(|field| !field.is_shorthand() && field.label_token().is_some_and(&matches))
+                .any(|field| !field.is_shorthand() && field.label_token().is_some_and(matches))
                 .then(|| (record.path_segments(), Form::Record))
         } else if let Some(pattern) = SyntaxRecordPattern::cast(node.clone()) {
             pattern
                 .fields()
-                .any(|field| !field.is_shorthand() && field.label_token().is_some_and(&matches))
+                .any(|field| !field.is_shorthand() && field.label_token().is_some_and(matches))
                 .then(|| (pattern.path_segments(), Form::Record))
         } else if let Some(call) = SyntaxCallExpr::cast(node) {
             call.arguments()
                 .iter()
-                .any(|argument| argument.name_token().is_some_and(&matches))
+                .any(|argument| argument.name_token().is_some_and(matches))
                 .then(|| {
                     call.callee()?
                         .as_path()

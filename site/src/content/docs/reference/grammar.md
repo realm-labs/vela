@@ -26,9 +26,9 @@ The expression grammar covers literals, arrays, maps, typed record literals,
 field access, indexing, synchronous calls, unary and binary operators, ranges,
 lambdas, `if`, `match`, and blocks.
 
-Assignments require assignable targets: identifiers, fields, indexes, or host
-path proxies. Compound assignment uses the same write boundary as ordinary
-assignment.
+Assignments require assignable targets: identifiers, script fields, or script
+collection indexes. Compound assignment uses the same script-owned value
+boundary as ordinary assignment; neither implicitly writes back to Rust.
 
 ## Patterns
 

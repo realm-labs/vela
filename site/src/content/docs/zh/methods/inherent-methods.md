@@ -37,4 +37,6 @@ fn main(player: Player) -> i64 {
 
 ## 宿主边界
 
-注册宿主类型也可以暴露方法，但这些调用会通过 HostAccess 和注册宿主元数据执行。脚本方法不会向脚本暴露 Rust `&mut T`。
+借用 Host 构造器和方法注册已经删除。普通脚本 impl 方法继续保留；独立同步
+native 函数通过现有自有值 API 传递数据，不是 Rust receiver 方法，也没有替代
+opaque 方法 API。

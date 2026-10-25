@@ -5,8 +5,13 @@
 > **Scope:** advertised LSP protocol behavior plus the Vela syntax and symbol
 > surface each protocol must cover before it is considered complete.
 
-This document records the protocol-first matrix used to accept the current
-native LSP coverage. Future LSP tests should start from this matrix, choose one
+This document defines protocol requirements for the retained synchronous
+language, not a fresh native-editor acceptance claim. Removed Service/Provider,
+async/tasks and borrowed/path/extern-binding surfaces require rejection and
+no-advertising checks, not positive feature coverage. Native host-read/write
+effects and permission metadata remain. Current tooling schema is **4**.
+
+This document records the protocol-first matrix used to review native LSP coverage. Future LSP tests should start from this matrix, choose one
 protocol row, then preserve both `vela_language_service` tests and
 `vela_lsp_server` JSON-RPC fixtures for the applicable Vela syntax dimensions.
 
@@ -16,9 +21,9 @@ evidence, and CI drift checks. Run `node scripts/lsp-matrix/run.js --run` for th
 current report. Candidate tests and historically accepted rows do not certify
 all of their syntax/state combinations; unmapped obligations remain unreviewed.
 
-Execution progress for auditing and filling this matrix is tracked in
-[lsp-implementation-plan.md](archive/lsp-implementation-plan.md), section
-"Protocol Test Matrix Coverage Tracker".
+Current auditing follows [the execution plan](lsp-test-execution-plan.md) and
+its machine-readable checkpoint. The
+[old implementation plan](archive/lsp-implementation-plan.md) is historical.
 
 The matrix preserves the standing LSP constraints:
 
@@ -133,9 +138,9 @@ Use these dimensions as row references in the matrix.
 | ID | Dimension | Required surface |
 |---|---|---|
 | S0 | Workspace/source state | Open overlay, disk snapshot, scratch file, configured roots, multi-file modules, missing/deleted/renamed files, schema absent/stale/invalid. |
-| S1 | Top-level declarations | `pub`, `use`, `const`, contextual `state`, `extern state`, `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`. |
+| S1 | Top-level declarations | `pub`, `use`, `const`, VM-owned contextual `state`, synchronous `fn`, parameters, default parameters, `struct`, fields, `enum`, variants, `trait`, default/interface methods, inherent and trait `impl`. |
 | S2 | Function and method bodies | Locals, explicit type hints, assignments, compound assignments, returns, nested blocks, `if`, `match`, loops, lambdas, closures, callbacks. |
-| S3 | Type positions | Primitive hints, builtin containers, `Option`/`Result`, source types, schema host types, traits, missing type facts, dynamic `Any` and unknown. |
+| S3 | Type positions | Primitive hints, builtin containers, `Option`/`Result`, source types, schema value types, traits, missing type facts, dynamic `Any` and unknown. |
 | S4 | Members and constructors | Source/schema fields, methods, trait methods, enum variants, tuple/record/unit variants, record constructors, shorthand fields, field labels, member writes. |
 | S5 | Calls and arguments | Source functions, source methods, stdlib functions/methods, schema functions/methods, named arguments, defaulted parameters, active parameter tracking, dynamic or unresolved calls. |
 | S6 | Patterns and control flow | `match` enum patterns, record-variant fields, binding patterns, guards where supported, `for` iteration, `break`, `continue`, control-flow keywords. |
@@ -159,7 +164,7 @@ Use a small two or three file workspace as the minimum fixture shape:
 ```text
 scripts/rewards.vela
   pub const BASE_REWARD = 4
-  pub extern state reward_scale: i64;
+  pub state reward_scale: i64 = 1;
   pub struct RewardConfig { item: String, count: i64 }
   pub enum RewardOutcome { Granted { item: String, count: i64 }, Skipped }
   pub fn reward_bonus(amount, scale = reward_scale) { ... }
@@ -238,7 +243,7 @@ in `vela_lsp_server`.
 | `textDocument/formatting` | `documentFormattingProvider` | S1, S2, S4, S6-S9, S12, S13 | Full-document deterministic formatting, comment/blank-line preservation, final newline, idempotence, compact builtin container type arguments, nested `Option`/`Result` type hints, function signatures, local annotations, and map/set/array examples without formatter-invented type-argument line breaks. | Malformed source, unresolved HIR, syntax-only fallback, incomplete type argument lists, and long lines without an explicit line-width policy. |
 | `textDocument/rangeFormatting` | `documentRangeFormattingProvider` | S1, S2, S4, S6-S9, S12 | Selected top-level item, nested members, field groups, whitespace-padded selections, trailing whitespace cleanup. | Partial unsupported ranges return conservative edits only. |
 | `textDocument/onTypeFormatting` | `documentOnTypeFormattingProvider` | S1, S2, S4, S6-S9, S12, S13 | `}` and newline triggers for completed items, methods, enum record variants, current construct cleanup, and preserving the same compact type-argument spacing as full-document formatting. | Unsupported triggers, incomplete constructs, and incomplete type argument lists fall back safely. |
-| `textDocument/inlayHint` | `inlayHintProvider` | S2-S6, S9-S11 | Parameter names, local type facts, lambda parameter facts, host-path type facts, tuple-variant payload names, requested range. | Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints. |
+| `textDocument/inlayHint` | `inlayHintProvider` | S2-S6, S9-S11 | Parameter names, local type facts, lambda parameter facts, script member type facts, tuple-variant payload names, requested range. | Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints. |
 | `workspace/didChangeWatchedFiles` | Watched files | S0, S8, S9, S11 | Create/change/delete/rename `.vela`, `vela.toml`, and schema artifact events update project/schema state and diagnostics. | Coalesced duplicate events, missing files, invalid config/schema, deleted schema. |
 | `workspace/didChangeConfiguration` | Configuration | S0, S9, S11 | Editor settings map to service-owned workspace config, roots, schema path, reload behavior. | Invalid settings degrade to diagnostics; no protocol types leak into service APIs. |
 | `workspace/didChangeWorkspaceFolders` | Workspace folders | S0, S8, S11 | Added/removed roots reindex modules and republish open diagnostics. | Removed roots clear stale disk facts; open overlays remain authoritative where applicable. |
@@ -385,6 +390,6 @@ below are necessary but do not establish combination coverage by themselves:
 cargo test -p vela_language_service
 cargo test -p vela_lsp_server
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo test --workspace --all-features --no-fail-fast
 ```

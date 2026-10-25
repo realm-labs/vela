@@ -19,7 +19,7 @@ Vela 使用常见的运算符，但不会偷偷猜类型，也不会自动把值
 数字类型；Vela 不会把字符串当数字，也不会替你混用不兼容的数字标签。
 
 比较运算符是 `==`、`!=`、`<`、`<=`、`>`、`>=`。对象语义相等是显式
-选择的能力：record、array、map、set、closure、iterator 和 host ref 不会
+选择的能力：record、array、map、set、closure 和 iterator 不会
 因为字段或内容相同就自动做结构比较。record 或 enum 可以实现封闭内建
 `PartialEq` trait，并提供 `fn eq(self, other: Type) -> bool` 来显式加入；
 `==` 和 `!=` 会对该类型调用这个方法。需要比较脚本对象的引用
@@ -66,8 +66,8 @@ fn count_even(limit: i64) -> i64 {
 - 脚本 record 字段：`reward.amount = 25`
 - 集合索引位置：`tags["last_reward"] = reward.code`
 
-如果目标属于 Rust 宿主对象，Vela 会请求宿主应用这次写入。宿主可以允许写入，
-也可以因为字段只读或当前 capability profile 不允许写入而拒绝。
+这些赋值操作修改脚本自有值。透明 Rust 宿主写入已经删除；修改由现有值转换
+产生的脚本数据，不会隐式写回 Rust。
 
 ```vela
 fn apply(player, reward) {
@@ -79,5 +79,5 @@ fn apply(player, reward) {
 ## 常见错误
 
 常见错误包括：把非数字用于算术、把非布尔值用于布尔逻辑、给不可赋值的表达
-式赋值、写入的值类型不符合预期，或写入宿主标记为只读的字段。只要 Vela 能
+式赋值，或写入的值类型不符合预期。只要 Vela 能
 定位到具体表达式，错误都会带源码位置。

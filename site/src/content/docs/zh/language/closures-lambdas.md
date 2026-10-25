@@ -19,7 +19,7 @@ fn add_one(values) {
 
 ## 捕获
 
-闭包会捕获周围作用域中的脚本可见值。被捕获的宿主值仍然是 host ref 或 path proxy；闭包不会把宿主状态变成脚本 GC 拥有的数据，也不会暴露 Rust `&mut T`。
+闭包会捕获周围作用域中的脚本自有值，包括现有 Rust 值转换产生的数据。捕获不会产生隐式写回 Rust 的路径。脚本闭包不能捕获或保留调用方借用的 Rust 数据。
 
 ```vela
 fn above(limit: i64, values) {

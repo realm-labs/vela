@@ -44,7 +44,7 @@ to match the implementation.
 ## Required correction
 
 The current execution owner is the
-[Rust/Vela interop model plan](../rust-vela-interop-model-plan.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17).
+[Rust/Vela interop model plan](rust-vela-interop-model-plan-superseded-2026-07-23.md#post-acceptance-actor-runtime-authority-reconciliation--2026-07-17).
 Its `I-RECON-1..6` tasks must:
 
 1. freeze one actor-turn-scoped sync/async invocation authority;

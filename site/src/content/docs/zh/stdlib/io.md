@@ -52,5 +52,6 @@ let engine = Engine::builder()
     .build()?;
 ```
 
-I/O helper 适合工具、demo 和受控脚本。服务端 gameplay 脚本通常应通过宿主
-API、事件或显式 state adapter 通信，而不是直接访问文件系统。
+I/O helper 适合工具、demo 和受控脚本。宿主业务逻辑也可以通过现有独立同步
+native 调用和显式返回结果交换脚本自有数据。这些调用保留声明的 effect 与
+capability 检查，不提供透明 Rust 状态适配器。

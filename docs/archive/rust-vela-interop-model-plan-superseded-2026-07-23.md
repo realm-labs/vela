@@ -8,15 +8,15 @@
 > reconciliation; the optional callable-replacement track is superseded
 >
 > Evidence: the original ordinary-interop report is preserved in
-> [`rust-vela-interop-acceptance-2026-07-17.md`](archive/rust-vela-interop-acceptance-2026-07-17.md),
+> [`rust-vela-interop-acceptance-2026-07-17.md`](rust-vela-interop-acceptance-2026-07-17.md),
 > the corrective review is preserved in
-> [`rust-vela-interop-post-review-2026-07-17.md`](archive/rust-vela-interop-post-review-2026-07-17.md),
+> [`rust-vela-interop-post-review-2026-07-17.md`](rust-vela-interop-post-review-2026-07-17.md),
 > the superseded-in-part corrected acceptance is recorded in
-> [`rust-vela-interop-post-review-acceptance-2026-07-17.md`](archive/rust-vela-interop-post-review-acceptance-2026-07-17.md),
+> [`rust-vela-interop-post-review-acceptance-2026-07-17.md`](rust-vela-interop-post-review-acceptance-2026-07-17.md),
 > and the later authority finding is recorded in
-> [`rust-vela-interop-actor-runtime-review-2026-07-17.md`](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md),
+> [`rust-vela-interop-actor-runtime-review-2026-07-17.md`](rust-vela-interop-actor-runtime-review-2026-07-17.md),
 > and the final reconciliation is accepted in
-> [`rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md`](archive/rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md)
+> [`rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md`](rust-vela-interop-actor-runtime-reconciliation-acceptance-2026-07-17.md)
 >
 > Baseline: `master` at `bf524975e` on 2026-07-16
 >
@@ -31,7 +31,7 @@
 > accepted foundations. The optional callable-level replacement parts of this
 > plan are frozen and will be deleted. Rust hotfixing now has one service-level
 > model, defined by
-> [rust-vela-service-hard-switch-plan.md](rust-vela-service-hard-switch-plan.md).
+> [rust-vela-service-hard-switch-plan.md](../rust-vela-service-hard-switch-plan.md).
 > Do not extend `#[replaceable]`, `#[override]`, or slot dispatch.
 
 This document defines a general Rust/Vela interoperability model. Its primary
@@ -250,7 +250,7 @@ durable Actor-owned Runtime decision: the actor mailbox or equivalent turn
 already owns exclusive Runtime access, and neither the Actor Runtime nor an
 override target may be wrapped in `Arc<Mutex<Runtime>>` as the ordinary
 execution boundary. The detailed finding is recorded in
-[the Actor Runtime authority review](archive/rust-vela-interop-actor-runtime-review-2026-07-17.md).
+[the Actor Runtime authority review](rust-vela-interop-actor-runtime-review-2026-07-17.md).
 
 The following correction tasks reopened the replaceable portion of Batches E-G:
 
@@ -1712,7 +1712,7 @@ serialization boundary.
 Cache and profiling storage are not part of dispatch selection or Actor
 semantics. Their implementation and acceptance are intentionally deferred to
 the separate
-[Actor Runtime/cache execution plan](archive/actor-runtime-cache-execution-plan.md)
+[Actor Runtime/cache execution plan](actor-runtime-cache-execution-plan.md)
 after this plan's replaceable post-review closure is accepted.
 
 ### 10.7 Staging, activation, and rollback

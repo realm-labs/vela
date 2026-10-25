@@ -1,0 +1,48 @@
+==================
+Ordinary VM-owned state requires an initializer
+==================
+
+state count: i64 = 0
+
+---
+
+(source_file
+  (state_declaration
+    (identifier)
+    (type_annotation (type_path (builtin_type)))
+    (literal (integer_literal))))
+
+==================
+Removed extern state is recovery, not a positive declaration
+==================
+
+extern state count: i64
+fn after() { return 1 }
+
+---
+
+(source_file
+  (ERROR
+    (identifier)
+    (identifier)
+    (type_annotation (type_path (builtin_type)))
+    (identifier)
+    (identifier)
+    (integer_literal)))
+
+==================
+Malformed ordinary state preserves recovery
+==================
+
+state count: i64
+fn after() { return 1 }
+
+---
+
+(source_file
+  (ERROR
+    (identifier)
+    (type_annotation (type_path (builtin_type)))
+    (identifier)
+    (identifier)
+    (integer_literal)))

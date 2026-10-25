@@ -1,14 +1,14 @@
-(* Vela grammar draft.
+(* Vela reduced synchronous grammar.
 
-   This grammar defines the first implementable Vela syntax target. It covers
-   the language surface needed by milestones M1 through M6: modules, imports,
-   attributes, functions, structs, enums, traits, blocks, control flow, match,
-   lambdas, literals, calls, field access, indexing, and host-state assignment.
+   This grammar documents modules, imports, attributes, functions, VM-owned
+   state, structs, enums, traits, blocks, control flow, match, lambdas, literals,
+   calls, script field access and indexing. Parser/token tests additionally
+   specify literal suffixes and recovery details.
 
-   The grammar intentionally excludes script generics, script-visible task or
-   coroutine handles, manual resume, eval, macros, classes, and Rust-style
-   borrow syntax. Sequential async functions and await expressions are part of
-   the language surface.
+   Script generics, async/await, tasks, Service/Provider entrypoints, extern
+   state, borrowed host values, transparent host paths/RMW, eval, macros,
+   classes and Rust-style borrow syntax are not supported. Ordinary assignment
+   and compound assignment below operate on script-owned storage.
 
    Notation:
    - Terminal symbols are quoted.
@@ -73,10 +73,10 @@ escape          = "\\", ( '"' | "\\" | "/" | "n" | "r" | "t" | "0"
 unicode_escape  = "u", "{", HEX_DIGIT, { HEX_DIGIT }, "}" ;
 
 (* Keywords are reserved and cannot be used as IDENT. *)
-keyword         = "use" | "pub" | "const" | "extern" | "let" | "fn" | "struct"
+keyword         = "use" | "pub" | "const" | "let" | "fn" | "struct"
                 | "enum" | "trait" | "impl" | "for" | "if" | "else"
                 | "match" | "return" | "break" | "continue" | "true"
-                | "false" | "self" | "in" | "as" | "async" | "await" ;
+                | "false" | "self" | "in" | "as" ;
 
 (* ========================================================================= *)
 (* Module items                                                              *)
@@ -87,7 +87,7 @@ visibility      = [ "pub", ws ] ;
 item_kind       = use_decl
                 | const_decl
                 | state_decl
-                | extern_state_decl
+
                 | function_decl
                 | struct_decl
                 | enum_decl
@@ -106,11 +106,7 @@ contextual_state_kw
 state_decl      = contextual_state_kw, ws, IDENT, ws, type_annotation, ws,
                   "=", ws, expr, item_term ;
 
-extern_state_decl
-                = "extern", ws, contextual_state_kw, ws, IDENT, ws,
-                  type_annotation, ws, item_term ;
-
-function_decl   = [ "async", ws ], "fn", ws, IDENT, ws, parameter_list, ws,
+function_decl   = "fn", ws, IDENT, ws, parameter_list, ws,
                   [ return_type, ws ], block ;
 
 parameter_list  = "(", ws, [ parameter, { ws, ",", ws, parameter },
@@ -137,7 +133,7 @@ record_fields   = "{", line_ws, [ struct_field, { field_sep, struct_field },
 
 trait_decl      = "trait", ws, IDENT, ws, "{", line_ws,
                   { trait_item, line_ws }, "}" ;
-trait_item      = { attribute, line_ws }, [ "async", ws ], "fn", ws, IDENT, ws, parameter_list,
+trait_item      = { attribute, line_ws }, "fn", ws, IDENT, ws, parameter_list,
                   ws, [ return_type, ws ], ( block | item_term ) ;
 
 impl_decl       = "impl", ws, path, ws, [ "for", ws, path, ws ], "{", line_ws,
@@ -251,12 +247,12 @@ unary           = ( "!" | "-" ), ws, unary
 
 postfix         = primary, { line_ws, postfix_op } ;
 postfix_op      = call_suffix
-                | await_suffix
+
                 | field_suffix
                 | index_suffix
                 | try_suffix ;
 call_suffix     = argument_list ;
-await_suffix    = ".", ws, "await" ;
+
 field_suffix    = ".", ws, IDENT ;
 index_suffix    = "[", ws, expr, ws, "]" ;
 try_suffix      = "?" ;
@@ -361,7 +357,7 @@ path            = IDENT, { ws, "::", ws, IDENT } ;
    through field_suffix and is not part of path.
 
    1. The left-hand side of assignment must be assignable:
-      identifier, field access, index access, or a host path proxy.
+      a mutable identifier, script field access, or script index access.
 
    2. Record literals are parsed only when a path is followed by "{ ... }".
       A bare "{ key: value }" is a map literal, and "{ statements }" is a block.
@@ -381,7 +377,4 @@ path            = IDENT, { ws, "::", ws, IDENT } ;
       newline tokens available for item_term and stmt_term instead of skipping
       all layout before parsing statement boundaries.
 
-   7. await_suffix is valid only when its receiver is a call expression and the
-      containing function is async. Known async callees require await; awaited
-      dynamic calls may resolve to either synchronous or asynchronous targets.
 *)

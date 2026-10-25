@@ -1,235 +1,81 @@
 # Dynamic Method Dispatch
 
-Vela method calls are receiver-dispatched. Linked bytecode must keep statically
-known calls on stable IDs while still allowing ordinary dynamic-language calls
-when the receiver type is not known at compile time.
-
-This is the final controlled dynamic dispatch design. It is not compatibility
-for legacy name-only fallback, unlinked execution, monkey patching, or
-runtime-computed method names.
+Method calls dispatch on script/standard value receivers. The reduced runtime
+has no Rust-object receiver or transparent host-method boundary. Ordinary
+synchronous native module functions remain independent of method dispatch.
 
 ## Compile-Time Split
 
-Method lowering uses the receiver fact available at the call site:
-
-```text
-receiver known + method exists
-  -> unlinked CallMethodId(method_id)
-  -> linked MethodDispatchHandle
-  -> VM resolved fast path
-
-receiver known + method provably absent
-  -> compile-time diagnostic is allowed
-
-receiver unknown + source-static method name
-  -> unlinked CallDynamicMethod(method_name, source args)
-  -> linked dynamic method instruction
-  -> VM resolves against the runtime receiver
-```
-
-The known-receiver path must not be weakened. Calls such as a typed script
-record method, a statically known standard value method, or a registered host
-method continue to compile through `MethodId` and link to a
-`MethodDispatchHandle` or equivalent host-access target.
-
-The unknown-receiver path is also first class. A source call like
-`value.starts_with("q")` must not be represented as an ambiguous unresolved
-method, and a linked program must not reject it merely because the compiler did
-not know the receiver type.
+Known receivers with a known method lower through stable `MethodId` and a
+linked dispatch handle. Provably absent known methods may be compile errors.
+Unknown receivers with a source-static name lower to `CallDynamicMethod`,
+preserving the method name and source argument order/names. Structurally valid
+dynamic bytecode links; a missing runtime method is a source-spanned execution
+error, not rejection of ordinary dynamic-language source by the linker.
 
 ## Linked Bytecode Contract
 
-Linked bytecode has separate representations for:
-
-```text
-resolved method dispatch
-dynamic method dispatch
-```
-
-Resolved dispatch contains only linked handles, slots, IDs, and cache-site
-operands needed by the fast path. Dynamic dispatch contains the source-static
-method debug name, source argument registers and names, and a dynamic
-method-call cache site. It must not overload resolved `CallMethod` variants
-with "not yet resolved" state.
-
-Linking a dynamic method call succeeds when the bytecode is structurally valid.
-Unresolved source-level dynamic methods are runtime dispatch failures, not
-linker failures. Linker failures are reserved for invalid bytecode, missing
-registered definitions that are required by stable IDs, absent native
-implementations, corrupt handles, or registry mismatches.
-
-Successful runtime/program construction should contain valid linked bytecode.
-The normal public path must not hide dynamic method link rejection behind a
-later `ProgramNotLinked` error.
+Resolved and dynamic calls have distinct instruction shapes. Resolved operands
+use dense handles/slots/IDs; dynamic operands carry a diagnostic/source-static
+name, argument registers/names and cache site. No raw string fallback replaces
+ID-based resolved calls. Required missing native definitions, corrupt handles
+and registry mismatches remain linker failures.
 
 ## Runtime Receiver Classification
 
-Dynamic dispatch begins by classifying the actual runtime receiver with the
-execution context needed for that value:
-
-```text
-string
-bytes
-array
-map
-set
-Option enum
-Result enum
-range
-script record or enum type
-host ref with registered host type metadata
-unsupported value
-```
-
-Heap values require heap/type metadata for precise classification. Host refs
-require host execution and registered schema metadata. A resolver that only
-looks at `Value` may classify scalar primitives, but it must not pretend that
-heap or host receivers can be fully resolved without their owning context.
+Classification includes strings, bytes, arrays, maps, sets, Option/Result,
+ranges, script records/enums and unsupported values. Heap metadata is required
+for precise script type identity. There is no HostRef/path/opaque receiver class.
 
 ## Resolution Order
 
-Dynamic resolution is controlled and registry-backed:
-
-1. Resolve standard/value methods for the receiver category through stable
-   standard method IDs or existing standard method targets.
-2. Resolve linked script impl methods by runtime script type and source method
-   name, then dispatch through the same linked script method path used by
-   resolved calls.
-3. Resolve host methods through registered host metadata and stable
-   `HostMethodId`, then execute through the existing HostAccess host method
-   boundary.
-4. If no target matches, raise a source-spanned runtime method error.
-
-This order may be implemented by focused resolver modules, but every target
-family must resolve to stable IDs, linked handles, or cache-ready targets before
-execution. Dynamic dispatch must not call an old raw string fallback as the
-final architecture.
-
-Static known receiver calls that are provably absent may still fail during
-compilation. Dynamic dispatch is required only when the receiver is unknown or
-not sufficiently narrowed by available facts.
+1. Standard value methods resolve through stable standard IDs/targets.
+2. Script impl methods resolve by script type and source method name, then use
+   the same linked script path as statically resolved calls.
+3. Otherwise raise a source-spanned method error.
 
 ## Arguments
 
-Dynamic bytecode preserves source argument order and source argument names.
-Named arguments are not rejected merely because the receiver type is unknown.
-
-After runtime target resolution, argument materialization uses the resolved
-target signature:
-
-```text
-positional arguments keep source order
-named arguments are reordered by target parameter name
-defaults are filled from the resolved script, standard, or host signature
-unknown names produce source-spanned diagnostics
-missing required arguments produce source-spanned diagnostics
-type guards and host conversions run after materialization
-```
-
-Until a target is known, dynamic calls must not erase argument names or
-prematurely transform them into signature-specific call slots.
-
-Current argument support is complete for linked script impl methods, including
-named argument reordering and default values after dynamic target resolution.
-Standard value methods and host methods currently accept dynamic positional
-arguments only; dynamic named/default metadata for those families is an
-explicit follow-up until their registry signatures expose the same
-materialization data as script methods.
+Preserve named argument spelling/order until a target signature is known.
+Linked script methods reorder names, fill defaults and run guards only after
+target resolution. Unknown names, missing required arguments and invalid arity
+are diagnostics. Standard dynamic method named/default support depends on its
+actual registry/materialization contract; do not infer script-method parity
+from common syntax or resurrect host receiver metadata to obtain it.
 
 ## Cache Guards
 
-Dynamic method inline caches are guarded by both the source method name and the
-runtime receiver classification. A monomorphic entry is sufficient for the
-first implementation:
-
-```text
-method name
-receiver guard
-resolved target
-host schema epoch when the target is host-backed
-program/image epoch or equivalent hot-reload validity
-```
-
-Guard examples:
-
-```text
-standard value receiver kind
-script type name and shape when applicable
-host type id plus schema epoch
-```
-
-On a cache hit, the VM may dispatch directly to the cached target. On a guard
-miss, it must run the resolver again and either update the cache or raise the
-appropriate runtime error. Guard mismatch is not a language error by itself.
-
-Dynamic caches are runtime/image state, not shared mutable instruction state.
-They must be cheap to clear or invalidate when hot reload or host schema
-changes can make a cached target stale.
+Cache entries guard source method name, runtime receiver kind/script shape and
+exact executable owner. A mismatch reruns resolution, not a contract trap.
+Resolved targets and mutable cache/profile data remain generation-qualified.
+Shared execution-data slots are distinct from immutable instructions; optional
+lane-local storage requires measured contention and explicit ownership.
 
 ## Runtime Errors
 
-Dynamic method failures are runtime diagnostics attached to the call source
-span:
-
-```text
-missing method for receiver type
-unsupported receiver type
-wrong argument arity
-unknown named argument
-missing required argument
-type guard or host conversion failure
-HostAccess capability, effect, generation, or schema-epoch denial
-```
-
-The diagnostic should name the source method and receiver classification when
-that information is available. It must preserve call-stack information and
-source spans the same way other VM runtime errors do.
+Missing/unsupported methods, arity/name/default failures and type contract
+mismatches retain the original call span and stack. Dynamic execution cannot
+bypass native effects/capabilities, reflection policy, roots or finite budgets.
 
 ## Host Boundary
 
-Host dynamic method dispatch never bypasses the host safety model:
-
-```text
-HostRef / HostPath / PathProxy
-HostTargetPlan or linked host method target
-HostAccess
-ScriptStateAdapter
-capability and effect checks
-generation and schema epoch checks
-```
-
-Host method resolution uses registered host metadata and stable host method
-IDs. It does not expose Rust `&mut T` to scripts, does not place host state
-under the script GC, and does not mutate host type structure at runtime.
+The old HostRef/HostPath/PathProxy/HostTargetPlan, adapter and host receiver
+method families were removed in D. No independent opaque runtime survived.
+Dynamic dispatch is not a replacement object system or an alias to removed
+registration. See [native registration](host-and-registration.md).
 
 ## Hot Reload
 
-Hot reload compatibility remains based on stable IDs, ABI checks, schema
-checks, and version-owned metadata. Debug-name IDs used inside one linked
-program are image-local handles and are not cross-reload identity.
-
-Accepted hot reloads must invalidate stale dynamic method cache entries before
-new calls can reuse a cache-site index. Reused dynamic cache sites repopulate
-from the new linked program and current host schema metadata. Rejected reloads
-leave the active linked program and its runtime caches unchanged.
+Stable IDs compare ABI; dense handles/cache slots are local to an artifact.
+Activation gives new entries fresh execution data. Old frames/closures retain
+their exact artifact and nested dispatch/cache/plan owner. Never clear/rebase
+old sites in place or rebind old closures by name. Rejected/stale updates leave
+active code and caches unchanged.
 
 ## Coverage Audit
 
-Standard value dynamic dispatch is table-driven in
-`crates/vela_vm/src/dynamic_method_resolution.rs`. Every standard value method
-family with a resolved `CallMethodId` path is represented there by stable
-`MethodId`: String, bytes, array, map, set, Option, Result, and range. The
-current exclusions are not omitted dispatch families; they are argument
-metadata exclusions for standard named/default dynamic arguments as noted
-above.
-
-Linked script method dynamic lookup uses the linked program's
-`script_method_dispatches_by_type_and_name` table. The linker populates this
-from every script impl method in the program, so lookup is not limited to a
-single fixture method name or type.
-
-Host dynamic lookup uses the active type registry to map the receiver host type
-and source method name to a stable `HostMethodId`. Execution then goes through
-the host method boundary, preserving HostAccess permission/capability checks,
-generation checks, and schema epoch guards. Only registered host methods
-visible in the current runtime registry are dynamically callable.
+Standard dynamic resolution covers String, Bytes, Array, Map, Set, Option,
+Result and Range families. Script lookup uses the linked type/name dispatch
+map rather than fixture-specific names. Test static/dynamic routes, unknown
+receivers, guard misses, source argument mapping, permission/budget failure and
+old-generation ownership. [Validation](../validation.md) owns commands.

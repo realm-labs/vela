@@ -29,8 +29,19 @@ in place, but expanding environments or scheduling is outside this goal.
 
 ## Source Of Requirements
 
-- [grammar.ebnf](grammar.ebnf) defines the documented grammar. The current
-  inventory contains 133 productions; productions are not individual test cases.
+The active matrix covers the reduced synchronous language after A–D. Removed
+Service/Provider, async/tasks, host borrows/paths and extern bindings require
+rejection/no-advertising proof, not positive coverage. Host-read/write native
+effects/permissions, ordinary packages, script reflection and tooling workers
+remain. Tooling schema is **4**; obsolete schemas reject. The reviewed
+[inventory migration](../tests/lsp_matrix/reviews/checkpoint-e-inventory.md)
+records affected contracts and reopened evidence. [Current progress](progress.md)
+and the [acceptance report](archive/runtime-simplification-acceptance.md) record
+completed A–E software gates, not complete strict/native Input/Render coverage.
+
+- [grammar.ebnf](grammar.ebnf) defines the documented grammar. Its production
+  inventory and retired rules are recorded in the reviewed migration;
+  productions are not individual test cases.
 - `vela_syntax`'s token, syntax-kind, and AST contracts describe additional
   implemented details such as bytes/numeric suffixes. Their reviewed fingerprints
   prevent a changed contract from silently retaining the old matrix.
@@ -53,19 +64,23 @@ semantic review; a source inventory cannot infer every behavior change.
 
 | Axis | Required partitions |
 |---|---|
-| Declarations and ownership | Public/private functions, parameters/defaults, locals/shadowing/captures, const, state/extern state, structs/fields, enums and unit/tuple/record variants, traits/default methods, inherent/trait impls, modules/import aliases, source-backed/schema-only/builtin ownership. |
+| Declarations and ownership | Public/private functions, parameters/defaults, locals/shadowing/captures, const, VM-owned state, structs/fields, enums and unit/tuple/record variants, traits/default methods, inherent/trait impls, modules/import aliases, source-backed/schema-only/builtin ownership. |
 | Expressions and control flow | Assignment/compound writes, nested blocks, if/match/guards, loop bindings, break/continue, closures/callbacks, constructor/shorthand fields, static paths versus member access, indexing, chained/returned receivers, unary/binary/range operators. |
-| Type and callable facts | Primitives, tuples/unit, nested Array/Map/Set/Iterator/Option/Result contracts, source/schema types, Any/unknown, function/method/trait/stdlib/host calls, named/defaulted args, async/await, static Service and scoped-task paths. |
+| Type and callable facts | Primitives, tuples/unit, nested Array/Map/Set/Iterator/Option/Result contracts, source/schema types, Any/unknown, synchronous function/script-method/trait/stdlib/native calls, named/defaulted args, retained callback and reflection contracts, removed-surface rejection. |
 | Lexical and recovery | All literal/token families, interpolation, comments/shebang/trivia, incomplete item/member/call/type/pattern, malformed neighbor, empty file, cursor start/middle/end and EOF. |
 | LSP feature | Every advertised method, resolve/delta/range variants, lifecycle/sync/watch/configuration, plus explicit rejection of unadvertised methods. |
 | Document lifecycle | Disk-only target, opening importer/definition, unsaved edit, save-independent operation, close-to-disk, reopen, create/change/delete/rename dependency, schema replacement, stale versions, cancellation. |
 | Position and client behavior | ASCII, Chinese, non-BMP characters, LF/CRLF, multiline prefix shifts, percent-encoded paths, spaces/percent signs, locally executable Windows drive-spelling fixtures, and minimal/editor-like client capabilities. |
 | Deferred execution environments | Additional supported OS and minimum/current VS Code profiles, plus the interaction matrix's B16 variants. These do not gate current local acceptance. |
 
-The current executable expansion contains 1327 obligations: applicable syntax
-dimensions in both polarities at their owning test layers, selected document
-states, encoding/URI environments, and installed-editor feature smoke checks.
-This number counts requirements, not tests and not all possible Cartesian pairs.
+The reviewed migration preserves all **1,327 semantic / 1,477 execution
+obligation IDs and owners**, including syntax dimensions in both polarities,
+selected document states, encoding/URI environments and installed-editor checks.
+The immutable execution baseline and historical acceptance snapshots are
+preserved; affected B02–B08 evidence is reopened rather than promoted from old
+passing tests. [Current progress](progress.md) records the remaining strict/native
+Input/Render work. Counts describe requirements, not tests or all possible
+Cartesian pairs.
 The JSON report enumerates every obligation with a stable ID, for example:
 
 ```text

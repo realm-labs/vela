@@ -21,6 +21,7 @@ jobs:
   rust:
     name: Rust
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -39,7 +40,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock', 'examples/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock', 'examples/Cargo.lock', 'fuzz/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -86,16 +87,39 @@ jobs:
           fi
 
       - name: Run Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
 
       - name: Run examples Clippy
-        run: cargo clippy --manifest-path examples/Cargo.toml --all-targets -- -D warnings
+        run: cargo clippy --manifest-path examples/Cargo.toml --all-targets --all-features --locked -- -D warnings
 
       - name: Run tests
-        run: cargo test --workspace
+        run: cargo test --workspace --all-features --locked --no-fail-fast
 
       - name: Run examples tests
-        run: cargo test --manifest-path examples/Cargo.toml
+        run: cargo test --manifest-path examples/Cargo.toml --all-features --locked --no-fail-fast
+
+      - name: Build Rust documentation
+        run: cargo doc --workspace --all-features --locked --no-deps
+
+      - name: Run retained examples
+        run: |
+          cargo run --manifest-path examples/Cargo.toml --locked --bin bad_schema_duplicate_field
+          cargo run --manifest-path examples/Cargo.toml --locked --bin container_type_hints
+          cargo run --manifest-path examples/Cargo.toml --locked --bin generic_type_hint_denied
+          cargo run --manifest-path examples/Cargo.toml --locked --bin hot_reload_function_swap
+          cargo run --manifest-path examples/Cargo.toml --locked --bin hot_reload_function_swap_invalid
+          cargo run --manifest-path examples/Cargo.toml --locked --bin io_stdlib
+          cargo run --manifest-path examples/Cargo.toml --locked --bin modules
+          cargo run --manifest-path examples/Cargo.toml --locked --bin native_function
+          cargo run --manifest-path examples/Cargo.toml --locked --bin package_dependency_demo
+          cargo run --manifest-path examples/Cargo.toml --locked --bin random_permission_denied
+          cargo run --manifest-path examples/Cargo.toml --locked --bin reflect_schema_mutation_denied
+          cargo run --manifest-path examples/Cargo.toml --locked --bin reflect_unknown_field_denied
+          cargo run --manifest-path examples/Cargo.toml --locked --bin script_state
+          cargo run --manifest-path examples/Cargo.toml --locked --bin serde_value
+
+      - name: Check fuzz targets
+        run: cargo check --manifest-path fuzz/Cargo.toml --bins --all-features --locked
 
   fuzz:
     name: Fuzz

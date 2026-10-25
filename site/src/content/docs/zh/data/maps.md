@@ -3,12 +3,12 @@ title: "Map"
 description: "Vela Map文档。"
 ---
 
-Map 是动态脚本数据的键值集合，适合配置、查找表和快照值。需要安全修改 Rust 拥有的状态时，应使用注册宿主 schema，而不是把 map 当成宿主模型替代品。
+Map 是动态脚本数据的键值集合，适合配置、查找表和快照值。Map 由脚本拥有；修改不会隐式写回原始 Rust 数据。
 
 `Map<K, V>` 是内建参数化 Map 契约。Map key 使用 Vela 的 `ValueKey` 策略：
-不可变叶子值按值比较，脚本堆对象和 host ref 按身份比较，`PathProxy` 等临时
-值会在修改前被拒绝。现有 Map 字面量仍然适合字符串 key，其他 runtime key
-值可以通过索引或 Map 方法插入。
+unit、bool、有限数字、char、string 和 bytes 按值比较。脚本 array、map、
+set、record、enum、closure 和 iterator 按身份比较；tuple 和 range 不能作为 key。
+现有 Map 字面量仍然适合字符串 key，其他 runtime key 值可以通过索引或 Map 方法插入。
 
 ## 字面量和访问
 

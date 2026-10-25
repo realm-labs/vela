@@ -53,9 +53,8 @@ arr.iter().fold(initial, |acc, x| next_acc) returns the callback accumulator fac
 
 `Iterator.fold` consumes the iterator in deterministic traversal order. The
 callback receives the current accumulator and one item; an empty iterator
-returns the initial value without invoking the callback. Host-backed iterators
-use the same prepared live polling, call-scoped lifetime, and per-item budget
-rules as their other terminal methods.
+returns the initial value without invoking the callback. Script iterator steps
+and callback work retain per-item budget accounting.
 
 ### Map
 
@@ -349,239 +348,50 @@ failures are script-visible `Result::Err(IoError)` values.
 
 ### Engine
 
-```rust
-let mut bindings = VelaBindings::new();
-bindings.register_type(Account::vela_type());
-bindings.register_type(Invoice::vela_type());
-bindings.register_type(Ledger::vela_type());
-
-let engine = Engine::builder()
-    .with_standard_natives()
-    .register_bindings(bindings)
-    .register_reflect_schema::<CustomerView>()
-    .register_typed_native_fn::<(String,), _>(
-        NativeFunctionDesc::new("audit::log", NativeFunctionId::new(10_001))
-            .param("message", TypeHint::String)
-            .returns(TypeHint::unit())
-            .effects(EffectSet::pure()),
-        audit_log,
-    )
-    .build()?;
-```
+Build an Engine with the retained standard natives and explicitly registered
+synchronous owned-value natives. Native host-read/write effects and permissions
+remain; value-only arguments do not make an application-state operation pure.
+See [native registration](host-and-registration.md) and
+[Rust/Vela interop](../rust-vela-interop.md).
 
 ### Compile
 
-```rust
-let program = engine.compile_dir("scripts")?;
-let mut runtime = Runtime::new(engine, program);
-```
-
-`compile_file(path)` is the single-script mode and ignores the source file name
-for module identity; the usual entrypoint is `main`. `compile_dir(root)` is the
-module-graph mode: every `.vela` file under `root` becomes a module whose path
-is derived from its relative file path, such as `game/reward.vela` becoming
-`game::reward`.
+`compile_file` is single-script mode; `compile_dir` assembles a module graph
+from relative `.vela` paths. Ordinary packages/workspaces/path dependencies use
+the shared manifest loader and package-aware compiler/linker. Runtime execution
+requires a verified linked artifact, not an unlinked alternate interpreter.
 
 ### Call
 
-```rust
-let args = CallArgs::new()
-    .with_host_mut("account", &mut account)
-    .with_host_ref("invoice", &invoice)
-    .with_value("now", current_tick);
+`Runtime::call` executes synchronously using `CallArgs` and `CallOptions`.
+Arguments use existing owned conversions or script values retained by the same
+Runtime. Select finite execution/memory/depth/collection limits for production.
+Cached entry handles validate Runtime ownership and resolve new entry calls
+against the active accepted generation; they are not retained closures.
 
-let output = runtime.call(
-    "billing::events::on_invoice_paid",
-    args,
-    CallOptions::unbounded(),
-)?;
-```
+Serde inputs (`with_serde_value`, with the `serde` feature) become script-owned
+records/enums/collections. A Rust reference used by serialization is not injected
+into script. Script edits do not mutate the original Rust source. Rust explicitly
+receives a result and decodes it with `from_value` or detaches it with
+`value_to_owned`. Maps preserve non-string keys rather than stringifying them.
 
-`CallArgs::from_positional` accepts positional `OwnedValue` sequences for
-static call sites. Dynamic dispatch should prefer named `CallArgs`: entries are
-matched against the target function's parameter names and reordered before
-execution, while ordinary script values and host handles can be mixed in the
-same argument list.
+`call` returns a runtime-managed `VelaValue`. Cloned retained values can be
+passed into later calls on the same Runtime without detaching a copy; another
+Runtime cannot use them. `bind_method` binds a script receiver, and `method`
+can cache its script type/stable method identity. These are script methods,
+not Rust object methods or per-value monkey patches.
 
-Direct `CallArgs::with_host_ref("name", &value)` and
-`CallArgs::with_host_mut("name", &mut value)` are user-facing embedding
-shortcuts. The script still receives a call-scope `HostRef`, not a real Rust
-reference. Field reads and writes dispatch through the type's host object
-adapter and `HostAccess`; `&T` is read-only, while `&mut T` allows write-through
-mutation during the call. A shared origin must be `Sync`; a mutable origin
-requires only `Send` and may be non-`Sync` and non-`'static`. The mutable
-binding has one exclusive root lease. Shared-receiver Host methods reborrow
-`&T` through that guard, so they do not permit a second concurrent call on the
-same origin. An async Host method may retain the scoped guard until its `Send`
-future completes or is dropped. Hosts that
-already manage object identity through a
-state adapter can pass an existing low-level handle with
-`CallArgs::with_host_handle("name", host_ref)` and attach the adapter to the
-same argument owner with `CallArgs::with_fallback_adapter(adapter)`. Runtime
-consumes the arguments and composes direct bindings, Runtime extern state, and the
-fallback adapter behind one execution-owned `ExecutionHost`.
+VM-owned `state` supports explicit reads/updates, including existing owned,
+serde and same-Runtime retained value inputs. Compatible cells survive reload.
+There are no extern host bindings, borrowed input/result/view APIs, host-object
+factories, leases or transparent write-through paths. No independent opaque
+runtime survived D; replacement objects/conversion/re-entry design is deferred.
 
-Erased Host methods receive detached `HostCallValue` arguments. Adapter code
-normally calls `decode_host_call_arg::<T>` and
-`encode_host_call_return(value)`, which supports the same derived Rust Value
-records, enums, tuples, and collections as registered native method thunks.
-The call boundary does not retain VM closures, iterators, ranges, or
-PathProxies.
-
-`call` returns a runtime-managed `VelaValue`. Hosts can pass it back to later
-calls without materializing a detached copy, decode it with `from_value` when
-the `serde` feature is enabled, or explicitly call `value_to_owned` when Rust
-needs an owned boundary value. Most call sites do not need to construct or pass
-a `HostAccess` explicitly.
-
-High-frequency hosts can cache script entry lookup without switching APIs:
-
-```rust
-let handle_tick = runtime.entry("handle_tick")?;
-let output = runtime.call(&handle_tick, args, CallOptions::unbounded())?;
-```
-
-The cached entry belongs to the runtime that created it. If hot reload advances
-the active version, a later call through the cached entry re-resolves the
-function by name against the current program version; removed or incompatible
-functions report the normal runtime or reload errors.
-
-The only asynchronous execution twin is `call_async`, and it accepts the same
-function, bound-method, and provider-method targets as `call`. A sync call
-rejects a declared async entry before executing its body. The scoped `Send`
-future enters the shared frame driver, executes awaited sync targets inline,
-and suspends through ordinary executor polling for registered Rust futures.
-
-The CLI owns a minimal executor only when `--async` is selected; its default
-path remains synchronous and reports that flag when `main` is async. Rust hosts
-drive async entries through the scoped `Runtime::call_async` API.
-
-Stateful async Rust methods may hold direct host leases across ordinary Rust
-await points and reenter Vela through their `NativeCallContext`. A mutable
-receiver is reborrowed explicitly into the child scope:
-
-```rust,ignore
-ctx.call_async(
-    "hooks::after_update",
-    CallArgs::new().with_host_mut("state", &mut *state),
-).await?;
-```
-
-The embedding must keep Runtime storage disjoint from host storage. Split the
-fields before calling so borrowing Runtime does not also borrow the struct that
-is passed as host state:
-
-```rust,ignore
-let Actor { runtime, state, services } = actor;
-runtime.call_async(
-    "handle",
-    CallArgs::new()
-        .with_host_mut("state", state)
-        .with_host_ref("services", services),
-    CallOptions::unbounded(),
-).await?;
-```
-
-This is a Rust ownership requirement, not an actor-specific Runtime API.
-
-With the `serde` feature enabled, hosts can pass ordinary Rust data as
-script-owned values without registering it as host state:
-
-```rust
-#[derive(Serialize, Deserialize)]
-struct DamageEvent {
-    amount: i64,
-}
-
-let args = CallArgs::new().with_serde_value("event", &event)?;
-let output = runtime.call("handle_damage", args, CallOptions::unbounded())?;
-let result: DamageResult = runtime.from_value(&output)?;
-```
-
-Serde struct values become Vela records so scripts can use dot field access.
-Serde enum values become Vela enum values. This path copies data into the VM;
-it is intended for messages, configs, snapshots, and results. It does not
-mutate the original Rust struct when scripts write to the script value.
-Write-through Rust state should still be passed with `with_host_ref`,
-`with_host_mut`, or adapter-backed host handles.
-
-Detached `OwnedValue::Map` stores key-preserving entries rather than a
-string-key object map. String-key serde maps may still become object-shaped
-maps at host boundaries, but non-string keys serialize as owned key values and
-must round-trip without stringification. Runtime insertion still applies the
-normal `ValueKey` keyability checks before a script map is mutated or
-allocated. Reflection map reads expose the same key-preserving entry shape
-instead of converting maps through string-field records.
-
-Native functions may return `OwnedValue::Iterator(...)` when a host wants to
-provide copied iterable data without first materializing a script array. This is
-a snapshot boundary: items are converted to VM-owned values, `HostRef`, or
-`PathProxy` handles before script iteration begins. Persistent Rust iterator
-handles are deferred until lifetime, invalidation, and hot-reload diagnostics
-are explicit.
-
-The same owned-value conversion model is used when Rust explicitly replaces a
-VM state cell:
-
-```rust
-runtime.set_state("main::state", owned_record!("State", {
-    "level" => 1,
-}))?;
-runtime.set_state("main::state", &serde_state)?;
-runtime.set_state("main::state", runtime_value)?;
-```
-
-`OwnedValue` is inserted directly, serde values are passed by reference and
-serialized into script-owned records/enums, and a `VelaValue` from the same
-runtime is attached as a state root without first materializing an
-`OwnedValue`.
-
-Returned script aggregates stay under VM management by default and can be
-passed back to another script call without materializing a detached copy:
-
-```rust
-let reward = runtime.call("make_reward", CallArgs::new(), options)?;
-let score = runtime.call(
-    "score_reward",
-    CallArgs::new().with_vela_value(reward.clone()),
-    options,
-)?;
-let owned_score = runtime.value_to_owned(&score)?;
-let typed_score: Score = runtime.from_value(&score)?;
-```
-
-`VelaValue` belongs to the `Runtime` that returned it. It can be cloned and
-passed back to calls on that same runtime; Rust calls `value_to_owned` only
-when it needs an owned, heap-detached value. With the `serde` feature enabled,
-`Runtime::from_value` can deserialize a `VelaValue` directly from the runtime
-heap into a Rust struct, enum, or scalar without first materializing an
-`OwnedValue`. VM-managed state has the same typed read surface through
-`Runtime::state_as`.
-
-Rust can also call script methods registered on the runtime value's script
-type. Methods are still type-level script methods, not per-value monkey
-patches:
-
-```rust
-let reward = runtime.call("make_reward", CallArgs::new(), options)?;
-let score_target = runtime.bind_method(&reward, "score")?;
-let score = runtime.call(
-    score_target,
-    CallArgs::new().with_value("bonus", 5),
-    options,
-)?;
-
-let score_method = runtime.method(&reward, "score")?;
-let fast_target = runtime.bind_method(&reward, &score_method)?;
-let fast_score = runtime.call(fast_target, args, options)?;
-```
-
-`bind_method` produces the receiver-bound call target; `method` optionally
-caches the owner script type and stable method ID before binding. Calls validate
-that the receiver still belongs to the same runtime and has the expected script
-type; hot reload re-resolves the method target by stable method ID on the
-current program version. Provider methods use the same `call`/`call_async`
-surface through their bound provider-method target.
+Existing synchronous context-aware native re-entry shares its call session and
+pinned executable owner, budgets, permissions and roots. This pass does not add
+a new re-entry model. Owned iterator snapshots contain copied script data;
+script collections and lazy script iterators remain supported, but borrowed Rust
+iterators do not.
 
 ### Hot Reload
 
@@ -604,9 +414,9 @@ Runtime update compilation uses the runtime's active `ProgramVersion`, so hosts
 do not need to separately fetch the current version before compiling an update.
 Source load and path errors are returned immediately, while accepted updates and
 ABI or policy rejections are staged until the host calls
-`runtime.activate_reload()` at a caller-selected safe point. Host mutations
-write through during the call, so reload activation is separate from host state
-mutation.
+`runtime.activate_reload()` at a caller-selected safe point. Native effects
+completed during a call are not rolled back by reload; script-owned snapshots
+have no implicit Rust write-back.
 
 `Runtime::stage_reload` accepts text directly and uses `ReloadSource::file`,
 `ReloadSource::directory`, or `ReloadSource::changed_file` for filesystem

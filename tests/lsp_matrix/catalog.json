@@ -1358,7 +1358,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "73bf93244a54b7f9c69a258b2c17fe32bb29e5c96ab29d4b6eee3c98daa3468b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S3/positive/protocol",
@@ -1368,7 +1373,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "600e66bd8c558f19206092d6a76aa05c16d1792464feb27f5e14d05257d22246",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S3/negative/service",
@@ -1378,7 +1388,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "5d084c69282eb2b238bc3e08e577b9f9112584f9133fea53f073439b6dc38abd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S3/negative/protocol",
@@ -1388,7 +1403,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "470b3d2ddf37264d990359b170477ae35dd3175e451a74ca97d39450253726cd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S3/positive/service",
@@ -1398,7 +1418,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "da97aa7a6ac30f4ca272bab748e5d262cd623dee0f2199deaa15b9c0d074274d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S3/positive/protocol",
@@ -1408,7 +1433,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "11730638c0037ed32e45ea7a2832aefa8d491d1146a3d92a14c3d72e91634cf8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S3/negative/service",
@@ -1418,7 +1448,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "fcd25a92682108a2f69f15ab3a4e770637496c960f06f7bf02280fa79dec2d98",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S3/negative/protocol",
@@ -1428,7 +1463,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "3ce68a6f40511fcd9e044220de06cd3b25148085d588b9811b96f49b8fa0bdce",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S3/positive/service",
@@ -1438,7 +1478,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "d1e42d5e34f46150ce1d7cf67625d3c9fbc54c2eae5e342bc5f9681dce6637ec",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S3/positive/protocol",
@@ -1448,7 +1493,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "f304770c21801161353956e5434db6df1ba2229bc4a3608a8f14f9b82cba3358",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S3/negative/service",
@@ -1458,7 +1508,12 @@
           "layer": "service",
           "name": "semantic_tokens::type_position_tests::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1e6b71e1622b6d873fbf3c1f8133a0db13f803630904a8956bae1b4c0e1e545b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S3/negative/protocol",
@@ -1468,7 +1523,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::type_positions::type_positions_have_exact_resolved_and_unknown_token_streams"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "032d59932fffc83bb2fd1dfe76b4a2257907933e5c8c8543003f9c77024ba042",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S2/positive/service",
@@ -1598,7 +1658,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "50e9e8a2a03a230b3c13492c499a9dca0e1c85a153bf3d6ae8ec3235da39bff5",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S1/positive/protocol",
@@ -1608,7 +1673,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "f5e0f0b2350fb61ce3865c202f9ebb9468cd5522b349e445812f97f51744fcdc",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S1/negative/service",
@@ -1618,7 +1688,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "bd37064399849472c3adcd8772493f89d97b3e1bf67b1cc7de84158980c2692b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-full/syntax/S1/negative/protocol",
@@ -1628,7 +1703,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "646195e83782cb65325aaa4b37ec0e352ff54a43e8e7e5fd93fcd9556c393b8a",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S1/positive/service",
@@ -1638,7 +1718,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "78bf07d50698423098b3deb3f7c1bd64277315e77e50d4ea6e85d9f9a7ee1e5b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S1/positive/protocol",
@@ -1648,7 +1733,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "f27f871b91f2c302196cb551e7ad128ab38a183e7fe4c3fe6d2a53ddca287b34",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S1/negative/service",
@@ -1658,7 +1748,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "aae65db397d4ba20d22f530c9947dca054c2c00a7302c05e91ad452e93aa72bf",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-delta/syntax/S1/negative/protocol",
@@ -1668,7 +1763,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "661a54ecd59f7d2601770e57863b2657d4a8849b2766b492c2998116d5df6e56",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S1/positive/service",
@@ -1678,7 +1778,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "128015bee101c389cde2e9aceb0548260a8118cac33a201a0f071e8adcc7670a",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S1/positive/protocol",
@@ -1688,7 +1793,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "fccbf29fddd2eab8746f9f72ae196192bd14479ae89a343d7ad5f89e582a577c",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S1/negative/service",
@@ -1698,7 +1808,12 @@
           "layer": "service",
           "name": "semantic_tokens::top_level_tests::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "39912c21a88ecb6f513b4fb9f09f192e82c75b8172645ae0b97f971ebdcdaa1b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-range/syntax/S1/negative/protocol",
@@ -1708,7 +1823,12 @@
           "layer": "protocol",
           "name": "tests::semantic_tokens::top_level::top_level_declarations_and_duplicates_have_exact_streams_deltas_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "9837827b34ab9179344f2c8d6ea754acbc5f3afe77e9ed2cb4b63cc32316e490",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "tokens-full/environments/utf16/protocol",
@@ -2080,7 +2200,12 @@
       "tests": [
         { "layer": "service", "name": "diagnostics::top_level_tests::top_level_declaration_diagnostics_pin_duplicates_and_state_forms" },
         { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "6602066102729aca3656af106072c62649ae832e39d02391152975e3867b1d61",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S1/negative/service",
@@ -2088,7 +2213,12 @@
       "tests": [
         { "layer": "service", "name": "diagnostics::top_level_tests::top_level_declaration_diagnostics_pin_duplicates_and_state_forms" },
         { "layer": "service", "name": "diagnostics::import_tests::source_and_schema_import_diagnostics_have_exact_byte_owners" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "1670dd4a762d104a5d707b69bcaf3b4b9afcce7abf9656314ea621daf6e9ea94",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S1/positive/protocol",
@@ -2096,7 +2226,12 @@
       "tests": [
         { "layer": "protocol", "name": "tests::diagnostic_top_level::top_level_declaration_diagnostics_publish_utf16_and_restore_disk" },
         { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "a8a5e3534ba96d0e4bc76eee24beddfcbae319f37b8e25e9e6aeef52e4a2c536",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S1/negative/protocol",
@@ -2104,7 +2239,12 @@
       "tests": [
         { "layer": "protocol", "name": "tests::diagnostic_top_level::top_level_declaration_diagnostics_publish_utf16_and_restore_disk" },
         { "layer": "protocol", "name": "tests::diagnostic_imports::cross_module_import_diagnostics_project_exact_owners" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "fd8717a915b13c7dd738964828c17576d4d070eacea46a3f14f40ecab1f0a5cc",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S11/positive/service",
@@ -2140,7 +2280,12 @@
       "tests": [
         { "layer": "service", "name": "diagnostics::type_position_tests::type_hint_diagnostics_enforce_only_supported_contracts_and_clear_after_repair" },
         { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "818d9789e9ec37cb99a2ec2fa4bfa4f5e943300232994192cd1842948260839a",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S3/negative/service",
@@ -2148,7 +2293,12 @@
       "tests": [
         { "layer": "service", "name": "diagnostics::type_position_tests::type_hint_diagnostics_enforce_only_supported_contracts_and_clear_after_repair" },
         { "layer": "service", "name": "diagnostics::source_state_tests::schema_absence_replacement_invalidity_and_restore_keep_source_diagnostics" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "de7827a119bae748a877a1c5680d58da6a9187e3b938cc88f083604f9006ca71",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S3/positive/protocol",
@@ -2156,7 +2306,12 @@
       "tests": [
         { "layer": "protocol", "name": "tests::diagnostic_type_positions::type_hint_diagnostics_project_utf16_and_clear_after_all_repairs" },
         { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "ce767fce7f57e9d7ea4562c6a2d30bf531b308bee21110bf29a43cd424a29fc5",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S3/negative/protocol",
@@ -2164,7 +2319,12 @@
       "tests": [
         { "layer": "protocol", "name": "tests::diagnostic_type_positions::type_hint_diagnostics_project_utf16_and_clear_after_all_repairs" },
         { "layer": "protocol", "name": "tests::code_action::schema_lifecycle::schema_lifecycle_clears_stale_diagnostics_and_actions" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "9e834c3a3ee98ccbd519d1b29ad44cddad5da351b211f99d8b103cc28cf915fd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "diagnostics/syntax/S8/positive/service",
@@ -2228,7 +2388,12 @@
       "tests": [
         { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" },
         { "layer": "service", "name": "code_action::top_level_tests::top_level_actions_keep_only_applicable_repairs" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "85fe61d389312bb13c78e8d98c148670d79776eb731fe8374ef28d9242fa64dd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "code-action/syntax/S1/negative/service",
@@ -2236,7 +2401,12 @@
       "tests": [
         { "layer": "service", "name": "code_action::top_level_tests::top_level_actions_keep_only_applicable_repairs" },
         { "layer": "service", "name": "code_action::import_matrix_tests::import_actions_apply_exact_edits_and_reject_invalid_owners" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "4180e53321888a42dd4b14184bcc85fd8dd6b57df82492b4165fcc19602d5051",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "code-action/syntax/S1/positive/protocol",
@@ -2244,7 +2414,12 @@
       "tests": [
         { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" },
         { "layer": "protocol", "name": "tests::code_action::top_level::top_level_actions_publish_no_placeholder_or_duplicate_edits" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "89e314f9c38086a7f6d3b48ebeb158e1f734dced6333600e20a0bbc67939e64d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "code-action/syntax/S1/negative/protocol",
@@ -2252,35 +2427,60 @@
       "tests": [
         { "layer": "protocol", "name": "tests::code_action::top_level::top_level_actions_publish_no_placeholder_or_duplicate_edits" },
         { "layer": "protocol", "name": "tests::code_action::import_matrix::import_actions_preserve_valid_owners_and_apply_exact_utf16_edits" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "87de0b8f71859fccb0fb5e1f18ed9c94616c90fc2e53fccf3172823d651e5e9b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "code-action/syntax/S3/positive/service",
       "assertion": "Reviewed in reviews/code-action-type-positions.md. A complete unsupported source-type argument list has one exact Quick Fix that removes only the argument list; applying it clears only that diagnostic and retains eleven unrelated type errors under LF/CRLF. Valid primitive, container, source, Any and unknown type positions have no false actions.",
       "tests": [
         { "layer": "service", "name": "code_action::type_position_tests::type_position_actions_reject_speculative_edits_and_clear_after_manual_repair" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "40595624e71e5c89ed4802a94b7eafd303b7ccfd623063936600e34ea91473a4",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "code-action/syntax/S3/negative/service",
       "assertion": "Reviewed in reviews/code-action-type-positions.md. Incorrect arity, non-keyable Map/Set arguments and one-element tuple errors offer no guessed replacement; an unclosed source generic list has no destructive removal action. All twelve independent manual repairs clear diagnostics and actions under LF/CRLF.",
       "tests": [
         { "layer": "service", "name": "code_action::type_position_tests::type_position_actions_reject_speculative_edits_and_clear_after_manual_repair" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "e10a1fa62516039c7c1829450f4a43417dfe25acea608ed0bcfcfc7a60643762",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "code-action/syntax/S3/positive/protocol",
       "assertion": "Reviewed in reviews/code-action-type-positions.md. The source-generic fix projects one exact versioned UTF-16 edit in an encoded Unicode workspace; applying it leaves eleven exact current diagnostics, clears the selected error/action and agrees with a fresh server under LF/CRLF. Valid and fully repaired type positions return empty action arrays.",
       "tests": [
         { "layer": "protocol", "name": "tests::code_action::type_positions::type_position_actions_project_safe_edit_and_reject_guesses" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "c8743e2c45e732a907c26330495c76c7420cdefae30d590b6f6949052e72ceb5",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "code-action/syntax/S3/negative/protocol",
       "assertion": "Reviewed in reviews/code-action-type-positions.md. Complete UTF-16 action arrays are empty for all eleven type errors requiring a choice and for an unclosed generic list; full manual repair clears results and close restores the original disk diagnostic and its one safe action. LF/CRLF and encoded URI are exact.",
       "tests": [
         { "layer": "protocol", "name": "tests::code_action::type_positions::type_position_actions_project_safe_edit_and_reject_guesses" }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "162aefb809fe0662069b61ed555958d40017f22b7659d64c096de18e77efaab8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "code-action/syntax/S4/positive/service",
@@ -3226,7 +3426,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "e3c31d9acf8b8cc852ea8d81bbd82b76efb73c9c3c01f25a21874d5bdce75a9e",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "references/syntax/S1/positive/protocol",
@@ -3280,7 +3485,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "1365a69b29918c502880a8c99dc4fae8c424c19bfd78087951f338b087c4163d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "references/syntax/S1/negative/service",
@@ -3334,7 +3544,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "cc6c7e894b149378ee4b101cce7b55037f06eab2c0f005f4f141d73965413288",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "references/syntax/S1/negative/protocol",
@@ -3388,7 +3603,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "0d4c2bd50dfdd27e93b70f481d7862699685ca9c479edaa69eb62d66e46fd241",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "highlight/syntax/S1/positive/service",
@@ -3442,7 +3662,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "5abea6dd1c5b326cc83346b149a0d4e2e7fbf0f09ed88562bb5adbd529cff2d5",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "highlight/syntax/S1/positive/protocol",
@@ -3496,7 +3721,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "fd2648ed74f83ad5d5f6f285955948bb5c8cfbab9fbed009fa482707741ba11b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "highlight/syntax/S1/negative/service",
@@ -3550,7 +3780,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "025aa9b093ca631c89845059986dedfb6c21cec5c36708d75cfeb646337daa38",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "highlight/syntax/S1/negative/protocol",
@@ -3604,7 +3839,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "f5534ce600d28d6665d1576a7b97600047f417f6156098120631f3e77a7a26e7",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S1/positive/service",
@@ -3658,7 +3898,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "64cdd82c7af8dba8fea2dfe5193a81fed28d0af40bb1da2ae9c723d93f2a6031",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S1/positive/protocol",
@@ -3712,7 +3957,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "5f27f1d54d36dee5e3fc53ba6af23f238d63ac62721ff1ba7e7d738743b77126",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S1/negative/service",
@@ -3766,7 +4016,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "bb1985afaab26d7042e83f659c0ad44ab35bfb398bd06b6727c12d8ccea895f3",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S1/negative/protocol",
@@ -3820,7 +4075,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "78633d15a29dc3bb097430e754c62137ee4d1e8fc15c2bc2fc59bca917ece4c0",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "rename/syntax/S1/positive/service",
@@ -3874,7 +4134,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "f4a1c2ab2c34d50225f4d794c3b71645e9283aa06913f79dbb4b1fa2139e6895",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "rename/syntax/S1/positive/protocol",
@@ -3928,7 +4193,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "2ed3d126e4756186ed0eda7fff52838820a64c76a2200836a1a6d4cc8c878be6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "rename/syntax/S1/negative/service",
@@ -3982,7 +4252,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_method_matrix_preserves_sets_owners_and_applied_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "eb0a5efcf02ba9479613514c8e6e479944e1531f3dfb90cb613c8c5623fabd14",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "rename/syntax/S1/negative/protocol",
@@ -4036,7 +4311,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_method_matrix_projects_exact_sets_and_applied_utf16_edits"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "3ac7fc6b1ee10903275d254405a7a29b1c69549decd2ccccb9abf1a86c385a53",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "references/syntax/S6/positive/service",
@@ -5922,7 +6202,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "ba16ce50174f3cf954f307819dde00190c772f884309700035c05b6ef25fb2f0",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "references/syntax/S3/positive/protocol",
@@ -5936,7 +6221,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "612d239f36f6104c1fd0b292270741fdfa3b0cd77d08c2398748562892bae403",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "references/syntax/S3/negative/service",
@@ -5950,7 +6240,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "069e8a9d8a02a66a8eef35362d5b93f028afb264047c56d4e171797c9e849603",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "references/syntax/S3/negative/protocol",
@@ -5964,7 +6259,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "0ecc8e2210e9b538c18e72870b004b2b126ed9b5228368593988134741868325",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "highlight/syntax/S3/positive/service",
@@ -5978,7 +6278,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "0efd417571b4b44a766539b57273843ee4b0232c71360e6addb2179d9d024c11",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "highlight/syntax/S3/positive/protocol",
@@ -5992,7 +6297,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "3b68bc3cfa6ae31bc4002d9ee2c8b9f6f676189746fa6ec9d1bab0e80cd52199",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "highlight/syntax/S3/negative/service",
@@ -6006,7 +6316,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1817add0f864415179ab737d3800894a6b8c6651c0ca87c9863e086496e93cad",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "highlight/syntax/S3/negative/protocol",
@@ -6020,7 +6335,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "4b3795968052e91f799689494551137ed0262ceae0c3df0ac2af4ab304eae106",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S3/positive/service",
@@ -6034,7 +6354,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "fea05411ac20c6fb958d5615d17d6c64434016047a7c9457104f96d2e3f37e05",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S3/positive/protocol",
@@ -6048,7 +6373,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "89c551ed01994aea1ebf98ccbad9ab998700846cee361f25fbe80b57736d387b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S3/negative/service",
@@ -6062,7 +6392,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "e13b90cbd5e1c0a75579e987f443d5ef96c9af0c5635e593046041a33088654d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "prepare-rename/syntax/S3/negative/protocol",
@@ -6076,7 +6411,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "570e44cde329b7b2b14b1c0989342cde34fba3f4acdfc09aed734294942e06ab",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "rename/syntax/S3/positive/service",
@@ -6090,7 +6430,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1854cb99d8a0b2a2069304c25043b0e84c1077c6eaf4ef39eadf7935f9988076",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "rename/syntax/S3/positive/protocol",
@@ -6104,7 +6449,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "5c4dcb832cdb047f8a7bcb3989022d511848896f4cfc8747b556502cacfe2bc8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "rename/syntax/S3/negative/service",
@@ -6118,7 +6468,12 @@
           "layer": "service",
           "name": "references::coordinate_tests::schema_type_import_matrix_preserves_source_backed_and_metadata_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "3409597fbff184481c6701499796d69e69c9664b512da1bb941d766295cd9776",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "rename/syntax/S3/negative/protocol",
@@ -6132,7 +6487,12 @@
           "layer": "protocol",
           "name": "tests::references::coordinates::schema_type_import_matrix_preserves_source_backed_and_metadata_utf16_owners"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "f28c14e8c7cd40d0dc3f78bafb7aae9a463f17505221127604c15c4e1b5453a0",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "references/syntax/S10/positive/service",
@@ -8390,7 +8750,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "c49f87250ede3e673ad522f5eb077d616d6db461cfa1b66e1e30e6a72d7904f6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "implementation/syntax/S3/negative/protocol",
@@ -8400,7 +8765,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::implementation_matrix_rejects_source_schema_dynamic_and_unresolved_targets_for_client_profiles"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "b23456f3248cf6bf71f3c98637b9cb43437a5ded9187c8516bba115355e0d2de",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "implementation/syntax/S4/negative/protocol",
@@ -8512,7 +8882,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "2706d9b36d598987b5ed46364965eec56336ee09f8435ebe956f47933e867b51",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "definition/syntax/S3/positive/protocol",
@@ -8534,7 +8909,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1fc71dfa255d4029fe023d3de673ce23e58eaf0f232ee989d803cd90e943e775",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "definition/syntax/S3/negative/service",
@@ -8556,7 +8936,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "f01ee26e5a1e1873fb0aef4bd22206b6339281ea1e127e31ccc4ce0af846c4dc",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "definition/syntax/S3/negative/protocol",
@@ -8578,7 +8963,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "bbad62f571adf4c1dd9b630428ad9b9435d70b4c1792e40b741e11a3bd0ba169",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "definition/syntax/S9/positive/service",
@@ -8656,7 +9046,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "285e09828326ac50b415a8907748683384283f74f45be8e79bf1599b64dba5d3",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "declaration/syntax/S3/positive/protocol",
@@ -8678,7 +9073,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "be5f43abcd248e0baf256ed4b4f23e698d59106628f2e49b8aac5b6b125794e6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "declaration/syntax/S3/negative/service",
@@ -8700,7 +9100,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "b363862bddf592fe7ef18eedc825306141891210e9af84c5a4e4c8c6f520760a",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "declaration/syntax/S3/negative/protocol",
@@ -8722,7 +9127,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "9a3cc6eed4afbafbdbf3bc8d8dbe361315c80b1f0f35aff7f81832c7f26bb344",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "declaration/syntax/S9/positive/service",
@@ -8800,7 +9210,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "8a6de0f1692a4d1a5b06cdffc93163099e7070db9cd04b30fee630ddab493e61",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "type-definition/syntax/S3/positive/protocol",
@@ -8822,7 +9237,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "5cacd119d632a506d988302d252d3033fccff7b39a9d3a98f316b55cf851f05c",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "type-definition/syntax/S3/negative/service",
@@ -8844,7 +9264,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_dynamic_matrix_preserves_known_any_return_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "f27a9b98819963b689ae3b468b97a504e78cb3f0e017806d5e37f15120847fcb",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "type-definition/syntax/S3/negative/protocol",
@@ -8866,7 +9291,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_dynamic_matrix_rejects_guessed_members_after_known_any_returns"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "847250d01d0cc9be3d0f95dfe3a141506220b5c7f9e99d67a07329b69f63ffc9",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "definition/syntax/S8/positive/service",
@@ -9648,7 +10078,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "eb20146b501c0c87b99c276db4504956d8e0fb2929c917517bda8398e77cb874",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "definition/syntax/S1/positive/protocol",
@@ -9678,7 +10113,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "29e5b7b034421f81861e7dcb4307909729acde2df05ca45cb893cb50f0acd3ad",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "definition/syntax/S1/negative/service",
@@ -9708,7 +10148,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "851251270a273815d7afb4c830970e4484cc8ad827151ec90ba51e71da76fdca",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "definition/syntax/S1/negative/protocol",
@@ -9738,7 +10183,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "d3a67d77321dff6b559e4dd417fb1229bae42f04e2d082347cfc4e57f66151c0",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "declaration/syntax/S1/positive/service",
@@ -9768,7 +10218,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "f69a7590b69b8bcc88e93d5b90936c79e7ab83ee84fd7cef8ec3bd38937387f7",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "declaration/syntax/S1/positive/protocol",
@@ -9798,7 +10253,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "a0c53748a67bf6cd5d3fafb63a7062933543c1a06945680b8c1a6ed397d02e20",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "declaration/syntax/S1/negative/service",
@@ -9828,7 +10288,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "115a9da8ab4c0b0ac849ffaa20b8d5eea354c2d9de89cd8cbed147cd1cccacc9",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "declaration/syntax/S1/negative/protocol",
@@ -9858,7 +10323,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "c6e1ce1882183813f40874391bf088e05847bced6409ca3addb8cff233e6ece5",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "type-definition/syntax/S1/positive/service",
@@ -9888,7 +10358,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "42f0b1b93628570a3fef8d6c97a8df62a42bb3a542c9359eb9f1cf548e3fa9be",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "type-definition/syntax/S1/positive/protocol",
@@ -9918,7 +10393,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "1cdd9035950a0bf8e0e6f195ed4d2bf7698b5be2edbc6e94aafbd88abbca14aa",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "type-definition/syntax/S1/negative/service",
@@ -9948,7 +10428,12 @@
           "layer": "service",
           "name": "definition::matrix_tests::navigation_recovery_matrix_keeps_valid_neighbors_and_rejects_incomplete_targets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "8d59093237315c96e856f8e22b8b0f985e77169845d30bcba2c4c32a20597ba4",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "type-definition/syntax/S1/negative/protocol",
@@ -9978,7 +10463,12 @@
           "layer": "protocol",
           "name": "tests::definition::matrix::navigation_recovery_matrix_preserves_neighbors_and_explicit_incomplete_nulls"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "7042f5b5e6ba707f30bb82403e7caed5c872ed20227ecb571d06934f1822dc89",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "definition/syntax/S10/positive/service",
@@ -10586,7 +11076,12 @@
           "layer": "service",
           "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "252609075fb0b7a332b2776631dff28488161180a3937f811305f2864d5d51a8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion/syntax/S3/positive/protocol",
@@ -10600,7 +11095,12 @@
           "layer": "protocol",
           "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "481076292a9a1963b14b9c43f6118e1f0de9907a47459b3720b1494f91a25000",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion/syntax/S3/negative/service",
@@ -10614,7 +11114,12 @@
           "layer": "service",
           "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "ae3a8c17a93fabb3cbc2868fcdb1fcec73c10e2a0aaaf854268b6f345fa157ad",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion/syntax/S3/negative/protocol",
@@ -10628,7 +11133,12 @@
           "layer": "protocol",
           "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "06e7ee5db12f1bd738ec95a5e59196fdae2812636a6d9b0c0f2ae6c4e4dc508d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion-resolve/syntax/S3/positive/service",
@@ -10642,7 +11152,12 @@
           "layer": "service",
           "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "48c4e6bbec72839baf07ab916b616d3769c31680a7ea04cd5079d74e9d4e7ffa",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion-resolve/syntax/S3/positive/protocol",
@@ -10656,7 +11171,12 @@
           "layer": "protocol",
           "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "87cc7666c0a98baf6c815860fa278cac549a8d36d47f2ba6094c807e05026b74",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion-resolve/syntax/S3/negative/service",
@@ -10670,7 +11190,12 @@
           "layer": "service",
           "name": "completion::type_matrix_tests::builtin_type_completion_matrix_covers_public_spellings_and_erased_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "acbf110cd530ae55f556ee34c0caa20dd25129cd46f503443b6acfe76692939c",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion-resolve/syntax/S3/negative/protocol",
@@ -10684,7 +11209,12 @@
           "layer": "protocol",
           "name": "tests::completion_type::matrix::builtin_type_completion_matrix_projects_public_spellings_edits_and_negative_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "db6fa3becd1735235eccce096bdeb98d470eedc5dec5fd3785a5aae1c3de5108",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "completion/states/repeat/protocol",
@@ -12580,7 +13110,12 @@
           "layer": "service",
           "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "9cb09245292df8cb6c406d76b5aba5e63401b7c4be16fa406a3777b0de112811",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "completion/syntax/S1/positive/protocol",
@@ -12618,7 +13153,12 @@
           "layer": "protocol",
           "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "5f86d9274cccf10e824b9cc06c515342d5c7658daa2a3689a314fabfcb9cf9f4",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "completion/syntax/S1/negative/service",
@@ -12656,7 +13196,12 @@
           "layer": "service",
           "name": "completion::type_ownership_tests::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "56c7f2501a339e447f8ae8bbeef07b0125a458a5f289032a7b94163a93565418",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "completion/syntax/S1/negative/protocol",
@@ -12694,7 +13239,12 @@
           "layer": "protocol",
           "name": "tests::completion_type_ownership::import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "c5264627db38da44fe8f1abee6fe0bf0d8150b6c533f029dd184e48a77fef378",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "completion/syntax/S2/positive/service",
@@ -14004,7 +14554,12 @@
           "layer": "service",
           "name": "signature::call_matrix_tests::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1bba2f4272cbc5f9763aa1fa218728fc48016748e6e3450bc14a05cf93f24b0f",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "signature-help/syntax/S3/positive/protocol",
@@ -14014,7 +14569,12 @@
           "layer": "protocol",
           "name": "tests::signature::call_matrix::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "5dcfc0a0e32344da7dc2fcfb4a6b144f76bc9215a19f388ac6ec2f67a33c8ef2",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "signature-help/syntax/S3/negative/service",
@@ -14024,7 +14584,12 @@
           "layer": "service",
           "name": "signature::call_matrix_tests::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "b63841dbff8336545c6d1b32246eca8839f1d456019607d8416e564757bfaacc",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "signature-help/syntax/S3/negative/protocol",
@@ -14034,7 +14599,12 @@
           "layer": "protocol",
           "name": "tests::signature::call_matrix::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "7b5b919286d5e32474aff3a52493181f7458f793307b30472ba9b335a94ccb11",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "signature-help/syntax/S8/positive/service",
@@ -14314,7 +14884,12 @@
           "layer": "service",
           "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "d53004f96e665c8babff6e2776cdcf0a624cc7328904ae7b339412f334f8ee6e",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "hover/syntax/S3/positive/protocol",
@@ -14324,7 +14899,12 @@
           "layer": "protocol",
           "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "2ddce0b3686a28f21bcbbd43c246f70851849406fb38871c34d6aceab526fc35",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "hover/syntax/S3/negative/service",
@@ -14334,7 +14914,12 @@
           "layer": "service",
           "name": "hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "38a4fe1e27c571aa7728ea158ffc7ce8ca36c6a32f63f2c9d4a6b274a2208304",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "hover/syntax/S3/negative/protocol",
@@ -14344,7 +14929,12 @@
           "layer": "protocol",
           "name": "tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "53407cd5d9456fc16f9c826d27ddf2458fe695f0ea4b7117f5c415a1bb3b7c07",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "hover/syntax/S1/positive/service",
@@ -14354,7 +14944,12 @@
           "layer": "service",
           "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "ca9d0b2d25313b391cec43bf90050cc0474eb253e4372d22f3ff629b016aae8f",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "hover/syntax/S1/positive/protocol",
@@ -14364,7 +14959,12 @@
           "layer": "protocol",
           "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "8ff5f3a7bb16b6bea5482b51f38da0ae014bb388d21cbf2c0d5ad77e6cbe4263",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "hover/syntax/S1/negative/service",
@@ -14374,7 +14974,12 @@
           "layer": "service",
           "name": "hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "fbe948a08fdf69803c9313317e08e57fb9597fd6025613dcf4161f4e06d0d500",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "hover/syntax/S1/negative/protocol",
@@ -14384,7 +14989,12 @@
           "layer": "protocol",
           "name": "tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "3616b0fcc2d848916f37c8fa8dc965d406eeed931e11a1ad513769e91c4afab6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "hover/syntax/S2/positive/service",
@@ -14698,7 +15308,12 @@
           "layer": "service",
           "name": "hover::module_matrix_tests::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-retired-view-hover-proof",
+        "contractHash": "1d1890fabbb73cc97fe75f6bf2fd386338e78038210710e29d56db6756c4545d",
+        "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+      }
     },
     {
       "requirement": "hover/syntax/S10/positive/protocol",
@@ -14732,7 +15347,12 @@
           "layer": "protocol",
           "name": "tests::hover::modules::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-retired-view-hover-proof",
+        "contractHash": "18c3356c120032d8791139aa2616b9699034025606a812374dd9f8aaf944d098",
+        "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+      }
     },
     {
       "requirement": "hover/syntax/S10/negative/service",
@@ -14766,7 +15386,12 @@
           "layer": "service",
           "name": "hover::module_matrix_tests::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-retired-view-hover-proof",
+        "contractHash": "5c62c61f726422c9dc40af448a17dbeb36f8cf5c7b793615777574d7edb5edd5",
+        "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+      }
     },
     {
       "requirement": "hover/syntax/S10/negative/protocol",
@@ -14800,7 +15425,12 @@
           "layer": "protocol",
           "name": "tests::hover::modules::hover_module_matrix_preserves_import_paths_aliases_and_visibility"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-retired-view-hover-proof",
+        "contractHash": "3b362c1b950202ca8be4b91ad3a907371f1b6b689d6f31dcf670477104139d08",
+        "reason": "D retired the positive scoped-view hover test identities. The retained S10 obligations have unchanged contracts, but their old evidence cannot certify the replacement retained-hint/rejection tests without review."
+      }
     },
     {
       "requirement": "hover/states/dirty/protocol",
@@ -15306,7 +15936,12 @@
           "layer": "service",
           "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "1141898e22f90fdadacc5eea5f39280312238fd243a47113c9e995d98e1d3f84",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-open/syntax/S1/positive/protocol",
@@ -15324,7 +15959,12 @@
           "layer": "protocol",
           "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "3aa56deac439ac0ee74134c0436076ba70bbef12b93013af2446b15ed37d49a6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-open/syntax/S1/negative/service",
@@ -15338,7 +15978,12 @@
           "layer": "service",
           "name": "document_open_tests::document_open_dependency_body_and_signature_changes_preserve_current_and_frozen_facts"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "41b7e325a6faabf64f3da3550242363695e19dc4624234a5c80508d45fad719b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-open/syntax/S1/negative/protocol",
@@ -15356,7 +16001,12 @@
           "layer": "protocol",
           "name": "tests::document_open_matrix::document_open_invalid_notifications_and_lifecycle_states_cannot_replace_current_sources"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "29818a49af3bfbaf05738e608c4e7117c013a0a0d7277d7d7e2c8cd1cbbd4a4d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-open/syntax/S9/positive/service",
@@ -15596,7 +16246,12 @@
           "layer": "service",
           "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "b1c758a11e04e5db76028325fc8545754cca417ff776c36a3f5d9bdbc6f53e0b",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-change/syntax/S1/positive/protocol",
@@ -15622,7 +16277,12 @@
           "layer": "protocol",
           "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "d8b8cb634b20983fd53eae7d4e18600de94b9e33dc202134b9987063f6774c6f",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-change/syntax/S1/negative/service",
@@ -15636,7 +16296,12 @@
           "layer": "service",
           "name": "document_change_tests::document_change_dependency_phases_preserve_body_indexes_current_hover_and_frozen_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "d805c587ef771bf03f7bd2f7da200c61779c155e269060983209180c4ab26b7e",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-change/syntax/S1/negative/protocol",
@@ -15662,7 +16327,12 @@
           "layer": "protocol",
           "name": "tests::document_change_matrix::document_change_unopened_ranges_and_malformed_payloads_preserve_controlled_source_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "da231f197cf211db1a1faf3da6a792e11b81150f176a6e6bc605e6f5e3df129c",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "did-change/syntax/S2/positive/service",
@@ -16766,7 +17436,12 @@
           "layer": "service",
           "name": "document_symbol_matrix_tests::document_symbol_declarations_preserve_complete_ranges_selections_and_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "7934b1554d1b3b2f79befcca1b64b0b794bfc1589075d60f28c565708c1f46c2",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "document-symbol/syntax/S1/positive/protocol",
@@ -16776,7 +17451,12 @@
           "layer": "protocol",
           "name": "tests::document_symbol_matrix::lsp_document_symbol_declarations_have_complete_utf16_ranges_and_encoded_uri_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "61b7d7ea5511cf4c25f35c38f28f62ac1dbe6ca0b3e0bd6b2f2ffeef50a07da6",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "document-symbol/environments/utf16/protocol",
@@ -16816,7 +17496,12 @@
           "layer": "service",
           "name": "document_symbol_recovery_tests::document_symbol_recovery_preserves_exact_owned_trees_and_restores_current_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "dffda7c3e52b6504316bf6040e8e8251a673f220e9c6219531a22bf0aa11f7b9",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "document-symbol/syntax/S1/negative/protocol",
@@ -16826,7 +17511,12 @@
           "layer": "protocol",
           "name": "tests::document_symbol_recovery::lsp_document_symbol_recovery_pins_whole_utf16_trees_after_damage_repair_and_repeat"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "cf0f02452f4af6eb42f771e6d1309453eb72ff7447140b459293f682e8588667",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "document-symbol/syntax/S9/positive/service",
@@ -17090,7 +17780,12 @@
           "layer": "service",
           "name": "workspace_symbol_matrix_tests::workspace_symbol_declarations_preserve_whole_owned_query_sets_and_ranges"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "4df841ba4f3a019c72aab9f7e662b473e7e2357bcfab2a82bbd634e9b7267c03",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S1/positive/protocol",
@@ -17100,7 +17795,12 @@
           "layer": "protocol",
           "name": "tests::workspace_symbol_matrix::lsp_workspace_symbol_declarations_pin_complete_repeated_utf16_query_sets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "ee9754839e8fb42dd1cc5871a36d23b9ba4b800371dca4f1c55b0ce1cb114b64",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "workspace-symbol/states/repeat/protocol",
@@ -17230,7 +17930,12 @@
           "layer": "service",
           "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "1638d50d322244ca5c4df98db91ef7e5925f2e9baf3a3dc0428564074095d7da",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S3/positive/protocol",
@@ -17240,7 +17945,12 @@
           "layer": "protocol",
           "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "d5d084824a383744464513146d9e902f26c1a1a4dfd1758fa36b8917d37d5ecd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S3/negative/service",
@@ -17250,7 +17960,12 @@
           "layer": "service",
           "name": "workspace_symbol_type_tests::workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_exclusions"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "a39fba86c50fb4b6b06f1159e1cbf8a84afa1cec00a73079c476d7e94102a581",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S3/negative/protocol",
@@ -17260,7 +17975,12 @@
           "layer": "protocol",
           "name": "tests::workspace_symbol_types::lsp_workspace_symbol_type_positions_pin_complete_utf16_hint_details_and_ownership"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "c177d1c94bf68cd0b35007fe405597a594b650938b19cd628f34c20d019f84be",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S10/positive/service",
@@ -17326,7 +18046,12 @@
           "layer": "service",
           "name": "workspace_symbol_recovery_tests::workspace_symbol_recovery_pins_whole_query_sets_through_damage_repair_and_unicode_shifts"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "d506faca9ce0fec939c1f2806b807f6518bcc72db999824be070c0ff9ec41bc8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "workspace-symbol/syntax/S1/negative/protocol",
@@ -17336,7 +18061,12 @@
           "layer": "protocol",
           "name": "tests::workspace_symbol_recovery::lsp_workspace_symbol_recovery_pins_complete_utf16_sets_after_damage_repair_and_repeat"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "e8463c74a4e4b2ab0656b33e70af7ece6d3ea505587946d912177ccc3146ab37",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "workspace-symbol/states/recovery/protocol",
@@ -17716,7 +18446,12 @@
           "layer": "service",
           "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "b573f0ac9100bf7062eb582f383e657f625d74461e3e5fc1236a4c6ca56b934d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "folding/syntax/S1/positive/protocol",
@@ -17730,7 +18465,12 @@
           "layer": "protocol",
           "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "bd2e1bc936d57ab90784831a8028d1cc3d20640d88f2306efe147bd58d5a9a7e",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "folding/syntax/S1/negative/service",
@@ -17744,7 +18484,12 @@
           "layer": "service",
           "name": "folding_import_tests::folding_import_groups_pin_complete_alias_reexport_trivia_and_separation_sets"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "c007016fadcaa5f0baf9c3061040710a86a00a8f7bc51da89b2dfba55ef3cba1",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "folding/syntax/S1/negative/protocol",
@@ -17758,7 +18503,12 @@
           "layer": "protocol",
           "name": "tests::folding_imports::lsp_folding_import_groups_pin_complete_utf16_dirty_close_sets_and_all_immutable_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "588e01c48685142209896b93693946c0641bd9142b915d43c53d6144d5385b2d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "folding/syntax/S2/positive/service",
@@ -18150,7 +18900,12 @@
           "layer": "service",
           "name": "selection_declaration_tests::selection_declarations_pin_complete_items_defaults_members_and_point_vectors"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "0559c58e1faf6fd59d8a9a66818cf15ae114c1520f2374c1f037a9bd353ba462",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "selection/syntax/S1/positive/protocol",
@@ -18160,7 +18915,12 @@
           "layer": "protocol",
           "name": "tests::selection_declarations::lsp_selection_declarations_pin_complete_utf16_items_defaults_members_and_retained_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "7437c39bd3d19c892091dc4bbf69fe8f046e6696be668c006f009b1a076c3d86",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "selection/syntax/S1/negative/service",
@@ -18170,7 +18930,12 @@
           "layer": "service",
           "name": "selection_declaration_tests::selection_declarations_pin_complete_items_defaults_members_and_point_vectors"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "5952e4a1cf6b8494f50fdfa992d4ab0afd00643609854fb4dd529dd7ce778acd",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "selection/syntax/S1/negative/protocol",
@@ -18180,7 +18945,12 @@
           "layer": "protocol",
           "name": "tests::selection_declarations::lsp_selection_declarations_pin_complete_utf16_items_defaults_members_and_retained_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s1-owned-state",
+        "contractHash": "0800e748e004948d57c5137ed3ce3c7a2325de22eb232b3a9ab284c8c1be7fc8",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. A-D removed extern host bindings and script async declarations; S1 now covers initialized VM-owned state and synchronous declarations only."
+      }
     },
     {
       "requirement": "selection/syntax/S2/positive/service",
@@ -18230,7 +19000,12 @@
           "layer": "service",
           "name": "selection_type_tests::selection_types_pin_complete_nested_hints_owned_positions_and_point_vectors"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "e912ce727b2311c14e3d7b006588ba40f5d8d286752af9ff11c7b350fff04e5d",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "selection/syntax/S3/positive/protocol",
@@ -18240,7 +19015,12 @@
           "layer": "protocol",
           "name": "tests::selection_types::lsp_selection_types_pin_complete_utf16_hints_and_retained_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "c16e97d4c6cf6a9f5e0862785cd1a09c7d5d95d3a94f841058de424c61d43d22",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "selection/syntax/S3/negative/service",
@@ -18250,7 +19030,12 @@
           "layer": "service",
           "name": "selection_type_tests::selection_types_pin_complete_nested_hints_owned_positions_and_point_vectors"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "b8a4b24606b0f0a84a7c5e5fa0a0bfb6800782aabe946934b53021134cf31585",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "selection/syntax/S3/negative/protocol",
@@ -18260,7 +19045,12 @@
           "layer": "protocol",
           "name": "tests::selection_types::lsp_selection_types_pin_complete_utf16_hints_and_retained_snapshots"
         }
-      ]
+      ],
+      "pendingReview": {
+        "migration": "checkpoint-e-s3-owned-values",
+        "contractHash": "b11aa40bd59c8b025490305898ebbf4dfbfefc5dbdeaf49c65ff137752f5b1fe",
+        "reason": "Historical linkage is retained, but the reduced contract needs reviewed current-source service/protocol evidence and fresh affected installed/native captures before acceptance. D removed Host/view/borrow type facts; S3 now covers registered owned Value schema facts, retaining primitive, builtin, source, trait, Any and unresolved type coverage."
+      }
     },
     {
       "requirement": "selection/syntax/S4/positive/service",

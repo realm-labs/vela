@@ -523,7 +523,7 @@
       "S10",
       "S11"
     ],
-    "positive": "Parameter names, local type facts, lambda parameter facts, host-path type facts, tuple-variant payload names, requested range.",
+    "positive": "Parameter names, local type facts, lambda parameter facts, script member type facts, tuple-variant payload names, requested range.",
     "negative": "Explicit annotations, unknown/Any facts, dynamic boundaries, missing schema suppress hints."
   },
   {

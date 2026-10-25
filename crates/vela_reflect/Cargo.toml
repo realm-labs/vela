@@ -12,7 +12,6 @@ vela_hir = { workspace = true }
 vela_package = { workspace = true }
 vela_host = { workspace = true }
 vela_registry = { workspace = true }
-vela_syntax = { workspace = true }
 
 [lints]
 workspace = true

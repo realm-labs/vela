@@ -21,8 +21,8 @@ values. The two sides must be compatible numeric types; Vela does not turn
 strings into numbers or mix incompatible numeric tags for you.
 
 Comparison operators are `==`, `!=`, `<`, `<=`, `>`, and `>=`. Semantic object
-equality is opt-in: records, arrays, maps, sets, closures, iterators, and host
-refs do not become structurally comparable just because their fields or
+equality is opt-in: records, arrays, maps, sets, closures, and iterators
+do not become structurally comparable just because their fields or
 contents match. A record or enum can opt in by implementing the closed builtin
 `PartialEq` trait with `fn eq(self, other: Type) -> bool`; `==` and `!=` call
 that method for values of the type. Use `===` and `!==` when you need

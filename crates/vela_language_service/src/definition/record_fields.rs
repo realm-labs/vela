@@ -33,12 +33,12 @@ impl LanguageServiceDatabases {
                 record
                     .fields()
                     .iter()
-                    .any(|field| !field.is_shorthand() && field.label_token().is_some_and(&matches))
+                    .any(|field| !field.is_shorthand() && field.label_token().is_some_and(matches))
                     .then(|| record.path_segments())
             } else if let Some(pattern) = SyntaxRecordPattern::cast(node) {
                 pattern
                     .fields()
-                    .any(|field| !field.is_shorthand() && field.label_token().is_some_and(&matches))
+                    .any(|field| !field.is_shorthand() && field.label_token().is_some_and(matches))
                     .then(|| pattern.path_segments())
             } else {
                 None

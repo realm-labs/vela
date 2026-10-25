@@ -60,16 +60,18 @@ fn grant(rewards: Map<String, i64>, tags: Set<String>) -> Result<i64, String> {
 
 允许的参数化契约是 `Array<T>`、`Map<K, V>`、`Set<T>`、`Iterator<T>`、
 `Option<T>` 和 `Result<T, E>`。`Map<K, V>` 的 key 和 `Set<T>` 的元素必须
-满足 runtime 的 `ValueKey` 策略：不可变叶子值按值作为 key，脚本堆对象和
-host ref 按身份作为 key，`PathProxy` 等临时值会在修改前被拒绝。`Function`
-在 callable 身份语义明确前不会被接受为可 key 化的类型提示契约。
+满足 runtime 的 `ValueKey` 策略：unit、bool、有限数字、char、string 和 bytes
+按值作为 key。脚本 array、map、set、record、enum、closure 和 iterator 按身份
+作为 key。tuple、range 和非有限浮点数不能作为 key。`Function` 不被接受为
+可 key 化的类型提示契约。
 
 这些只是边界契约，不是转换。混合元素数组传给 `Array<i64>` 时会在检查边界失败，
-不会被转换。
+不会被转换。现有 Rust 值转换产生脚本自有数据；满足类型提示不会产生隐式
+写回 Rust 的路径，也不提供 opaque 对象支持。
 
 ## 不是脚本泛型
 
-Vela 仍然拒绝 `Player<T>`、`String<T>`、`Map<PathProxy, V>`、
+Vela 仍然拒绝 `Player<T>`、`String<T>`、`Map<Range, V>`、
 `Set<Function>`、`Function<T>` 这类用户泛型或不可 key 化的参数化语法。
 类型参数只保留给上面的内建契约，不会生成泛型函数或泛型用户类型。
 

@@ -41,6 +41,17 @@ function loadInventory(root) {
       interactions: read("docs/lsp-vscode-interaction-matrix.md"),
     },
   );
+  for (const proof of catalog.evidence.filter((item) => item.pendingReview)) {
+    const review = proof.pendingReview;
+    const migration = manifest.migrations.find((item) => item.id === review.migration);
+    const original = migration?.from.find((item) => item.id === proof.requirement);
+    const replacement = migration?.to.find((item) => item.id === proof.requirement);
+    const current = executionRequirements.find((item) => item.id === proof.requirement);
+    if (original?.contractHash !== review.contractHash || !replacement ||
+        replacement.contractHash !== current?.contractHash) {
+      throw new Error(`pending evidence needs an exact contract migration: ${proof.requirement}`);
+    }
+  }
   return { catalog, requirements, manifest, executionRequirements };
 }
 module.exports = { loadInventory };

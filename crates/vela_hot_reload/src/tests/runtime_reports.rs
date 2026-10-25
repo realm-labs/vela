@@ -106,56 +106,81 @@ fn program_version_shares_owned_artifact_and_verified_mir_generation() {
 }
 
 #[test]
-fn restricted_jit_input_is_same_generation_verified_mir_without_reanalysis() {
+fn program_version_retains_verified_mir_layouts_and_analyses_without_reanalysis() {
     let version = compile_initial(
         SourceId::new(1),
         "fn main(value: i64) -> i64 { return value + 1; }",
     )
-    .expect("compile restricted JIT input");
-    let input = version
-        .restricted_entry_jit_input("main")
-        .expect("main has linked and MIR identities");
-
-    assert_eq!(input.generation, version.executable_generation_id());
+    .expect("compile verified interpreter input");
+    let artifact = version.linked_artifact();
+    let handle = version
+        .linked_program()
+        .entry_point_by_name("main")
+        .expect("main entry");
+    assert_eq!(artifact.generation(), version.executable_generation_id());
+    assert_eq!(artifact.generation(), version.linked_program().generation());
+    assert!(std::sync::Arc::ptr_eq(
+        artifact.verified_mir(),
+        version.verified_mir()
+    ));
     assert_eq!(
-        input.linked.debug_name,
-        version
-            .linked_program()
-            .function(input.handle)
-            .expect("same handle")
-            .debug_name
+        artifact.mir_executable(handle).expect("main layout").handle,
+        handle
     );
-    assert!(
-        input
-            .mir_owner
-            .program()
-            .function(input.mir_function)
-            .is_some()
-    );
-    assert!(input.eligibility.is_eligible());
     assert_eq!(
-        version.linked_artifact().mir_executables().len(),
+        artifact.mir_executables().len(),
         version.linked_program().function_count()
     );
+    for layout in artifact.mir_executables() {
+        assert!(version.linked_program().function(layout.handle).is_some());
+        let owner = version.verified_mir().root(layout.root).expect("MIR owner");
+        let body = owner.program().function(layout.function).expect("MIR body");
+        let analyses = owner.analyses(layout.function).expect("sealed analyses");
+        let handoff = owner.backend_handoff().expect("bytecode compiler handoff");
+        assert!(body.liveness().is_computed());
+        assert!(std::ptr::eq(handoff.program(), owner.program()));
+        assert!(std::ptr::eq(
+            handoff.analyses(layout.function).expect("same analyses"),
+            analyses
+        ));
+    }
 }
 
 #[test]
-fn restricted_jit_eligibility_rejects_generation_owned_allocations() {
+fn program_version_retains_allocation_budget_and_safepoint_analyses() {
     let version = compile_initial(SourceId::new(1), "fn main() { return [1, 2, 3]; }")
-        .expect("compile allocation JIT input");
-    let input = version
-        .restricted_entry_jit_input("main")
-        .expect("main has retained JIT input");
+        .expect("compile allocation input");
+    let handle = version
+        .linked_program()
+        .entry_point_by_name("main")
+        .expect("main entry");
+    let layout = version
+        .linked_artifact()
+        .mir_executable(handle)
+        .expect("main layout");
+    let owner = version.verified_mir().root(layout.root).expect("MIR owner");
+    let body = owner.program().function(layout.function).expect("MIR body");
+    let analyses = owner.analyses(layout.function).expect("sealed analyses");
+    let (statement_id, point) = analyses
+        .budget
+        .statement_points()
+        .find(|(_, point)| point.class == vela_mir::MirBudgetClass::Allocation)
+        .expect("allocation is budgeted");
+    let statement = body.statement(statement_id).expect("budgeted allocation");
+    let safepoint_id = statement.safepoint.expect("allocation safepoint");
+    let safepoint = body.safepoint(safepoint_id).expect("retained safepoint");
 
-    assert!(!input.eligibility.is_eligible());
+    assert_eq!(point.units, 1);
+    assert_eq!(point.origin, statement.origin);
+    assert_eq!(safepoint.origin, statement.origin);
     assert!(
-        input
-            .eligibility
-            .reasons()
-            .contains(&vela_mir::MirJitIneligibility::Allocation)
+        analyses
+            .root_liveness
+            .live_before_safepoint
+            .contains_key(&safepoint_id)
     );
-    assert!(input.eligibility.safepoint_count > 0);
-    assert!(input.eligibility.budget_point_count > 0);
+    assert!(body.safepoints().count() > 0);
+    assert!(analyses.budget.points().count() > 0);
 }
 
 #[test]

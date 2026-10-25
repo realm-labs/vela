@@ -5,13 +5,13 @@ description: "Vela 标准库概览。"
 
 Vela 标准库分成两类：始终可用的纯值 helper，以及由宿主显式安装的
 capability。纯值 helper 作用在脚本拥有的字符串、数组、Map、Set、Bytes、
-`Option`、`Result` 和数字上。Time、Random、Context 事件和 I/O 这类
+`Option`、`Result` 和数字上。Time、Random 和 I/O 这类
 能力由 embedding 应用安装，避免脚本默认依赖进程全局状态。
 
 ## 纯值 Helper
 
-日常使用最多的是值方法。它们走和脚本方法、宿主方法相同的 dispatch 入口，
-但实现是 native，并且有稳定 method ID。
+日常使用最多的是值方法。它们走和普通脚本方法相同的 dispatch 入口，
+但实现是 native，并且有稳定 method ID；它们不暴露 Rust 宿主对象的方法。
 
 ```vela
 fn main() {
@@ -60,14 +60,14 @@ fn main() {
 显式开启这些能力。
 
 ```vela
-fn main(ctx: Context) {
+fn main() {
     let now = time::now();
     let roll = math::random(1, 6);
-    ctx.emit("roll.finished", roll);
     return roll;
 }
 ```
 
-这个例子里，`time::now`、`math::random` 和 `Context.emit` 只有在宿主注册
-time、random、context schema 和 event capability 后才可执行。沙箱文件系统
-和 stdout helper 也同样是 opt-in。
+这个例子里，`time::now` 和 `math::random` 只有在宿主安装对应的 native 并授予
+time、random capability 后才可执行。沙箱文件系统和 stdout helper 也同样是
+opt-in。独立同步 native 函数使用现有自有值 API，其声明的 effects 仍需授权；
+脚本字段和集合修改不会隐式写回 Rust。

@@ -26,8 +26,8 @@ fn on_kill(ctx: Context, player: Player) {
 access、indexing、同步 calls、unary/binary operators、ranges、lambdas、
 `if`、`match` 和 blocks。
 
-赋值目标必须是可赋值目标：identifier、field、index 或 host path proxy。
-复合赋值和普通赋值使用相同写入边界。
+赋值目标必须是可赋值目标：identifier、脚本 field 或脚本集合 index。
+复合赋值和普通赋值使用相同的脚本自有值边界，都不会隐式写回 Rust。
 
 ## Patterns
 

@@ -12,7 +12,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const json = (file) => JSON.parse(read(`tests/lsp_matrix/${file}`));
 
 function fixture() {
-  const catalog = json("catalog.json");
+  const catalog = Object.assign(json("catalog.json"), json("syntax-baseline.json"));
   catalog.features = catalog.featureFiles.flatMap(json);
   catalog.protocolBaseline = json("protocol-baseline.json");
   return { catalog, requirements: model.obligations(catalog),

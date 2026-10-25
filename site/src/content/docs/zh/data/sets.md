@@ -5,9 +5,9 @@ description: "Vela Set文档。"
 
 Set 存储唯一的动态值，适合成员检查和脚本拥有数据上的集合运算。`Set<T>`
 是内建类型提示契约，用于检查边界和类型化修改路径。Set 元素使用和 Map key
-相同的 `ValueKey` 策略：不可变叶子值按值作为 key，脚本堆对象和 host ref
-按身份作为 key，`PathProxy` 等临时值会在修改前被拒绝。`Function` 在 callable
-身份语义明确前不会被接受为可 key 化的类型提示契约。
+相同的 `ValueKey` 策略：unit、bool、有限数字、char、string 和 bytes 按值比较。
+脚本 array、map、set、record、enum、closure 和 iterator 按身份比较；tuple 和
+range 不能作为 key。`Function` 不被接受为可 key 化的类型提示契约。
 
 ## 构造和成员检查
 

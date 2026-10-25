@@ -6,10 +6,10 @@ description: "Sets documentation for Vela."
 Sets store unique dynamic values. They are useful for membership checks and set
 algebra on script-owned data. `Set<T>` is a builtin type-hint contract for
 checked boundaries and typed mutation paths. Elements use the same `ValueKey`
-policy as map keys: immutable leaf values compare by value, script heap objects
-and host refs compare by identity, and transient values such as `PathProxy` are
-rejected before mutation. `Function` is not accepted as a keyable type-hint
-contract until callable identity is explicit.
+policy as map keys: unit, booleans, finite numbers, chars, strings, and bytes
+compare by value. Script arrays, maps, sets, records, enums, closures, and
+iterators compare by identity; tuples and ranges are not keyable. `Function`
+is not accepted as a keyable type-hint contract.
 
 ## Construction And Membership
 

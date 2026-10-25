@@ -5,9 +5,10 @@ description: "Set method documentation for Vela."
 
 Sets store unique script values through the same `ValueKey` policy used by map
 keys. Immutable leaf values such as unit, booleans, finite numbers, chars,
-strings, and bytes compare by value. Script heap objects and host refs compare
-by identity, while transient values such as `PathProxy` are rejected before
-mutation.
+strings, and bytes compare by value. Script arrays, maps, sets, records,
+enums, closures, and iterators compare by identity. Tuples, ranges, and
+non-finite floats are rejected as keys before mutation. These are script-owned
+values; set mutation does not implicitly write back to Rust.
 
 ## Construction And Membership
 

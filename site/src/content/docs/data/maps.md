@@ -6,9 +6,10 @@ description: "Maps documentation for Vela."
 Maps are key-value collections for dynamic script data. They are useful for configuration, lookup tables, and snapshot values, and they are script-owned: changes do not implicitly mutate the original Rust data.
 
 `Map<K, V>` is the parameterized builtin map contract. Map keys use Vela's
-`ValueKey` policy: immutable leaf values compare by value, script heap objects
-and host refs compare by identity, and transient values such as `PathProxy` are
-rejected before mutation. Existing map literals remain convenient for string
+`ValueKey` policy: unit, booleans, finite numbers, chars, strings, and bytes
+compare by value. Script arrays, maps, sets, records, enums, closures, and
+iterators compare by identity; tuples and ranges are not keyable. Existing
+map literals remain convenient for string
 keys, and arbitrary runtime key values can be inserted through indexing or map
 methods.
 

@@ -1,195 +1,48 @@
 # Completion Coverage Review
 
-This is the current B03 semantic review index, not batch acceptance. The
-machine-readable checkpoint and catalog remain authoritative. Fixture names below
-refer to `tests/lsp_matrix/fixtures/`; test entry points are in the language
-service's `completion/` modules and the server's `tests/` modules. A passing
-fixture does not certify every combination in an S dimension.
+This is the active retained-surface review index, **not batch acceptance**.
+The machine-readable catalog/checkpoint owns exact tests, profiles and evidence.
+The earlier pre-removal review is available in Git; its Service/Provider,
+async/await, scoped-task and borrowed-host cases are not current positive
+requirements. A–D removals through `226900e81` require current retained/rejection
+proof, not a claim that old editor evidence accepted the reduced runtime.
 
 ## S5 Calls And Arguments
 
-| Partition | Existing shared proof | Remaining review |
-|---|---|---|
-| Source calls, defaults and named arguments | `completion-named-arguments`, `call-parameter-mapping`, `call-argument-context`, `completion-call-expressions`: occupied/current/future slots, nested delimiters, labels versus values, active/expected parameters, edits. `completion-package-callables` checks same-path dependency functions/constants, exact applied signatures, named parameters and definition locations. `completion-package-members` checks qualified/aliased function returns. | Disk dependency transitions are covered below; extend to dirty overlays, manifest changes and remaining returned-receiver forms. |
-| Source methods and traits | `completion-members`, `completion-callable-hints`, `completion-callable-returns`: inherent/trait/default/Provider methods, hints and returned members. `completion-package-members`: exact sets for same-name types across packages; inherent/default methods, trait receiver signatures, applied parameter edits, resolved docs, definition targets and UTF-16 inlay positions; function/method returns and local bindings. `completion-return-flow`: required/default trait returns, awaited functions/methods, same-owner block/if/else-if/match/lambda results and negative erased/unit/unknown receivers. | `completion-receiver-assignments` checks reassignment, mixed-package branch/match/loop identities, shared field type unions and ambiguous field navigation. Shared-method, abrupt-exit and loop/match combinations are indexed below. Disk dependency navigation and conservative source resolve are covered below; dirty overlays and remaining async restrictions still need review. |
-| Schema/native calls and methods | `completion-named-arguments`, `completion-callable-hints`: explicit and legacy metadata, known parameter prefixes, unknown/Any/extra slots. | Review complete async/await and returned-receiver combinations with replacement/removal of metadata. |
-| Stdlib calls and methods | `completion-stdlib-arguments`: registered names, imported paths, collection mutation variants, builtin owners and negative boundaries. `completion-sync-callbacks`: 36 cases for static sync function references, async exclusions, named/reordered slots, dynamic values, canonical resolve/definitions, reflection signature alternatives and ordinary nested calls. `completion-callback-factories` checks existing calls. `completion-callback-contracts` and `completion-callback-results` retain declared signatures and distinguish direct-lambda result facts from erased callback results. | Review remaining contextual parameter/return combinations together with the complete S5 call workflow; these completion tests do not certify runtime callback admission. |
-| Imports and unavailable owners | `callable-imports`, `completion-import-aliases`, `completion-expression-ownership`: source/schema/stdlib aliases, local/declaration shadowing, private/missing/duplicate owners. `completion-package-callables` checks direct dependency function/namespace aliases, `crate::` fallback and inaccessible/transitive declarations. `completion-package-members` distinguishes owned methods/returns from same-name direct/transitive and schema declarations. | Review remaining returned-receiver forms and dependency lifecycle combinations. |
-| Service calls and authoring | `completion-service-calls`, `completion-service-paths`, `completion-service-roots`, `completion-service-parameters`, `completion-service-arguments`: unique/ambiguous origins, registered contracts, restricted contexts, schema changes and edits. | Retain these cases in the final S5/S8 mapping and lifecycle review. |
-| Static scoped tasks | `completion-task-paths`, `completion-task-calls`, `completion-task-operands`, `completion-task-eligibility`: builtin ownership, unsupported aliases, positional outer operands, nested ordinary calls, static async worker and synchronous matching continuation sets, qualified/imported ownership, existing parentheses and exact applied diagnostics. `completion-task-values`, `completion-task-effects`, `completion-task-spawn-ceiling`, `completion-task-unknown-ceiling`: 36 applied-edit cases for owned/erased arguments, nested callable/iterator/HostRef rejection, parameter/result spans, per-capability ceilings, recursive worker/continuation effects and runtime-only resume parameters. | Review defaulted/opaque returned values, method effect chains, schema replacement and ranking; static target and diagnostic proof does not certify runtime admission or host resume binding. |
-| Dynamic/unresolved boundaries | The call, member and callable fixtures explicitly distinguish Any, unknown, missing owners, unsupported aliases and invalid arity. | Review all fixture families together before mapping the complete S5 negative cells. |
-
-The scoped-task review exposed three concrete defects: unknown source/schema task
-operations appeared as completions; literal task calls borrowed same-name source
-signatures; and continuation completion inserted a call instead of a static
-function path. The shared fixtures now exercise those contracts in both layers
-under Unicode LF/CRLF. Source aliases remain ordinary source calls; importing a
-builtin spelling does not create the compiler's lexical task capability.
-
-The callable import runner now computes the post-edit query position from the
-replacement start plus inserted length. Adding a nonempty prefix exposed the
-previous extra prefix-length shift. This assertion repair preserves the exact
-post-edit signature check.
+| Family | Retained review obligations |
+|---|---|
+| Ordinary functions | Source/dependency identity, aliases, public/private ownership, required/default/named slots, nested argument expressions and exact applied edits. |
+| Script methods and traits | Inherent/trait/default methods, known and returned receivers, receiver reassignment/branch flow, source-owned definition/docs and no guesses for erased/dynamic values. |
+| Native/value schema calls | Synchronous signatures, registered parameter names, contract/effect metadata and schema replacement/removal/recovery. No object receiver or callable asyncness metadata. |
+| Stdlib/iterators/callbacks | Static manifest names/defaults, contextual lambda/item facts, script-owned collection/iterator results, reflection alternatives and ordinary nested calls. |
+| Imports/packages | Direct aliases and `crate::` ownership, inaccessible/transitive declarations, same-name decoys and disk/dirty/manifest lifecycle changes. |
+| Dynamic/rejection boundaries | Unknown/Any/missing owners, invalid arity/names, malformed neighbors and removed special namespaces must not borrow unrelated same-name signatures or invent completion candidates. |
 
 ## Remaining B03 Acceptance Work
 
-1. Finish the S5 partition review and remaining callback boundaries. The
-   `completion-sync-callbacks` fixture covers static sync callback reference
-   insertion across builtin collection/Option/Result/Iterator methods, named and
-   reordered slots, same-name source/schema/import owners and exact applied
-   definitions. Dynamic callbacks remain dynamic; ordinary source/schema methods
-   do not acquire a guessed sync-only callback contract.
-   `completion-callback-factories` adds 21 contexts and 82 candidate applications:
-   existing argument lists, named/nested arguments, comments/newlines, aliases,
-   source/schema methods, async factories and reflected Any returns. It asserts
-   exact edits, definitions, ownership and await diagnostics while retaining
-   direct reference and new-call policies. Four `completion-callback-contracts`
-   cases apply 32 choices across Array/Map filters, Option fallback and Iterator
-   fold. Zero, one, two and defaulted parameters retain their declared signatures;
-   different return types do not acquire an invented compatibility filter. Known
-   async functions remain excluded; Any/Closure parameters remain plain values.
-   Fourteen `completion-callback-results` cases distinguish direct expression/block
-   lambdas with proven record returns from named callbacks, factories, bound local
-   closures and erased returns through eager and iterator map chains. Exact result
-   facts, candidate sets, edits, resolve and source field definitions are checked
-   under Unicode LF/CRLF. Named callbacks currently do not specialize the map
-   result from their declared return signature: this records the conservative
-   direct-lambda analysis boundary, not a runtime compatibility guarantee.
-   `completion-callback-slots` adds sixteen result/parameter queries for
-   positional, named, reordered and mixed fold arguments; two lambdas in distinct
-   slots; and unknown, duplicate, extra or misplaced arguments. A red case showed
-   reordered fold arguments losing their initial fact. Analysis now orders facts
-   by registered parameters and specializes only the actual callback lambda.
-   Unrelated initial lambdas cannot fabricate result members; a real callback
-   keeps its item/accumulator facts. Both layers assert complete member sets,
-   exact edits, resolve ownership and field definitions under Unicode LF/CRLF.
-   Twenty-four
-   `completion-task-eligibility` cases verify complete static
-   target sets, async metadata, canonical resolve ownership, LF/CRLF Unicode edits
-   and applied diagnostics. Unknown/dynamic workers do not invent an outcome type;
-   continuation choices still require static synchronous functions. Nested ordinary
-   expressions keep their ordinary completion policy. Five existing task-call
-   cases now explicitly exclude dynamic local operands while preserving builtin
-   signature and positional-argument assertions. The
-   `completion-async-callables` fixture checks eighteen awaited/unawaited source,
-   alias, trait, host and schema cases with opposite asyncness in same-name
-   package declarations. Completion details preserve asyncness; applied calls
-   retain exact signatures, named parameters, inlays, definitions, missing-await
-   diagnostic ranges and labels under Unicode LF/CRLF.
-   `completion-await-contexts` adds 25 contexts and 58 candidate applications
-   across source/dependency/schema functions, methods and traits. Sync functions,
-   lambdas and sync methods retain exact invalid-await diagnostics; async methods
-   and blocks retain no await error. Parenthesized operands distinguish the
-   operand rejection from a still-unawaited inner async call. Complete candidate
-   sets, ownership, applied signatures, named parameters, inlays and definitions
-   remain asserted with explicit parser and diagnostic range/message oracles.
-   Broader callback combinations and remaining opaque/defaulted task values,
-   method effect chains, schema replacement and host resume contracts still
-   require review. Thirty-six task-admission cases now retain complete candidate
-   sets through application, assert exact rejection messages, codes, severity,
-   ranges and related locations, and restore protocol completion results after
-   edits. Owned/Any arguments and absent effect ceilings have explicit negative
-   diagnostic proof; trailing resume parameters are not detached worker inputs. The
-   `completion-receiver-assignments` fixture adds twenty cases for sequential
-   writes, retained aliases, if/match/loop joins and chained method returns with
-   same-name package types. It checks complete sets, stable merged field details,
-   signatures, parameters, inlays, edits and exact or ambiguous definition targets.
-   `completion-shared-methods` adds eighteen contexts and 45 candidate applications
-   for same-name inherent/default methods and returned receivers across root,
-   dependency and inaccessible/schema collisions. It checks deterministic merged
-   details, complete signature alternatives (including identical labels from
-   distinct owners), exact edits, resolve and source definitions or null targets.
-   Known branches of a source/Any union remain authoring candidates, but incomplete
-   origins cannot prove a unique navigation target; that uncertainty survives
-   field and method return chains. Pure Any and unresolved returns supply no
-   invented members. Schema signatures cannot replace a source branch of a union.
-   The shared protocol runner now actually requests and checks null definitions,
-   matching the service oracle, and locates the callee independently of qualified
-   paths inside inserted arguments. `completion-abrupt-flow` adds seventeen
-   contexts and twenty candidate applications for unreachable tails after
-   return/break/continue, nested exits, one/all returning branches, match arms and
-   explicit lambda returns. Ordinary block results exclude exits; invocation
-   results include reachable explicit returns and fallthrough values. The shared
-   HIR traversal also supplies control flags, respects argument evaluation order,
-   consumes loop break/continue exits and keeps nested lambda returns separate.
-   Independent analysis assertions cover thirteen scalar/control-flow cases.
-   MIR checks preserve exits from iterable evaluation; nested-loop tests assert
-   that iterable break/continue target the enclosing loop without an inner iterator.
-   `completion-local-exits` adds twenty contexts and forty candidate applications
-   for assignment owners after return/break/continue, nested loops, iterable exits,
-   short-circuiting, match arms/guards and lambda creation. Both runners check
-   exact sets, metadata, applied edits, signatures, parameter/inlay contracts and
-   definition ownership under Unicode LF/CRLF. Twenty-five independent scalar
-   cases assert surviving values, retained loop exit writes, guard evaluation
-   order and ignored unreachable arguments. The local walk joins only reachable
-   successors and snapshots loop exits before later statements can overwrite them.
-   `completion-loop-match-flow` adds eighteen contexts and 54 applied candidates
-   for normal/continue backedges, terminal exits, nested loops, iterative aliases,
-   per-iteration resets and reachable match results. Exact merged signatures and
-   owned/null definitions distinguish first-iteration facts from later owners.
-   Thirteen scalar loop cases and eight match value/control cases provide
-   independent assertions. Eight forced-budget executions check conservative
-   fallback, nested scopes, local resets and unchanged locals. A shared body
-   budget bounds loop convergence; exhaustion discards writable refinements.
-   These cases do not certify every possible control-flow combination; continue
-   the remaining S5 partition review and the semantic dimensions below.
-   `completion-schema-callable-lifecycle` checks five ordered states of one live
-   database/server: sync, async with a different return owner, changed sync
-   metadata, callable removal and restoration. Thirty candidate queries apply
-   24 edits and ten unchanged-call queries assert exact signatures or null.
-   Both LF/CRLF runs check async metadata, named parameters, inlays, returned
-   fields and docs, absent source definitions, and current documentation from
-   retained older resolve payloads. Decoy fields on the other return owner must
-   stay absent. Service results also match freshly assembled state; protocol
-   transitions use actual schema writes and watched-file notifications.
-   `completion-schema-unavailable` adds seven ordered states covering real file
-   deletion, malformed JSON, unsupported format versions and each recovery.
-   Fifty-six queries apply 38 candidates and check 21 unchanged-call signatures
-   per LF/CRLF run. Independent source candidates, named arguments, definitions
-   and signatures remain available while host facts and retained resolve docs
-   disappear. The continuously open source-only control publishes exactly one
-   warning during unavailability and no diagnostics after recovery. Service
-   queries also match fresh state. These assertions map completion's missing and
-   stale schema requirements and extend the existing resolve-state proofs;
-   `completion-source-callable-lifecycle` adds six disk states: initial facts,
-   changed dependency, changed root, dependency deletion, recreation and full
-   restoration. Each LF/CRLF run checks 108 candidate queries, 142 applied edits
-   and 24 unchanged-call signature/definition probes. Same-name root/dependency
-   functions, inherent/default/trait methods, aliases and returned fields retain
-   their own types, parameter names, inlays and independently marked targets.
-   Deleted owners yield no candidates, signatures or definition targets; recreated
-   owners use shifted ranges and new contracts. Incremental service and protocol
-   answers match fresh state, including unopened importers. A continuously open
-   control reports dependency loss and clears its diagnostics on recovery.
-   Source resolve deliberately returns no documentation under the current source
-   contract, including retained old items; colliding schema docs cannot leak into
-   those items. This does not add source doc-comment support.
-   `completion-source-overlay-lifecycle` adds sixteen ordered open/change/write/
-   save/close/delete states. Each Unicode LF/CRLF run checks 128 candidate queries,
-   182 applications and 64 unchanged-call signature/definition probes. Independently
-   authored effective, disk and open-source oracles distinguish unsaved metadata
-   from external writes, saved content and deletion. Open overlays survive disk
-   deletion; closing them removes stale facts, and recreation restores current
-   targets. Persistent and fresh disk-plus-overlay workspaces agree in both
-   layers; retained source resolve items never borrow schema documentation.
-   The protocol test exposed stale importer diagnostics after closing a deleted
-   dependency. Sync now publishes to the changed document and other invalidated
-   open modules. A separate regression checks open/change/close publication,
-   exact import diagnostic ranges and clearing, and exclusion of an unrelated
-   open file. The lifecycle driver retains actual client publications when an
-   unchanged import is not republished, so missing loss/recovery updates still
-   fail. Recovery, stale versions, cancellation, manifest changes and broader
-   cross-feature lifecycle review remain open.
-2. Complete the semantic review of every applicable syntax dimension, including
-   item/statement/lexical/control-flow/recovery and async boundaries. S3/S4
-   evidence already in the catalog does not close the remaining dimensions.
-3. Complete dirty/close/reopen/dependency/schema/cancellation/stale-version
-   sequences and required URI/client transformations against fresh workspaces.
-4. Complete UX04 installed-workbench input/render routes. The existing input
-   baseline does not substitute for all completion workflows.
-5. Link exact compiled test identities and independent assertions for every B03
-   obligation, then pass the selected profile's strict gate. Preserve B00-B02
-   acceptance snapshots and run their current regression gate throughout.
+1. Map exact current fixture/test identities to every applicable syntax/state
+   partition; a passing named fixture does not certify all of S5.
+2. Assert candidate inclusion/exclusion, exact text edits, Unicode LF/CRLF ranges,
+   active parameters, inlays, canonical resolve/docs and definition destinations.
+   Apply each edit and re-query; metadata display alone is insufficient.
+3. Check disk dependency changes, unsaved overlays, schema version 4 replacement,
+   invalid/missing schema and restoration against fresh-workspace answers. Retained
+   resolve payloads must not leak stale facts after metadata changes.
+4. Review returned receiver, callback, local flow, abrupt exit, loop/match and
+   incomplete-syntax combinations. Unknown types suppress guesses, not fall back
+   to unrelated workspace symbols.
+5. Treat removed Service/Provider, async/task and borrow/path syntax/metadata as
+   rejection/no-advertising coverage only. Preserve native host-read/write
+   effect/permission facts; they do not imply an object bridge.
+6. Recapture affected installed-editor completion routes with separate provider,
+   command, actual input and rendered-output evidence. Preserve unrelated accepted
+   evidence but do not infer fresh native acceptance from backend tests.
 
-B14 still owns the later overall partition completeness audit. B16 environment
-expansion remains deferred; it cannot absorb missing local completion proof.
+Use [the strategy](lsp-test-strategy.md), [protocol matrix](lsp-protocol-test-matrix.md),
+[execution plan](lsp-test-execution-plan.md) and [validation](validation.md).
+A–E removal implementation and software gates are complete; see
+[current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md). B03 and other
+affected native batches are reopened; strict/native Input/Render coverage remains
+incomplete and is not certified by the 27 installed checks passed in
+same-provenance partitions.

@@ -8,7 +8,7 @@
 > no-retry proofs; it is not current final acceptance for optional replacement.
 
 This report originally closed the correction tasks in
-[`rust-vela-interop-model-plan.md`](../rust-vela-interop-model-plan.md) and
+[`rust-vela-interop-model-plan.md`](rust-vela-interop-model-plan-superseded-2026-07-23.md) and
 supersedes the incomplete completion conclusion recorded by
 [`rust-vela-interop-post-review-2026-07-17.md`](rust-vela-interop-post-review-2026-07-17.md).
 The original

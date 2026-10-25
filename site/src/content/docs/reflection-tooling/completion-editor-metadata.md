@@ -22,7 +22,7 @@ semantic tokens -> tokens + resolved symbols
 
 ## Completion Quality
 
-Known host refs, known script records, type hints, and narrowed enum variants
+Known script records, registered Value schemas, type hints, and narrowed enum variants
 should produce precise completions. Unknown dynamic values degrade to `Any`
 rather than blocking bytecode generation.
 

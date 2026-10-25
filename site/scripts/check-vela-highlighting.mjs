@@ -74,6 +74,22 @@ for (const required of expected.requiredTokens) {
   );
 }
 
+const boundaryTokens = highlighter.codeToTokens(
+  'state count: i64 = 0\nextern state legacy: Any\nasync fn old() { value.await }',
+  { lang: expected.language, theme: 'github-dark', includeExplanation: true }
+).tokens.flat().flatMap((token) => token.explanation ?? []);
+for (const word of ['extern', 'async', 'await']) {
+  const matches = boundaryTokens.filter((token) => token.content.trim() === word);
+  assert(matches.length > 0, `missing removed-word probe: ${word}`);
+  for (const token of matches) {
+    assert(!token.scopes.some((scope) => scope.scopeName.startsWith('keyword.')),
+      `${word} must not be highlighted as a supported keyword`);
+  }
+}
+assert(boundaryTokens.some((token) => token.content === 'state' &&
+  token.scopes.some((scope) => scope.scopeName === 'keyword.declaration.vela')),
+  'ordinary VM state must retain its declaration highlight');
+
 console.log(
-  `Vela highlighting contract passed: ${expected.requiredScopes.length} scopes, ${expected.requiredTokens.length} token checks`
+  `Vela highlighting contract passed: ${expected.requiredScopes.length} scopes, ${expected.requiredTokens.length} token checks; removed keyword probes passed`
 );

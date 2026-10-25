@@ -1,764 +1,140 @@
 # Performance
 
-This document is the current performance contract. Detailed historical M18/M19
-benchmark notes were archived to
-[archive/performance-full-2026-06-06.md](archive/performance-full-2026-06-06.md).
+This is the live performance contract for the reduced synchronous interpreter.
+A–E removal implementation and software gates are complete; see
+[current progress](progress.md) and the
+[acceptance report](archive/runtime-simplification-acceptance.md). Benchmark
+compilation passed, not performance acceptance; strict/native Input/Render
+coverage remains incomplete. Historical timings are not fresh post-removal
+measurements.
 
 ## Rules
 
-- Correctness, budgets, GC roots, HostAccess routing, reflection policy, hot
-  reload ownership, and source-spanned diagnostics take priority over speed.
-- Measure loaded repeated execution separately from parsing, HIR, compilation,
-  bytecode loading, hot reload apply, and cold start.
-- Pure VM, managed-heap, host-boundary, reflection, hot-reload, and domain-demo
-  workloads must be reported separately.
-- Accepted optimizations need focused before/after evidence and stable
-  checksums. Rejected candidates belong in commit/PR notes unless they change
-  milestone direction.
-- Do not append routine benchmark logs here. Keep only current baselines,
-  milestone exit summaries, target thresholds, and durable measurement rules.
+- Correctness, finite budgets, roots, native permissions, reflection policy,
+  source-spanned diagnostics and exact-generation reload ownership precede speed.
+- Separate loaded repeated execution from parsing, HIR/MIR compilation, linking,
+  artifact loading, Runtime construction and reload compile/apply/reject work.
+- Report scalar VM, script heap/collections, owned native boundary, reflection,
+  reload, shared-generation memory and editor-analysis rows separately.
+- Require matching checksums and focused before/after evidence. Retain root,
+  error/effect ordering and logical budget accounting on optimized paths.
+- No JIT target, borrowed-host/path target, Service dispatch baseline, async
+  suspension or detached-task throughput requirement remains.
 
 ## Harnesses
 
+These targets are declared by the current Cargo manifests:
+
 ```bash
-cargo bench -p vela_vm --bench baseline
 cargo bench -p vela_vm --bench baseline -- --quick
 cargo bench -p vela_vm --bench external_compare -- --quick
+cargo bench -p vela_vm --bench verified_mir_compile
+cargo bench -p vela_vm --bench scalar_block_allocations
 cargo bench -p vela_engine --bench hot_reload -- --quick
-cargo bench -p vela_engine --bench async_execution -- --quick
 cargo bench -p vela_engine --bench interop -- --quick
-cargo bench -p vela_engine --bench service_boundary_baseline
-cargo bench -p vela_engine --bench scoped_task_execution
+cargo bench -p vela_engine --bench generation_memory -- top-level
+cargo bench -p vela_engine --bench generation_memory -- lambda
+cargo bench -p vela_engine --bench generation_memory -- shared-runtime
+cargo bench -p vela_engine --bench generation_memory -- retained-generations
+cargo bench -p vela_engine --bench generation_memory -- call-heavy
 cargo bench -p vela_engine --bench actor_memory -- memory
 cargo bench -p vela_engine --bench actor_memory -- allocations
-cargo bench -p vela_engine --bench actor_concurrency
+cargo bench -p vela_engine --bench actor_concurrency -- --quick
 cargo bench -p vela_language_service --bench incremental_latency
 ```
 
-`incremental_latency` is the editor-responsiveness harness. It replays what an
-editor produces on each keystroke against a synthetic multi-module workspace -
-apply the buffer change, reassemble project sources, update the databases,
-publish document diagnostics, then answer completion and hover at the caret -
-and reports P50/P95 per step plus the cost of the database snapshot every
-background request takes. `VELA_LS_BENCH_MODULES`, `VELA_LS_BENCH_FUNCTIONS`,
-`VELA_LS_BENCH_ITERATIONS`, and `VELA_LS_BENCH_WARMUP` select the shape.
-
-The 2026-07-27 M20.5 incremental checkpoint used 128 modules (8,709 lines) and
-256 modules (17,413 lines) on the local macOS release build, 6 rounds after 2
-warmup. P50/P95 in ms at 128 modules:
-
-| Row | Before | After |
-|---|---|---|
-| did_change total | 5906 / 6146 | 346 / 354 |
-| did_change database update | 260 / 274 | 222 / 226 |
-| did_change publish diagnostics | 5644 / 5875 | 123 / 127 |
-| completion | 11237 / 11380 | 2.7 / 3.0 |
-| hover | 2797 / 2935 | 0.21 / 0.25 |
-| database snapshot | 2.29 / 2.55 | 0.000 / 0.001 |
-
-Diagnostics publication and both request paths now scale close to linearly with
-workspace size. The remaining superlinear term is the full HIR rebuild inside
-`database_update`, which still lowers every module when any module changes;
-871 ms P50 at 256 modules against 222 ms at 128.
-
-The Actor Runtime/cache Batch A harnesses freeze the before/after workload for
-M20. `actor_memory` measures 1, 100, and 10,000 Runtimes sharing small and
-large artifacts in bounded subprocesses with a 1,536 MiB RSS ceiling and a
-90-second time ceiling; it reports construction time, RSS, allocation traffic,
-cache sites, instruction count, schema count, and logical Actor-state payload
-separately. `actor_concurrency` uses the system allocator and measures 1, 2,
-and available-core workers, cache-cold/cache-hot same-generation actor calls,
-P50/P95/P99 latency, throughput, and deterministic pending-Actor overlap. It
-also compares generation-shared versus independently registered execution data
-for a cross-Actor dynamic-method site where each worker is monomorphic but
-adjacent workers use different receiver types; this is the durable execution-
-lane contention gate.
-Allocation counts are calibrated in the separate single-worker
-`actor_memory -- allocations` process because a global counting allocator
-distorts concurrent throughput.
-
-The 2026-07-18 Batch A checkpoint found that 10,000 small-artifact Actors
-retain about 176 MiB RSS, while the 10,000-Actor/512-cache-site large row
-crosses the 1,536 MiB ceiling and is terminated. Ten-worker hot calls
-reached about 592k calls/s with 10.8/25.9/45.5 us P50/P95/P99, and a pending
-Actor did not block an independent Actor on the same code generation.
-Detailed inventory, raw rows, and cache/profile deltas live in the
-[Batch A archive report](archive/actor-runtime-cache-batch-a-baseline-2026-07-18.md).
-
-The 2026-07-18 M20 exit reran the frozen stable shapes after moving caches and
-opt-in aggregate profiles to exact generation execution data. The large
-10,000-Actor row now retains about 93 MiB RSS with profiling off or on instead
-of crossing 1,536 MiB; the small row retains about 95 MiB. Ten-worker hot and
-cold calls reached about 684k and 523k calls/s, and a pending Actor still
-did not block another Actor on the same generation. Three repeated dynamic-site
-contention runs did not justify an execution lane. Exact memory, allocation,
-latency, cache/profile, callback, reload, host, async, and interop rows live in
-the [M20 acceptance report](archive/actor-runtime-cache-acceptance-2026-07-18.md).
-
-The `interop` harness isolates the direct Rust lower bound, Vela-to-Rust scalar,
-shared-host and exclusive-host exports, a schema-backed generated Rust-to-Vela
-root call, and a same-session Vela-to-Rust-to-Vela round trip. Compilation and
-Runtime construction remain outside the ordinary call loops. The
-[Rust/Vela service hard switch](rust-vela-service-hard-switch-plan.md) adds
-direct Rust, trait-object, generated Rust-default service, active Vela service,
-same-generation nested service, collection-view, and whole-generation staging
-measurements in later checkpoints.
-
-The S0 `service_boundary_baseline` harness freezes direct concrete/trait Rust,
-HostRef alias-copy, static host path, registered method, atomic argument
-preflight, same-session reborrow, borrowed return/release, and host-owned bulk
-collection rows with latency, throughput, allocations, bytes, and checksums.
-The 2026-07-23 frozen S0 stable run confirmed zero-allocation HostRef copies
-and direct Rust dispatch, while its two-argument preflight still allocated one
-64-byte buffer per call. The later S2 quick acceptance rerun reports zero
-allocations for HostRef alias copy, shared/exclusive preflight, and prepared
-shared/exclusive preflight. That quick result is gate evidence and does not
-replace the frozen latency baseline. Full methodology and exact S0 rows are in
-the [S0 baseline report](archive/service-hard-switch-s0-baseline-2026-07-23.md).
-Use `cargo bench -p vela_engine --bench service_boundary_baseline` for quick
-sampling and append `-- --stable` for the frozen 100,000-iteration shape.
-
-The M20.75 `scoped_task_execution` harness keeps detached-task costs in
-separate interpreter-only rows: owned-graph admission/copy, forced-fresh child
-Runtime, scope-pooled child Runtime, first pending poll, exact-generation
-Service nested dispatch, and safe-point continuation delivery. Preparation is
-outside the timed interval for the pending-poll and continuation rows. The
-default 500-iteration macOS/arm64 release smoke run on 2026-08-01 recorded
-approximately 78.8 us, 28.6 us, 27.5 us, 14.8 us, 768.6 us, and 18.6 us per
-operation respectively, with stable checksums. These rows prove harness shape
-and establish a comparison point; they are not M20.75 performance acceptance
-thresholds. Use `-- --stable` for the 10,000-iteration shape.
-
-The 2026-07-24 S4 quick checkpoint added the generated Rust-default row after
-pinning one complete service generation outside the timed loop. On the local
-Windows release build, 1,000 calls measured 2 ns/call for the ordinary Rust
-trait object and 3 ns/call for generated Rust-default dispatch; both reported
-zero allocations and zero allocated bytes. A dedicated 10,000-call regression
-test also requires zero allocations after pinning. These quick numbers set the
-S4 structural budget—one pinned-generation access plus ordinary trait
-dispatch, with no HostRef or VM work—but do not replace a stable multi-sample
-latency run.
-
-The 2026-07-25 S6 quick checkpoint added a generated active-Vela row to the
-same harness. The patch calls its pinned Rust `base` implementation through
-the service session, so the timed loop covers generation dispatch, VM entry,
-and same-generation Vela-to-Rust re-entry while preserving the Rust-default
-workload and checksum contract. On the local Windows release build, 1,000
-calls measured 21,213 ns/call, 109 allocations/call, and 40,723 allocated
-bytes/call. The adjacent generated Rust-default row remained 3 ns/call with
-zero allocations. This is the S6 structural active-generation baseline, not
-an accepted optimization target or a stable multi-sample latency result.
-
-The 2026-07-25 S7 frozen-shape run used 100,000 calls and 100 warmups on the
-same Windows release build. It retained every S0 row and added the complete
-generated Rust/Vela comparison:
-
-| Boundary row | ns/call | allocations/call | bytes/call |
-|---|---:|---:|---:|
-| direct Rust concrete | 1 | 0 | 0 |
-| direct Rust trait | 2 | 0 | 0 |
-| generated Rust default | 3 | 0 | 0 |
-| generated active Vela plus Rust `base` | 14,532 | 109 | 40,723 |
-| HostRef alias copy | 1 | 0 | 0 |
-| static field read/write | 44,443 | 285 | 49,145 |
-| registered method call | 48,903 | 286 | 49,439 |
-| shared/exclusive preflight | 26 / 25 | 0 / 0 | 0 / 0 |
-| prepared shared/exclusive preflight | 29 / 28 | 0 / 0 | 0 / 0 |
-| nested same-session reborrow | 54,255 | 397 | 79,120 |
-| borrowed return/release | 39,024 | 304 | 52,040 |
-| host-backed bulk collection | 37,272 | 285 | 49,105 |
-
-Every row retained a stable checksum. The slower HostRef rows measure complete
-VM call, value/result materialization, host adapter, and operation work; they
-are not alias-copy or common-arity lease setup costs, because the isolated
-HostRef and preflight rows remain allocation-free. The static path and method
-rows use linked target plans and typed thunks, while the nested and collection
-rows retain same-session provenance and prepared bulk paths. Their remaining
-allocation totals are interpreter-boundary optimization work, not permission
-to reintroduce names, reflection walks, HostPath materialization, per-alias
-ownership, or HostRef conversion on the Rust-default branch.
-
-The Batch E pre-optimization quick checkpoint on 2026-07-17 used parent commit
-`87e871439`, Rust/Cargo 1.97.0, macOS 26.5.2 arm64, the optimized bench profile,
-one sample, 1,000 measured iterations, and 100 warmups. It recorded 0.4 ns/call
-for the inlined direct Rust lower bound, 15,271 ns scalar Vela-to-Rust, 13,554
-ns shared host, 11,889 ns exclusive host, 10,091 ns generated Rust-to-Vela,
-and 12,157 ns for the Vela-Rust-Vela round trip. Checksums were stable. These
-are boundary baselines, not optimization targets; stable multi-sample runs use
-`--stable`.
-
-`baseline` accepts optional workload-name substring filters after `--`, for
-example `cargo bench -p vela_vm --bench baseline -- --quick host_field`.
-`external_compare` accepts the same kind of workload-name substring filters,
-for example `cargo bench -p vela_vm --bench external_compare -- --quick string`.
-Its `--runtime` option accepts exact runtime names or a comma-separated list;
-workload filters remain substrings. It also accepts profiling/regression
-parameters:
-
-```text
---runtime <exact-name-or-comma-list>
---iterations <count>
---repeats <count>
---warmup <count>
-```
-
-For example, a Vela-only scalar run suitable for local profiling can be
-captured with:
+`baseline` covers scalar/range execution, ordinary calls/closures, script
+records/enums, VM state, collection/iterator/string/bytes operations, guards,
+reflection and interpreter cache/profile variants. Workload-name substring
+filters select rows after `--`; for example:
 
 ```bash
+cargo bench -p vela_vm --bench baseline -- --quick scalar
 cargo bench -p vela_vm --bench external_compare -- \
-  --runtime vela --iterations 500000 --repeats 1 --warmup 1 scalar
+  --runtime vela --iterations 500000 --repeats 5 --warmup 2 scalar
 ```
 
-It is a mixed-mode language comparison harness:
+`external_compare` separates Vela internal hot loops, embedded Lua 5.4/Rhai and
+optional process-backed Node.js/Python rows. Compare within the same measurement
+mode first; process rows include amortized startup/loading. Missing optional
+commands are not proof of comparative performance.
 
-```text
-runtime=vela    mode=internal_hot_loop
-runtime=lua54   mode=embedded_hot_loop
-runtime=rhai    mode=embedded_hot_loop
-runtime=node    mode=process_hot_loop
-runtime=python3 mode=process_hot_loop
-```
+`verified_mir_compile` measures compiler/verification overhead separately from
+execution. `scalar_block_allocations` checks that repeated scalar block/loop
+entries do not add incremental allocations after warmup.
 
-Vela compiles and links with the standard registry outside the timed section.
-Lua 5.4 runs through vendored `mlua`, and Rhai runs through the `rhai` crate,
-also loading scripts outside the timed section. Node.js and Python 3 remain
-optional process-backed rows; missing commands are reported as `status=missing`
-instead of failing the benchmark. Each workload entrypoint receives
-`iterations` and performs its hot loop inside the runtime. Compare rows within
-the same `mode` first; `embedded_hot_loop` is closer to Vela's in-process hot
-path than `process_hot_loop`, while process rows still include process startup
-and script loading costs that are only amortized by the iteration count.
-When a cache family has an explicit non-cache `_hot_offsets` row, `cache_delta`
-pairs the cache-enabled row against that base to isolate cache overhead from
-bytecode-profiler overhead. Host-boundary `_hot_offsets` rows run in
-`host_access_profile_only` mode so interpreter-only host measurements still
-carry bytecode profile counters without enabling inline caches.
-Method-dispatch aggregate rows use the `method_dispatch` prefix so filtered
-quick runs include interpreter, profile-only, and cache-enabled rows together.
-Cache-enabled VM benchmark rows use local measurement storage and report
-family hit/set activity; Engine concurrency rows exercise the production
-generation-shared synchronized slots. Declared state and linked method facts
-are immutable operands and no longer appear as mutable Engine cache families.
+`interop` now measures direct Rust scalar calls, Vela-to-Rust scalar calls,
+schema-backed generated Rust-to-Vela roots and existing synchronous
+Vela/Rust/Vela nested calls. Compilation and Runtime construction are outside
+the call loops. `--quick` uses 1,000 iterations, default 10,000, and `--stable`
+100,000 with three samples. It has no borrowed receiver or object-path rows.
 
-Tracked workload groups:
+`generation_memory` separates top-level/lambda artifacts, sharing across
+Runtimes, retained generations and call-heavy shapes. `actor_memory` and
+`actor_concurrency` measure independent host-owned synchronous Runtimes sharing
+immutable code, cold/hot calls and dynamic-cache contention. Their names do not
+introduce script actors, tasks or scheduling. Keep allocation calibration out
+of concurrent throughput runs.
 
-```text
-scalar/range dispatch
-script/native function calls
-array, map, set, string, Option, and Result stdlib methods
-callbacks, direct closure calls, and higher-order collection methods
-cache-enabled stdlib/native call, method-dispatch aggregate/detail, script record-field aggregate/detail, range-method detail, collection lookup/view/aggregation/combination/mutation/materialization, typed container array/map mutation static/guarded/erased detail, string/bytes method and string-transform detail, Option/Result helper, callback collection/detail, host-boundary aggregate/detail, plus linked script-call and direct-closure profile rows with bytecode profile counters
-dynamic method dispatch rows for monomorphic string receivers, monomorphic script receivers, polymorphic standard/script receivers, and deliberate guard-miss pressure, plus the existing static CallMethodId method-dispatch rows for comparison
-record and enum construction and field access
-managed heap allocation and materialization
-VM-state scalar read/write loops
-declared extern state, host field reads, nested path reads/writes, RMW mutations, dynamic key access, and method calls
-reflection reads, writes, and calls
-hot reload compile/apply/reject workflow
-GC pacing and pause-budget scenarios
-domain-demo workflows from examples/src/bin game-server examples
-external_compare mixed-mode pure-language rows for scalar branch loops, range iteration, function calls, array scanning, string/i64/record-identity map lookup/update, string/i64/record-identity set lookup/mutation, string methods, closure/callback-style calls, recursive countdown, nested collection allocation, object field/method access, string split/join construction, float math loops, and array transform/sort across Vela, embedded Lua 5.4, embedded Rhai, optional process-backed Node.js, and optional process-backed Python 3
-```
-
-Every durable benchmark report should include:
-
-```text
-commit, rustc, cargo, target, profile
-runtime options: heap, cache, debugger, JIT
-warmup, repeats, iterations, and input size
-min, mean, median, p95, checksum
-measurement_kind, cache_sets, cache_hits, cache-family set/hit counters,
-including `cache_dynamic_method_sets` and `cache_dynamic_method_hits`,
-profile_hits, and cache_delta rows with mode, base_mode, checksum_match,
-delta_kind, delta_band, base_profile_hits, and profile_hits_match when the
-harness emits paired cache-enabled rows; measurement_kind/delta_kind separate
-true cache-hit rows from profile-only hot-offset rows, delta_band uses a 1%
-mean-ratio tolerance to classify faster/slower/flat pairs, and native-call
-cache-enabled rows count resolved target-cache population; measurement_summary
-rows should count interpreter, profile-only, cache, and cache-no-activity rows
-for the run, and cache_delta_summary rows should count paired-row outcomes and
-mismatches, including kind-specific faster/slower/flat counts so true cache-hit
-deltas can be separated from profile-only hot-offset deltas
-external runtime versions when used
-external comparison mode (`internal_hot_loop`, `embedded_hot_loop`, or
-`process_hot_loop`) when used
-```
-
-## Async Execution Acceptance
-
-The 2026-07-13 executor-neutral async exit measurements are recorded in
-[archive/async-execution-acceptance-2026-07-13.md](archive/async-execution-acceptance-2026-07-13.md).
-Ready async and provider overhead is bounded, suspended memory is linear, and
-10,000 recursive script calls complete on the explicit frame stack. The
-pre-change comparison also shows material scalar/script-call regressions from
-the required non-recursive `ExecutionSession` hard switch.
-
-Those regressions are accepted for the async milestone only with named
-follow-up `ASYNC-PERF-1`: profile scalar, script-call, and cached-callback rows,
-then compact/reuse frame storage or specialize verified leaf/block dispatch
-without adding recursion, duplicate drivers, inferred await, or weaker budget
-and root semantics.
-
-The 2026-07-14 post-review closure is recorded in
-[archive/async-execution-batch-e-acceptance-2026-07-14.md](archive/async-execution-batch-e-acceptance-2026-07-14.md).
-Its same-machine stable comparison found no ordinary entry/provider or memory
-regression after making the dynamic-root registry lazy and retaining active
-tokens in a sparse sidecar. Exact owned read/write guards raise the exclusive
-lease row by 23.4%; named post-M20 follow-up `ASYNC-LEASE-PERF-1` may optimize
-that boundary only while preserving true `shared(n)`, exclusive exclusion, and
-RAII.
+`incremental_latency` measures editor buffer changes, database updates,
+diagnostics, completion, hover and snapshot latency. Shape is selected by
+`VELA_LS_BENCH_MODULES`, `VELA_LS_BENCH_FUNCTIONS`,
+`VELA_LS_BENCH_ITERATIONS` and `VELA_LS_BENCH_WARMUP`. This is native tooling
+work, not script execution.
 
 ## Perf Optimization Loop
 
-Performance work must follow a measurement-first loop:
+1. Freeze a retained workload and checksum; record the parent revision and machine.
+2. Separate compilation, ordinary interpreter, profile-only and cache-enabled rows.
+3. Identify the owning cost, make a focused change and run semantic/rejection tests.
+4. Compare repeated measurements on the same quiet machine and inputs.
+5. Report non-target guardrails, memory/allocation changes and remaining gaps.
 
-```text
-capture stable baseline -> profile hotspot -> implement one focused change ->
-capture candidate -> compare against baseline -> commit only with evidence
-```
-
-Use `tools/perf/capture_external_compare.py` to retain raw key=value output
-with commit, branch, rustc, cargo, command, and timestamp metadata:
-
-```bash
-tools/perf/capture_external_compare.py \
-  --name scalar-vela-before \
-  --baseline external_compare_scalar_vela_macos_aarch64 \
-  -- \
-  --runtime vela --iterations 500000 --repeats 5 --warmup 2 scalar
-```
-
-Routine local captures go under `perf-results/`, which is git-ignored.
-Checked-in guardrail captures belong under `perf-baselines/` and should be
-small, intentional, and tied to a documented regression check.
-
-After a candidate change, capture another run and compare:
-
-```bash
-tools/perf/capture_external_compare.py \
-  --name scalar-vela-after \
-  -- \
-  --runtime vela --iterations 500000 --repeats 5 --warmup 2 scalar
-
-tools/perf/compare_keyvalue_bench.py \
-  --baseline perf-baselines/external_compare_scalar_vela_macos_aarch64.txt \
-  --candidate perf-results/external_compare/<candidate-file>.txt \
-  --runtime vela \
-  --bench scalar_branch_loop \
-  --max-regression-percent 5
-```
-
-The comparison script checks matching `runtime/mode/bench` rows, verifies
-checksums by default, and fails when the candidate `per_iter_mean_ns` exceeds
-the baseline by more than the configured percentage.
-
-Use profiling before changing interpreter internals. On macOS, the repo helper
-uses `sample` against a long-running Vela-only `external_compare` process:
-
-```bash
-tools/perf/profile_external_compare.sh \
-  --runtime vela --iterations 500000 --repeats 1 --warmup 1 scalar
-```
-
-The helper writes text profiles under `perf-results/profiles/`. If a GUI call
-tree is needed, use Instruments or `xctrace` with the same long-running
-command. Do not accept broad interpreter changes from benchmark deltas alone;
-the profile should identify the dominant stack first.
+Cache-hit rows must actually exercise cache activity. Where the harness emits
+paired `cache_delta` rows, retain `measurement_kind`, `delta_kind`, hit/set
+counts, checksum and profile-hit matches; do not infer a cache win from a name.
+Statically resolved calls/slots need no mutable cache just to appear in a report.
 
 ## Current Baseline
 
-State-storage hard-switch checkpoint (2026-07-15, Windows x86_64, release,
-quick local run): `vm_state_read_write` executes 64 scalar VM-state
-read/modify/write iterations per invocation at 57.1 us mean. The row is a
-dedicated `vm_state` harness path backed by `VmStateValues`; it establishes a
-repeatable profiling target, not a release threshold.
+The current executable baseline is the post-D retained harness set above, not
+the old host-boundary suite. A fresh consolidated post-removal timing baseline
+is not claimed by the [acceptance report](archive/runtime-simplification-acceptance.md):
+its benchmark compilation gate is build proof, not timing/performance acceptance.
+[Current progress](progress.md) records remaining measured-performance work and
+separate strict/native Input/Render gaps.
 
-Executable-generation Phase 0 focused scalar checkpoint (2026-07-11):
+Historical scalar interpreter results remain useful context: the final
+verified-MIR interpreter report measured 37.634% improvement for
+`scalar_branch_loop`, 75.796% for `range_iteration` and 32.215% geometric-mean
+improvement over its frozen five-row baseline. These are measurements against
+that report's revision/machine/workloads, not claims about today's full suite.
+See the [historical final report](archive/verified-mir-interpreter-final-acceptance-2026-08-28.md).
 
-```text
-base_commit=9390cffc7
-rustc=1.96.0 (stable-aarch64-apple-darwin)
-target=macos/aarch64
-profile=release
-runtime=vela linked interpreter
-iterations=10000, repeats=3, warmup=1
-scalar_branch_loop mean_ns=83123000 per_iter_mean_ns=8312 p95_ns=83937292
-checksum=3828494456532927350
-clean_release_check_vela_bytecode_wall_s=5.14
-clean_release_check_vela_bytecode_max_rss_bytes=277463040
-```
-
-The final gate repeats this exact command and checksum alongside the broader
-tracked baseline, hot-reload, compile/peak-memory, top-level-heavy,
-lambda-heavy, retained-generation, and shared-multi-runtime measurements.
-
-Executable-generation Phase 9 exit measurements (2026-07-11):
-
-```text
-commit_base=8f10aadf4 plus Phase 9 working changes
-rustc=1.96.0 (stable-aarch64-apple-darwin)
-target=macos/aarch64
-profile=release
-
-scalar_branch_loop per_iter_mean_ns=18688 p95_ns=188095250
-checksum=3828494456532927350
-phase0_per_iter_mean_ns=8312 delta=+124.8% (explicitly accepted decision)
-
-scalar quick, eight calls:
-unbounded mean_ns=196646
-budgeted mean_ns=209813
-budget premium=6.7%, checksum match=true
-
-clean cargo check -p vela_bytecode --release:
-wall_s=2.29 max_rss_bytes=280576000
-phase0 wall_s=5.14 max_rss_bytes=277463040
-
-generation_memory harness (200 functions or lambdas):
-top-level: roots=201 executables=201 max_rss_bytes=67158016
-lambda: roots=1 executables=201 max_rss_bytes=52477952
-32 shared runtimes over one lambda generation: max_rss_bytes=53264384
-16 retained lambda generations: max_rss_bytes=650117120
-
-hot_reload quick:
-accept mean_ns=23715729 checksum=6588661877666281699
-ABI reject mean_ns=18843916 checksum=6965985632367789055
-```
-
-Executable-generation Batch E exit measurements (2026-07-12):
-
-```text
-rustc=1.97.0 (stable-aarch64-apple-darwin)
-target=macos/aarch64
-profile=release
-
-scalar_branch_loop per_iter_mean_ns=15771 p95_ns=166599209
-checksum=3828494456532927350
-phase9_per_iter_mean_ns=18688
-cross_toolchain_delta=not attributable (Phase 9 Rust 1.96, Batch E Rust 1.97)
-
-scalar quick, eight calls:
-unbounded mean_ns=117312
-budgeted mean_ns=121374
-budget premium=3.5%, checksum match=true
-
-script_call_small_args quick mean_ns=768500
-direct_closure_calls quick mean_ns=1491520
-
-call-heavy ownership check, 2000 nested calls:
-2 executables=333208 ns
-201 executables=779125 ns
-ratio=2.338, result=Scalar(I64(0))
-
-clean release check vela_bytecode:
-wall_s=4.88 max_rss_bytes=282230784
-
-generation_memory harness (200 functions or lambdas):
-top-level max_rss_bytes=68288512
-lambda max_rss_bytes=53280768
-32 shared runtimes max_rss_bytes=54312960
-16 retained generations max_rss_bytes=655032320
-
-hot_reload quick repeat:
-accept mean_ns=21043708 checksum=6588661877666281699
-ABI reject mean_ns=19369291 checksum=6965985632367789055
-```
-
-The Batch E scalar row preserves the exact checksum, but its percentage against
-Phase 9 was a cross-toolchain comparison and is not evidence of a code delta.
-Generation memory changed by roughly 0.8-2.0% across the four tracked shapes.
-The call-heavy large artifact completes 2000 nested calls in under one
-millisecond; the 2.34x small/large ratio is far below program-sized copying per
-call and accompanies pointer-identity tests proving a single shared artifact
-owner. Hot-reload repeats showed no stable regression over 5%. The clean-check
-wall time is below the Phase 0 5.14 s checkpoint and peak RSS is within 0.6% of
-Phase 9.
-
-Executable-generation Batch F exit measurements (2026-07-12):
-
-```text
-comparison endpoints=1efb15747 and Batch F final tree
-rustc=1.97.0 (stable-aarch64-apple-darwin) at both endpoints
-target=macos/aarch64
-profile=release
-iterations=10000, repeats=3, warmup=1
-
-Batch E scalar_branch_loop per_iter_mean_ns=18661
-Batch F scalar_branch_loop per_iter_mean_ns=14053 delta=-24.7%
-checksum=3828494456532927350 at both endpoints
-
-focused baseline, repeats=7 iterations=100 warmup=10:
-scalar unbounded mean_ns=1447607
-scalar budgeted mean_ns=1413535 checksum match=true
-script_call_small_args mean_ns=9355524
-direct_closure_calls mean_ns=13740416
-
-call-heavy ownership check, 2000 nested calls:
-2 executables=334167 ns
-201 executables=695708 ns
-ratio=2.082, result=Scalar(I64(0))
-
-32 shared runtimes max_rss_bytes=54132736
-16 retained generations max_rss_bytes=659030016
-
-hot_reload quick:
-accept mean_ns=19629479 checksum=6588661877666281699
-ABI reject mean_ns=18190312 checksum=6965985632367789055
-```
-
-The corrected same-toolchain scalar comparison improves 24.7% with the exact
-checksum. Shared-runtime RSS is 0.3% below Batch E and retained-generation RSS
-is 0.6% above it. The call-heavy ratio remains far below program-sized copying
-per call, focused cache/profile pairs are flat, and hot-reload accept/reject
-means improved. Batch F introduces no repeatable performance or memory
-regression requiring follow-up.
-
-The scalar regression is accepted only under the durable decision in
-`docs/decisions.md`: correctness-owned verified MIR replaced layout-dependent
-peepholes, and recovery belongs to verified-MIR instruction selection or M22,
-not fact reconstruction. Compile peak RSS changed by about 1.1%. The shared
-runtime measurement adds only about 0.8 MB over the one-generation lambda
-process, confirming immutable generation sharing; retained generations remain
-intentionally linear while closures, frames, or retained values pin them.
-
-Latest M19.5 prep checkpoint:
-
-```text
-commit=7097d6b6
-rustc=1.96.0 (ac68faa20 2026-05-25)
-cargo=1.96.0 (30a34c682 2026-05-25)
-target=macos/aarch64
-profile=release
-runtime=linked interpreter, cache-disabled baseline
-warmup=10, repeats=7, iterations=100
-```
-
-Representative default `baseline` means:
-
-| Benchmark | Mode | Mean ns | P95 ns |
-|---|---|---:|---:|
-| scalar_branch_loop | inline | 4468880 | 5594041 |
-| scalar_dispatch_mix | inline | 6217892 | 6281917 |
-| script_call_small_args | script_program | 8731958 | 8955292 |
-| native_call_wide_args | inline | 5194095 | 5246166 |
-| stdlib_collections | inline | 20019208 | 20191125 |
-| callback_collections | inline | 1340609249 | 1354016666 |
-| direct_closure_calls | inline | 12818005 | 13057083 |
-| managed_heap_callback_collections | managed_heap | 1339119952 | 1341697958 |
-| managed_heap_direct_closure_calls | managed_heap | 12785095 | 12963500 |
-| managed_heap_option_result_helpers | managed_heap | 8737640660 | 8775230083 |
-| host_access | host_access | 209940 | 212459 |
-| host_field_read_write | host_access | 1102642 | 1139542 |
-| host_nested_read_write | host_access | 1309750 | 1376375 |
-| host_dynamic_key_access | host_access | 2792363 | 2845875 |
-| managed_heap_host_read_conversion | host_managed_heap_read_conversion | 2353339 | 2464083 |
-| gameplay_monster_kill | gameplay_host | 872970 | 942958 |
-| managed_heap_record_quads | managed_heap | 28406773 | 41063791 |
-| gc_pacing | gc_pacing | 24438286 | 24635792 |
-
-The last recorded external quick comparison below predates the mixed-mode
-`external_compare` harness. Keep it as historical context until a full
-non-quick mixed-mode capture replaces it.
-
-External quick comparison per-iteration means:
-
-| Runtime | scalar_branch_loop | function_calls | array_scan | string_methods |
-|---|---:|---:|---:|---:|
-| vela | 34439 | 97006 | 264744 | 183821 |
-| lua5 | 11977 | 18387 | 84890 | 116015 |
-| luajit | 8059 | 9394 | 13160 | 16549 |
-| node | 77891 | 80074 | 83395 | 87523 |
-
-### Focused M20 Guardrail: Collection Mutation Budgets
-
-The collection-growth budget change was accepted with a focused mutation
-benchmark checkpoint against its parent commit:
-
-```text
-before=e4d939b6
-after=f17ede9f
-rustc=1.96.0 (ac68faa20 2026-05-25)
-cargo=1.96.0 (30a34c682 2026-05-25)
-target=macos/aarch64
-profile=release
-command=cargo bench -p vela_vm --bench baseline -- mutation
-warmup=10, repeats=7, iterations=100
-```
-
-Checksums matched for every compared row. The initial accepted cost was
-concentrated in array/map mutation paths, where in-place heap growth performs
-collection limit checks, memory-budget charging, allocator reserve checks, and
-heap-size accounting when the host enables those budget controls.
-
-| Benchmark | Mode | Mean Before ns | Mean After ns | Delta | P95 After ns |
-|---|---|---:|---:|---:|---:|
-| managed_heap_set_mutation | managed_heap | 29194738 | 28914904 | -0.96% | 29408250 |
-| set_mutation | inline | 29191339 | 28827351 | -1.25% | 29395458 |
-| set_mutation_cache_hot_offsets | cache_enabled | 28876434 | 32845779 | +13.75% | 37833416 |
-| managed_heap_array_mutation | managed_heap | 87970535 | 90379106 | +2.74% | 91181291 |
-| array_mutation | inline | 87498553 | 89817803 | +2.65% | 90207334 |
-| array_mutation_cache_hot_offsets | cache_enabled | 87810910 | 89517976 | +1.94% | 89907167 |
-| managed_heap_map_mutation | managed_heap | 52848244 | 54131410 | +2.43% | 54425792 |
-| map_mutation | inline | 52686250 | 54207744 | +2.89% | 54423333 |
-| map_mutation_cache_hot_offsets | cache_enabled | 52352470 | 54491898 | +4.09% | 56054042 |
-
-The `set_mutation_cache_hot_offsets` row should be rechecked before treating it
-as a cache-regression target: the paired profile-only row also showed a large
-tail sample in this capture. Future budget or collection-mutation changes must
-rerun the same filtered benchmark before landing; a regression above roughly
-5% on array/map interpreter or cache-enabled rows needs either an explicit
-safety rationale or a follow-up performance task.
-
-A follow-up profile-backed optimization keeps the budgeted path but makes
-`ExecutionBudget::unbounded()` disable inactive budget bookkeeping through
-precomputed budget flags, including memory, collection-growth, and call-depth
-bookkeeping. Before the optimization, a macOS `sample` capture of the focused
-mutation benchmark showed hot stack samples in `reserve_vec_slot`,
-`ScriptHeap::adjust_object_size_after_mutation`, and
-`HeapValue::shallow_size_bytes`. After the optimization, the unbounded-budget
-profile no longer showed the reserve or post-mutation size-adjustment stacks
-on those paths. The stable array/map rows recovered the initial budget cost;
-set rows still show run-to-run tail noise and should be interpreted by median
-or rerun in isolation before treating them as a regression.
-
-```text
-candidate=unbounded collection-growth fast path
-rustc=1.96.0 (ac68faa20 2026-05-25)
-cargo=1.96.0 (30a34c682 2026-05-25)
-target=macos/aarch64
-profile=release
-command=cargo bench -p vela_vm --bench baseline -- mutation
-warmup=10, repeats=7, iterations=100
-```
-
-| Benchmark | Mode | Budgeted Mean ns | Optimized Mean ns | Delta | Optimized P95 ns |
-|---|---|---:|---:|---:|---:|
-| managed_heap_array_mutation | managed_heap | 90379106 | 90146255 | -0.26% | 93660083 |
-| array_mutation | inline | 89817803 | 89230791 | -0.65% | 89999083 |
-| array_mutation_cache_hot_offsets | cache_enabled | 89517976 | 87901155 | -1.81% | 90758959 |
-| managed_heap_map_mutation | managed_heap | 54131410 | 52919262 | -2.24% | 53485167 |
-| map_mutation | inline | 54207744 | 52557666 | -3.04% | 53207458 |
-| map_mutation_cache_hot_offsets | cache_enabled | 54491898 | 52476000 | -3.70% | 52997417 |
-
-## Verified-MIR Scalar Block Checkpoint
-
-Batch D is accepted against the quiet-machine 2026-08-09 Batch A baseline.
-At 500,000 iterations, five repeats, and two warmups, `scalar_branch_loop` and
-`range_iteration` improve 33.487% and 47.229%; the frozen five-row geometric
-mean improves 18.856%. The other three scalar rows remain within 1.643%, and
-stable VM, external, Engine, Service, async, scoped-task, Actor, and compile
-guardrails show no unexplained regression above 5%. One versus 10,001 scalar
-block entries has zero incremental allocations or bytes after warmup. Detailed
-measurements and capture paths live in the
-[Batch D acceptance report](archive/verified-mir-interpreter-batch-d-acceptance-2026-08-09.md).
-
-Batch E retains the 25% five-row geometric-mean target and 35% individual
-scalar/range targets; Batch D does not relax those final loop-region gates.
-
-## Verified-MIR Scalar Loop Checkpoint
-
-Batch E is accepted against the same quiet-machine Batch A baseline. At
-500,000 iterations, five repeats, and two warmups, `scalar_branch_loop` and
-`range_iteration` improve 38.347% and 79.043%; the frozen five-row geometric
-mean improves 34.401%. The other three rows change by +1.466%, +0.907%, and
--8.179%, while the stable VM guardrail's largest positive non-target delta is
-4.82%. `range_iteration` profiled outer dispatch falls from 6,699 in Batch D
-to 171, with 2,176 internal iterations/backedges still reported. One versus
-10,001 scalar-loop iterations has zero incremental allocations or bytes after
-warmup. Detailed measurements and capture paths live in the
-[Batch E acceptance report](archive/verified-mir-interpreter-batch-e-acceptance-2026-08-09.md).
-
-## Verified-MIR Interpreter Exit Checkpoint
-
-The interpreter track is accepted through Batch G against the quiet-machine
-Batch A baseline. The final clean embedded comparison uses 500,000 iterations,
-five repeats, and two warmups. `scalar_branch_loop` improves 37.634%,
-`range_iteration` improves 75.796%, and the frozen five-row geometric mean
-improves 32.215%, passing the 35% lead-row and 25% suite gates. Function calls
-improve 0.528%, recursive countdown regresses 2.839%, and float math improves
-7.322%; all checksums match.
-
-On the same workloads, final Vela is 5.652x, 1.333x, 6.785x, 5.751x, and
-6.821x embedded Lua 5.4, with a five-row geometric ratio of 4.575x. These
-ratios remain reporting evidence, not a reason to change semantics or add a
-benchmark-specific path. Stable VM, Engine, Service, async, scoped-task,
-Actor-memory, and concurrency guardrails have no unexplained regression above
-5%. Detailed captures, the complete semantic matrix, structural audit, and
-repository validation live in the
-[final acceptance report](archive/verified-mir-interpreter-final-acceptance-2026-08-28.md).
-
-## Current Conclusions
-
-M19 is complete enough for M19.5. The interpreter/heap phase delivered measured
-improvements in GC pacing, direct heap aggregate construction, argument
-materialization/storage, borrowed receiver views, collection/string/Option/
-Result helpers, scalar equality/constant loads, peephole lowering, range-loop
-lowering, small record/enum fields, and short array construction.
-
-The Lua 5.x target is not met across all microbenchmarks. Remaining gaps are
-cache-shaped, and M20 measurement should stay tied to cache-ready operands:
-
-- script record field slot reads and writes now have shape/slot-ready operands
-  and detail benchmark rows
-- host field/path reads, writes, and RMW operations now have `HostTargetPlan`
-  operands and resolved access boundaries ready for M20 caches
-- method and stdlib dispatch need ID or resolved-target lookup
-- native/stdlib calls need lower materialization through borrowed Value views
-- callback invocation and hot closure calls need lower root/materialization cost
-- hot bytecode offset profiling needs versioned ownership before specialization
-- cache invalidation must stay tied to hot reload and schema ABI changes
-
-M19.5 reports interpreter-only before/after rows for each prep family. The
-baseline harness now splits callback rows into collection callbacks and direct
-closure calls with default baseline data, includes cache-enabled stdlib
-collection, script-call, native-call, script record-field aggregate/detail,
-method-dispatch aggregate/detail, range-method detail,
-collection lookup/view/aggregation/combination/mutation/materialization,
-typed container array/map mutation detail for proven typed, guarded erased-value,
-and erased-container paths, string/bytes method plus string-transform detail,
-Option/Result helper, callback collection/detail, direct-closure, and
-host-boundary aggregate/detail rows with warmed inline caches and bytecode
-profile counters. The record-field detail
-rows cover triplet, quad, quint, and sextet shapes; the host-boundary detail
-rows cover declared state read/write, field read/write, nested path read/write,
-RMW mutation, dynamic key access, and host method calls; the method-dispatch detail rows cover script
-inherent and trait/default method calls. Direct script-call and direct-closure
-rows are profile-only when their linked operands already avoid runtime lookup
-and no inline-cache family exists. Baseline `bench=` rows now emit
-`measurement_kind` and paired rows emit `delta_kind`, so M20 reports must
-separate interpreter-only, profile-only, and cache-enabled results by those
-fields instead of row names alone.
+Older broad measurements live in
+[performance history](archive/performance-full-2026-06-06.md) and
+[shared-generation acceptance history](archive/actor-runtime-cache-acceptance-2026-07-18.md).
+Removed host/Service/async rows in those reports are history only.
 
 ## Targets
 
-Primary post-MVP target:
+Optimize representative retained interpreter workloads, using embedded Lua 5.x
+and Rhai as comparison points and optional process runtimes as explicitly labeled
+context. There is no blanket claim of Lua parity. Preserve interpreter-used MIR,
+root/budget analyses, linked operands, caches, superinstructions, scalar blocks,
+range-loop physical plans and exact-generation profile layouts.
 
-```text
-optimized non-JIT bytecode interpreter performance comparable to Lua 5.x on
-representative host-boundary workloads
-```
-
-Reference tiers:
-
-| Tier | Purpose |
-|---|---|
-| Vela interpreter | Correctness-preserving baseline before caches. |
-| Vela prep-enabled | M19.5 ID/slot/target/path-key prep before caches. |
-| Vela cache-enabled | M20 inline-cache and specialization target. |
-| Lua 5.x | Primary non-JIT comparison target. |
-| LuaJIT / Node.js | Upper-reference points for future JIT decisions. |
-| Rhai | Rust-embedded scripting reference point. |
+A new optimization threshold must be scoped, measured and approved before
+acceptance; do not carry old removed-feature thresholds forward or relax a
+threshold to fit a result. Debugger source hooks remain planned and must not
+change ordinary execution semantics.
 
 ## Update Policy
 
-Update this file only when one of these changes:
+Durable reports include revision, Rust/Cargo versions, target/OS/CPU/profile,
+runtime limits and cache/profile options, input size, warmup/repeats/iterations,
+latency distribution, allocations/bytes and checksums. Include external runtime
+versions and measurement modes for comparisons. Raw captures and historical
+milestone logs belong in Git or clearly labeled archives, not active requirements.
 
-- current baseline checkpoint
-- accepted target threshold
-- benchmark harness or workload group
-- milestone exit conclusion
-- durable rule for measuring or reporting performance
-
-Long before/after tables, failed micro-candidates, and routine benchmark output
-belong in commit messages, PR notes, or `docs/archive/` if they need to be
-preserved.
+Build/check commands and repository gates live in [validation.md](validation.md).

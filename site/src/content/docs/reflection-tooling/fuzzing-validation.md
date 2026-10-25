@@ -37,7 +37,7 @@ does not replace semantic or VM conformance tests.
 ## Example Coverage
 
 Runnable examples under `examples/src/bin` exercise hot reload, reflection,
-host permissions, stale host refs, schema rejection, I/O capabilities, and
+native permissions, owned value conversion, schema rejection, I/O capabilities, and
 domain-neutral standard helpers.
 
 ## Validation Discipline

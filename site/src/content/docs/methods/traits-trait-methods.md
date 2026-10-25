@@ -3,7 +3,10 @@ title: "Traits And Trait Methods"
 description: "Traits And Trait Methods documentation for Vela."
 ---
 
-Traits are runtime protocols. They describe methods a script or host type can implement, and they support dynamic protocol-style dispatch without becoming Rust traits in script syntax.
+Traits are runtime protocols. They describe methods a script type can implement
+and support dynamic protocol-style dispatch without becoming Rust traits in
+script syntax. They do not provide Rust host-object trait receivers or method
+registrations.
 
 ## Trait Declaration
 

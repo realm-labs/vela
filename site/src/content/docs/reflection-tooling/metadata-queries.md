@@ -15,9 +15,7 @@ Use `reflect::type_info(name)` to look up a type by name and
 let player_type = reflect::type_info("Player");
 let current_type = reflect::type_of(player);
 
-if reflect::kind(player_type) == "host" {
-    return reflect::fields(player_type);
-}
+return reflect::fields(player_type);
 ```
 
 ## Members And Variants

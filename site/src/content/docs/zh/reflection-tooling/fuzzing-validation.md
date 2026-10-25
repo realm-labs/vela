@@ -36,8 +36,8 @@ fuzzing 主要用于发现 parser crash、恢复问题和意外 panic。它不�
 
 ## 示例覆盖
 
-`examples/src/bin` 下的可运行示例覆盖热更新、反射、宿主权限、stale host
-refs、schema rejection、I/O capabilities 和 domain-neutral standard helpers。
+`examples/src/bin` 下的可运行示例覆盖热更新、反射、native 权限、自有值转换、
+schema rejection、I/O capabilities 和 domain-neutral standard helpers。
 
 ## 验证纪律
 

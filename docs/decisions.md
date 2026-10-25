@@ -54,6 +54,22 @@ reloads, but declared capability expansion and read-to-write expansion still
 reject. Subsequent incompatible format changes must update versions in their
 owning checkpoint.
 
+## Removal-Only Closure And Evidence Boundaries
+
+Checkpoint E deletes restricted-JIT input/eligibility and the unused public
+future-backend conformance helper, while retaining bytecode-used backend
+handoff, verified MIR ownership, liveness/root/budget analyses and interpreter
+physical plans. No executable format change is needed for those unused API
+removals. Unused dependency edges and stale active grammar/contracts are removed.
+
+Removal software acceptance includes a complete locked all-feature workspace
+run (4,333 passed, two existing ignored), default/all-feature Clippy and the
+browser/example/site/editor build gates. Installed-editor checks pass in
+provenance-checked bounded partitions; an aggregate npm timeout is not an
+exit-zero command. Migrated LSP contracts keep immutable old baselines and
+explicitly reopen affected evidence. Neither backend nor installed-provider
+proof establishes full physical Input/Render or strict LSP acceptance.
+
 ## Installed Editor Acceptance
 
 The native Vela launcher explicitly declares `untrustedWorkspaces.supported`

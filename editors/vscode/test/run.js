@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawnSync } = require("node:child_process");
 const { downloadAndUnzipVSCode, runVSCodeCommand, runTests } = require("@vscode/test-electron");
+const { extraSessionDirectory } = require("./session-paths");
 
 const extensionRoot = path.resolve(__dirname, "..");
 
@@ -101,7 +102,7 @@ async function main() {
   if (!editorFailure) {
     // Workspace symbols own a global set. The main suite's root manifest and
     // unrelated open documents require a separate installed-editor session.
-    const symbolRoot = path.join(resultRoot, "workspace-symbol-editor");
+    const symbolRoot = extraSessionDirectory(resultRoot, "workspace-symbol");
     fs.mkdirSync(symbolRoot);
     const symbolWorkspace = require("./workspace-symbol-provider").materializeWorkspaceSymbols(symbolRoot);
     const rawBase = path.join(resultRoot, "base-results.json");
@@ -129,7 +130,7 @@ async function main() {
     // Ordinary SDK output channels overwrite their single file at 30 MiB.
     // Preserve complete independent selection evidence in two fresh sessions.
     for (const kind of ["syntax", "lifecycle"]) {
-      const directory = path.join(resultRoot, `selection-${kind}-editor`);
+      const directory = extraSessionDirectory(resultRoot, `selection-${kind}`);
       try { await require("./selection-runner").runSelectionEditor({ directory, kind, extensionsDir, vscodeExecutablePath }); }
       catch (error) { editorFailure = error; }
       const selected = path.join(directory, "results.json");

@@ -46,11 +46,11 @@ Only builtin type-hint contracts may carry type arguments:
 `Array<T>`, `Set<T>`, `Map<K, V>`, `Iterator<T>`, `Option<T>`, and
 `Result<T, E>`. This is not a general script generic system. `Map<K, V>` keys
 and `Set<T>` elements must satisfy the runtime `ValueKey` keyability contract:
-immutable leaf values compare by value, script heap objects and host refs
-compare by identity, and transient values such as `PathProxy` are rejected.
-User/schema/host generics such as `Player<T>`, scalar hints such as
-`String<T>`, callable signatures such as `Function<T>`, and non-keyable
-container key contracts such as `Set<PathProxy>` are rejected.
+immutable leaf values compare by value and mutable script heap objects compare
+by runtime-qualified identity, including script closures/iterators. Tuple/range
+keys are not admitted. User/schema generics such as `Record<T>`, scalar hints
+such as `String<T>`, callable signatures such as `Function<T>`, and non-keyable
+container key contracts such as `Set<Range>` are rejected. No host-reference/path contract remains.
 
 Unsuffixed integer literals default to `i64` only when they escape without a
 more specific expected type. Unsuffixed float literals default to `f64` only
@@ -199,9 +199,9 @@ host-endian reads.
 Contract guards are language semantics. They validate type-hint contracts and
 fail with a runtime type contract error.
 
-Specialization guards are implementation assumptions for inline caches, JIT
-speculation, or hot dynamic operator specialization. They fail by falling back
-or deoptimizing, not by raising a language contract error.
+Specialization guards are implementation assumptions for interpreter inline
+caches or hot dynamic operator specialization. They fail by falling back to an
+equivalent generic interpreter path, not by raising a language contract error.
 
 ```rust
 pub enum GuardKind {
@@ -212,40 +212,24 @@ pub enum GuardKind {
 
 ## Guard Plans
 
-Guard plans must be linked and hot-path friendly. They compare primitive tags,
-type handles, variant handles, shape IDs, or host type handles. They must not
-perform string comparison or registry lookup on the hot path.
-
-```rust
-pub enum TypeGuardPlan {
-    Primitive(PrimitiveTag),
-    Type(TypeHandle),
-    Variant(VariantHandle),
-    Shape { ty: TypeHandle, shape_id: ShapeId },
-    HostType(TypeHandle),
-}
-```
+Guard plans must be linked and hot-path friendly. They compare exact primitive
+tags, script type/variant handles, shape identities and recursive builtin value
+contracts. They must not perform string comparison or registry lookup on the
+hot path. There is no host-object/type/path guard family after D.
 
 Debug names remain available through side tables for diagnostics, reflection,
 and source reports.
 
 ## Function Entries
 
-Functions with parameter contracts have a checked entry that validates runtime
-guards and an unchecked body entry that assumes the caller already proved the
-contracts. The first implementation may encode this as metadata, but the
-representation must support this distinction.
-
-```text
-statically proven script call  -> unchecked body
-dynamic script call            -> checked entry
-reflection/host call           -> checked entry
-future inlined proven call     -> unchecked body
-```
+Function parameter contracts must hold at dynamic, reflection and Rust entry
+boundaries. A proven internal script call may avoid redundant checks only when
+verified facts establish the same contract; a specialization miss cannot skip
+validation. Metadata/layout choices must preserve that distinction rather than
+introducing a second execution path.
 
 Return guards execute before returning from functions with return contracts.
 Local and field guards use explicit guard bytecode or equivalent linked
-metadata when the compiler cannot statically prove the contract. Typed state
-declarations are bound by the host/runtime rather than assigned directly in
-script source, so their insertion/update contracts must be enforced at embedding
-boundaries.
+metadata when the compiler cannot statically prove the contract. VM-owned typed
+state requires the same contract on initialization, script assignment and explicit
+Rust updates. There is no host-bound extern-state insertion path.

@@ -75,20 +75,12 @@ module.exports = grammar({
       ),
 
     state_declaration: ($) =>
-      choice(
-        seq(
-          "state",
-          field("name", $.identifier),
-          field("type", $.type_annotation),
-          "=",
-          field("value", $._expression),
-        ),
-        seq(
-          "extern",
-          "state",
-          field("name", $.identifier),
-          field("type", $.type_annotation),
-        ),
+      seq(
+        "state",
+        field("name", $.identifier),
+        field("type", $.type_annotation),
+        "=",
+        field("value", $._expression),
       ),
 
     function_declaration: ($) =>

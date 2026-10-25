@@ -1,7 +1,7 @@
 # Rust/Vela Interop Actor Runtime Reconciliation Acceptance — 2026-07-17
 
 This report closes `I-RECON-1` through `I-RECON-6` in the
-[Rust/Vela unified interop plan](../rust-vela-interop-model-plan.md). It
+[Rust/Vela unified interop plan](rust-vela-interop-model-plan-superseded-2026-07-23.md). It
 supersedes the optional-replacement authority finding in the
 [Actor Runtime authority review](rust-vela-interop-actor-runtime-review-2026-07-17.md).
 Ordinary interop, Batches A-G, the first post-review correction, and the

@@ -1,19 +1,30 @@
 # Blocked Work
 
-The macOS desktop locked during B03.2's native input regression. The driver
-reported a locked macOS session before operating Peek and stopped. The user
-was asked to unlock it. This is a retained macOS run failure, not an observed
-Windows blocker; semantic and protocol work can continue on either machine.
+## Reduced Runtime
 
-B02 was accepted on the unlocked desktop with all 139 obligations verified.
-After the current completion changes, the installed provider suite passes,
-but fresh complete Input/Render evidence requires an unlocked session on the
-selected registered local profile. Keep the recorded B02 acceptance; do not claim its older input bundle
-as proof for the changed source. Recollect the complete local input and installed
-bundles before the next strict gate. The execution checkpoint owns the next
-task and local requirement inventory; this is not deferred B16 scope.
+No current external blocker remains for the A-E removal implementation or its
+software gates. See the [acceptance report](archive/runtime-simplification-acceptance.md).
+Full workspace tests/Clippy, browser compilation, retained examples and the
+installed-provider partitions have current proof.
 
-The Windows driver now passes the complete B01/UX02/UX03 input/render run on
-the available unlocked session, including context-menu Peek and unknown targets.
-There is no observed external Windows blocker. The refactored macOS driver
-still requires fresh execution on that machine; Windows evidence does not certify it.
+## Strict And Native Editor Evidence
+
+Full strict/native LSP coverage is still incomplete. The reviewed removal
+migration explicitly reopened B02-B08; active work resumes at B02. Historical
+B00/B01/B09 acceptance and prior captures remain preserved, not automatically
+certified for changed source. The checkpoint and inventory reviews own exact
+pending obligations.
+
+The aggregate installed VS Code command reached its 900-second bound. Its 27
+individual checks subsequently passed in bounded, matching-provenance
+partitions; no exit-zero aggregate command is claimed. Physical Input/Render
+captures and an independent Windows audit are not supplied by those partitions.
+
+Earlier macOS lock failures are historical observations, not a current desktop
+blocker: the latest isolated installed-editor sessions launched and ran on macOS.
+Fresh native-input work still requires the selected profile's unlocked desktop
+and automation permissions. Do not fabricate acceptance or substitute command
+provider results for physical interaction evidence.
+
+No external decision about replacement opaque objects, conversion APIs or a new
+re-entry model blocks this removal: those features remain separately deferred.

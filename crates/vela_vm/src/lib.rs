@@ -1,9 +1,15 @@
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
 //! Register VM for Vela bytecode.
+//!
+//! Linked execution and budget accounting use the ordinary VM APIs, not a
+//! public future-backend conformance surface:
+//!
+//! ```compile_fail
+//! use vela_vm::backend_conformance::{BackendConformanceResult, run_linked_interpreter_case};
+//! ```
 
 mod array_methods;
-pub mod backend_conformance;
 pub mod budget;
 mod bytes_methods;
 mod callback_method_dispatch;
