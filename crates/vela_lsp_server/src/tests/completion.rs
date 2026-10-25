@@ -318,7 +318,7 @@ fn lsp_completion_uses_loaded_schema_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 2,
+                "formatVersion": 3,
                 "facts": {
                     "types": [
                         {
@@ -632,7 +632,7 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 2,
+                "formatVersion": 3,
                 "facts": {
                     "types": [
                         {

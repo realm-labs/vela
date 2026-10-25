@@ -6,7 +6,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{CallableAsyncness, Capability, CapabilitySet, Span, stable_id};
+use vela_common::{Capability, CapabilitySet, Span, stable_id};
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::attributes::schema_id_attr;
 use vela_hir::ids::HirDeclId;
@@ -14,10 +14,10 @@ use vela_hir::ids::ModuleId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, Visibility};
 use vela_hir::script_methods::ScriptMethod;
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint, StructFieldHint};
-use vela_mir::{MirAwaitOperation, MirCall, MirEffect, MirStatementKind, MirTerminatorKind};
+use vela_mir::{MirCall, MirEffect, MirStatementKind};
 use vela_package::{ModulePath, PackageId};
 
-pub const RUST_BINDING_SCHEMA_VERSION: u32 = 5;
+pub const RUST_BINDING_SCHEMA_VERSION: u32 = 6;
 
 #[cfg_attr(
     feature = "artifact-codec",
@@ -165,7 +165,7 @@ pub struct RustBindingCallable {
     pub owner: Option<RustBindingMethodOwner>,
     pub parameters: Box<[RustBindingParameter]>,
     pub returns: RustBindingReturn,
-    pub asyncness: CallableAsyncness,
+
     pub effects: RustBindingEffectSet,
     pub required_capabilities: CapabilitySet,
     pub contract_fingerprint: u64,
@@ -181,7 +181,6 @@ impl RustBindingCallable {
             &self.public_path,
             &self.parameters,
             &self.returns,
-            self.asyncness,
             self.effects,
         );
     }
@@ -399,7 +398,6 @@ pub struct RustBindingEffectSet {
     pub uses_random: bool,
     pub reads_io: bool,
     pub writes_io: bool,
-    pub task_spawn: bool,
 }
 
 impl From<MirEffect> for RustBindingEffectSet {
@@ -422,7 +420,6 @@ impl From<MirEffect> for RustBindingEffectSet {
             uses_random: value.uses_random,
             reads_io: value.reads_io,
             writes_io: value.writes_io,
-            task_spawn: value.task_spawn,
         }
     }
 }
@@ -442,7 +439,6 @@ impl RustBindingEffectSet {
             (self.reflection_read, Capability::ReflectionRead),
             (self.reflection_write, Capability::ReflectionWrite),
             (self.reflection_call, Capability::ReflectionCall),
-            (self.task_spawn, Capability::TaskSpawn),
         ] {
             if present {
                 capabilities.insert(capability);
@@ -474,7 +470,6 @@ impl RustBindingEffectSet {
             self.uses_random,
             self.reads_io,
             self.writes_io,
-            self.task_spawn,
         ];
         flags.iter().enumerate().fold(0_u32, |bits, (index, set)| {
             bits | (u32::from(*set) << index)
@@ -543,7 +538,7 @@ impl RustBindingSchema {
     pub(crate) fn empty() -> Self {
         Self {
             version: RUST_BINDING_SCHEMA_VERSION,
-            checksum: stable_id("vela_rust_binding_schema_v5", "", ""),
+            checksum: stable_id("vela_rust_binding_schema_v6", "", ""),
             packages: Box::new([]),
         }
     }
@@ -826,7 +821,7 @@ fn schema_checksum(packages: &[RustBindingPackage]) -> u64 {
         }
     }
     let canonical = canonical_parts.join("|");
-    stable_id("vela_rust_binding_schema_v5", "", &canonical)
+    stable_id("vela_rust_binding_schema_v6", "", &canonical)
 }
 
 fn binding_field(
@@ -967,14 +962,8 @@ fn callable(
         mode: RustBindingReturnMode::OwnedValue,
         error_mode: RustBindingErrorMode::RuntimeResult,
     };
-    let contract_fingerprint = contract_fingerprint(
-        identity,
-        &public_path,
-        &parameters,
-        &returns,
-        signature.asyncness,
-        effects,
-    );
+    let contract_fingerprint =
+        contract_fingerprint(identity, &public_path, &parameters, &returns, effects);
     RustBindingCallable {
         identity,
         executable,
@@ -983,7 +972,7 @@ fn callable(
         owner,
         parameters,
         returns,
-        asyncness: signature.asyncness,
+
         effects,
         required_capabilities: effects.required_capabilities(),
         contract_fingerprint,
@@ -1040,14 +1029,13 @@ fn contract_fingerprint(
     public_path: &str,
     parameters: &[RustBindingParameter],
     returns: &RustBindingReturn,
-    asyncness: CallableAsyncness,
+
     effects: RustBindingEffectSet,
 ) -> u64 {
     let mut canonical = format!(
-        "{}|{}|{:?}|{:08x}|",
+        "{}|{}|{:08x}|",
         identity.abi_name(),
         public_path,
-        asyncness,
         effects.bits()
     );
     identity.encode(&mut canonical);
@@ -1115,19 +1103,10 @@ pub(crate) fn effective_effects(
         for (_, function) in root.program().functions() {
             for (_, statement) in function.statements() {
                 effect = effect.union(statement.effect);
-                match &statement.kind {
-                    MirStatementKind::Call(call) => {
-                        if let Some(callee) = script_callee(call) {
-                            called.insert(callee);
-                        }
-                    }
-                    MirStatementKind::Task(task) => {
-                        called.insert(task.worker);
-                        if let Some(continuation) = &task.continuation {
-                            called.insert(continuation.function);
-                        }
-                    }
-                    _ => {}
+                if let MirStatementKind::Call(call) = &statement.kind
+                    && let Some(callee) = script_callee(call)
+                {
+                    called.insert(callee);
                 }
             }
             for (_, block) in function.blocks() {
@@ -1135,12 +1114,6 @@ pub(crate) fn effective_effects(
                     continue;
                 };
                 effect = effect.union(terminator.effect);
-                if let MirTerminatorKind::AwaitCall { operation, .. } = &terminator.kind
-                    && let MirAwaitOperation::Call(call) = operation.as_ref()
-                    && let Some(callee) = script_callee(call)
-                {
-                    called.insert(callee);
-                }
             }
         }
         effects.insert(root_id, effect);

@@ -327,8 +327,7 @@ impl<'a> FunctionBackend<'a> {
                 }
                 | UnlinkedInstructionKind::I64RangeNext {
                     jump_if_done: slot, ..
-                }
-                | UnlinkedInstructionKind::AwaitCall { resume: slot, .. } => *slot = target,
+                } => *slot = target,
                 _ => return Err(MirBackendError::MissingTarget("CFG patch instruction")),
             }
         }

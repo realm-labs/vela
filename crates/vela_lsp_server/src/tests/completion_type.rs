@@ -31,7 +31,7 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 2,
+                "formatVersion": 3,
                 "facts": {
                     "types": [
                         {

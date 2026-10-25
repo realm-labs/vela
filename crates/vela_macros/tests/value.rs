@@ -1,7 +1,4 @@
 use std::collections::BTreeMap;
-use std::future::Future;
-use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
 
 use vela_common::StoragePolicy;
 use vela_engine::args::{FromScriptArg, IntoScriptArg};
@@ -56,11 +53,6 @@ pub fn current_decision() -> GrantDecision {
         count: 6,
         item: "token".to_owned(),
     }
-}
-
-#[export(path = "host::async_decision")]
-pub async fn async_decision() -> GrantDecision {
-    GrantDecision::Pending
 }
 
 #[test]
@@ -379,36 +371,4 @@ fn count_decision() {
         runtime.value_to_owned(&result),
         Ok(OwnedValue::from(11_i64))
     );
-}
-
-#[test]
-fn derived_enum_returned_by_async_rust_native_keeps_match_identity() {
-    let builder = Engine::builder().install_generated_type::<GrantDecision>();
-    let engine = builder
-        .install_registration(vela_function_async_decision())
-        .build()
-        .expect("derived enum and async native should seal together");
-    let program = engine
-        .compile_source(
-            r#"
-async fn is_pending() {
-    let value = host::async_decision().await;
-    return match value {
-        host::GrantDecision::Pending {} => true,
-        _ => false,
-    };
-}
-"#,
-        )
-        .expect("async native enum result should compile against its binding");
-    let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut future = runtime.call_async("is_pending", CallArgs::new(), CallOptions::unbounded());
-    let mut context = Context::from_waker(Waker::noop());
-    let Poll::Ready(result) = Pin::new(&mut future).poll(&mut context) else {
-        panic!("ready async enum native should complete in one poll");
-    };
-    let result = result.expect("async native enum result should retain nominal match identity");
-    drop(future);
-
-    assert_eq!(runtime.value_to_owned(&result), Ok(OwnedValue::Bool(true)));
 }

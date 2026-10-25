@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use super::{TestServer, notification_value, notify, request, response_value};
+use super::{TestServer, request, response_value};
 
 mod call_matrix;
 mod dynamic;
@@ -1040,7 +1040,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -1068,7 +1068,7 @@ fn schema_with_player_method() -> &'static str {
 
 fn schema_with_player_function_and_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -1106,7 +1106,7 @@ fn schema_with_player_function_and_method() -> &'static str {
 
 fn schema_with_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -1139,7 +1139,7 @@ fn schema_with_quest_state_tuple_variant() -> &'static str {
 
 fn schema_with_rewardable_trait_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "traits": [
                 {

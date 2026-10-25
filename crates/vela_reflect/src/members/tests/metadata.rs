@@ -220,10 +220,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     assert_eq!(fields.get("returns"), Some(&option_string("bool")));
     assert_eq!(fields.get("return_desc"), Some(&option_type_desc("bool")));
     assert_eq!(fields.get("returns_desc"), Some(&option_type_desc("bool")));
-    assert_eq!(
-        fields.get("is_async"),
-        Some(&ReflectValue::Host(HostValue::Bool(true)))
-    );
+    assert!(!fields.contains_key("is_async"));
     let Some(ReflectValue::Array(raw_params)) = fields.get("params") else {
         panic!("method params should be an array");
     };
@@ -454,10 +451,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
     else {
         panic!("trait method metadata should be a record");
     };
-    assert_eq!(
-        trait_method_fields.get("is_async"),
-        Some(&ReflectValue::Host(HostValue::Bool(true)))
-    );
+    assert!(!trait_method_fields.contains_key("is_async"));
     assert!(has_trait(&registry, "Damageable"));
     assert!(!has_trait(&registry, "Trackable"));
 

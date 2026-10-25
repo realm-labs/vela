@@ -1,6 +1,5 @@
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering};
-use std::task::Waker;
+use std::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use std::time::Instant;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -8,7 +7,6 @@ use std::time::Instant;
 pub enum CallStatus {
     Created,
     Running,
-    Pending,
     Completed,
     Failed,
     Cancelled,
@@ -19,11 +17,10 @@ impl CallStatus {
     fn from_u8(value: u8) -> Self {
         match value {
             1 => Self::Running,
-            2 => Self::Pending,
-            3 => Self::Completed,
-            4 => Self::Failed,
-            5 => Self::Cancelled,
-            6 => Self::DeadlineExceeded,
+            2 => Self::Completed,
+            3 => Self::Failed,
+            4 => Self::Cancelled,
+            5 => Self::DeadlineExceeded,
             _ => Self::Created,
         }
     }
@@ -39,7 +36,6 @@ impl CallStatus {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct CallSnapshot {
     pub status: CallStatus,
-    pub polls: u64,
     pub deadline: Option<Instant>,
 }
 
@@ -50,9 +46,7 @@ pub struct CallControl(Arc<CallControlState>);
 struct CallControlState {
     cancelled: AtomicBool,
     status: AtomicU8,
-    polls: AtomicU64,
     deadline: parking_lot::Mutex<Option<Instant>>,
-    waker: parking_lot::Mutex<Option<Waker>>,
 }
 
 impl Default for CallControl {
@@ -75,9 +69,7 @@ impl CallControl {
         Self(Arc::new(CallControlState {
             cancelled: AtomicBool::new(false),
             status: AtomicU8::new(CallStatus::Created as u8),
-            polls: AtomicU64::new(0),
             deadline: parking_lot::Mutex::new(None),
-            waker: parking_lot::Mutex::new(None),
         }))
     }
 
@@ -89,9 +81,6 @@ impl CallControl {
             return false;
         }
         self.set_status(CallStatus::Cancelled);
-        if let Some(waker) = self.0.waker.lock().take() {
-            waker.wake();
-        }
         true
     }
 
@@ -99,7 +88,6 @@ impl CallControl {
     pub fn snapshot(&self) -> CallSnapshot {
         CallSnapshot {
             status: CallStatus::from_u8(self.0.status.load(Ordering::Acquire)),
-            polls: self.0.polls.load(Ordering::Relaxed),
             deadline: *self.0.deadline.lock(),
         }
     }
@@ -111,23 +99,12 @@ impl CallControl {
         }
     }
 
-    pub(super) fn begin_poll(&self, waker: &Waker) -> bool {
-        self.0.polls.fetch_add(1, Ordering::Relaxed);
-        *self.0.waker.lock() = Some(waker.clone());
-        self.0.cancelled.load(Ordering::Acquire)
-    }
-
     pub(super) fn cancelled(&self) -> bool {
         self.0.cancelled.load(Ordering::Acquire)
     }
 
-    pub(super) fn pending(&self) {
-        self.set_status(CallStatus::Pending);
-    }
-
     pub(super) fn finish(&self, status: CallStatus) {
         self.set_status(status);
-        self.0.waker.lock().take();
     }
 
     fn set_status(&self, next: CallStatus) {
@@ -153,4 +130,46 @@ impl CallControl {
 pub(crate) struct CallPolicy {
     pub deadline: Option<Instant>,
     pub control: Option<CallControl>,
+}
+
+impl CallPolicy {
+    pub(super) fn attach(&self) {
+        if let Some(control) = &self.control {
+            control.attach(self.deadline);
+        }
+    }
+
+    pub(super) fn check(&self) -> vela_vm::error::VmResult<()> {
+        let status = if self.control.as_ref().is_some_and(CallControl::cancelled) {
+            Some(CallStatus::Cancelled)
+        } else if self
+            .deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+        {
+            Some(CallStatus::DeadlineExceeded)
+        } else {
+            None
+        };
+        if let Some(status) = status {
+            if let Some(control) = &self.control {
+                control.finish(status);
+            }
+            return Err(vela_vm::error::VmError::new(match status {
+                CallStatus::Cancelled => vela_vm::error::VmErrorKind::CallCancelled,
+                CallStatus::DeadlineExceeded => vela_vm::error::VmErrorKind::DeadlineExceeded,
+                _ => unreachable!("only abort states create control errors"),
+            }));
+        }
+        Ok(())
+    }
+
+    pub(super) fn finish<T>(&self, result: &vela_vm::error::VmResult<T>) {
+        if let Some(control) = &self.control {
+            control.finish(if result.is_ok() {
+                CallStatus::Completed
+            } else {
+                CallStatus::Failed
+            });
+        }
+    }
 }

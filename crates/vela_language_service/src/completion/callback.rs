@@ -30,11 +30,9 @@ pub(super) fn adjust_items(
         let Some(target) = targets.first() else {
             return false;
         };
-        if matches!(target.symbol(), crate::SymbolRef::Builtin(name) if name.starts_with("task::"))
-            || item.symbol() != Some(target.symbol())
+        if item.symbol() != Some(target.symbol())
             || targets.iter().any(|candidate| {
                 candidate.symbol() != target.symbol()
-                    || candidate.asyncness().is_async()
                     || !matches!(
                         candidate.origin(),
                         CallableOrigin::Source | CallableOrigin::Schema | CallableOrigin::Stdlib

@@ -9,7 +9,6 @@ use vela_syntax::ast::{
 
 use crate::binding::{
     BindingMap, BindingResolution, ImportBinding, LocalBinding, LocalBindingKind, PathUsage,
-    TaskLexicalCapability,
 };
 use crate::body::{
     HirBody, HirBodyOwner, HirBodyRoot, HirPathKind, HirPathOwner, HirPatternKind,
@@ -122,7 +121,6 @@ struct SyntaxBindingLowerer<'a> {
     bodies: BTreeMap<HirBodyId, HirBody>,
     capture_keys: BTreeMap<(HirBodyId, HirLocalId), HirCaptureId>,
     diagnostics: Vec<Diagnostic>,
-    task_capabilities: BTreeMap<HirExprId, TaskLexicalCapability>,
 }
 
 struct ActiveScope {
@@ -192,7 +190,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
-            task_capabilities: BTreeMap::new(),
         };
 
         for param in input.params {
@@ -304,7 +301,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
             bodies: BTreeMap::from([(input.body_id, root_body)]),
             capture_keys: BTreeMap::new(),
             diagnostics: Vec::new(),
-            task_capabilities: BTreeMap::new(),
         };
         for param in input.params {
             lowerer.declare_parameter(
@@ -330,7 +326,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
                 pattern_resolutions: self.pattern_resolutions,
                 pending_constructor_paths: self.pending_constructor_paths,
                 pending_pattern_paths: self.pending_pattern_paths,
-                task_capabilities: self.task_capabilities,
             },
             self.bodies.into_values().collect(),
             self.diagnostics,
@@ -644,10 +639,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
     }
 
     fn bind_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
-        if path.len() > 1 && path.first().is_some_and(|segment| segment == "task") {
-            self.bind_task_path(id, path, span, usage);
-            return;
-        }
         if matches!(path, [service, namespace, ..]
             if service == "service" && matches!(namespace.as_str(), "base" | "pinned"))
         {
@@ -698,44 +689,6 @@ impl<'a> SyntaxBindingLowerer<'a> {
         if matches!(usage, PathUsage::Value | PathUsage::AssignmentTarget) {
             self.diagnostics
                 .push(self.unresolved_name_diagnostic(name, span));
-        }
-    }
-
-    fn bind_task_path(&mut self, id: HirExprId, path: &[String], span: Span, usage: PathUsage) {
-        let capability = match path {
-            [task, operation] if task == "task" && operation == "spawn_scoped" => {
-                TaskLexicalCapability::SpawnScoped
-            }
-            [task, operation] if task == "task" && operation == "spawn_scoped_then" => {
-                TaskLexicalCapability::SpawnScopedThen
-            }
-            _ => {
-                self.diagnostics.push(
-                    Diagnostic::error("unknown task operation")
-                        .with_code("hir::unknown_task_operation")
-                        .with_span(span)
-                        .with_label(
-                            span,
-                            "use `task::spawn_scoped(worker(...))` or `task::spawn_scoped_then(worker(...), continuation)`",
-                        ),
-                );
-                return;
-            }
-        };
-        self.task_capabilities.insert(id, capability);
-        if usage != PathUsage::Callee {
-            let expected = match capability {
-                TaskLexicalCapability::SpawnScoped => "task::spawn_scoped(worker(...))",
-                TaskLexicalCapability::SpawnScopedThen => {
-                    "task::spawn_scoped_then(worker(...), continuation)"
-                }
-            };
-            self.diagnostics.push(
-                Diagnostic::error("task operations cannot be used as values")
-                    .with_code("hir::invalid_task_capability_use")
-                    .with_span(span)
-                    .with_label(span, format!("call it directly as `{expected}`")),
-            );
         }
     }
 

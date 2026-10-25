@@ -1,6 +1,6 @@
 //! Backend-neutral callable signatures shared by source and registry facts.
 
-use vela_common::{CallableAsyncness, Span};
+use vela_common::Span;
 
 use crate::type_fact::TypeFact;
 
@@ -49,7 +49,6 @@ impl CallableParameterFact {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CallableSignatureFact {
-    pub asyncness: CallableAsyncness,
     pub parameters: Vec<CallableParameterFact>,
     pub returns: TypeFact,
 }
@@ -61,15 +60,8 @@ impl CallableSignatureFact {
         returns: TypeFact,
     ) -> Self {
         Self {
-            asyncness: CallableAsyncness::Sync,
             parameters: parameters.into_iter().collect(),
             returns,
         }
-    }
-
-    #[must_use]
-    pub const fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
     }
 }

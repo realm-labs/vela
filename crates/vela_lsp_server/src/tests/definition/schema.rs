@@ -81,7 +81,7 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -172,7 +172,7 @@ fn assert_schema_field_source_navigation(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -666,7 +666,7 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -791,7 +791,7 @@ fn assert_schema_variant_type_definition_null() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -917,7 +917,7 @@ fn assert_schema_member_source_navigation<F>(
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": facts(target_start, target_end)
         })
         .to_string(),
@@ -1020,7 +1020,7 @@ fn assert_schema_member_source_navigation_null<F>(
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": facts(0, schema_text.len())
         })
         .to_string(),

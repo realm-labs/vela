@@ -58,20 +58,9 @@ fn describe(result) -> String {
 }
 ```
 
-## Async Functions And Await
+## Synchronous Execution
 
-Declare module functions and script methods with `async fn`. The postfix
-`.await` operator applies to call expressions and is legal only inside an async
-function. Known async callees must be awaited; awaited dynamic calls may resolve
-to either synchronous or asynchronous targets.
-
-```vela
-async fn load_profile(repository, player_id) {
-    return repository.load(player_id).await;
-}
-```
-
-Await preserves sequential script semantics. A suspended invocation resumes
-when the embedding executor polls it again; it does not expose task handles,
-manual resume, `yield`, script-level threads, or concurrent use of one Runtime.
-Host effects remain checked through capabilities, budgets, and HostAccess.
+Functions, methods, and closures run synchronously under finite execution,
+memory, and call-depth budgets. Script async declarations, await expressions,
+and detached task operations are unsupported. Hosts may schedule their own work
+and call Vela synchronously after it completes.

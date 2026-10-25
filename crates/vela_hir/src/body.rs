@@ -317,9 +317,6 @@ pub enum HirExprKind {
     Try {
         expression: Option<HirExprId>,
     },
-    Await {
-        expression: Option<HirExprId>,
-    },
     Array {
         elements: Vec<HirExprId>,
     },

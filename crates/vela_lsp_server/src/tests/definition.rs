@@ -584,7 +584,7 @@ fn assert_schema_source_navigation(method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

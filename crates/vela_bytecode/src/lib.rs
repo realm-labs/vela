@@ -26,10 +26,8 @@ pub mod verification;
 #[doc(hidden)]
 pub use artifact::test_support;
 pub use artifact::{
-    ArtifactChecksum, ArtifactFeatureSet, ArtifactTaskContinuation, ArtifactTaskOperation,
-    ArtifactTaskParameter, ArtifactTaskSignature, ArtifactTaskTarget, LinkedArtifact,
-    MirExecutableLayout, ProfileFunctionLayout, ProfileLayout, ProfileScalarUnitLayout,
-    ProfileSelectedUnitLayout,
+    ArtifactChecksum, LinkedArtifact, MirExecutableLayout, ProfileFunctionLayout, ProfileLayout,
+    ProfileScalarUnitLayout, ProfileSelectedUnitLayout,
 };
 pub use binding_schema::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
@@ -45,8 +43,7 @@ pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 use std::collections::BTreeMap;
 
 use vela_common::{
-    CallableAsyncness, CapabilitySet, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span,
-    StateSlot,
+    CapabilitySet, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
 };
 use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::HirLocalId;
@@ -396,7 +393,7 @@ impl UnlinkedProgramCode for UnlinkedProgram {
 #[derive(Clone, Debug, PartialEq)]
 pub struct UnlinkedCodeObject {
     pub name: String,
-    pub asyncness: CallableAsyncness,
+
     pub params: Vec<String>,
     pub param_defaults: Vec<bool>,
     pub capture_count: u16,
@@ -430,7 +427,7 @@ impl UnlinkedCodeObject {
     pub fn new(name: impl Into<String>, register_count: u16) -> Self {
         Self {
             name: name.into(),
-            asyncness: CallableAsyncness::Sync,
+
             params: Vec::new(),
             param_defaults: Vec::new(),
             capture_count: 0,
@@ -455,12 +452,6 @@ impl UnlinkedCodeObject {
     pub fn with_params(mut self, params: Vec<String>) -> Self {
         self.param_defaults = vec![false; params.len()];
         self.params = params;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -768,8 +759,6 @@ impl UnlinkedTypeGuard {
 pub enum UnlinkedTypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(StandardTypeGuard),
-    /// Engine-owned structured failure used only by detached task outcomes.
-    TaskError,
     Callable {
         accepts_direct_function: bool,
         accepts_closure: bool,
@@ -1109,10 +1098,6 @@ pub enum UnlinkedInstructionKind {
     Jump {
         target: InstructionOffset,
     },
-    AwaitCall {
-        operation: Box<UnlinkedInstructionKind>,
-        resume: InstructionOffset,
-    },
     CallNative {
         dst: Option<Register>,
         name: String,
@@ -1127,7 +1112,6 @@ pub enum UnlinkedInstructionKind {
         mode: ScriptCallMode,
         args: Vec<CallArgument>,
     },
-    Task(Box<UnlinkedTaskInstruction>),
     MakeClosure {
         dst: Register,
         function: FunctionIndex,
@@ -1365,30 +1349,6 @@ pub enum UnlinkedInstructionKind {
     RunScalarBlock {
         plan: ScalarBlockPlanId,
     },
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct UnlinkedTaskContinuation {
-    pub target: FunctionId,
-    pub name: String,
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
-#[derive(Clone, Debug, PartialEq)]
-pub struct UnlinkedTaskInstruction {
-    pub dst: Register,
-    pub worker: FunctionId,
-    pub worker_name: String,
-    pub mode: ScriptCallMode,
-    pub args: Vec<CallArgument>,
-    pub continuation: Option<UnlinkedTaskContinuation>,
 }
 
 #[cfg_attr(

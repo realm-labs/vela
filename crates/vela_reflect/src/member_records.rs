@@ -25,10 +25,7 @@ fn method_record_fields(method: &MethodDesc) -> ReflectFields {
     fields.insert("id".to_owned(), id_value(method.id.get()));
     fields.insert("name".to_owned(), string(method.name.clone()));
     fields.insert("origin".to_owned(), origin_value(method.origin));
-    fields.insert(
-        "is_async".to_owned(),
-        bool_value(method.asyncness.is_async()),
-    );
+
     fields.insert(
         "params".to_owned(),
         array(method.params.iter().map(method_param_record)),
@@ -135,10 +132,6 @@ fn trait_method_record(owner: &str, method: &TraitMethodDesc) -> ReflectValue {
             ("name".to_owned(), string(method.name.clone())),
             ("owner".to_owned(), string(owner)),
             ("origin".to_owned(), origin_value(method.origin)),
-            (
-                "is_async".to_owned(),
-                bool_value(method.asyncness.is_async()),
-            ),
             (
                 "params".to_owned(),
                 array(method.params.iter().map(method_param_record)),
@@ -294,7 +287,6 @@ fn effect_set_record(effects: &MethodEffectSet) -> ReflectValue {
                 "calls_reflection".to_owned(),
                 bool_value(effects.calls_reflection),
             ),
-            ("spawns_tasks".to_owned(), bool_value(effects.spawns_tasks)),
         ]),
     )
 }

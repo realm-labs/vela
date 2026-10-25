@@ -214,15 +214,6 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::UnnameableScopedResource { kind, parent } => single_error_response(
             format!("unnamed scoped {kind:?} result retaining {parent:?}"),
         ),
-        CompileErrorKind::TaskValueNotDetachable { target, path, kind } => {
-            single_error_response(format!(
-                "detached target `{target}` cannot transfer `{path}` because it contains a {}",
-                kind.as_str()
-            ))
-        }
-        CompileErrorKind::TaskContinuationInvalid { target, reason } => {
-            single_error_response(format!("task continuation `{target}` is invalid: {reason}"))
-        }
     }
 }
 
@@ -470,6 +461,44 @@ mod tests {
             response["diagnostics"][0]["message"],
             "Service dispatch paths are no longer supported"
         );
+    }
+
+    #[test]
+    fn compile_and_run_reject_removed_async_and_task_sources() {
+        for (source, code) in [
+            ("async fn main() { return 1; }", "syntax::removed_async"),
+            (
+                "fn main() { return load().await; }",
+                "syntax::removed_async",
+            ),
+            (
+                "fn worker() {} fn main() { task::spawn_scoped(worker()); }",
+                "syntax::removed_task",
+            ),
+            (
+                "fn worker() {} fn done(result: Any) {} fn main() { task::spawn_scoped_then(worker(), done); }",
+                "syntax::removed_task",
+            ),
+        ] {
+            for response in [compile_script(source), run_script(source, "main")] {
+                let response: JsonValue = serde_json::from_str(&response).expect("playground JSON");
+                assert_eq!(response["ok"], false, "{source}: {response}");
+                assert!(
+                    response["value"].is_null(),
+                    "removed source must not execute"
+                );
+                assert!(
+                    response["diagnostics"]
+                        .as_array()
+                        .expect("diagnostics")
+                        .iter()
+                        .any(|diagnostic| diagnostic["code"] == code
+                            && diagnostic["severity"] == "error"
+                            && diagnostic["span"].is_object()),
+                    "{source}: {response}"
+                );
+            }
+        }
     }
 
     #[test]

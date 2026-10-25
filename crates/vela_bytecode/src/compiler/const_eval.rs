@@ -118,7 +118,6 @@ fn evaluate_const_expression(
         | HirExprKind::Call(_)
         | HirExprKind::Index(_)
         | HirExprKind::Try { .. }
-        | HirExprKind::Await { .. }
         | HirExprKind::Record { .. }
         | HirExprKind::Lambda { .. }
         | HirExprKind::If(_)

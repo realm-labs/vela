@@ -1,6 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::CallableAsyncness;
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::binding::LocalBindingKind;
 use vela_hir::ids::{HirBodyId, HirCaptureId, HirExprId, HirLocalId, HirParamId, HirScopeId};
@@ -155,7 +154,7 @@ pub struct MirFunction {
     owner: MirFunctionOwner,
     code_symbol: String,
     origin: MirSourceOrigin,
-    asyncness: CallableAsyncness,
+
     return_contract: Option<MirFunctionReturn>,
     parameters: Vec<MirFunctionParameter>,
     captures: Vec<MirFunctionCapture>,
@@ -190,7 +189,7 @@ impl MirFunction {
             owner,
             code_symbol: code_symbol.into(),
             origin,
-            asyncness: CallableAsyncness::Sync,
+
             return_contract,
             parameters: Vec::new(),
             captures: Vec::new(),
@@ -228,15 +227,6 @@ impl MirFunction {
     #[must_use]
     pub fn code_symbol(&self) -> &str {
         &self.code_symbol
-    }
-
-    #[must_use]
-    pub const fn asyncness(&self) -> CallableAsyncness {
-        self.asyncness
-    }
-
-    pub const fn set_asyncness(&mut self, asyncness: CallableAsyncness) {
-        self.asyncness = asyncness;
     }
 
     #[must_use]
@@ -522,24 +512,6 @@ impl MirFunction {
                 .map(|_| ())
         };
         match &terminator.kind {
-            crate::MirTerminatorKind::AwaitCall {
-                destination,
-                resume,
-                ..
-            } => {
-                require_block(*resume)?;
-                match destination {
-                    crate::MirPlace::Local(local) => require_local(*local)?,
-                    crate::MirPlace::Temp(temp) => {
-                        if self.temps.get(*temp).is_none() {
-                            return Err(MirBuildError::MissingTemp {
-                                temp: *temp,
-                                origin: terminator.origin,
-                            });
-                        }
-                    }
-                }
-            }
             crate::MirTerminatorKind::Jump(target) => require_block(*target)?,
             crate::MirTerminatorKind::Branch {
                 then_block,

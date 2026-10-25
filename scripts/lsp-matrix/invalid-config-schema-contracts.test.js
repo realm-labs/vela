@@ -50,7 +50,7 @@ test("schema switches pin complete hover values, nil results and visible diagnos
 test("metadata ownership and full diagnostic clearing distinguish schema failures from manifest failures", () => {
   const c = contract(), p = "ux17-roots/left/", zero = { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } };
   for (const [phase, filename, tail] of [["missing", "schema-missing.json", "is unavailable; host facts degrade to Any"],
-    ["invalid", "schema-invalid.json", "is invalid: unsupported schema artifact format version 99; expected 2; host facts degrade to Any"],
+    ["invalid", "schema-invalid.json", "is invalid: unsupported schema artifact format version 99; expected 3; host facts degrade to Any"],
     ["deleted", "schema-one.json", "is unavailable; host facts degrade to Any"]]) {
     const rows = expected(c, phase + "-diagnostics"), message = "host schema `<workspace>/" + p + filename + "` " + tail;
     assert.equal(rows.filter(r => r.uri.endsWith(".vela")).length, 5);

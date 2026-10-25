@@ -5,7 +5,7 @@ use vela_analysis::registry::{
     RegistryFacts,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CallableAsyncness, SourceId, Span};
+use vela_common::{SourceId, Span};
 
 fn registry() -> RegistryFacts {
     let signature = CallableSignatureFact::new(
@@ -15,8 +15,7 @@ fn registry() -> RegistryFacts {
             CallableParameterFact::new("reason", TypeFact::STRING, Required::Defaulted),
         ],
         TypeFact::BOOL,
-    )
-    .asyncness(CallableAsyncness::Async);
+    );
     let fact = TypeFact::function(vec![TypeFact::I64, TypeFact::STRING], TypeFact::BOOL);
     let mut facts = RegistryFacts::default();
     facts.insert_function("host::grant", fact.clone());
@@ -38,8 +37,8 @@ fn wire() -> Value {
 }
 
 #[test]
-fn schema_callable_signatures_round_trip_names_defaults_asyncness_types_and_spans() {
-    let expected = json!({"asyncness":"async","parameters":[
+fn schema_callable_signatures_round_trip_names_defaults_types_and_spans() {
+    let expected = json!({"parameters":[
         {"name":"arg0","typeFact":{"kind":"primitive","name":"i64"},"requirement":"required","sourceSpan":{"source":7,"start":12,"end":16}},
         {"name":"reason","typeFact":{"kind":"primitive","name":"string"},"requirement":"defaulted"}
     ],"returns":{"kind":"primitive","name":"bool"}});
@@ -88,7 +87,10 @@ fn schema_callable_signature_metadata_participates_in_hash_and_rejects_stale_has
             "/facts/methods/0/signature/parameters/1/requirement",
             json!("required"),
         ),
-        ("/facts/traitMethods/0/signature/asyncness", json!("sync")),
+        (
+            "/facts/traitMethods/0/signature/parameters/0/name",
+            json!("other"),
+        ),
     ] {
         let mut changed = value.clone();
         *changed.pointer_mut(path).expect("path") = replacement;
@@ -122,7 +124,6 @@ fn schema_callable_signatures_reject_malformed_and_disagreeing_metadata() {
                 json!({"kind":"primitive","name":"bool"}),
             ),
             ("/returns", json!({"kind":"primitive","name":"string"})),
-            ("/asyncness", json!("maybe")),
             ("/parameters/0/requirement", json!("optional")),
         ] {
             let mut value = wire();
@@ -152,6 +153,61 @@ fn schema_callable_signatures_reject_malformed_and_disagreeing_metadata() {
 }
 
 #[test]
+fn schema_v3_rejects_legacy_async_and_task_metadata_without_defaulting() {
+    for group in ["functions", "methods", "traitMethods"] {
+        for asyncness in [json!("sync"), json!("async"), Value::Null] {
+            let mut value = wire();
+            value["facts"][group][0]["signature"]["asyncness"] = asyncness;
+            let error = SchemaArtifact::from_json(&value.to_string())
+                .expect_err("legacy callable metadata");
+            assert!(
+                error.message().contains("unknown field `asyncness`"),
+                "{error:?}"
+            );
+        }
+    }
+    for field in ["taskTargets", "taskMetadata", "asyncness"] {
+        let mut value = wire();
+        value["facts"][field] = json!([]);
+        assert!(
+            SchemaArtifact::from_json(&value.to_string()).is_err(),
+            "{field}"
+        );
+    }
+    for effects in ["functionEffects", "methodEffects", "traitMethodEffects"] {
+        for spawns in [false, true] {
+            let mut value = wire();
+            let mut effect = json!({"readsHost":false,"writesHost":false,"emitsEvents":false,"readsTime":false,"usesRandom":false,"readsIo":false,"writesIo":false,"readsReflection":false,"writesReflection":false,"callsReflection":false});
+            effect["spawnsTasks"] = json!(spawns);
+            let row = if effects == "functionEffects" {
+                json!({"name":"host::grant","effect":effect})
+            } else {
+                json!({"owner":"host::Player","name":"grant","effect":effect})
+            };
+            value["facts"][effects] = json!([row]);
+            let error =
+                SchemaArtifact::from_json(&value.to_string()).expect_err("legacy task effect");
+            assert!(
+                error.message().contains("unknown field `spawnsTasks`"),
+                "{error:?}"
+            );
+        }
+    }
+    for ceiling in [Value::Null, json!({}), json!({"spawnsTasks":false})] {
+        let mut value = wire();
+        value["facts"]["executionEffectCeiling"] = ceiling;
+        let error =
+            SchemaArtifact::from_json(&value.to_string()).expect_err("removed task ceiling");
+        assert!(
+            error
+                .message()
+                .contains("unknown field `executionEffectCeiling`"),
+            "{error:?}"
+        );
+    }
+}
+
+#[test]
 fn schema_without_callable_metadata_keeps_absent_names_and_canonical_encoding() {
     let mut value = wire();
     for group in ["functions", "methods", "traitMethods"] {
@@ -160,7 +216,7 @@ fn schema_without_callable_metadata_keeps_absent_names_and_canonical_encoding() 
             .expect("object")
             .remove("signature");
     }
-    let artifact = SchemaArtifact::from_json(&value.to_string()).expect("old schema");
+    let artifact = SchemaArtifact::from_json(&value.to_string()).expect("current type-only schema");
     let facts = artifact.to_registry_facts();
     assert!(facts.function_signature_fact("host::grant").is_none());
     assert!(

@@ -9,7 +9,7 @@ fn unclosed_method_owners_preserve_methods_calls_and_lossless_source() {
             SyntaxKind::ImplMethod,
         ),
         (
-            "/* 中😀 */ impl Patch { async fn run(value: i64) { call(value",
+            "/* 中😀 */ impl Patch { fn run(value: i64) { call(value",
             SyntaxKind::ImplMethod,
         ),
         (

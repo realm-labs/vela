@@ -83,7 +83,7 @@ mod tests {
         let named = json!([{"name":"owner","fact":fact,"sourceSpan":span}]);
         let member = json!([{"owner":"owner","name":"member","fact":fact,"sourceSpan":span}]);
         SchemaArtifact::from_json(
-            &json!({"formatVersion":2,"facts":{
+            &json!({"formatVersion":3,"facts":{
                 "types":named,"traits":named,"modules":named,"functions":named,
                 "fields":member,"variants":member,"methods":member,"traitMethods":member
             }})

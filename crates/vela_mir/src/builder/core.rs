@@ -67,7 +67,6 @@ impl<'a> FunctionBuilder<'a> {
             return_contract,
             origin,
         );
-        function.set_asyncness(descriptor.signature.asyncness);
         function.set_active_lexical_scopes(scope_chain(body, body.root_scope));
         let current_block = function.entry_block();
         Ok(Self {
@@ -728,16 +727,13 @@ impl<'a> FunctionBuilder<'a> {
                     if self.input.targets().constructor(expression).is_some() {
                         self.lower_constructor(expression, origin)
                     } else {
-                        self.lower_call(expression, &call, origin, None)
+                        self.lower_call(expression, &call, origin)
                     }
                 }
                 HirExprKind::Index(index) => self.lower_index(expression, &index, origin),
                 HirExprKind::Try {
                     expression: operand,
                 } => self.lower_try_expression(expression, operand, origin),
-                HirExprKind::Await {
-                    expression: operand,
-                } => self.lower_await(operand, origin),
                 HirExprKind::Array { .. } => Err(self.unsupported(origin, "array expression")),
                 HirExprKind::Map { .. } => Err(self.unsupported(origin, "map expression")),
                 HirExprKind::Record { .. } => self.lower_constructor(expression, origin),

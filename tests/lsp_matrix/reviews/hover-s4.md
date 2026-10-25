@@ -1,5 +1,10 @@
 # Hover S4 members and constructors
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: `hover/syntax/S4/{positive,negative}/{service,protocol}` only. Exact tests:
 `hover::member_matrix_tests::hover_member_matrix_preserves_constructor_labels_and_scoped_owners`
 and `tests::hover::members::hover_member_matrix_preserves_constructor_labels_and_scoped_owners`.

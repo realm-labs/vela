@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, CollectionViewMutation, PrimitiveTag, Span};
+use vela_common::{CollectionViewMutation, PrimitiveTag, Span};
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
-use vela_vm::AsyncDirectHostFunction;
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
@@ -21,7 +20,6 @@ pub struct NativeFunctionDesc {
     pub params: Vec<NativeParamDesc>,
     pub returns: TypeHint,
     pub effects: EffectSet,
-    pub asyncness: CallableAsyncness,
     pub access: FunctionAccess,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -38,7 +36,6 @@ impl NativeFunctionDesc {
             params: Vec::new(),
             returns: TypeHint::Any,
             effects: EffectSet::default(),
-            asyncness: CallableAsyncness::Sync,
             access: FunctionAccess::default(),
             docs: None,
             attrs: AttrMap::new(),
@@ -65,12 +62,6 @@ impl NativeFunctionDesc {
     #[must_use]
     pub fn effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
-        self
-    }
-
-    #[must_use]
-    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -127,7 +118,6 @@ impl EffectSet {
     const READS_REFLECTION: u16 = 1 << (Capability::ReflectionRead as u8);
     const WRITES_REFLECTION: u16 = 1 << (Capability::ReflectionWrite as u8);
     const CALLS_REFLECTION: u16 = 1 << (Capability::ReflectionCall as u8);
-    const SPAWNS_TASKS: u16 = 1 << (Capability::TaskSpawn as u8);
 
     #[must_use]
     pub const fn pure() -> Self {
@@ -205,13 +195,6 @@ impl EffectSet {
     }
 
     #[must_use]
-    pub const fn task_spawn() -> Self {
-        Self {
-            bits: Self::SPAWNS_TASKS,
-        }
-    }
-
-    #[must_use]
     pub const fn union(self, other: Self) -> Self {
         Self {
             bits: self.bits | other.bits,
@@ -281,11 +264,6 @@ impl EffectSet {
     #[must_use]
     pub const fn calls_reflection(self) -> bool {
         self.contains(Self::CALLS_REFLECTION)
-    }
-
-    #[must_use]
-    pub const fn spawns_tasks(self) -> bool {
-        self.contains(Self::SPAWNS_TASKS)
     }
 
     pub const fn required_capability_set(self) -> CapabilitySet {
@@ -577,59 +555,6 @@ impl TypeHint {
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 
-/// The lifetime-erased future returned by one registered async Rust call.
-///
-/// The future may borrow its invocation arguments, but it must remain `Send`
-/// for that scoped lifetime.
-///
-/// ```compile_fail
-/// use std::rc::Rc;
-/// use vela_engine::native::NativeCallFuture;
-/// use vela_vm::owned_value::OwnedValue;
-///
-/// fn non_send<'call>(value: &'call Rc<i64>) -> NativeCallFuture<'call> {
-///     Box::pin(async move {
-///         let value = **value;
-///         Ok(OwnedValue::i64(value))
-///     })
-/// }
-/// ```
-pub type NativeCallFuture<'call> = vela_vm::NativeCallFuture<'call>;
-
-/// A `Send + Sync + 'static` factory whose returned future is scoped to one
-/// invocation.
-///
-/// ```compile_fail
-/// use std::rc::Rc;
-/// use std::sync::Arc;
-/// use vela_engine::native::{AsyncNativeFunction, NativeCallFuture};
-/// use vela_vm::owned_value::OwnedValue;
-///
-/// let captured = Rc::new(1_i64);
-/// let _factory: AsyncNativeFunction = Arc::new(move |_args| {
-///     let captured = Rc::clone(&captured);
-///     Box::pin(async move { Ok(OwnedValue::i64(*captured)) }) as NativeCallFuture<'_>
-/// });
-/// ```
-pub type AsyncNativeFunction = vela_vm::AsyncNativeFunction;
-pub type AsyncHostNativeFunction = Arc<
-    dyn for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncContextHostNativeFunction = Arc<
-    dyn for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut NativeCallContext<'call, 'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
->;
 pub type HostNativeFunction = Arc<
     dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
         + Send
@@ -665,48 +590,12 @@ impl NativeFunctionEntry {
     }
 }
 
-#[derive(Clone)]
-pub struct AsyncNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub function: AsyncNativeFunction,
-}
-
-impl AsyncNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        mut desc: NativeFunctionDesc,
-        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            function: Arc::new(function),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AsyncHostNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub function: AsyncHostNativeFunction,
-}
-
 pub type HostLeaseRequestFactory = Arc<
     dyn Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
         + Send
         + Sync
         + 'static,
 >;
-
-#[derive(Clone)]
-pub struct AsyncDirectHostNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub requests: HostLeaseRequestFactory,
-    pub function: AsyncDirectHostFunction,
-}
 
 #[derive(Clone)]
 pub struct ScopedHostNativeFunctionEntry {
@@ -754,77 +643,6 @@ impl ScopedHostNativeFunctionEntry {
         Self {
             desc,
             requests: Arc::new(requests),
-            function: Arc::new(function),
-        }
-    }
-}
-
-impl AsyncDirectHostNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        mut desc: NativeFunctionDesc,
-        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
-        + Send
-        + Sync
-        + 'static,
-        function: impl for<'invoke, 'lease> Fn(
-            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            requests: Arc::new(requests),
-            function: Arc::new(function),
-        }
-    }
-}
-
-impl AsyncHostNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        mut desc: NativeFunctionDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            function: Arc::new(function),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AsyncContextHostNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub function: AsyncContextHostNativeFunction,
-}
-
-impl AsyncContextHostNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        mut desc: NativeFunctionDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut NativeCallContext<'call, 'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
             function: Arc::new(function),
         }
     }
@@ -879,26 +697,9 @@ impl ContextHostNativeFunctionEntry {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
 
-    use vela_vm::owned_value::OwnedValue;
-
-    use super::{AsyncNativeFunction, EffectSet, NativeCallFuture};
+    use super::EffectSet;
     use crate::permission::Capability;
-
-    fn require_send<T: Send>(_: T) {}
-
-    fn borrowed_async_native(args: &[OwnedValue]) -> NativeCallFuture<'_> {
-        Box::pin(async move { Ok(args.first().cloned().unwrap_or(OwnedValue::Unit)) })
-    }
-
-    #[test]
-    fn async_native_factory_is_static_and_returns_scoped_send_future() {
-        let factory: AsyncNativeFunction = Arc::new(borrowed_async_native);
-        let args = [OwnedValue::i64(42)];
-
-        require_send(factory(&args));
-    }
 
     #[test]
     fn required_capability_set_matches_effect_flags() {
@@ -906,8 +707,7 @@ mod tests {
             .union(EffectSet::time())
             .union(EffectSet::io_write())
             .union(EffectSet::reflection_read())
-            .union(EffectSet::reflection_call())
-            .union(EffectSet::task_spawn());
+            .union(EffectSet::reflection_call());
 
         let capabilities = effects.required_capability_set();
 
@@ -919,8 +719,6 @@ mod tests {
         assert!(capabilities.contains(Capability::IoWrite));
         assert!(capabilities.contains(Capability::ReflectionRead));
         assert!(capabilities.contains(Capability::ReflectionCall));
-        assert!(effects.spawns_tasks());
-        assert!(capabilities.contains(Capability::TaskSpawn));
         assert_eq!(
             effects.required_capabilities().collect::<Vec<_>>(),
             capabilities.iter().collect::<Vec<_>>()

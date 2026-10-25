@@ -9,12 +9,12 @@ fn call_expression_matrix_projects_complete_choices_and_applies_utf16_edits() {
 }
 
 #[test]
-fn task_operand_matrix_projects_calls_and_static_continuation_paths() {
+fn removed_task_operand_matrix_projects_rejection() {
     verify_fixture("completion-task-operands");
 }
 
 #[test]
-fn task_eligibility_matrix_projects_static_targets_and_matching_continuations() {
+fn removed_task_eligibility_matrix_projects_rejection() {
     verify_fixture("completion-task-eligibility");
 }
 
@@ -34,18 +34,27 @@ fn callback_factory_matrix_projects_existing_calls_and_reference_boundaries() {
 }
 
 #[test]
-fn task_value_matrix_projects_argument_choices_and_exact_admission_diagnostics() {
+fn removed_task_value_matrix_projects_rejection() {
     verify_fixture("completion-task-values");
 }
 
 #[test]
-fn task_effect_matrix_projects_choices_and_transitive_denials() {
+fn removed_task_effect_matrix_projects_rejection() {
     verify_fixture("completion-task-effects");
     verify_fixture("completion-task-spawn-ceiling");
     verify_fixture("completion-task-unknown-ceiling");
 }
 
 fn verify_fixture(name: &str) {
+    if name.starts_with("completion-task-")
+        || matches!(
+            name,
+            "completion-async-callables" | "completion-await-contexts"
+        )
+    {
+        crate::tests::removed_execution::verify_fixture(name);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(name);
         if crlf {
@@ -232,11 +241,9 @@ fn verify_fixture(name: &str) {
                         .expect("diagnostics")
                         .iter()
                         .filter(|d| {
-                            d["code"].as_str().is_some_and(|code| {
-                                code.starts_with("analysis::task_")
-                                    || code.starts_with("hir::task_")
-                                    || code == "analysis::async_call_requires_await"
-                            })
+                            d["code"]
+                                .as_str()
+                                .is_some_and(|code| code.starts_with("syntax::"))
                         })
                         .collect::<Vec<_>>();
                     let oracle = expected["diagnostics"].as_array().expect("diagnostics");
@@ -299,11 +306,7 @@ fn verify_fixture(name: &str) {
                         .expect("diagnostics")
                         .iter()
                         .filter_map(|d| d["code"].as_str())
-                        .filter(|code| {
-                            code.starts_with("hir::task_")
-                                || code.starts_with("analysis::task_")
-                                || *code == "analysis::async_call_requires_await"
-                        })
+                        .filter(|code| code.starts_with("syntax::"))
                         .collect::<Vec<_>>();
                     assert_eq!(
                         codes,

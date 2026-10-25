@@ -15,6 +15,62 @@
 //! ```compile_fail
 //! use vela_engine::runtime::ProviderHandle;
 //! ```
+//!
+//! Execution and native registration are synchronous. Task admission and async
+//! call factories are not embedding APIs:
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::task::TaskScope;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::runtime::RuntimeCallFuture;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::native::AsyncNativeFunctionEntry;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::typed::TypedAsyncNativeFunction;
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed(runtime: &mut vela_engine::runtime::Runtime) {
+//!     let _ = runtime.call_async("main", vela_engine::runtime::CallArgs::new(),
+//!         vela_engine::runtime::CallOptions::new(1_000, 1 << 20, 32));
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::engine::Engine::builder().register_async_fn(
+//!     vela_engine::native::NativeFunctionDesc::new("removed", vela_def::FunctionId::new(1)),
+//!     |_args| Box::pin(async { Ok(vela_vm::owned_value::OwnedValue::Unit) }),
+//! );
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed(context: &mut vela_engine::context::NativeCallContext<'_, '_>) {
+//!     let _ = context.call_async("main", vela_engine::runtime::CallArgs::new());
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed<A: vela_engine::binding::BindingAuthority>(
+//!     authority: &mut A, callable: &vela_engine::binding::BindingCallable,
+//! ) {
+//!     let _ = authority.call_async::<i64, _>(callable, ());
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed<A: vela_engine::binding::BindingAuthority>(
+//!     authority: &mut A, callable: &vela_engine::binding::BindingCallable,
+//! ) {
+//!     let _ = authority.call_prepared_async::<i64>(callable,
+//!         vela_engine::runtime::CallArgs::new());
+//! }
+//! ```
 
 #![allow(clippy::result_large_err)]
 
@@ -53,7 +109,6 @@ pub mod runtime;
 pub mod schema;
 pub mod source;
 pub mod standard;
-pub mod task;
 pub mod type_binding;
 pub mod type_registration;
 pub mod typed;

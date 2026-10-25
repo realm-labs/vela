@@ -42,7 +42,7 @@ mod tests {
         let artifact =
             vela_language_service::SchemaArtifact::from_json(&json).expect("current schema format");
 
-        assert!(json.contains(r#""formatVersion": 2"#));
+        assert!(json.contains(r#""formatVersion": 3"#));
         assert!(!json.contains(r#""serviceSet""#));
         assert!(json.contains(r#""typeBindings""#));
         let facts = artifact.to_registry_facts();

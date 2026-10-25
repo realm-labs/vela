@@ -1,5 +1,10 @@
 # Workspace symbol declaration review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.6 closes S1 positive service/protocol, repeat and UTF-16/CRLF/encoded-URI
 protocol checks. S0, schema/import ownership, malformed recovery, lifecycle
 states, installed workspace-symbol smoke and native UX11/UX12 remain open.

@@ -54,7 +54,6 @@ impl FunctionBuilder<'_> {
             | HirExprKind::Field(_)
             | HirExprKind::Index(_)
             | HirExprKind::Try { .. }
-            | HirExprKind::Await { .. }
             | HirExprKind::Record { .. }
             | HirExprKind::Lambda { .. }
             | HirExprKind::Block { .. }

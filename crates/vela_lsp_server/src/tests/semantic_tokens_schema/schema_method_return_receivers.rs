@@ -33,7 +33,7 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_method_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

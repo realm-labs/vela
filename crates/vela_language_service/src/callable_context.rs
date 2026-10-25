@@ -8,7 +8,7 @@ use vela_analysis::stdlib::{
     stdlib_function_completion_facts, stdlib_method_fact_with_lambda_arity,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CallableAsyncness, SourceId};
+use vela_common::SourceId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, HirTypeHint, ImplMetadataKind};
 use vela_package::ModuleKey;
@@ -42,7 +42,7 @@ pub struct CallableFacts {
     params: Vec<CallableParameterFacts>,
     returns: TypeFact,
     scoped_resource: Option<ScopedResourceReturnDef>,
-    asyncness: CallableAsyncness,
+
     origin: CallableOrigin,
     parameters_named: bool,
     symbol: SymbolRef,
@@ -72,11 +72,6 @@ impl CallableFacts {
     #[must_use]
     pub fn return_display_name(&self) -> String {
         scoped_return_display_name(&self.returns, self.scoped_resource)
-    }
-
-    #[must_use]
-    pub const fn asyncness(&self) -> CallableAsyncness {
-        self.asyncness
     }
 
     #[must_use]
@@ -216,7 +211,7 @@ pub(crate) fn source_callable_facts_for_declaration(
         params,
         returns,
         scoped_resource: None,
-        asyncness: signature.asyncness,
+
         origin: CallableOrigin::Source,
         parameters_named: true,
         symbol: source_symbol_for_declaration(graph, declaration),
@@ -487,7 +482,7 @@ fn schema_method_callable_facts(
             |signature| signature.returns.clone(),
         ),
         scoped_resource: schema.method_scoped_resource(&owner, method),
-        asyncness: signature.map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
+
         origin: CallableOrigin::SchemaMethod,
         parameters_named: signature.is_some(),
         symbol: schema_member_symbol(&owner, method),
@@ -571,7 +566,7 @@ pub(crate) fn source_variant_callable_fact(
         params,
         returns: TypeFact::enum_type(&owner, Some(name)),
         scoped_resource: None,
-        asyncness: CallableAsyncness::Sync,
+
         origin: CallableOrigin::SourceVariant,
         parameters_named: false,
         symbol: source_enum_variant_symbol(graph, declaration, name)?,
@@ -620,8 +615,7 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                 ),
                 returns: signature.map_or_else(|| *returns, |signature| signature.returns.clone()),
                 scoped_resource: schema.function_scoped_resource(&function.name),
-                asyncness: signature
-                    .map_or(CallableAsyncness::Sync, |signature| signature.asyncness),
+
                 origin: CallableOrigin::Schema,
                 parameters_named: signature.is_some(),
                 symbol: schema_symbol(function.name),
@@ -647,7 +641,7 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 params,
                 returns: variant.fact,
                 scoped_resource: None,
-                asyncness: CallableAsyncness::Sync,
+
                 origin: CallableOrigin::SchemaVariant,
                 parameters_named: false,
                 symbol: schema_variant_symbol(&variant.owner, &variant.name),
@@ -726,7 +720,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
             .collect(),
         returns: fact.returns,
         scoped_resource: None,
-        asyncness: CallableAsyncness::Sync,
+
         origin: CallableOrigin::Stdlib,
         parameters_named: metadata.is_some(),
         symbol: builtin_symbol(fact.name),
@@ -761,7 +755,7 @@ fn stdlib_method_callable_fact(
         params,
         returns: fact.returns,
         scoped_resource,
-        asyncness: CallableAsyncness::Sync,
+
         origin: CallableOrigin::StdlibMethod,
         parameters_named: metadata.is_some(),
         symbol: builtin_member_symbol(&fact.receiver.display_name(), fact.method),
@@ -801,7 +795,7 @@ fn callable_facts_from_signature(
         params,
         returns,
         scoped_resource: None,
-        asyncness: signature.asyncness,
+
         origin,
         parameters_named: true,
     }

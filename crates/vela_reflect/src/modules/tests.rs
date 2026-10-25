@@ -177,7 +177,6 @@ fn module_function_queries_return_records_and_candidates() {
     registry.register_function(
         FunctionDesc::new(function_id, "game::reward::grant")
             .module("game::reward")
-            .asyncness(vela_common::CallableAsyncness::Async)
             .param(
                 FunctionParamDesc::new("amount")
                     .type_hint("i64")
@@ -354,10 +353,7 @@ fn module_function_queries_return_records_and_candidates() {
         function_metadata.get("origin"),
         Some(&ReflectValue::Host(HostValue::String("script".into())))
     );
-    assert_eq!(
-        function_metadata.get("is_async"),
-        Some(&ReflectValue::Host(HostValue::Bool(true)))
-    );
+    assert!(!function_metadata.contains_key("is_async"));
     assert_eq!(
         function_metadata.get("source_span"),
         Some(&span_value(Some(function_span)))
@@ -405,10 +401,6 @@ fn module_function_queries_return_records_and_candidates() {
                 ),
                 (
                     "calls_reflection".to_owned(),
-                    ReflectValue::Host(HostValue::Bool(false))
-                ),
-                (
-                    "spawns_tasks".to_owned(),
                     ReflectValue::Host(HostValue::Bool(false))
                 ),
             ]),

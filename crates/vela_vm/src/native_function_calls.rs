@@ -1,15 +1,11 @@
-use std::sync::Arc;
-
 use vela_bytecode::{CacheSiteId, DebugNameId, LinkedProgram, NativeHandle, Register};
 use vela_common::Span;
 use vela_def::FunctionId;
 
 use crate::{
-    AsyncHostNativeFunction, AsyncNativeFunction, BorrowedNativeFunction, CallFrame,
-    ConditionalAsyncNativeFunction, ConditionalHostNativeFunction, ConditionalHostNativeOutcome,
-    ExecutionBudget, HeapExecution, HostExecution, HostNativeFunction, NativeFunction,
-    NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm, VmError, VmErrorKind, VmInlineCaches,
-    VmResult, value::Value, value_to_owned,
+    BorrowedNativeFunction, CallFrame, ExecutionBudget, HeapExecution, HostExecution,
+    HostNativeFunction, NativeFunction, NativeInlineCacheEntry, OwnedValue, SmallStorage, Vm,
+    VmError, VmErrorKind, VmInlineCaches, VmResult, value::Value, value_to_owned,
 };
 
 struct NativeFunctionCall<'a> {
@@ -33,7 +29,6 @@ pub(crate) struct LinkedNativeFunctionCall<'a> {
 
 pub(crate) enum LinkedNativeDispatch {
     Complete,
-    Async(PreparedAsyncNativeCall),
     Context(PreparedContextNativeCall),
 }
 
@@ -45,39 +40,9 @@ pub(crate) struct PreparedContextNativeCall {
     pub(crate) source_span: Option<Span>,
 }
 
-pub(crate) struct PreparedAsyncNativeCall {
-    pub(crate) native_id: FunctionId,
-    pub(crate) function: PreparedAsyncNativeFunction,
-    pub(crate) args: Vec<OwnedValue>,
-    pub(crate) destination: Option<Register>,
-    pub(crate) name: String,
-    pub(crate) source_span: Option<Span>,
-}
-
-pub(crate) enum PreparedAsyncNativeFunction {
-    Pure(AsyncNativeFunction),
-    Host(AsyncHostNativeFunction),
-    HostMethod {
-        function: crate::AsyncHostMethodFunction,
-        receiver: vela_host::path::HostPath,
-    },
-    DirectHostMethod {
-        function: crate::AsyncDirectHostMethodFunction,
-        receiver: vela_host::path::HostPath,
-        lease_kind: vela_host::lease::HostLeaseKind,
-    },
-    DirectHostFunction {
-        function: crate::AsyncDirectHostFunction,
-        requests: Box<vela_host::lease::HostLeaseRequestSet>,
-    },
-}
-
 #[derive(Clone)]
 pub(crate) enum NativeCallTarget {
     Pure(NativeFunction),
-    AsyncPure(AsyncNativeFunction),
-    AsyncHost(AsyncHostNativeFunction),
-    ConditionalHost(ConditionalHostNativeFunction),
     BorrowedPure(BorrowedNativeFunction),
     Host(HostNativeFunction),
     BorrowedHost(crate::BorrowedHostNativeFunction),
@@ -88,9 +53,6 @@ impl NativeCallTarget {
     pub(crate) const fn kind(&self) -> &'static str {
         match self {
             Self::Pure(_) => "pure",
-            Self::AsyncPure(_) => "async_pure",
-            Self::AsyncHost(_) => "async_host",
-            Self::ConditionalHost(_) => "conditional_host",
             Self::BorrowedPure(_) => "borrowed_pure",
             Self::Host(_) => "host",
             Self::BorrowedHost(_) => "borrowed_host",
@@ -137,15 +99,6 @@ pub(crate) fn dispatch_linked_native_function_call(
             .charge_host_call()
             .map_err(|error| error.with_source_span_if_absent(call.call_site))?;
     }
-    let async_function = match &target {
-        NativeCallTarget::AsyncPure(function) => {
-            Some(PreparedAsyncNativeFunction::Pure(Arc::clone(function)))
-        }
-        NativeCallTarget::AsyncHost(function) => {
-            Some(PreparedAsyncNativeFunction::Host(Arc::clone(function)))
-        }
-        _ => None,
-    };
     if context_native_boundaries && matches!(target, NativeCallTarget::ContextHost(_)) {
         let args =
             native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
@@ -158,73 +111,6 @@ pub(crate) fn dispatch_linked_native_function_call(
             name: call.name.to_owned(),
             source_span: call.call_site,
         }));
-    }
-    if let Some(function) = async_function {
-        let args =
-            native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
-                .as_slice()
-                .to_vec();
-        return Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
-            native_id: call.native,
-            function,
-            args,
-            destination: call.dst,
-            name: call.name.to_owned(),
-            source_span: call.call_site,
-        }));
-    }
-    if let NativeCallTarget::ConditionalHost(function) = target {
-        let args =
-            native_call_args_from_registers(frame, call.args, heap.as_deref(), host.as_deref())?
-                .as_slice()
-                .to_vec();
-        let host_execution = host.as_deref_mut().ok_or_else(|| {
-            VmError::new(VmErrorKind::TypeMismatch {
-                operation: "host context",
-            })
-        })?;
-        return match function(&args, host_execution, budget.as_deref_mut())
-            .map_err(|error| error.with_source_span_if_absent(call.call_site))?
-        {
-            ConditionalHostNativeOutcome::Complete(result) => {
-                write_native_result(frame, host, heap, budget, program, call.dst, result)?;
-                Ok(LinkedNativeDispatch::Complete)
-            }
-            ConditionalHostNativeOutcome::Async {
-                function,
-                args,
-                diagnostic_name,
-            } => Ok(LinkedNativeDispatch::Async(PreparedAsyncNativeCall {
-                native_id: call.native,
-                function: match function {
-                    ConditionalAsyncNativeFunction::Pure(function) => {
-                        PreparedAsyncNativeFunction::Pure(function)
-                    }
-                    ConditionalAsyncNativeFunction::Host(function) => {
-                        PreparedAsyncNativeFunction::Host(function)
-                    }
-                    ConditionalAsyncNativeFunction::HostMethod { function, receiver } => {
-                        PreparedAsyncNativeFunction::HostMethod { function, receiver }
-                    }
-                    ConditionalAsyncNativeFunction::DirectHostMethod {
-                        function,
-                        receiver,
-                        lease_kind,
-                    } => PreparedAsyncNativeFunction::DirectHostMethod {
-                        function,
-                        receiver,
-                        lease_kind,
-                    },
-                    ConditionalAsyncNativeFunction::DirectHostFunction { function, requests } => {
-                        PreparedAsyncNativeFunction::DirectHostFunction { function, requests }
-                    }
-                },
-                args,
-                destination: call.dst,
-                name: diagnostic_name,
-                source_span: call.call_site,
-            })),
-        };
     }
     dispatch_resolved_native_function_call(host, heap, budget, frame, program, &call, target)?;
     Ok(LinkedNativeDispatch::Complete)
@@ -249,11 +135,6 @@ fn dispatch_resolved_native_function_call(
             )?;
             native(values.as_slice())
                 .map_err(|error| error.with_source_span_if_absent(call.call_site))?
-        }
-        NativeCallTarget::AsyncPure(_)
-        | NativeCallTarget::AsyncHost(_)
-        | NativeCallTarget::ConditionalHost(_) => {
-            unreachable!("boundary targets are prepared before dispatch")
         }
         NativeCallTarget::BorrowedPure(native) => {
             let values = native_borrowed_call_args_from_registers(frame, call.args)?;
@@ -371,28 +252,10 @@ fn resolve_native_call_target_by_id(vm: &Vm, native: FunctionId) -> Option<Nativ
         .cloned()
         .map(NativeCallTarget::BorrowedPure)
         .or_else(|| {
-            vm.conditional_host_native_ids
-                .get(&native)
-                .cloned()
-                .map(NativeCallTarget::ConditionalHost)
-        })
-        .or_else(|| {
             vm.borrowed_host_native_ids
                 .get(&native)
                 .cloned()
                 .map(NativeCallTarget::BorrowedHost)
-        })
-        .or_else(|| {
-            vm.async_native_ids
-                .get(&native)
-                .cloned()
-                .map(NativeCallTarget::AsyncPure)
-        })
-        .or_else(|| {
-            vm.async_host_native_ids
-                .get(&native)
-                .cloned()
-                .map(NativeCallTarget::AsyncHost)
         })
         .or_else(|| {
             vm.native_ids

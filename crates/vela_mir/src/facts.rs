@@ -780,7 +780,7 @@ fn contract_fact(contract: &MirTypeContract) -> Option<(MirValueType, Option<Mir
         MirTypeContract::Host(target) => (MirValueType::Host(*target), None),
         MirTypeContract::Option(_) => (MirValueType::Dynamic, Some(MirFamilyFact::Option)),
         MirTypeContract::Result { .. } => (MirValueType::Dynamic, Some(MirFamilyFact::Result)),
-        MirTypeContract::Any | MirTypeContract::TaskError | MirTypeContract::Definition(_) => {
+        MirTypeContract::Any | MirTypeContract::Definition(_) => {
             return None;
         }
     };
@@ -862,7 +862,6 @@ fn infer_declared_return_fact(function: &MirFunction) -> Option<MirValueFact> {
 
 fn successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
-        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
         MirTerminatorKind::Jump(target) => vec![*target],
         MirTerminatorKind::Branch {
             then_block,

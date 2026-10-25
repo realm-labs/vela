@@ -707,7 +707,7 @@ pub fn preview() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

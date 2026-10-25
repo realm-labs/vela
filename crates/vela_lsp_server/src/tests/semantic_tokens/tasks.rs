@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn lsp_semantic_tokens_classify_static_detached_task_operands() {
+fn lsp_semantic_tokens_classify_nested_synchronous_calls() {
     let mut server = TestServer::new();
     let initialize = response_value(request::<lsp_types::request::Initialize>(
         &mut server,
@@ -22,12 +22,11 @@ fn lsp_semantic_tokens_classify_static_detached_task_operands() {
         .expect("semantic token legend should list token modifiers");
     let function = token_type_index(token_types, "function");
     let source = token_modifier_bit(token_modifiers, "source");
-    let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
-async fn worker(value: i64) -> i64 { return value }
-fn continuation(result: Result<i64, task::Error>) {}
-pub fn main() { task::spawn_scoped_then(worker(7), continuation) }";
+fn worker(value: i64) -> i64 { return value }
+fn continuation(result: i64) {}
+pub fn main() { continuation(worker(7)) }";
     let uri = "file:///workspace/scripts/game/main.vela";
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
@@ -51,16 +50,6 @@ pub fn main() { task::spawn_scoped_then(worker(7), continuation) }";
             .expect("semantic token response should include data"),
     );
 
-    assert_token_at(
-        &tokens,
-        2,
-        line(text, 2)
-            .find("spawn_scoped_then")
-            .expect("task builtin"),
-        "spawn_scoped_then".len(),
-        function,
-        builtin,
-    );
     assert_token_at(
         &tokens,
         2,

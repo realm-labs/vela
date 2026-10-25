@@ -24,7 +24,7 @@ fn signature_type_matrix_preserves_complete_hints_and_unknown_boundaries() {
 
 #[test]
 fn signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing() {
-    verify_fixture("signature-s10", 75);
+    verify_fixture("signature-s10", 70);
 }
 
 fn verify_fixture(name: &str, expected_count: usize) {

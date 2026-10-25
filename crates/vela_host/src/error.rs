@@ -120,9 +120,6 @@ pub enum HostErrorKind {
     BorrowStillInUse {
         path: HostPath,
     },
-    UnreleasedScopedResourcesAtAwait {
-        resources: Vec<UnreleasedScopedResource>,
-    },
     BorrowedHostRefEscape {
         path: HostPath,
         boundary: HostRefLifetimeBoundary,
@@ -147,7 +144,6 @@ pub struct UnreleasedScopedResource {
 pub enum HostRefLifetimeBoundary {
     PersistentState,
     RootReturn,
-    AsyncSuspend,
 }
 
 pub type HostResult<T> = Result<T, HostError>;

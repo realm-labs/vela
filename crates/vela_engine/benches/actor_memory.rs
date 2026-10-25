@@ -1,12 +1,8 @@
 use std::alloc::System;
 use std::error::Error;
-use std::future::Future;
 use std::hint::black_box;
-use std::pin::Pin;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Barrier};
-use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -17,7 +13,6 @@ use vela_engine::binding::VmResult;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{Runtime, SharedImage, SharedRuntime};
 use vela_hot_reload::version::ProgramVersion;
-use vela_macros::export;
 use vela_vm::{
     DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
     NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
@@ -33,8 +28,6 @@ const STABLE_COLD_ACTORS_PER_WORKER: usize = 128;
 const QUICK_COLD_ACTORS_PER_WORKER: usize = 16;
 const DEFAULT_RSS_CEILING_MIB: u64 = 1_536;
 const DEFAULT_CHILD_TIME_CEILING_SECS: u64 = 90;
-
-static PENDING_RELEASED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Copy)]
 enum Sampling {
@@ -115,28 +108,13 @@ impl ActorTurn {
     }
 }
 
-async fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
-    let result = turn
-        .runtime
-        .call_async(
-            "actor_turn",
-            vela_engine::runtime::CallArgs::new().with_value("value", value),
-            vela_engine::runtime::CallOptions::unbounded(),
-        )
-        .await?;
+fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
+    let result = turn.runtime.call(
+        "actor_turn",
+        vela_engine::runtime::CallArgs::new().with_value("value", value),
+        vela_engine::runtime::CallOptions::unbounded(),
+    )?;
     i64::from_script_arg(&turn.runtime.value_to_owned(&result)?)
-}
-
-#[export(path = "bench::wait_for_release")]
-pub async fn wait_for_release(value: i64) -> VmResult<i64> {
-    std::future::poll_fn(|_| {
-        if PENDING_RELEASED.load(Ordering::Acquire) {
-            Poll::Ready(Ok(value))
-        } else {
-            Poll::Pending
-        }
-    })
-    .await
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -338,17 +316,12 @@ struct ConcurrencyFixture {
 
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
-        let engine = Engine::builder()
-            .install_registration(vela_function_wait_for_release())
-            .build()?;
+        let engine = Engine::builder().build()?;
         let program = engine.compile_source(
             r#"
 state calls: i64 = 0;
 
-pub async fn actor_turn(value: i64) -> i64 {
-    if value == 0 {
-        return bench::wait_for_release(41).await;
-    }
+pub fn actor_turn(value: i64) -> i64 {
     calls += 1;
     return calls + value;
 }
@@ -400,8 +373,8 @@ fn concurrent_cold(
                     barrier.wait();
                     for mut actor in worker_actors {
                         let started = Instant::now();
-                        let value = poll_to_completion(actor_turn(&mut actor, 41))
-                            .map_err(|error| error.to_string())?;
+                        let value =
+                            actor_turn(&mut actor, 41).map_err(|error| error.to_string())?;
                         samples.push(started.elapsed());
                         checksum = checksum.wrapping_add(value);
                     }
@@ -437,7 +410,7 @@ fn run_concurrent(
 ) -> Result<(), Box<dyn Error>> {
     if warm {
         for actor in &mut actors {
-            black_box(poll_to_completion(actor_turn(actor, 41))?);
+            black_box(actor_turn(actor, 41)?);
         }
     }
     let workers = actors.len();
@@ -455,8 +428,8 @@ fn run_concurrent(
                     barrier.wait();
                     for _ in 0..calls_per_worker {
                         let started = Instant::now();
-                        let value = poll_to_completion(actor_turn(&mut actor, 41))
-                            .map_err(|error| error.to_string())?;
+                        let value =
+                            actor_turn(&mut actor, 41).map_err(|error| error.to_string())?;
                         samples.push(started.elapsed());
                         checksum = checksum.wrapping_add(value);
                     }
@@ -519,23 +492,6 @@ fn report_concurrency(
         allocation.bytes_deallocated,
         checksum
     );
-}
-
-fn poll_to_completion<T>(future: impl Future<Output = VmResult<T>>) -> VmResult<T> {
-    let mut future = std::pin::pin!(future);
-    poll_pinned_to_completion(future.as_mut())
-}
-
-fn poll_pinned_to_completion<T>(
-    mut future: Pin<&mut impl Future<Output = VmResult<T>>>,
-) -> VmResult<T> {
-    let mut task = Context::from_waker(Waker::noop());
-    loop {
-        if let Poll::Ready(result) = future.as_mut().poll(&mut task) {
-            return result;
-        }
-        thread::yield_now();
-    }
 }
 
 fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {

@@ -854,7 +854,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_grant_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -888,8 +888,7 @@ fn schema_with_player_grant_method() -> &'static str {
                         "writesIo": false,
                         "readsReflection": false,
                         "writesReflection": false,
-                        "callsReflection": false,
-                        "spawnsTasks": false
+                        "callsReflection": false
                     }
                 }
             ],
@@ -908,7 +907,7 @@ fn schema_with_player_grant_method() -> &'static str {
 
 fn schema_with_rewardable_trait_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "traits": [
                 {
@@ -935,7 +934,7 @@ fn schema_with_rewardable_trait_method() -> &'static str {
 
 fn schema_with_rewardable_trait() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "traits": [
                 {
@@ -950,7 +949,7 @@ fn schema_with_rewardable_trait() -> &'static str {
 
 fn schema_with_quest_state_variant() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

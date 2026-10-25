@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, SourceId};
+use vela_common::SourceId;
 
 use super::{
     RUST_BINDING_SCHEMA_VERSION, RustBindingCallableIdentity, RustBindingParameterDefault,
@@ -14,7 +14,7 @@ fn schema_exports_public_functions_and_methods_with_structural_contracts() {
         SourceId::new(501),
         r#"
 #[doc("Calculate a value")]
-pub async fn calculate(input: Array<i64>, scale: i64 = 2) -> Result<i64, String> {
+pub fn calculate(input: Array<i64>, scale: i64 = 2) -> Result<i64, String> {
 return scale;
 }
 
@@ -55,7 +55,6 @@ fn secret(self) -> i64 { return 0; }
         .callables()
         .find(|callable| callable.public_path == "calculate")
         .expect("public function binding");
-    assert_eq!(calculate.asyncness, CallableAsyncness::Async);
     assert_eq!(calculate.docs.as_deref(), Some("Calculate a value"));
     assert_eq!(calculate.source.source, SourceId::new(501));
     assert_eq!(calculate.parameters.len(), 2);

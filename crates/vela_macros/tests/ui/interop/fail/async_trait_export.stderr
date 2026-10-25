@@ -1,0 +1,5 @@
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+ --> tests/ui/interop/fail/async_trait_export.rs:5:5
+  |
+5 |     async fn value(&self) -> i64;
+  |     ^^^^^

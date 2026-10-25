@@ -54,11 +54,7 @@ impl Vm {
         let function_calls = values::ReflectedFunctionCalls::new(
             self.native_ids.clone(),
             self.host_native_ids.clone(),
-            self.async_native_ids.clone(),
-            self.async_host_native_ids.clone(),
             self.host_method_ids.clone(),
-            self.async_host_method_ids.clone(),
-            self.async_direct_host_method_ids.clone(),
         );
         values::register(self, &registry, &policy, &lookup_budget, function_calls);
     }

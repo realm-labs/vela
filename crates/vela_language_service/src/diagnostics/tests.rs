@@ -1,10 +1,7 @@
 use std::collections::BTreeSet;
 
-use vela_analysis::{
-    registry::{CallableSignatureFact, RegistryEffectFact, RegistryFacts},
-    type_fact::TypeFact,
-};
-use vela_common::{CallableAsyncness, Diagnostic, Span};
+use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
+use vela_common::{Diagnostic, Span};
 
 use super::*;
 use crate::{
@@ -64,131 +61,32 @@ fn syntax_diagnostics_map_to_document_ranges() {
 }
 
 #[test]
-fn async_call_diagnostics_retain_analysis_code_and_repair() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut db = LanguageServiceDatabases::new();
-    db.update(&project(&[file(
-        document.as_str(),
-        "async fn load() -> i64 { return 1; }\nfn main() { return load(); }",
-    )]));
-
-    let diagnostics = db.diagnostics_for_document(&document);
-    let diagnostic = diagnostics
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code() == Some("analysis::async_call_requires_await"))
-        .expect("language service should retain the async call diagnostic");
-
-    assert!(diagnostic.message().contains("requires `.await`"));
-    assert!(
-        diagnostic
-            .labels()
-            .iter()
-            .any(|label| label.message().contains("append `.await`"))
-    );
-}
-
-#[test]
-fn detached_task_diagnostics_retain_static_value_and_continuation_failures() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut db = LanguageServiceDatabases::new();
-    db.update(&project(&[file(
-        document.as_str(),
-        r#"
-async fn worker(callback: Closure) -> Array<Closure> { return [callback]; }
-fn continuation(result: Any) {}
-fn main() {
-    task::spawn_scoped_then(worker(|value| value), continuation);
-}
-"#,
-    )]));
-
-    let diagnostics = db.diagnostics_for_document(&document);
-    let codes = diagnostics
-        .diagnostics()
-        .iter()
-        .filter_map(ServiceDiagnostic::code)
-        .collect::<Vec<_>>();
-    assert_eq!(
-        codes,
-        [
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_continuation_invalid",
-        ]
-    );
-    assert!(diagnostics.diagnostics()[0].message().contains("worker"));
-    assert!(
-        diagnostics
-            .diagnostics()
-            .iter()
-            .any(|diagnostic| diagnostic.message().contains("return value.element"))
-    );
-}
-
-#[test]
-fn detached_task_diagnostics_retain_hir_static_target_failures() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut db = LanguageServiceDatabases::new();
-    db.update(&project(&[file(
-        document.as_str(),
-        "fn worker() {}\nfn main() { task::spawn_scoped(worker()); }",
-    )]));
-
-    let diagnostics = db.diagnostics_for_document(&document);
-    assert!(
-        diagnostics
-            .diagnostics()
-            .iter()
-            .any(|diagnostic| diagnostic.code() == Some("hir::task_worker_not_async"))
-    );
-}
-
-#[test]
-fn detached_task_diagnostics_report_transitive_effect_and_capability_denial() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let mut schema = RegistryFacts::default();
-    schema.insert_function(
-        "database::load",
-        TypeFact::function(Vec::new(), TypeFact::I64),
-    );
-    schema.insert_function_signature(
-        "database::load",
-        CallableSignatureFact::new(Vec::new(), TypeFact::I64).asyncness(CallableAsyncness::Async),
-    );
-    schema.insert_function_effect(
-        "database::load",
-        RegistryEffectFact {
-            reads_io: true,
-            ..RegistryEffectFact::pure()
-        },
-    );
-    let mut ceiling = RegistryEffectFact::pure();
-    ceiling.spawns_tasks = true;
-    schema.set_execution_effect_ceiling(ceiling);
-    let mut db = LanguageServiceDatabases::new();
-    db.set_schema_facts(schema);
-    db.update(&project(&[file(
-        document.as_str(),
-        "async fn worker() -> i64 { return database::load().await; }\nfn main() { task::spawn_scoped(worker()); }",
-    )]));
-
-    let diagnostics = db.diagnostics_for_document(&document);
-    let diagnostic = diagnostics
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code() == Some("analysis::task_effect_denied"))
-        .expect("task effect diagnostic");
-    assert!(diagnostic.message().contains("worker"));
-    assert!(diagnostic.message().contains("reads_io"));
-    assert!(diagnostic.message().contains("io_read"));
-    assert!(
-        diagnostic
-            .labels()
-            .iter()
-            .any(|label| label.message().contains("TaskScope"))
-    );
+fn removed_async_and_task_sources_report_errors_without_await_repairs() {
+    for text in [
+        "async fn load() -> i64 { return 1; }",
+        "fn main() { return load().await; }",
+        "fn worker() {} fn main() { task::spawn_scoped(worker()); }",
+        "fn worker() {} fn done(result: Any) {} fn main() { task::spawn_scoped_then(worker(), done); }",
+    ] {
+        let document = DocumentId::from("/workspace/scripts/game/main.vela");
+        let mut db = LanguageServiceDatabases::new();
+        db.update(&project(&[file(document.as_str(), text)]));
+        let diagnostics = db.diagnostics_for_document(&document);
+        assert!(
+            diagnostics
+                .diagnostics()
+                .iter()
+                .any(|d| d.severity() == ServiceDiagnosticSeverity::Error),
+            "{text}"
+        );
+        assert!(
+            diagnostics.diagnostics().iter().all(|d| d
+                .labels()
+                .iter()
+                .all(|label| !label.message().contains("append `.await`"))),
+            "{text}"
+        );
+    }
 }
 
 #[test]

@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Weak};
 
-use vela_common::{
-    CallableAsyncness, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
-};
+use vela_common::{HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::ModuleGraph;
 use vela_host::resolved::HostMutationOp;
@@ -347,23 +345,12 @@ impl LinkedProgram {
 pub struct LinkedNativeFunction {
     pub id: FunctionId,
     pub debug_name: DebugNameId,
-    pub asyncness: CallableAsyncness,
 }
 
 impl LinkedNativeFunction {
     #[must_use]
     pub const fn new(id: FunctionId, debug_name: DebugNameId) -> Self {
-        Self {
-            id,
-            debug_name,
-            asyncness: CallableAsyncness::Sync,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
+        Self { id, debug_name }
     }
 }
 
@@ -371,23 +358,12 @@ impl LinkedNativeFunction {
 pub struct LinkedMethodDispatch {
     pub debug_name: DebugNameId,
     pub kind: LinkedMethodDispatchKind,
-    pub asyncness: CallableAsyncness,
 }
 
 impl LinkedMethodDispatch {
     #[must_use]
     pub const fn new(debug_name: DebugNameId, kind: LinkedMethodDispatchKind) -> Self {
-        Self {
-            debug_name,
-            kind,
-            asyncness: CallableAsyncness::Sync,
-        }
-    }
-
-    #[must_use]
-    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
+        Self { debug_name, kind }
     }
 }
 
@@ -450,8 +426,6 @@ pub enum GuardKind {
 pub enum TypeGuardPlan {
     Primitive(PrimitiveTag),
     Standard(crate::StandardTypeGuard),
-    /// Engine-owned structured failure used only by detached task outcomes.
-    TaskError,
     Callable {
         accepts_direct_function: bool,
         accepts_closure: bool,
@@ -552,7 +526,7 @@ pub enum GuardLocation {
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinkedCodeObject {
     pub debug_name: DebugNameId,
-    pub asyncness: CallableAsyncness,
+
     pub params: Vec<DebugNameId>,
     pub param_defaults: Vec<bool>,
     pub capture_count: u16,
@@ -574,7 +548,7 @@ impl LinkedCodeObject {
     pub fn new(debug_name: DebugNameId, register_count: u16) -> Self {
         Self {
             debug_name,
-            asyncness: CallableAsyncness::Sync,
+
             params: Vec::new(),
             param_defaults: Vec::new(),
             capture_count: 0,
@@ -596,12 +570,6 @@ impl LinkedCodeObject {
     pub fn with_params(mut self, params: Vec<DebugNameId>) -> Self {
         self.param_defaults = vec![false; params.len()];
         self.params = params;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -952,10 +920,6 @@ pub enum InstructionKind {
     Jump {
         target: InstructionOffset,
     },
-    AwaitCall {
-        operation: Box<InstructionKind>,
-        resume: InstructionOffset,
-    },
     CallNative {
         dst: Option<Register>,
         native: NativeHandle,
@@ -970,7 +934,6 @@ pub enum InstructionKind {
         mode: crate::ScriptCallMode,
         args: Vec<CallArgument>,
     },
-    Task(Box<TaskInstruction>),
     MakeClosure {
         dst: Register,
         function: ScriptFunctionHandle,
@@ -1208,22 +1171,6 @@ pub enum InstructionKind {
     RunScalarBlock {
         plan: crate::ScalarBlockPlanId,
     },
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TaskContinuation {
-    pub function: ScriptFunctionHandle,
-    pub debug_name: DebugNameId,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct TaskInstruction {
-    pub dst: Register,
-    pub worker: ScriptFunctionHandle,
-    pub worker_debug_name: DebugNameId,
-    pub mode: crate::ScriptCallMode,
-    pub args: Vec<CallArgument>,
-    pub continuation: Option<TaskContinuation>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

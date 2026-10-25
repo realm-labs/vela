@@ -13,9 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-// Version 6 removes Service dispatch and task Service-generation requirements.
+// Version 7 removes task instructions/tables and executable async metadata.
 // Old formats are rejected before decoding their incompatible payloads.
-const FORMAT_VERSION: u32 = 6;
+const FORMAT_VERSION: u32 = 7;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -48,13 +48,11 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 6.
+/// generations are deliberately not portable in format version 7.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
     pub(crate) binding_schema: Arc<RustBindingSchema>,
-    pub(crate) required_features: crate::ArtifactFeatureSet,
-    pub(crate) task_targets: Box<[crate::ArtifactTaskTarget]>,
 }
 
 /// Versioned portable bytecode artifact before host-registry binding.
@@ -70,8 +68,6 @@ struct PortableProgramPayload {
     nominal_types: Vec<NominalTypeDescriptor>,
     script_methods: ScriptMethodTable,
     binding_schema: RustBindingSchema,
-    required_features: crate::ArtifactFeatureSet,
-    task_targets: Box<[crate::ArtifactTaskTarget]>,
 }
 
 impl PortableProgramArtifact {
@@ -82,16 +78,6 @@ impl PortableProgramArtifact {
         if parts.package_metadata.is_some() {
             return Err(PortableArtifactError::UnsupportedPackageMetadata);
         }
-        let task_targets = crate::artifact::collect_compiled_task_targets(
-            &parts.verified_mir,
-            &parts.mir_executables,
-        )
-        .map_err(|error| PortableArtifactError::TaskMetadata(error.to_string()))?;
-        let required_features = if task_targets.is_empty() {
-            crate::ArtifactFeatureSet::empty()
-        } else {
-            crate::ArtifactFeatureSet::host_scoped_tasks()
-        };
         Ok(Self {
             payload: PortableProgramPayload {
                 functions: parts
@@ -104,8 +90,6 @@ impl PortableProgramArtifact {
                 nominal_types: parts.bytecode.nominal_types,
                 script_methods: parts.bytecode.script_methods,
                 binding_schema: Arc::unwrap_or_clone(parts.binding_schema),
-                required_features,
-                task_targets,
             },
         })
     }
@@ -127,15 +111,12 @@ impl PortableProgramArtifact {
                 nominal_types: artifact.image().nominal_types().to_vec(),
                 script_methods: artifact.image().script_methods().clone(),
                 binding_schema: artifact.binding_schema().as_ref().clone(),
-                required_features: artifact.required_features(),
-                task_targets: artifact.task_targets().to_vec().into_boxed_slice(),
             },
         })
     }
 
     /// Encodes a deterministic, versioned and checksummed binary artifact.
     pub fn encode(&self) -> Result<Vec<u8>, PortableArtifactError> {
-        validate_task_metadata(&self.payload)?;
         validate_selected_plans(&self.payload)?;
         let payload = codec()
             .serialize(&self.payload)
@@ -206,7 +187,6 @@ impl PortableProgramArtifact {
             .with_limit(MAX_PAYLOAD_BYTES)
             .deserialize(payload)
             .map_err(|error| PortableArtifactError::Decode(error.to_string()))?;
-        validate_task_metadata(&payload)?;
         validate_selected_plans(&payload)?;
         Ok(Self { payload })
     }
@@ -248,8 +228,6 @@ impl PortableProgramArtifact {
         PortableCompiledProgram {
             bytecode,
             binding_schema: Arc::new(self.payload.binding_schema),
-            required_features: self.payload.required_features,
-            task_targets: self.payload.task_targets,
         }
     }
 }
@@ -279,24 +257,6 @@ fn canonical_portable_code(mut code: UnlinkedCodeObject) -> UnlinkedCodeObject {
         .map(canonical_portable_code)
         .collect();
     code
-}
-
-fn validate_task_metadata(payload: &PortableProgramPayload) -> Result<(), PortableArtifactError> {
-    if payload.required_features.has_unknown() {
-        return Err(PortableArtifactError::UnsupportedFeatures {
-            required: payload.required_features.bits(),
-            supported: crate::ArtifactFeatureSet::SUPPORTED.bits(),
-        });
-    }
-    let task_feature = payload
-        .required_features
-        .contains(crate::ArtifactFeatureSet::host_scoped_tasks());
-    if task_feature != !payload.task_targets.is_empty() {
-        return Err(PortableArtifactError::TaskMetadata(
-            "host-scoped task feature bit disagrees with the target table".to_owned(),
-        ));
-    }
-    Ok(())
 }
 
 fn validate_selected_plans(payload: &PortableProgramPayload) -> Result<(), PortableArtifactError> {
@@ -357,9 +317,7 @@ pub enum PortableArtifactError {
     Encode(String),
     Decode(String),
     UnsupportedPackageMetadata,
-    TaskMetadata(String),
     SelectedPlan(String),
-    UnsupportedFeatures { required: u64, supported: u64 },
 }
 
 impl fmt::Display for PortableArtifactError {
@@ -389,21 +347,11 @@ impl fmt::Display for PortableArtifactError {
                 write!(formatter, "portable artifact decode failed: {message}")
             }
             Self::UnsupportedPackageMetadata => formatter.write_str(
-                "portable artifact format 6 does not yet encode package runtime metadata",
+                "portable artifact format 7 does not yet encode package runtime metadata",
             ),
-            Self::TaskMetadata(message) => {
-                write!(formatter, "portable task metadata is invalid: {message}")
-            }
             Self::SelectedPlan(message) => {
                 write!(formatter, "portable selected plan is invalid: {message}")
             }
-            Self::UnsupportedFeatures {
-                required,
-                supported,
-            } => write!(
-                formatter,
-                "portable artifact requires feature bits {required:#x}; supported bits are {supported:#x}"
-            ),
         }
     }
 }
@@ -464,30 +412,6 @@ mod tests {
         }
     }
 
-    fn portable_task_artifact() -> PortableProgramArtifact {
-        let compiled = crate::compiler::compile_test_program(
-            SourceId::new(3),
-            r#"
-state current: i64 = 0;
-
-async fn worker(value: Any) -> Any {
-    let snapshot = current;
-    return value;
-}
-
-fn continuation(result: Result<Any, task::Error>, turn: i64 = 7) {
-    current = turn;
-}
-
-fn main(value: Any) {
-    task::spawn_scoped_then(worker(value), continuation);
-}
-"#,
-        )
-        .expect("compile real task program");
-        PortableProgramArtifact::from_compiled(compiled).expect("portable task artifact")
-    }
-
     #[test]
     fn portable_program_is_deterministic_and_links_without_source_compilation() {
         let compiled =
@@ -514,7 +438,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
+    fn portable_v7_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(77),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -551,7 +475,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_rejects_checksum_valid_invalid_selected_coverage() {
+    fn portable_v7_rejects_checksum_valid_invalid_selected_coverage() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(78),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -583,7 +507,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_round_trips_bounded_scalar_plan_tables() {
+    fn portable_v7_round_trips_bounded_scalar_plan_tables() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(79),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -622,7 +546,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_round_trips_and_rejects_corrupted_scalar_range_loops() {
+    fn portable_v7_round_trips_and_rejects_corrupted_scalar_range_loops() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(82),
             "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value + 1 - 1; } return total; }",
@@ -688,7 +612,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_rejects_scalar_plan_count_above_format_limit() {
+    fn portable_v7_rejects_scalar_plan_count_above_format_limit() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(80), "fn main() { return 1; }")
                 .expect("compile scalar program");
@@ -711,7 +635,7 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_rejects_checksum_valid_invalid_scalar_plan_handle() {
+    fn portable_v7_rejects_checksum_valid_invalid_scalar_plan_handle() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(81),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -749,111 +673,6 @@ fn main(value: Any) {
     }
 
     #[test]
-    fn portable_v6_round_trips_sealed_task_metadata_and_feature_bits() {
-        let artifact = portable_task_artifact();
-        let [target] = artifact.payload.task_targets.as_ref() else {
-            panic!("real task program should seal one target");
-        };
-        assert_eq!(
-            target.operation,
-            crate::ArtifactTaskOperation::SpawnScopedThen
-        );
-        assert_eq!(target.worker_debug_name, "worker");
-        assert_eq!(
-            target.worker_signature.parameter_detachability.as_ref(),
-            [vela_common::Detachability::RuntimeChecked]
-        );
-        assert_eq!(
-            target.worker_signature.result_detachability,
-            vela_common::Detachability::RuntimeChecked
-        );
-        assert!(target.worker_signature.effects.state_read);
-        let continuation = target
-            .continuation
-            .as_ref()
-            .expect("spawn_scoped_then continuation");
-        assert_eq!(continuation.debug_name, "continuation");
-        assert_eq!(continuation.resume_parameters.len(), 1);
-        assert_eq!(
-            continuation.resume_parameters[0].contract,
-            Some(vela_mir::MirTypeContract::Primitive(
-                vela_common::PrimitiveTag::I64,
-            ))
-        );
-        assert!(continuation.resume_parameters[0].has_default);
-        assert!(continuation.effects.state_write);
-
-        let encoded = artifact.encode().expect("encode v5 task metadata");
-        let decoded = PortableProgramArtifact::decode(&encoded).expect("decode v5 task metadata");
-        assert_eq!(
-            decoded.payload.required_features,
-            artifact.payload.required_features
-        );
-        assert_eq!(decoded.payload.task_targets, artifact.payload.task_targets);
-        let linked = crate::Linker::new()
-            .link_portable_program(decoded.into_compiled())
-            .expect("link v5 task metadata");
-        assert!(
-            linked
-                .required_features()
-                .contains(crate::ArtifactFeatureSet::host_scoped_tasks())
-        );
-        assert_eq!(
-            linked.task_targets(),
-            artifact.payload.task_targets.as_ref()
-        );
-
-        let mut artifact = artifact;
-        artifact.payload.required_features = crate::ArtifactFeatureSet::from_bits(1 << 63);
-        assert!(matches!(
-            artifact.encode(),
-            Err(PortableArtifactError::UnsupportedFeatures { .. })
-        ));
-    }
-
-    #[test]
-    fn portable_v6_rejects_corrupted_task_slots_and_continuation_shape() {
-        fn assert_link_rejects(
-            mut artifact: PortableProgramArtifact,
-            corrupt: impl FnOnce(&mut crate::ArtifactTaskTarget),
-        ) {
-            corrupt(&mut artifact.payload.task_targets[0]);
-            let encoded = artifact
-                .encode()
-                .expect("structurally encodable corrupted task artifact");
-            let decoded = PortableProgramArtifact::decode(&encoded)
-                .expect("checksum-valid corrupted task artifact");
-            assert!(matches!(
-                crate::Linker::new().link_portable_program(decoded.into_compiled()),
-                Err(crate::LinkError::InvalidTaskMetadata(_))
-            ));
-        }
-
-        assert_link_rejects(portable_task_artifact(), |target| {
-            target.caller_target = u32::MAX;
-        });
-        assert_link_rejects(portable_task_artifact(), |target| {
-            target.worker_target = u32::MAX;
-        });
-        assert_link_rejects(portable_task_artifact(), |target| {
-            target.operation = crate::ArtifactTaskOperation::SpawnScoped;
-        });
-        assert_link_rejects(portable_task_artifact(), |target| {
-            target.continuation.as_mut().expect("continuation").target = u32::MAX;
-        });
-        assert_link_rejects(portable_task_artifact(), |target| {
-            target.worker_signature.asyncness = vela_common::CallableAsyncness::Sync;
-        });
-
-        let mut feature_mismatch = portable_task_artifact();
-        feature_mismatch.payload.required_features = crate::ArtifactFeatureSet::empty();
-        assert!(matches!(
-            feature_mismatch.encode(),
-            Err(PortableArtifactError::TaskMetadata(_))
-        ));
-    }
-
-    #[test]
     fn portable_program_rejects_corruption_and_obsolete_formats_before_payload_decoding() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(2), "fn main() { return 7; }")
@@ -867,7 +686,7 @@ fn main(value: Any) {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        for old_version in [1_u32, 2, 3, 4, 5] {
+        for old_version in [1_u32, 2, 3, 4, 5, 6] {
             let mut old = artifact.encode().expect("encode artifact");
             old[HEADER_LEN..].fill(0xff);
             old[MAGIC.len()..MAGIC.len() + size_of::<u32>()]

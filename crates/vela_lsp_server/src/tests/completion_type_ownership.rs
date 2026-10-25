@@ -63,12 +63,12 @@ fn callback_slot_matrix_projects_registered_slots_and_reordered_result_facts() {
 }
 
 #[test]
-fn async_callable_matrix_projects_owner_metadata_and_applied_await_contracts() {
+fn removed_async_callable_matrix_projects_rejection() {
     assert_type_ownership("completion-async-callables");
 }
 
 #[test]
-fn await_context_matrix_projects_owned_choices_and_exact_syntax_diagnostics() {
+fn removed_await_context_matrix_projects_rejection() {
     assert_type_ownership("completion-await-contexts");
 }
 
@@ -138,6 +138,13 @@ fn import_site_matrix_preserves_paths_schema_spans_and_recovery_boundaries() {
 }
 
 fn assert_type_ownership(fixture_id: &str) {
+    if matches!(
+        fixture_id,
+        "completion-async-callables" | "completion-await-contexts"
+    ) {
+        crate::tests::removed_execution::verify_fixture(fixture_id);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
         if crlf {
@@ -550,12 +557,12 @@ fn assert_type_ownership(fixture_id: &str) {
                             .filter(|d| {
                                 d["code"]
                                     .as_str()
-                                    .is_some_and(|code| code.contains("await"))
+                                    .is_some_and(|code| code.starts_with("syntax::"))
                             })
                             .collect::<Vec<_>>();
                         let oracle = expected["diagnostics"]
                             .as_array()
-                            .expect("await diagnostics");
+                            .expect("application diagnostics");
                         assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
                         for (actual, expected) in actual.iter().zip(oracle) {
                             assert_eq!(actual["code"], expected["code"]);
@@ -572,45 +579,7 @@ fn assert_type_ownership(fixture_id: &str) {
                             );
                         }
                     }
-                    if case["checkAwait"] == true {
-                        let notifications = crate::tests::notification_values(changes);
-                        let published = notifications
-                            .iter()
-                            .find(|notification| {
-                                notification["method"] == "textDocument/publishDiagnostics"
-                                    && notification["params"]["uri"] == uri(file)
-                            })
-                            .expect("applied diagnostics");
-                        let missing = published["params"]["diagnostics"]
-                            .as_array()
-                            .expect("diagnostics")
-                            .iter()
-                            .filter(|diagnostic| {
-                                diagnostic["code"] == "analysis::async_call_requires_await"
-                            })
-                            .collect::<Vec<_>>();
-                        let required =
-                            expected["async"] == true && string(case, "applySuffix").is_empty();
-                        assert_eq!(
-                            missing.len(),
-                            usize::from(required),
-                            "{case} {expected}: {missing:?}"
-                        );
-                        if let Some(diagnostic) = missing.first() {
-                            let call = source.markers["call"];
-                            let end = call.end.character + insertion.encode_utf16().count()
-                                - (range.end.character - range.start.character);
-                            assert_eq!(diagnostic["severity"], 1);
-                            let expected_range = json!({"start":{"line":call.start.line,"character":call.start.character},"end":{"line":call.end.line,"character":end}});
-                            assert_eq!(diagnostic["range"], expected_range);
-                            let labels = diagnostic["data"]["labels"]
-                                .as_array()
-                                .expect("diagnostic labels");
-                            assert_eq!(labels.len(), 1);
-                            assert_eq!(labels[0]["uri"], uri(file));
-                            assert_eq!(labels[0]["range"], expected_range);
-                        }
-                    }
+
                     if let Some(signatures) = expected["signatures"].as_array() {
                         let open = insertion.find('(').expect("call");
                         let help = response_value(request::<r::SignatureHelpRequest>(

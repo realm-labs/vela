@@ -1,0 +1,5 @@
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+ --> tests/ui/interop/fail/async_export_module.rs:5:9
+  |
+5 |     pub async fn value() -> i64 {
+  |         ^^^^^

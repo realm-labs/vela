@@ -64,20 +64,11 @@ impl ResumableIteratorNext {
                     budget.charge_execution_units(1)?;
                 }
                 let closure = expect_closure_ref(&callback, heap.as_deref(), self.operation)?;
-                let code = closure.owner.function(closure.function).ok_or_else(|| {
+                closure.owner.function(closure.function).ok_or_else(|| {
                     VmError::new(VmErrorKind::UnknownFunction {
                         name: format!("<linked closure#{}>", closure.function.index()),
                     })
                 })?;
-                if code.asyncness.is_async() {
-                    return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                        name: closure
-                            .owner
-                            .program()
-                            .debug_name(code.debug_name)
-                            .to_owned(),
-                    }));
-                }
                 Ok(ResumableIteratorStep::Call {
                     owner: Arc::clone(&closure.owner),
                     function: closure.function,

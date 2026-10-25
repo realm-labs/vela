@@ -49,18 +49,10 @@ impl LinkContext<'_, '_> {
             });
         }
 
-        let asyncness = self
-            .linker
-            .registry
-            .and_then(|registry| registry.get(id.def_id()))
-            .and_then(Def::function_signature)
-            .map_or(vela_common::CallableAsyncness::Sync, |signature| {
-                signature.asyncness
-            });
         let debug_name = self.linked.intern_debug_name(name.to_owned());
-        let handle = self.linked.push_native_function(
-            LinkedNativeFunction::new(id, debug_name).with_asyncness(asyncness),
-        );
+        let handle = self
+            .linked
+            .push_native_function(LinkedNativeFunction::new(id, debug_name));
         self.native_handles.insert(id, handle);
         Ok(handle)
     }
@@ -108,21 +100,6 @@ impl LinkContext<'_, '_> {
         }
 
         let debug_name = self.linked.intern_debug_name(debug_text);
-        let asyncness = match key {
-            MethodDispatchKey::Script(_, function) => self
-                .linked
-                .function(function)
-                .map_or(vela_common::CallableAsyncness::Sync, |code| code.asyncness),
-            MethodDispatchKey::Value(method_id) => self
-                .linker
-                .registry
-                .and_then(|registry| registry.get(method_id.def_id()))
-                .and_then(Def::method_signature)
-                .map_or(vela_common::CallableAsyncness::Sync, |signature| {
-                    signature.asyncness
-                }),
-            MethodDispatchKey::Host(_) => vela_common::CallableAsyncness::Sync,
-        };
         let kind = match key {
             MethodDispatchKey::Script(method_id, function) => LinkedMethodDispatchKind::Script {
                 method_id,
@@ -131,9 +108,9 @@ impl LinkContext<'_, '_> {
             MethodDispatchKey::Value(method_id) => LinkedMethodDispatchKind::Value { method_id },
             MethodDispatchKey::Host(method_id) => LinkedMethodDispatchKind::Host { method_id },
         };
-        let handle = self.linked.push_method_dispatch(
-            LinkedMethodDispatch::new(debug_name, kind).with_asyncness(asyncness),
-        );
+        let handle = self
+            .linked
+            .push_method_dispatch(LinkedMethodDispatch::new(debug_name, kind));
         self.method_handles.insert(key, handle);
         Ok(handle)
     }
@@ -250,7 +227,6 @@ impl LinkContext<'_, '_> {
         match plan {
             UnlinkedTypeGuardPlan::Primitive(tag) => Ok(TypeGuardPlan::Primitive(tag)),
             UnlinkedTypeGuardPlan::Standard(guard) => Ok(TypeGuardPlan::Standard(guard)),
-            UnlinkedTypeGuardPlan::TaskError => Ok(TypeGuardPlan::TaskError),
             UnlinkedTypeGuardPlan::Callable {
                 accepts_direct_function,
                 accepts_closure,

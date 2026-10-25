@@ -3,7 +3,7 @@
   "id": "completion-callback-slots",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.callback_contracts\"\nname = \"callback_contracts\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "schema.json": "{\"formatVersion\":2,\"facts\":{}}",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{}}",
     "scripts/api.vela": "/* 中😀 */\npub struct Output { [[payload:start]]payload[[payload:end]]: i64 }\npub struct Other { [[other:start]]other[[other:end]]: bool }\n",
     "scripts/positional_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(api::Output { payload: 1 }, dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
     "scripts/named_initial.vela": "/* 中😀 */\nfn run(items: Iterator<i64>, values: Array<i64>, dynamic: Any) { items.fold(initial = api::Output { payload: 1 }, callback = dynamic).[[replace:start]]pay[[cursor]][[replace:end]]; }\n",

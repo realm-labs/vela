@@ -23,8 +23,8 @@ entrypoints and callers rather than add compatibility wrappers. Methods-only
 object exposure and host-managed storage are future design candidates, not
 approved implementations. Concrete ownership, destruction, re-entry, and reload
 rules are deferred to a separate follow-up, not checkpoint A prerequisites.
-Checkpoints A-B consolidate the contracts and remove Service/Provider;
-task/async and borrowed-host removal remain C-D work. Conflicting earlier roadmap and
+Checkpoints A-C consolidate the contracts and remove Service/Provider and
+script tasks/async; borrowed-host removal remains D work. Conflicting earlier roadmap and
 architecture requirements describe the previous implementation, not permission
 to expand the removed features. Ordinary packages, script traits, LSP worker
 scheduling, interpreter optimization, and script reload remain in scope.
@@ -36,8 +36,13 @@ Portable programs use format 6 and reject versions 1-5 before payload decoding;
 there is no Service bundle loader or compatibility interpreter. Ordinary package
 metadata remains unsupported by the portable codec rather than gaining a new
 encoding. Tooling schemas use format 2, reject old versions and any `serviceSet`
-field, and clear stale schema facts on rejected replacement. Subsequent
-incompatible format changes must update versions in their owning checkpoint.
+field, and clear stale schema facts on rejected replacement. Checkpoint C removes task/async fields and instructions: portable format 7
+rejects versions 1-6; Rust-binding schema/checksum domain is 6; tooling schema 3
+rejects old async/task fields and the detached-admission execution ceiling.
+Synchronous callback continuations/re-entry, cancellation/deadline errors and
+root accounting remain retained behavior, not replacement async machinery.
+Subsequent incompatible format changes must update versions in their owning
+checkpoint.
 
 ## Installed Editor Acceptance
 

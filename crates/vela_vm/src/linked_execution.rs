@@ -4,7 +4,6 @@ use vela_bytecode::linked::InstructionKind;
 use vela_bytecode::{InstructionOffset, LinkedArtifact, Register, ScriptFunctionHandle};
 use vela_common::Span;
 
-use crate::async_resume::PreparedAsyncCall;
 use crate::budget::ExecutionBudget;
 use crate::equality::{ResumableComparison, ResumableComparisonKind, ResumableComparisonStep};
 use crate::error::{VmError, VmErrorKind, VmResult, VmStackFrame};
@@ -60,74 +59,18 @@ impl LinkedExecutionCall<'_> {
 enum FrameDriveOutcome {
     Continue,
     Push(PendingLinkedCall),
-    Async {
-        call: PreparedAsyncCall,
-        destination: Option<Register>,
-        source_span: Option<Span>,
-    },
     Context {
         call: PreparedContextCall,
         destination: Option<Register>,
         source_span: Option<Span>,
     },
-    Task(PreparedTaskCall),
     Return(Value),
 }
 
 pub enum LinkedDriveOutcome {
     Complete(Value),
     ReentryComplete(ActiveExecutionValue),
-    AsyncBoundary(PreparedAsyncCall),
     ContextBoundary(PreparedContextCall),
-    TaskBoundary(PreparedTaskCall),
-}
-
-#[derive(Clone, Debug)]
-pub struct PreparedTaskCall {
-    owner: Arc<LinkedArtifact>,
-    worker: ScriptFunctionHandle,
-    worker_name: String,
-    mode: vela_bytecode::ScriptCallMode,
-    arguments: Vec<Value>,
-    continuation: Option<vela_bytecode::linked::TaskContinuation>,
-    source_span: Option<Span>,
-}
-
-impl PreparedTaskCall {
-    #[must_use]
-    pub const fn owner(&self) -> &Arc<LinkedArtifact> {
-        &self.owner
-    }
-
-    #[must_use]
-    pub const fn worker(&self) -> ScriptFunctionHandle {
-        self.worker
-    }
-
-    #[must_use]
-    pub fn worker_name(&self) -> &str {
-        &self.worker_name
-    }
-
-    #[must_use]
-    pub const fn mode(&self) -> vela_bytecode::ScriptCallMode {
-        self.mode
-    }
-
-    #[must_use]
-    pub fn arguments(&self) -> &[Value] {
-        &self.arguments
-    }
-
-    #[must_use]
-    pub const fn continuation(&self) -> Option<&vela_bytecode::linked::TaskContinuation> {
-        self.continuation.as_ref()
-    }
-
-    #[must_use]
-    pub const fn source_span(&self) -> Option<Span> {
-        self.source_span
-    }
 }
 
 pub struct PreparedContextCall {
@@ -288,18 +231,10 @@ impl Vm {
             LinkedDriveOutcome::ReentryComplete(_) => {
                 unreachable!("root execution cannot return through a reentry continuation")
             }
-            LinkedDriveOutcome::AsyncBoundary(call) => {
-                Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                    name: call.name().to_owned(),
-                }))
-            }
             LinkedDriveOutcome::ContextBoundary(_) => {
                 Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                     opcode: "context native boundary requires an Engine Runtime",
                 }))
-            }
-            LinkedDriveOutcome::TaskBoundary(_) => {
-                Err(VmError::new(VmErrorKind::TaskScopeUnavailable))
             }
         }
     }
@@ -450,17 +385,6 @@ impl Vm {
                     };
                     session.frames.push(child);
                 }
-                FrameDriveOutcome::Async {
-                    call,
-                    destination,
-                    source_span,
-                } => {
-                    session.pending_native.push(PendingNativeResume {
-                        destination,
-                        source_span,
-                    });
-                    return Ok(LinkedDriveOutcome::AsyncBoundary(call));
-                }
                 FrameDriveOutcome::Context {
                     call,
                     destination,
@@ -471,9 +395,6 @@ impl Vm {
                         source_span,
                     });
                     return Ok(LinkedDriveOutcome::ContextBoundary(call));
-                }
-                FrameDriveOutcome::Task(call) => {
-                    return Ok(LinkedDriveOutcome::TaskBoundary(call));
                 }
                 FrameDriveOutcome::Return(value) => {
                     let finished = session.frames.pop().expect("returning frame");
@@ -605,14 +526,8 @@ impl Vm {
                 }
                 Ok(LinkedDriveOutcome::Complete(value))
             }
-            Ok(LinkedDriveOutcome::AsyncBoundary(call)) => {
-                Ok(LinkedDriveOutcome::AsyncBoundary(call))
-            }
             Ok(LinkedDriveOutcome::ContextBoundary(call)) => {
                 Ok(LinkedDriveOutcome::ContextBoundary(call))
-            }
-            Ok(LinkedDriveOutcome::TaskBoundary(call)) => {
-                Ok(LinkedDriveOutcome::TaskBoundary(call))
             }
             Ok(LinkedDriveOutcome::ReentryComplete(value)) => {
                 Ok(LinkedDriveOutcome::ReentryComplete(value))
@@ -928,17 +843,11 @@ impl Vm {
             else {
                 return Ok(FrameDriveOutcome::Continue);
             };
-            let target = owner.function(function).ok_or_else(|| {
+            owner.function(function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked function#{}>", function.index()),
                 })
             })?;
-            if target.asyncness.is_async() {
-                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                    name: owner.program().debug_name(target.debug_name).to_owned(),
-                })
-                .with_source_span_if_absent(source_span));
-            }
             frame_state.pending_operation = suspended(resumed_operation);
             return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                 owner,
@@ -971,13 +880,7 @@ impl Vm {
                     .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
             }
 
-            let (instruction_kind, await_resume) = match &instruction.kind {
-                InstructionKind::AwaitCall { operation, resume } => {
-                    (operation.as_ref(), Some(*resume))
-                }
-                kind => (kind, None),
-            };
-            match instruction_kind {
+            match &instruction.kind {
                 InstructionKind::ChargeExecutionUnits { units } => {
                     if CHARGE_BUDGET {
                         budget
@@ -1320,9 +1223,6 @@ impl Vm {
                     debug_assert!(target.0 <= code.instructions.len());
                     ip = target.0;
                 }
-                InstructionKind::AwaitCall { .. } => {
-                    unreachable!("linked bytecode verification rejects nested await operations")
-                }
                 InstructionKind::CallNative {
                     dst,
                     native,
@@ -1350,26 +1250,6 @@ impl Vm {
                     )?;
                     match dispatch {
                         native_function_calls::LinkedNativeDispatch::Complete => {}
-                        native_function_calls::LinkedNativeDispatch::Async(prepared) => {
-                            let Some(resume) = await_resume else {
-                                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                                    name: prepared.name,
-                                })
-                                .with_source_span_if_absent(prepared.source_span));
-                            };
-                            frame_state.ip = resume;
-                            return Ok(FrameDriveOutcome::Async {
-                                call: PreparedAsyncCall {
-                                    native_id: Some(prepared.native_id),
-                                    method_id: None,
-                                    function: prepared.function,
-                                    args: prepared.args,
-                                    name: prepared.name,
-                                },
-                                destination: prepared.destination,
-                                source_span: prepared.source_span,
-                            });
-                        }
                         native_function_calls::LinkedNativeDispatch::Context(prepared) => {
                             frame_state.ip = InstructionOffset(ip);
                             return Ok(FrameDriveOutcome::Context {
@@ -1384,23 +1264,6 @@ impl Vm {
                         }
                     }
                 }
-                InstructionKind::Task(task) => {
-                    let args = script_function_calls::script_call_args_from_call_arguments(
-                        frame, &task.args,
-                    )?;
-                    let arguments = args.as_slice().to_vec();
-                    frame.write(task.dst, Value::Unit)?;
-                    frame_state.ip = InstructionOffset(ip);
-                    return Ok(FrameDriveOutcome::Task(PreparedTaskCall {
-                        owner: Arc::clone(&current_owner),
-                        worker: task.worker,
-                        worker_name: program.debug_name(task.worker_debug_name).to_owned(),
-                        mode: task.mode,
-                        arguments,
-                        continuation: task.continuation.clone(),
-                        source_span: instruction.span,
-                    }));
-                }
                 InstructionKind::CallFunction {
                     dst,
                     function,
@@ -1408,21 +1271,15 @@ impl Vm {
                     mode,
                     args,
                 } => {
-                    let target_code = program.function(*function).ok_or_else(|| {
+                    program.function(*function).ok_or_else(|| {
                         VmError::new(VmErrorKind::UnknownFunction {
                             name: program.debug_name(*debug_name).to_owned(),
                         })
                         .with_source_span_if_absent(instruction.span)
                     })?;
-                    if target_code.asyncness.is_async() && await_resume.is_none() {
-                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                            name: program.debug_name(*debug_name).to_owned(),
-                        })
-                        .with_source_span_if_absent(instruction.span));
-                    }
                     let args =
                         script_function_calls::script_call_args_from_call_arguments(frame, args)?;
-                    frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                    frame_state.ip = InstructionOffset(ip);
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                         owner: Arc::clone(&current_owner),
                         function: *function,
@@ -1464,25 +1321,16 @@ impl Vm {
                             closure.captures.as_slice().to_vec(),
                         )
                     };
-                    let target_code = owner.function(function).ok_or_else(|| {
+                    owner.function(function).ok_or_else(|| {
                         VmError::new(VmErrorKind::UnknownFunction {
                             name: format!("<linked closure#{}>", function.index()),
                         })
                         .with_source_span_if_absent(instruction.span)
                     })?;
-                    if target_code.asyncness.is_async() && await_resume.is_none() {
-                        return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                            name: owner
-                                .program()
-                                .debug_name(target_code.debug_name)
-                                .to_owned(),
-                        })
-                        .with_source_span_if_absent(instruction.span));
-                    }
                     let values = SmallStorage::try_from_slice_map(args, 4, |register| {
                         frame.read(*register)
                     })?;
-                    frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                    frame_state.ip = InstructionOffset(ip);
                     return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                         owner,
                         function,
@@ -1573,7 +1421,7 @@ impl Vm {
                                         );
                                     }
                                 }
-                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
                                     suspended(PendingFrameOperation::CallbackMethod {
                                         callback: Box::new(callback),
@@ -1639,7 +1487,7 @@ impl Vm {
                                         );
                                     }
                                 }
-                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
                                     suspended(PendingFrameOperation::ArrayOrdering {
                                         ordering,
@@ -1656,25 +1504,19 @@ impl Vm {
                         function,
                     } = &dispatch_target.kind
                     {
-                        let target_code = program.function(*function).ok_or_else(|| {
+                        program.function(*function).ok_or_else(|| {
                             VmError::new(VmErrorKind::UnknownMethod {
                                 method: program.debug_name(dispatch_target.debug_name).to_owned(),
                             })
                             .with_source_span_if_absent(instruction.span)
                         })?;
-                        if target_code.asyncness.is_async() && await_resume.is_none() {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                                name: program.debug_name(dispatch_target.debug_name).to_owned(),
-                            })
-                            .with_source_span_if_absent(instruction.span));
-                        }
                         let values = SmallStorage::try_from_prefix_and_slice_map(
                             frame.read(*receiver)?,
                             args,
                             4,
                             |arg| script_function_calls::script_call_argument_value(frame, arg),
                         )?;
-                        frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                        frame_state.ip = InstructionOffset(ip);
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                             owner: Arc::clone(&current_owner),
                             function: *function,
@@ -1736,25 +1578,19 @@ impl Vm {
                     )?;
                     if let script_method_calls::LinkedDynamicResolution::Script(target) = resolution
                     {
-                        let target_code = program.function(target.function).ok_or_else(|| {
+                        program.function(target.function).ok_or_else(|| {
                             VmError::new(VmErrorKind::UnknownMethod {
                                 method: program.debug_name(*method_name).to_owned(),
                             })
                             .with_source_span_if_absent(instruction.span)
                         })?;
-                        if target_code.asyncness.is_async() && await_resume.is_none() {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                                name: program.debug_name(*method_name).to_owned(),
-                            })
-                            .with_source_span_if_absent(instruction.span));
-                        }
                         let values = SmallStorage::try_from_prefix_and_slice_map(
                             frame.read(*receiver)?,
                             &target.args,
                             4,
                             |arg| script_function_calls::script_call_argument_value(frame, arg),
                         )?;
-                        frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                        frame_state.ip = InstructionOffset(ip);
                         return Ok(FrameDriveOutcome::Push(PendingLinkedCall {
                             owner: Arc::clone(&current_owner),
                             function: target.function,
@@ -1802,7 +1638,7 @@ impl Vm {
                                 prepared.host_retain_writeback,
                                 prepared.host_sequence,
                             ) {
-                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
                                     suspended(PendingFrameOperation::CallbackMethod {
                                         callback: Box::new(callback?),
@@ -1834,7 +1670,7 @@ impl Vm {
                                 *cache_site,
                             )?;
                             if let Some(ordering) = ordering {
-                                frame_state.ip = await_resume.unwrap_or(InstructionOffset(ip));
+                                frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
                                     suspended(PendingFrameOperation::ArrayOrdering {
                                         ordering,
@@ -1854,7 +1690,7 @@ impl Vm {
                         &target
                         && let Some(function) = self.host_method_ids.get(method_id)
                     {
-                        let prepared = host_access::prepare_async_host_root_method_args(
+                        let prepared = host_access::prepare_host_root_method_args(
                             frame,
                             heap.as_deref(),
                             host.as_deref(),
@@ -1880,73 +1716,6 @@ impl Vm {
                             result,
                         )?;
                         continue;
-                    }
-                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
-                        &target
-                        && let Some((lease_kind, function)) =
-                            self.async_direct_host_method_ids.get(method_id)
-                    {
-                        let name = program.debug_name(*method_name).to_owned();
-                        let Some(resume) = await_resume else {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
-                                .with_source_span_if_absent(instruction.span));
-                        };
-                        let prepared = host_access::prepare_async_host_root_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *receiver,
-                            args,
-                        )?;
-                        frame_state.ip = resume;
-                        return Ok(FrameDriveOutcome::Async {
-                            call: PreparedAsyncCall {
-                                native_id: None,
-                                method_id: Some(*method_id),
-                                function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
-                                    function: Arc::clone(function),
-                                    receiver: prepared.receiver,
-                                    lease_kind: *lease_kind,
-                                },
-                                args: prepared.args,
-                                name,
-                            },
-                            destination: Some(*dst),
-                            source_span: instruction.span,
-                        });
-                    }
-                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
-                        &target
-                        && let Some(function) = self.async_host_method_ids.get(method_id)
-                    {
-                        let name = program.debug_name(*method_name).to_owned();
-                        let Some(resume) = await_resume else {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
-                                .with_source_span_if_absent(instruction.span));
-                        };
-                        let prepared = host_access::prepare_async_host_root_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *receiver,
-                            args,
-                        )?;
-                        frame_state.ip = resume;
-                        return Ok(FrameDriveOutcome::Async {
-                            call: PreparedAsyncCall {
-                                native_id: None,
-                                method_id: Some(*method_id),
-                                function:
-                                    native_function_calls::PreparedAsyncNativeFunction::HostMethod {
-                                        function: Arc::clone(function),
-                                        receiver: prepared.receiver,
-                                    },
-                                args: prepared.args,
-                                name,
-                            },
-                            destination: Some(*dst),
-                            source_span: instruction.span,
-                        });
                     }
                     script_method_calls::dispatch_resolved_linked_dynamic_method_call(
                         self,
@@ -2643,14 +2412,14 @@ impl Vm {
                     target,
                     dynamic_args,
                     method,
-                    debug_name,
+                    debug_name: _,
                     args,
                     cache_site,
                 } => {
                     let method_id =
                         host_access::linked_host_method_id(program, *method, instruction.span)?;
                     if let Some(function) = self.host_method_ids.get(&method_id) {
-                        let prepared = host_access::prepare_async_host_method_args(
+                        let prepared = host_access::prepare_host_method_args(
                             frame,
                             heap.as_deref(),
                             host.as_deref(),
@@ -2677,82 +2446,6 @@ impl Vm {
                             frame, host, heap, budget, program, *dst, result,
                         )?;
                         continue;
-                    }
-                    if let Some((lease_kind, function)) =
-                        self.async_direct_host_method_ids.get(&method_id)
-                    {
-                        let name = program.debug_name(*debug_name).to_owned();
-                        let Some(resume) = await_resume else {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
-                                .with_source_span_if_absent(instruction.span));
-                        };
-                        let prepared = host_access::prepare_async_host_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *root,
-                            host_access::CodeHostTargetPlan {
-                                targets: &code.host_targets,
-                                target_id: *target,
-                                dynamic_args,
-                                cache_site: *cache_site,
-                            },
-                            args,
-                            instruction.span,
-                        )?;
-                        frame_state.ip = resume;
-                        return Ok(FrameDriveOutcome::Async {
-                            call: PreparedAsyncCall {
-                                native_id: None,
-                                method_id: Some(method_id),
-                                function: native_function_calls::PreparedAsyncNativeFunction::DirectHostMethod {
-                                    function: Arc::clone(function),
-                                    receiver: prepared.receiver,
-                                    lease_kind: *lease_kind,
-                                },
-                                args: prepared.args,
-                                name,
-                            },
-                            destination: *dst,
-                            source_span: instruction.span,
-                        });
-                    }
-                    if let Some(function) = self.async_host_method_ids.get(&method_id) {
-                        let name = program.debug_name(*debug_name).to_owned();
-                        let Some(resume) = await_resume else {
-                            return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait { name })
-                                .with_source_span_if_absent(instruction.span));
-                        };
-                        let prepared = host_access::prepare_async_host_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *root,
-                            host_access::CodeHostTargetPlan {
-                                targets: &code.host_targets,
-                                target_id: *target,
-                                dynamic_args,
-                                cache_site: *cache_site,
-                            },
-                            args,
-                            instruction.span,
-                        )?;
-                        frame_state.ip = resume;
-                        return Ok(FrameDriveOutcome::Async {
-                            call: PreparedAsyncCall {
-                                native_id: None,
-                                method_id: Some(method_id),
-                                function:
-                                    native_function_calls::PreparedAsyncNativeFunction::HostMethod {
-                                        function: Arc::clone(function),
-                                        receiver: prepared.receiver,
-                                    },
-                                args: prepared.args,
-                                name,
-                            },
-                            destination: *dst,
-                            source_span: instruction.span,
-                        });
                     }
                     let value = host_access::execute_linked_code_host_call(
                         host_access::HostAccessRuntime {
@@ -2799,11 +2492,6 @@ impl Vm {
                     )
                     .map(FrameDriveOutcome::Return);
                 }
-            }
-
-            if let Some(resume) = await_resume {
-                debug_assert!(resume.0 <= code.instructions.len());
-                ip = resume.0;
             }
 
             if let Some(heap) = heap.as_deref_mut()

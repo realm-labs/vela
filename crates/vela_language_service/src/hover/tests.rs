@@ -2,7 +2,6 @@ use vela_analysis::registry::{
     CallableSignatureFact, RegistryEffectFact, RegistryFacts, ScopedResourceKindDef,
     ScopedResourceParentDef, ScopedResourceReturnDef,
 };
-use vela_common::CallableAsyncness;
 
 use super::*;
 use crate::{
@@ -46,43 +45,40 @@ fn hover_returns_none_for_unresolved_name() {
 }
 
 #[test]
-fn hover_displays_source_callable_asyncness() {
+fn hover_displays_source_callable_signatures() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "async fn load(value: i64) -> String { return \"ready\"; }\n\
-                async fn main() { return load(1).await; }";
+    let text = "fn load(value: i64) -> String { return \"ready\"; }\n\
+                fn main() { return load(1); }";
     let databases = databases_for(&document, text, RegistryFacts::default());
-    let call = text.rfind("load(1)").expect("async call");
+    let call = text.rfind("load(1)").expect("call");
     let position = LineIndex::new(text).position(call);
 
     let hover = databases
         .hover(&document, position)
-        .expect("hover should resolve async source function");
+        .expect("hover should resolve source function");
 
     assert_eq!(hover.kind(), HoverKind::Function);
-    assert_eq!(hover.detail(), "async (value: i64) -> String");
+    assert_eq!(hover.detail(), "(value: i64) -> String");
 }
 
 #[test]
-fn hover_displays_schema_callable_asyncness() {
+fn hover_displays_schema_callable_signatures() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "async fn main() { return load().await; }";
+    let text = "fn main() { return load(); }";
     let mut schema = RegistryFacts::default();
     schema.insert_function("load", TypeFact::function(Vec::new(), TypeFact::STRING));
-    schema.insert_function_signature(
-        "load",
-        CallableSignatureFact::new([], TypeFact::STRING).asyncness(CallableAsyncness::Async),
-    );
+    schema.insert_function_signature("load", CallableSignatureFact::new([], TypeFact::STRING));
     let databases = databases_for(&document, text, schema);
 
     let hover = databases
         .hover(
             &document,
-            Position::new(0, text.find("load").expect("schema async call")),
+            Position::new(0, text.find("load").expect("schema call")),
         )
-        .expect("hover should resolve async schema function");
+        .expect("hover should resolve schema function");
 
     assert_eq!(hover.kind(), HoverKind::Function);
-    assert!(hover.detail().starts_with("async Function() -> String"));
+    assert!(hover.detail().starts_with("Function() -> String"));
 }
 
 #[test]
@@ -648,31 +644,6 @@ fn hover_reports_stdlib_function_fact() {
     assert_eq!(
         hover.symbol(),
         Some(&SymbolRef::Builtin("math::max".to_owned()))
-    );
-}
-
-#[test]
-fn hover_reports_static_scoped_task_shape() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "async fn worker() {} fn main() { task::spawn_scoped(worker()); }";
-    let databases = databases_for(&document, text, RegistryFacts::default());
-
-    let hover = databases
-        .hover(
-            &document,
-            Position::new(0, text.find("spawn_scoped").expect("task form")),
-        )
-        .expect("hover should resolve task form");
-
-    assert_eq!(hover.kind(), HoverKind::Function);
-    assert_eq!(hover.label(), "task::spawn_scoped");
-    assert_eq!(
-        hover.detail(),
-        "task::spawn_scoped(invocation: static async call) -> ()"
-    );
-    assert_eq!(
-        hover.symbol(),
-        Some(&SymbolRef::Builtin("task::spawn_scoped".to_owned()))
     );
 }
 

@@ -68,8 +68,6 @@ mod stdlib_function;
 mod struct_field;
 #[cfg(test)]
 mod struct_field_tests;
-mod task_path;
-mod task_target;
 #[cfg(test)]
 mod tuple_destructuring_tests;
 mod type_display;
@@ -150,39 +148,28 @@ impl LanguageServiceDatabases {
                 .then(|| empty_completion_list(context));
         }
         let analysis = completion_analysis(self, &query, &context);
-        let mut items = if let Some(items) = task_path::completion_items(&query, &context) {
-            items
-        } else {
-            match analysis.context_kind() {
-                CompletionContextKind::Expression => {
-                    self.expression_completion_items(&query, &context)
-                }
-                CompletionContextKind::Item => self.item_completion_items(&context),
-                CompletionContextKind::Statement => {
-                    self.statement_completion_items(&query, &context)
-                }
-                CompletionContextKind::ModulePath => {
-                    self.module_path_completion_items(&query, &context)
-                }
-                CompletionContextKind::Member => self.member_completion_items(&query, &context),
-                CompletionContextKind::RecordField => self.record_field_completion_items(&context),
-                CompletionContextKind::StructFieldDeclaration => {
-                    self.struct_field_completion_items(&context)
-                }
-                CompletionContextKind::MapKey => self.map_key_completion_items(&query, &context),
-                CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
-                CompletionContextKind::NamedArgument => {
-                    self.named_argument_completion_items(&query, &context)
-                }
-                CompletionContextKind::LambdaParameter => {
-                    self.lambda_parameter_completion_items(&query, &context)
-                }
-                CompletionContextKind::TypeHint => {
-                    self.type_hint_completion_items(&query, &context)
-                }
+        let mut items = match analysis.context_kind() {
+            CompletionContextKind::Expression => self.expression_completion_items(&query, &context),
+            CompletionContextKind::Item => self.item_completion_items(&context),
+            CompletionContextKind::Statement => self.statement_completion_items(&query, &context),
+            CompletionContextKind::ModulePath => {
+                self.module_path_completion_items(&query, &context)
             }
+            CompletionContextKind::Member => self.member_completion_items(&query, &context),
+            CompletionContextKind::RecordField => self.record_field_completion_items(&context),
+            CompletionContextKind::StructFieldDeclaration => {
+                self.struct_field_completion_items(&context)
+            }
+            CompletionContextKind::MapKey => self.map_key_completion_items(&query, &context),
+            CompletionContextKind::Pattern => self.pattern_completion_items(&query, &context),
+            CompletionContextKind::NamedArgument => {
+                self.named_argument_completion_items(&query, &context)
+            }
+            CompletionContextKind::LambdaParameter => {
+                self.lambda_parameter_completion_items(&query, &context)
+            }
+            CompletionContextKind::TypeHint => self.type_hint_completion_items(&query, &context),
         };
-        task_target::adjust_items(self, &query, &mut items);
         callback::adjust_items(self, &query, &mut items);
         callable_path::adjust_call_insertion(&query, &mut items);
         self.completion_query_is_current(token).then_some(())?;

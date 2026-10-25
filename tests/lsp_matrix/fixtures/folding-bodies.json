@@ -525,7 +525,7 @@
       },
       {
         "id": "async-await-callback",
-        "source": "/*中😀*/ [[item:start]]async fn main(value: i64) -> i64 [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]).await;\n}[[body:end]][[item:end]]\n",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]);\n}[[body:end]][[item:end]]\n",
         "ranges": [
           {
             "kind": "region",

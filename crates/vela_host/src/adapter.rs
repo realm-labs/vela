@@ -165,13 +165,6 @@ pub trait ScriptStateAdapter {
         Ok(true)
     }
 
-    /// Rejects an await while any adapter-owned non-suspendable scoped
-    /// resource remains active. This query is deliberately independent of VM
-    /// register reachability.
-    fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
-        Ok(())
-    }
-
     /// Retains one lazy Host traversal as a scoped child of `root`.
     /// The returned identity must be releasable through the ordinary scoped
     /// resource operations. Adapters that cannot retain traversal authority

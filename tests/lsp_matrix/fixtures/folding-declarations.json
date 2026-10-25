@@ -39,7 +39,7 @@
       },
       {
         "id": "async-function",
-        "source": "/*中😀*/ [[item:start]]pub async fn worker(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
+        "source": "/*中😀*/ [[item:start]]pub fn worker(value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]][[item:end]]\n",
         "ranges": [
           {
             "kind": "region",
@@ -127,7 +127,7 @@
       },
       {
         "id": "public-trait-required-default-async",
-        "source": "/*中😀*/ [[item:start]]pub trait Readable {\n fn read(self, value: i64 = 1) -> i64;\n fn preview(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n async fn work(self);\n}[[item:end]]\n",
+        "source": "/*中😀*/ [[item:start]]pub trait Readable {\n fn read(self, value: i64 = 1) -> i64;\n fn preview(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n fn work(self);\n}[[item:end]]\n",
         "ranges": [
           {
             "kind": "region",
@@ -141,7 +141,7 @@
       },
       {
         "id": "inherent-impl-private-public-async",
-        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n pub fn choose(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n async fn work(self) {}\n}[[item:end]]\n",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n pub fn choose(self, value: i64) -> i64 [[body:start]]{\n return value;\n}[[body:end]]\n fn work(self) {}\n}[[item:end]]\n",
         "ranges": [
           {
             "kind": "region",
@@ -207,7 +207,7 @@
       },
       {
         "id": "single-line-all-declarations",
-        "source": "pub const LIMIT: i64 = 1;\nconst LABEL = \"中😀\";\npub state COUNT: i64 = 0;\nextern state HOST: Row;\nfn choose(value) { return value; }\npub async fn work() {}\nstruct Row { count: i64 = 1 }\nenum Choice { Empty, Pair(count: i64), Named { count: i64 } }\ntrait Readable { fn read(self); fn preview(self) {} }\nimpl Row { pub fn read(self) {} }\nimpl Readable for Row { fn read(self) {} }\n",
+        "source": "pub const LIMIT: i64 = 1;\nconst LABEL = \"中😀\";\npub state COUNT: i64 = 0;\nextern state HOST: Row;\nfn choose(value) { return value; }\npub fn work() {}\nstruct Row { count: i64 = 1 }\nenum Choice { Empty, Pair(count: i64), Named { count: i64 } }\ntrait Readable { fn read(self); fn preview(self) {} }\nimpl Row { pub fn read(self) {} }\nimpl Readable for Row { fn read(self) {} }\n",
         "ranges": []
       },
       {

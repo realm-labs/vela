@@ -15,7 +15,7 @@ pub(crate) fn specs(name: &str, crlf: bool) -> Vec<Spec> {
             "missing" => {
                 spec.files.insert(
                     "schema.json".into(),
-                    json!({"formatVersion":2,"facts":{}}).to_string(),
+                    json!({"formatVersion":3,"facts":{}}).to_string(),
                 );
             }
             other => panic!("unreviewed schema mode {other}"),

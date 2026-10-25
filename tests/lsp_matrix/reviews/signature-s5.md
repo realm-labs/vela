@@ -1,5 +1,10 @@
 # Signature help: S5 review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: the four `signature-help/syntax/S5/{positive,negative}/{service,protocol}`
 obligations. Both exact compiled test identities end with
 `signature_call_matrix_preserves_full_parameters_owners_and_static_boundaries`;

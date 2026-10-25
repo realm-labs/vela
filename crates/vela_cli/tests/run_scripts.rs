@@ -92,7 +92,7 @@ fn main() {
 }
 
 #[test]
-fn cli_requires_explicit_async_execution() {
+fn cli_rejects_async_source() {
     let fixture = write_script(
         "async_default",
         r#"
@@ -110,12 +110,13 @@ async fn main() {
 
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("error[vm::async_entry_requires_call_async]"));
-    assert!(stderr.contains("rerun with `--async`"));
+    assert!(stderr.contains("error["));
+    assert!(stderr.contains("async"));
+    assert!(!stderr.contains("rerun with `--async`"));
 }
 
 #[test]
-fn cli_async_flag_drives_async_entry() {
+fn cli_rejects_removed_async_flag() {
     let fixture = write_script(
         "async_explicit",
         r#"
@@ -135,16 +136,9 @@ async fn main() {
 
     let output = run_cli_args(&["--async", script]);
 
-    assert!(
-        output.status.success(),
-        "async CLI script failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        "Scalar(I64(42))\n"
-    );
+    assert!(!output.status.success());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("unexpected argument '--async'"));
 }
 
 #[test]
@@ -245,5 +239,5 @@ fn cli_renders_clap_help() {
         stdout.contains("Usage: vela_cli [OPTIONS] <SCRIPT>")
             || stdout.contains("Usage: vela_cli.exe [OPTIONS] <SCRIPT>")
     );
-    assert!(stdout.contains("--async"));
+    assert!(!stdout.contains("--async"));
 }

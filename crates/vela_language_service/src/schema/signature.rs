@@ -5,14 +5,12 @@ use vela_analysis::registry::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::CallableAsyncness;
 
 use super::{SchemaArtifactError, SchemaArtifactFacts, SchemaSourceSpan, SchemaTypeFact};
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(super) struct SchemaCallableSignature {
-    asyncness: SchemaAsyncness,
     parameters: Vec<SchemaCallableParameter>,
     returns: SchemaTypeFact,
 }
@@ -29,13 +27,6 @@ struct SchemaCallableParameter {
 
 #[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
-enum SchemaAsyncness {
-    Sync,
-    Async,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
 enum SchemaParameterRequirement {
     Required,
     Defaulted,
@@ -44,10 +35,6 @@ enum SchemaParameterRequirement {
 impl SchemaCallableSignature {
     pub(super) fn from_registry(signature: &CallableSignatureFact) -> Self {
         Self {
-            asyncness: match signature.asyncness {
-                CallableAsyncness::Sync => SchemaAsyncness::Sync,
-                CallableAsyncness::Async => SchemaAsyncness::Async,
-            },
             parameters: signature
                 .parameters
                 .iter()
@@ -71,10 +58,6 @@ impl SchemaCallableSignature {
 
     pub(super) fn to_registry(&self) -> CallableSignatureFact {
         CallableSignatureFact {
-            asyncness: match self.asyncness {
-                SchemaAsyncness::Sync => CallableAsyncness::Sync,
-                SchemaAsyncness::Async => CallableAsyncness::Async,
-            },
             parameters: self
                 .parameters
                 .iter()

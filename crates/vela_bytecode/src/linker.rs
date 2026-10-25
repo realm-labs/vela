@@ -10,8 +10,7 @@ use vela_registry::DefinitionRegistry;
 use crate::linked::{
     DynamicCallArgumentLinked, GuardContext, Instruction, InstructionKind, LinkedCodeObject,
     LinkedFrameDebugInfo, LinkedFrameSlotInfo, LinkedMethodDispatch, LinkedMethodDispatchKind,
-    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TaskContinuation,
-    TaskInstruction, TypeGuard, TypeGuardPlan,
+    LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
     CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId, InstructionOffset,
@@ -117,8 +116,8 @@ impl<'registry> Linker<'registry> {
     /// Binds a decoded, source-independent bytecode artifact against this
     /// process's exact native/type registry.
     ///
-    /// Format version 5 portable artifacts are interpreter-only and therefore
-    /// carry no process-local MIR/JIT layouts.
+    /// Format version 7 portable artifacts are interpreter-only and carry no
+    /// process-local MIR ownership or executable generations.
     #[cfg(feature = "artifact-codec")]
     pub fn link_portable_program(
         &self,
@@ -126,13 +125,7 @@ impl<'registry> Linker<'registry> {
     ) -> Result<Arc<crate::LinkedArtifact>, LinkError> {
         let (linked, package_metadata) = self.link_unowned(&program.bytecode, None)?;
         debug_assert!(package_metadata.is_none());
-        linked
-            .bind_portable(
-                program.binding_schema,
-                program.required_features,
-                program.task_targets,
-            )
-            .map(Arc::new)
+        linked.bind_portable(program.binding_schema).map(Arc::new)
     }
 }
 
@@ -152,11 +145,6 @@ pub enum LinkError {
         name: String,
         id: FunctionId,
     },
-    MissingTaskTarget {
-        name: String,
-        id: FunctionId,
-    },
-    InvalidTaskMetadata(String),
     MirExecutableCountMismatch {
         expected: usize,
         actual: usize,
@@ -272,12 +260,6 @@ impl fmt::Display for LinkError {
             }
             Self::MissingScriptFunction { name, id } => {
                 write!(formatter, "missing script function {name} ({id:?})")
-            }
-            Self::MissingTaskTarget { name, id } => {
-                write!(formatter, "missing linked task target {name} ({id:?})")
-            }
-            Self::InvalidTaskMetadata(message) => {
-                write!(formatter, "invalid linked task metadata: {message}")
             }
             Self::MirExecutableCountMismatch { expected, actual } => {
                 write!(
@@ -544,7 +526,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
         let frame = self.link_frame(&code.frame);
 
         let mut linked = LinkedCodeObject::new(debug_name, code.register_count)
-            .with_asyncness(code.asyncness)
             .with_params(params)
             .with_param_defaults(code.param_defaults.clone())
             .with_capture_count(code.capture_count);
@@ -803,23 +784,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                 }
             }
             UnlinkedInstructionKind::Jump { target } => InstructionKind::Jump { target: *target },
-            UnlinkedInstructionKind::AwaitCall { operation, resume } => {
-                let nested = UnlinkedInstruction::new((**operation).clone());
-                let linked = self.link_instruction(
-                    LinkInstructionContext {
-                        program,
-                        code,
-                        host_target_map,
-                        linked_code: &mut *linked_code,
-                        instruction_offset,
-                    },
-                    &nested,
-                )?;
-                InstructionKind::AwaitCall {
-                    operation: Box::new(linked.kind),
-                    resume: *resume,
-                }
-            }
             UnlinkedInstructionKind::CallNative {
                 dst,
                 name,
@@ -853,29 +817,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     mode: *mode,
                     args: args.clone(),
                 }
-            }
-            UnlinkedInstructionKind::Task(task) => {
-                let worker = self.resolve_script_function(task.worker, &task.worker_name)?;
-                let worker_debug_name = self.linked.intern_debug_name(task.worker_name.clone());
-                let continuation = task
-                    .continuation
-                    .as_ref()
-                    .map(|continuation| {
-                        Ok(TaskContinuation {
-                            function: self
-                                .resolve_script_function(continuation.target, &continuation.name)?,
-                            debug_name: self.linked.intern_debug_name(continuation.name.clone()),
-                        })
-                    })
-                    .transpose()?;
-                InstructionKind::Task(Box::new(TaskInstruction {
-                    dst: task.dst,
-                    worker,
-                    worker_debug_name,
-                    mode: task.mode,
-                    args: task.args.clone(),
-                    continuation,
-                }))
             }
             UnlinkedInstructionKind::MakeClosure {
                 dst,

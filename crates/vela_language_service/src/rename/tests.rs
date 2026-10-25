@@ -518,7 +518,7 @@ pub fn spawn(player: Player) -> Player {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("Player").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -593,7 +593,7 @@ pub fn main(amount: i64) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "functions": [
                 {
@@ -674,7 +674,7 @@ pub fn main(state: QuestState) -> i64 {
     let target_start = schema_text.find("Active").expect("schema marker");
     let done_start = schema_text.find("Done").expect("schema Done marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -781,7 +781,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("level").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -862,7 +862,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

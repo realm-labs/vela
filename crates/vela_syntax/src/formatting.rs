@@ -905,8 +905,14 @@ fn main() {
     }
 
     #[test]
-    fn formatting_preserves_async_and_await_spacing() {
+    fn formatting_rejects_async_and_await() {
         let formatted = format_source(source_id(), "pub  async  fn run(){service::load(1).await;}");
+        assert!(
+            formatted
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.code.as_deref() == Some("syntax::removed_async"))
+        );
 
         assert_eq!(
             formatted.text(),

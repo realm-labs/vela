@@ -117,11 +117,6 @@ impl StdlibFunctionFact {
             returns,
         }
     }
-
-    fn with_param_names(mut self, names: impl IntoIterator<Item = &'static str>) -> Self {
-        self.param_names = names.into_iter().collect();
-        self
-    }
 }
 
 pub fn stdlib_method_fact(

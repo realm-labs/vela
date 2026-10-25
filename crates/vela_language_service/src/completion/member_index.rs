@@ -124,12 +124,6 @@ impl MemberCompletionIndex {
                     if index != 0 {
                         parts.extend(crate::DisplayParts::plain(" | "));
                     }
-                    let detail = if let Some(detail) = detail.strip_prefix("async ") {
-                        parts.extend(crate::DisplayParts::plain("async "));
-                        detail
-                    } else {
-                        detail
-                    };
                     parts.extend(super::display_type_detail_parts(detail));
                 }
                 item.set_detail_parts(parts);
@@ -158,24 +152,12 @@ impl MemberCompletionIndex {
                 }
                 _ => None,
             };
-            let signature = match receiver {
-                TypeFact::Host { name } | TypeFact::Record { name } => {
-                    schema.method_signature_fact(name, &item.label)
-                }
-                TypeFact::Trait { name } => schema.trait_method_signature_fact(name, &item.label),
-                _ => None,
-            };
-            let completion = self.push_analysis(
+            self.push_analysis(
                 item,
                 MemberCompletionSurface::Schema,
                 Some(symbol),
                 resource,
             );
-            if signature.is_some_and(|signature| signature.asyncness.is_async()) {
-                let mut parts = crate::DisplayParts::plain("async ");
-                parts.extend(completion.detail_parts());
-                completion.set_detail_parts(parts);
-            }
         }
     }
 

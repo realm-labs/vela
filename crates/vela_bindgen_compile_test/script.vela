@@ -1,6 +1,6 @@
 #[doc("Add two values through a generated binding.")]
 pub fn add(left: i64, right: i64) -> i64 { return left + right; }
-pub async fn label(value: i64) -> String { return "value"; }
+pub fn label(value: i64) -> String { return "value"; }
 pub fn random_value() -> i64 { return math::random(1, 6); }
 pub fn text_len(value: String) -> i64 { return value.len(); }
 pub fn bytes_len(value: Bytes) -> i64 { return value.len(); }
@@ -27,9 +27,9 @@ pub fn raise(player: Player, amount: i64) -> i64 {
     return player.level;
 }
 
-pub async fn raise_async(player: Player, amount: i64) -> i64 {
+pub fn raise_with_label(player: Player, amount: i64) -> i64 {
     player.level += amount;
-    let marker = label(player.level).await;
+    let marker = label(player.level);
     player.level += marker.len();
     return player.level;
 }

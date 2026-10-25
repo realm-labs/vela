@@ -687,7 +687,6 @@ impl<'graph, 'methods> GenerationBuilder<'graph, 'methods> {
                 }
             }
             MirTypeContract::Any
-            | MirTypeContract::TaskError
             | MirTypeContract::Primitive(_)
             | MirTypeContract::Range
             | MirTypeContract::Callable { .. } => {}

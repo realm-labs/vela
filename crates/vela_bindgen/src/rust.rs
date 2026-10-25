@@ -765,42 +765,7 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
         [argument] => format!("({argument},)"),
         _ => format!("({})", arguments.join(", ")),
     };
-    let call = if callable.asyncness.is_async() && has_host_parameters {
-        let mut prepared =
-            String::from("let mut __vela_args = ::vela_engine::runtime::CallArgs::new(); ");
-        for (parameter, argument) in callable.parameters.iter().zip(&arguments) {
-            match parameter.mode {
-                RustBindingBoundaryMode::Value => {
-                    write!(prepared, "__vela_args.push_value({:?}, ::vela_engine::args::IntoScriptArg::into_script_arg({argument})); ", parameter.name).expect("writing to String");
-                }
-                RustBindingBoundaryMode::SharedHost => {
-                    write!(
-                        prepared,
-                        "self.authority.push_host_ref(&mut __vela_args, {:?}, {argument})?; ",
-                        parameter.name
-                    )
-                    .expect("writing to String");
-                }
-                RustBindingBoundaryMode::ExclusiveHost => {
-                    write!(
-                        prepared,
-                        "self.authority.push_host_mut(&mut __vela_args, {:?}, {argument})?; ",
-                        parameter.name
-                    )
-                    .expect("writing to String");
-                }
-            }
-        }
-        format!(
-            "{prepared}self.authority.call_prepared_async::<{}>(&{}, __vela_args).await",
-            generated.return_type, generated.constant_name
-        )
-    } else if callable.asyncness.is_async() {
-        format!(
-            "self.authority.call_async::<{}, _>(&{}, {tuple}).await",
-            generated.return_type, generated.constant_name
-        )
-    } else if has_host_parameters {
+    let call = if has_host_parameters {
         let mut prepared =
             String::from("let mut __vela_args = ::vela_engine::runtime::CallArgs::new(); ");
         for (parameter, argument) in callable.parameters.iter().zip(&arguments) {
@@ -836,21 +801,13 @@ fn render_callable(output: &mut String, generated: &GeneratedCallable<'_>) {
             generated.return_type, generated.constant_name
         )
     };
-    if callable.asyncness.is_async() {
-        writeln!(
-            output,
-            "            pub async fn {}(&mut self, {}) -> ::vela_engine::binding::VmResult<{}> {{ {call} }}",
-            generated.rust_name, parameters, generated.return_type
-        )
-        .expect("writing to String");
-    } else {
-        writeln!(
-            output,
-            "            pub fn {}(&mut self, {}) -> ::vela_engine::binding::VmResult<{}> {{ {call} }}",
-            generated.rust_name, parameters, generated.return_type
-        )
-        .expect("writing to String");
-    }
+
+    writeln!(
+        output,
+        "            pub fn {}(&mut self, {}) -> ::vela_engine::binding::VmResult<{}> {{ {call} }}",
+        generated.rust_name, parameters, generated.return_type
+    )
+    .expect("writing to String");
 }
 
 fn render_type(
@@ -1092,7 +1049,7 @@ mod tests {
             r#"
 #[doc("Adds two values.")]
 pub fn add(left: i64, right: i64 = 1) -> i64 { return left + right; }
-pub async fn names(values: Array<String>) -> Result<String, String> { return "ok"; }
+pub fn names(values: Array<String>) -> Result<String, String> { return "ok"; }
 "#,
         );
         let first = RustBindingsBuilder::new(&schema)
@@ -1106,7 +1063,10 @@ pub async fn names(values: Array<String>) -> Result<String, String> { return "ok
         assert_eq!(first.schema_checksum, schema.checksum());
         syn::parse_file(&first.code).expect("generated bindings must parse as Rust");
         assert!(first.code.contains("pub fn add"));
-        assert!(first.code.contains("pub async fn names"));
+        assert!(first.code.contains("pub fn names"));
+        assert!(!first.code.contains("pub async fn"));
+        assert!(!first.code.contains("call_async"));
+        assert!(!first.code.contains("call_prepared_async"));
         assert!(first.code.contains("Adds two values."));
         assert!(first.code.contains(&format!("{:016x}", schema.checksum())));
 
@@ -1115,6 +1075,16 @@ pub async fn names(values: Array<String>) -> Result<String, String> { return "ok
             .generate()
             .expect("named bindings");
         assert!(named.code.contains("pub mod game_api"));
+    }
+
+    #[test]
+    fn rust_keywords_remain_escaped_after_async_wrapper_removal() {
+        for keyword in ["async", "await", "type", "match", "loop"] {
+            let identifier = super::rust_identifier(keyword, super::NameStyle::Snake)
+                .expect("keyword has a Rust identifier");
+            assert_eq!(identifier, format!("r#{keyword}"));
+            syn::parse_str::<syn::Ident>(&identifier).expect("valid escaped Rust keyword");
+        }
     }
 
     #[test]

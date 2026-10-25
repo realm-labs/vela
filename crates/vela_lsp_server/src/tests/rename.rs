@@ -646,7 +646,7 @@ pub fn grant() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -790,7 +790,7 @@ fn lsp_source_backed_schema_type_rename_updates_type_hints() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -980,7 +980,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_artifact() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

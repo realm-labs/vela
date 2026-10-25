@@ -54,20 +54,10 @@ pub fn call_generated_add(runtime: &mut vela_engine::runtime::Runtime) -> Result
     module.add(20, 22).map_err(|error| error.to_string())
 }
 
-pub fn compile_generated_async_call(runtime: &mut vela_engine::runtime::Runtime) {
-    let Ok(mut package) = vela_bindings::bind(runtime) else {
-        return;
-    };
-    let mut module = package.dev_vela_anonymous_root_module();
-    let _future = module.label(42);
-}
-
-pub async fn call_generated_label(
-    runtime: &mut vela_engine::runtime::Runtime,
-) -> Result<String, String> {
+pub fn call_generated_label(runtime: &mut vela_engine::runtime::Runtime) -> Result<String, String> {
     let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
     let mut module = package.dev_vela_anonymous_root_module();
-    module.label(42).await.map_err(|error| error.to_string())
+    module.label(42).map_err(|error| error.to_string())
 }
 
 pub type ConversionResults = (i64, i64, i64, Option<i64>, Result<i64, String>);
@@ -135,32 +125,19 @@ pub fn call_generated_host(
     Ok((raised, read))
 }
 
-pub async fn call_generated_host_async(
+pub fn call_generated_host_with_label(
     runtime: &mut vela_engine::runtime::Runtime,
     player: &mut Player,
 ) -> Result<i64, String> {
     let mut package = vela_bindings::bind(runtime).map_err(|error| error.to_string())?;
     let mut module = package.dev_vela_anonymous_root_module();
     module
-        .raise_async(player, 3)
-        .await
+        .raise_with_label(player, 3)
         .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::future::Future;
-    use std::pin::Pin;
-    use std::task::{Context, Poll, Waker};
-
-    fn ready<T>(future: impl Future<Output = T>) -> T {
-        let mut future = std::pin::pin!(future);
-        let mut context = Context::from_waker(Waker::noop());
-        match Pin::new(&mut future).poll(&mut context) {
-            Poll::Ready(value) => value,
-            Poll::Pending => panic!("test future unexpectedly suspended"),
-        }
-    }
 
     #[test]
     fn generated_binding_executes_without_runtime_names_or_manual_values() {
@@ -191,7 +168,7 @@ mod tests {
             Ok((4, 4, 7, Some(9), Ok(10)))
         );
         assert_eq!(
-            ready(super::call_generated_label(&mut runtime)),
+            super::call_generated_label(&mut runtime),
             Ok("value".to_owned())
         );
         assert_eq!(
@@ -208,14 +185,8 @@ mod tests {
             Ok((12, 12))
         );
         assert_eq!(player.level, 12);
-        {
-            let dropped = super::call_generated_host_async(&mut runtime, &mut player);
-            require_send(&dropped);
-            drop(dropped);
-        }
-        assert_eq!(player.level, 12);
         assert_eq!(
-            ready(super::call_generated_host_async(&mut runtime, &mut player)),
+            super::call_generated_host_with_label(&mut runtime, &mut player),
             Ok(20)
         );
         assert_eq!(player.level, 20);
@@ -280,8 +251,6 @@ mod tests {
             "unexpected context effect-ceiling error: {context_error:?}"
         );
     }
-
-    fn require_send<T: Send>(_: &T) {}
 
     #[test]
     fn generated_binding_re_resolves_after_compatible_body_reload() {

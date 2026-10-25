@@ -3,13 +3,13 @@
 //! Shared foundations for Vela crates.
 
 pub mod capability;
-pub mod detachability;
+
 pub mod diagnostic_render;
 pub mod interop_type;
 pub mod primitive;
 
 pub use capability::{Capability, CapabilitySet};
-pub use detachability::{Detachability, NonDetachableValueKind};
+
 pub use interop_type::{
     CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
     HostCollectionIteration, HostConstructionLifetime, HostConstructorBinding,
@@ -22,21 +22,6 @@ pub use vela_def::stable_id;
 use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU32;
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum CallableAsyncness {
-    #[default]
-    Sync,
-    Async,
-}
-
-impl CallableAsyncness {
-    #[must_use]
-    pub const fn is_async(self) -> bool {
-        matches!(self, Self::Async)
-    }
-}
 
 macro_rules! stable_id {
     ($name:ident, $inner:ty) => {

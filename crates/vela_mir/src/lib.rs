@@ -11,7 +11,6 @@ mod budget;
 mod builder;
 mod cfg;
 mod contract;
-mod detachability;
 mod dump;
 mod effects;
 mod facts;
@@ -36,7 +35,6 @@ pub use cfg::{
     MirTerminatorKind, MirTryContinue,
 };
 pub use contract::{HostTypeTarget, MirCallableKind, MirCallableKindSet, MirTypeContract};
-pub use detachability::{MirDetachabilityReport, contract_detachability};
 pub use effects::{
     MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardKind, MirGuardLocation,
     MirLiveValue, MirSafepoint,
@@ -63,19 +61,18 @@ pub use input::{
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
     CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
     CompileStateTarget, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
-    CompileTaskContinuationTarget, CompileTaskDetachability, CompileTaskOperation,
-    CompileTaskTarget, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
-    DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
-    MirLoweringConfig, MirLoweringInput,
+    CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget,
+    HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig,
+    MirLoweringInput,
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
-    MirAggregate, MirAwaitOperation, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral,
-    MirDynamicArgument, MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart,
-    MirHostMutation, MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
+    MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
+    MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirHostMutation,
+    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
     MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
     MirScriptArgument, MirScriptParameterGuardMode, MirStateOperation, MirStatement,
-    MirStatementKind, MirTaskContinuation, MirTaskOperation,
+    MirStatementKind,
 };
 pub use origin::{MirSourceNode, MirSourceOrigin};
 pub use targets::{

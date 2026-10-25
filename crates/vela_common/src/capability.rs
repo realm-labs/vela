@@ -12,11 +12,10 @@ pub enum Capability {
     ReflectionRead,
     ReflectionWrite,
     ReflectionCall,
-    TaskSpawn,
 }
 
 impl Capability {
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 10] = [
         Self::HostRead,
         Self::HostWrite,
         Self::EventEmit,
@@ -27,7 +26,6 @@ impl Capability {
         Self::ReflectionRead,
         Self::ReflectionWrite,
         Self::ReflectionCall,
-        Self::TaskSpawn,
     ];
 
     #[must_use]
@@ -43,7 +41,6 @@ impl Capability {
             Self::ReflectionRead => "reflection_read",
             Self::ReflectionWrite => "reflection_write",
             Self::ReflectionCall => "reflection_call",
-            Self::TaskSpawn => "task_spawn",
         }
     }
 
@@ -139,5 +136,36 @@ impl CapabilitySet {
         Capability::ALL
             .into_iter()
             .filter(move |capability| self.contains(*capability))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Capability, CapabilitySet};
+
+    #[test]
+    fn task_spawn_is_not_a_capability() {
+        assert_eq!(Capability::from_name("task_spawn"), None);
+        assert_eq!(CapabilitySet::all().iter().count(), 10);
+        for capability in Capability::ALL {
+            assert_eq!(Capability::from_name(capability.as_str()), Some(capability));
+            assert!(CapabilitySet::all().contains(capability));
+        }
+    }
+
+    #[test]
+    fn native_and_reflection_permissions_remain_independent() {
+        let allowed = CapabilitySet::new()
+            .with(Capability::HostRead)
+            .with(Capability::ReflectionRead);
+        let required = CapabilitySet::new()
+            .with(Capability::HostRead)
+            .with(Capability::HostWrite)
+            .with(Capability::ReflectionCall);
+        assert!(!allowed.contains_all(required));
+        assert_eq!(
+            required.difference(allowed).iter().collect::<Vec<_>>(),
+            [Capability::HostWrite, Capability::ReflectionCall]
+        );
     }
 }

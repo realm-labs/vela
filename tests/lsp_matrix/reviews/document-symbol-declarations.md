@@ -1,5 +1,10 @@
 # Document symbol declaration review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.1 closes document-symbol S1 positive service/protocol and the UTF-16,
 CRLF and encoded-URI protocol requirements. It does not certify the negative
 recovery groups, remaining S4/S8/S9 groups, state cells or editor obligations.

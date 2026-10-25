@@ -99,7 +99,6 @@
             }
           },
           "signature": {
-            "asyncness": "sync",
             "parameters": [
               {
                 "name": "zz_items",
@@ -404,7 +403,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",
@@ -531,7 +529,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",
@@ -658,7 +655,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",
@@ -768,7 +764,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",
@@ -872,7 +867,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",
@@ -993,7 +987,6 @@
                 }
               },
               "signature": {
-                "asyncness": "sync",
                 "parameters": [
                   {
                     "name": "zz_items",

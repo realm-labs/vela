@@ -111,7 +111,6 @@ fn mir_model_requires_safepoints_for_calls_even_with_incomplete_effect_metadata(
             function: FunctionId::new(21),
             debug_name: "native::test".to_owned(),
             signature: CompileSignature {
-                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: Vec::new(),
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: None,
@@ -206,7 +205,6 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
             function: FunctionId::new(212),
             debug_name: "script::test".to_owned(),
             signature: CompileSignature {
-                asyncness: vela_common::CallableAsyncness::Sync,
                 parameters: vec![CompileParameter {
                     name: "value".to_owned(),
                     contract: None,
@@ -595,7 +593,6 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
         "values",
     );
     let signature = CompileSignature {
-        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![CompileParameter {
             name: "value".to_owned(),
             contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
@@ -1012,7 +1009,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
     let safepoint = function.add_safepoint(MirSafepoint::new(origin));
     let signature_effect = MirEffect::state_read();
     let script_signature = CompileSignature {
-        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![CompileParameter {
             name: "fallback".to_owned(),
             contract: None,
@@ -1062,7 +1058,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
 
     let external_result = function.add_temp(MirValueType::Dynamic, origin);
     let external_signature = CompileSignature {
-        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: vec![
             CompileParameter {
                 name: "value".to_owned(),
@@ -1125,7 +1120,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                     function: FunctionId::new(247),
                     debug_name: "native::runtime_checked".to_owned(),
                     signature: CompileSignature {
-                        asyncness: vela_common::CallableAsyncness::Sync,
                         positional: CompilePositionalPolicy::RuntimeChecked,
                         ..external_signature.clone()
                     },
@@ -1150,7 +1144,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
             function: FunctionId::new(248),
             debug_name: "native::variadic".to_owned(),
             signature: CompileSignature {
-                asyncness: vela_common::CallableAsyncness::Sync,
                 positional: CompilePositionalPolicy::Variadic { minimum: 2 },
                 ..external_signature
             },
@@ -1172,7 +1165,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                     function: FunctionId::new(248),
                     debug_name: "native::variadic".to_owned(),
                     signature: CompileSignature {
-                        asyncness: vela_common::CallableAsyncness::Sync,
                         parameters: Vec::new(),
                         positional: CompilePositionalPolicy::Variadic { minimum: 2 },
                         return_contract: None,

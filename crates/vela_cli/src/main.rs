@@ -3,7 +3,6 @@
 use std::path::{Path, PathBuf};
 
 mod diagnostics;
-mod executor;
 mod metadata;
 
 use clap::Parser;
@@ -17,10 +16,6 @@ use vela_engine::prelude::*;
     disable_help_subcommand = true
 )]
 struct Cli {
-    /// Drive an async `main` with the CLI-owned executor.
-    #[arg(long = "async")]
-    async_entry: bool,
-
     /// Print the sealed host schema as JSON without executing `main`.
     #[arg(long)]
     print_schema: bool,
@@ -38,14 +33,10 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
-    run_script(&cli.script, cli.async_entry, cli.print_schema)
+    run_script(&cli.script, cli.print_schema)
 }
 
-fn run_script(
-    path: &Path,
-    async_entry: bool,
-    print_schema: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn run_script(path: &Path, print_schema: bool) -> Result<(), Box<dyn std::error::Error>> {
     let fs_root = path.parent().unwrap_or_else(|| Path::new("."));
     let engine = Engine::builder()
         .with_standard_natives()
@@ -69,12 +60,9 @@ fn run_script(
     let mut runtime = Runtime::new_compiled(engine, program)?;
     let args = CallArgs::new();
     let options = CallOptions::new(10_000, 1024 * 1024, 64);
-    let output = if async_entry {
-        executor::block_on(runtime.call_async("main", args, options))
-    } else {
-        runtime.call("main", args, options)
-    }
-    .map_err(|error| diagnostics::render_vm_error(path, &error))?;
+    let output = runtime
+        .call("main", args, options)
+        .map_err(|error| diagnostics::render_vm_error(path, &error))?;
     println!("{:?}", runtime.value_to_owned(&output)?);
     Ok(())
 }

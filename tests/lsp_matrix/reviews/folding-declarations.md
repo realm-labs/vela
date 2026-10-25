@@ -1,5 +1,10 @@
 # Folding declaration regions
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.17 reviews only S1 positive/negative service/protocol. Member/constructor,
 control-flow/literal/trivia/recovery partitions, installed smoke and native UX12
 remain separate requirements.

@@ -1,5 +1,10 @@
 # Signature help: S10 ownership, clients and installed provider review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: four `signature-help/syntax/S10/{positive,negative}/{service,protocol}`
 obligations, `signature-help/environments/client_capabilities/protocol` and
 `signature-help/editor/smoke`. New exact identities are

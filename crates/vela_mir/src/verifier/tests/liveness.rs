@@ -91,26 +91,24 @@ fn mir_liveness_uses_operation_live_before_at_safepoints() {
 }
 
 #[test]
-fn await_terminator_defines_its_result_on_resume_and_roots_live_parents() {
+fn synchronous_callback_result_crosses_blocks_and_roots_live_parents() {
     let parameter = CompileParameter {
         name: "callback".to_owned(),
         contract: None,
         default: CompileParameterDefault::Required,
         origin: None,
     };
-    let mut async_signature = signature(vec![parameter]);
-    async_signature.asyncness = vela_common::CallableAsyncness::Async;
+    let callback_signature = signature(vec![parameter]);
     let mut targets = MirTargetTable::default();
     assert!(targets.insert_function(CompileFunctionDescriptor {
         id: FUNCTION,
         class: CompileFunctionClass::Script,
         canonical_symbol: "verifier::main".to_owned(),
         debug_name: "main".to_owned(),
-        signature: async_signature,
+        signature: callback_signature,
         access: CompileFunctionAccess::script(false),
     }));
     let mut function = function();
-    function.set_asyncness(vela_common::CallableAsyncness::Async);
     let callback = function.add_parameter(crate::MirParameterSpec {
         hir_local: vela_hir::ids::HirLocalId::new(1),
         kind: crate::MirParameterKind::Explicit(vela_hir::ids::HirParamId::new(1)),
@@ -125,23 +123,31 @@ fn await_terminator_defines_its_result_on_resume_and_roots_live_parents() {
     let resume = function.add_block();
     let safepoint = function.add_safepoint(MirSafepoint::new(origin()));
     function
-        .set_terminator(
+        .append_statement(
             source,
-            MirTerminator::new(
+            MirStatement::new(
                 origin(),
-                MirTerminatorKind::AwaitCall {
-                    operation: Box::new(crate::MirAwaitOperation::Call(MirCall::DynamicCallable {
-                        callee: MirOperand::Local(callback),
-                        arguments: Vec::new(),
-                    })),
-                    destination: MirPlace::Local(destination),
-                    resume,
-                },
+                Some(MirPlace::Local(destination)),
+                MirStatementKind::Call(MirCall::DynamicCallable {
+                    callee: MirOperand::Local(callback),
+                    arguments: Vec::new(),
+                }),
                 MirEffect::dynamic_call(),
                 Some(safepoint),
             ),
         )
-        .expect("await terminator");
+        .expect("synchronous callback call");
+    function
+        .set_terminator(
+            source,
+            MirTerminator::new(
+                origin(),
+                MirTerminatorKind::Jump(resume),
+                MirEffect::PURE,
+                None,
+            ),
+        )
+        .expect("successor jump");
     function
         .set_terminator(
             resume,
@@ -155,7 +161,9 @@ fn await_terminator_defines_its_result_on_resume_and_roots_live_parents() {
         .expect("resume return");
     crate::liveness::apply(&mut function);
     let mut program = crate::MirProgram::new(targets);
-    program.add_function(function).expect("async test function");
+    program
+        .add_function(function)
+        .expect("synchronous test function");
     let function = only_function(&program);
     let destination = MirLiveValue::Local(destination);
     let callback = MirLiveValue::Local(callback);
@@ -164,11 +172,11 @@ fn await_terminator_defines_its_result_on_resume_and_roots_live_parents() {
     assert!(function.liveness().block_live_in[&resume].contains(&destination));
     let roots = &function
         .safepoint(safepoint)
-        .expect("await root map")
+        .expect("callback root map")
         .live_values;
     assert!(roots.contains(&callback));
     assert!(!roots.contains(&destination));
-    verify_mir(&program).expect("await MIR and liveness verify");
+    verify_mir(&program).expect("synchronous MIR and liveness verify");
 }
 
 #[test]

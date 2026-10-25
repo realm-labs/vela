@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use vela_analysis::hints::type_fact_from_hint_in_module;
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CallableAsyncness, PrimitiveTag, ShapeId};
+use vela_common::{PrimitiveTag, ShapeId};
 use vela_def::{
     FunctionId, TypeId, script_field_id, script_function_id, script_state_id,
     script_state_initializer_id, script_type_id, script_type_path, script_variant_id,
@@ -395,7 +395,6 @@ impl GenerationBuilder<'_, '_> {
             let function = script_state_initializer_id(package.as_str(), &symbol);
             let origin = MirSourceOrigin::body(body.id, body.origin.span);
             let signature = CompileSignature {
-                asyncness: CallableAsyncness::Sync,
                 parameters: Vec::new(),
                 positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                 return_contract: Some(contract),
@@ -578,7 +577,6 @@ impl GenerationBuilder<'_, '_> {
                             code_symbol: symbol,
                         },
                         signature: CompileSignature {
-                            asyncness: vela_common::CallableAsyncness::Sync,
                             parameters: full_signature.parameters.iter().skip(1).cloned().collect(),
                             ..full_signature
                         },
@@ -680,7 +678,6 @@ impl GenerationBuilder<'_, '_> {
             )?;
         }
         Ok(CompileSignature {
-            asyncness: signature.asyncness,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract,
@@ -907,7 +904,6 @@ fn structural_contract(
             type_id: record.type_id(),
             shape: record.shape(),
         },
-        TypeFact::Record { name } if name == "task::Error" => MirTypeContract::TaskError,
         TypeFact::Record { name } | TypeFact::Enum { name, .. } => definition(name, false)?,
         TypeFact::Host { name } => definition(name, true)?,
         TypeFact::Trait { .. } | TypeFact::Module { .. } => MirTypeContract::Any,

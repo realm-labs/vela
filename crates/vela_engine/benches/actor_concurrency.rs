@@ -1,10 +1,6 @@
 use std::error::Error;
-use std::future::Future;
 use std::hint::black_box;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Barrier};
-use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -14,7 +10,6 @@ use vela_engine::engine::Engine;
 use vela_engine::runtime::{
     CallArgs, CallOptions, Runtime, RuntimeImage, SharedImage, SharedRuntime,
 };
-use vela_macros::export;
 
 const STABLE_HOT_CALLS_PER_WORKER: usize = 5_000;
 const QUICK_HOT_CALLS_PER_WORKER: usize = 200;
@@ -22,8 +17,6 @@ const STABLE_COLD_ACTORS_PER_WORKER: usize = 128;
 const QUICK_COLD_ACTORS_PER_WORKER: usize = 16;
 const STABLE_CONTENTION_CALLS_PER_WORKER: usize = 2_000;
 const QUICK_CONTENTION_CALLS_PER_WORKER: usize = 100;
-
-static PENDING_RELEASED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Copy)]
 enum Sampling {
@@ -81,28 +74,13 @@ impl ActorTurn {
     }
 }
 
-async fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
-    let result = turn
-        .runtime
-        .call_async(
-            "actor_turn",
-            CallArgs::new().with_value("value", value),
-            CallOptions::unbounded(),
-        )
-        .await?;
+fn actor_turn(turn: &mut ActorTurn, value: i64) -> VmResult<i64> {
+    let result = turn.runtime.call(
+        "actor_turn",
+        CallArgs::new().with_value("value", value),
+        CallOptions::unbounded(),
+    )?;
     i64::from_script_arg(&turn.runtime.value_to_owned(&result)?)
-}
-
-#[export(path = "bench::wait_for_release")]
-pub async fn wait_for_release(value: i64) -> VmResult<i64> {
-    std::future::poll_fn(|_| {
-        if PENDING_RELEASED.load(Ordering::Acquire) {
-            Poll::Ready(Ok(value))
-        } else {
-            Poll::Pending
-        }
-    })
-    .await
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -120,7 +98,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         sampling.cold_actors_per_worker(),
         sampling.contention_calls_per_worker()
     );
-    pending_actor_overlap(&fixture)?;
     for workers in worker_counts {
         concurrent_hot(&fixture, workers, sampling.hot_calls_per_worker())?;
         concurrent_cold(&fixture, workers, sampling.cold_actors_per_worker())?;
@@ -135,17 +112,12 @@ struct ConcurrencyFixture {
 
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
-        let engine = Engine::builder()
-            .install_registration(vela_function_wait_for_release())
-            .build()?;
+        let engine = Engine::builder().build()?;
         let program = engine.compile_source(
             r#"
 state calls: i64 = 0;
 
-pub async fn actor_turn(value: i64) -> i64 {
-    if value == 0 {
-        return bench::wait_for_release(41).await;
-    }
+pub fn actor_turn(value: i64) -> i64 {
     calls += 1;
     return calls + value;
 }
@@ -160,32 +132,6 @@ pub async fn actor_turn(value: i64) -> i64 {
     }
 }
 
-fn pending_actor_overlap(fixture: &ConcurrencyFixture) -> Result<(), Box<dyn Error>> {
-    PENDING_RELEASED.store(false, Ordering::Release);
-    let mut pending_actor = fixture.actor()?;
-    let mut independent_actor = fixture.actor()?;
-    let mut pending = Box::pin(actor_turn(&mut pending_actor, 0));
-    let mut task = Context::from_waker(Waker::noop());
-    if !matches!(pending.as_mut().poll(&mut task), Poll::Pending) {
-        return Err("pending Actor unexpectedly completed before release".into());
-    }
-    let started = Instant::now();
-    let independent = poll_to_completion(actor_turn(&mut independent_actor, 41))?;
-    let independent_latency = started.elapsed();
-    PENDING_RELEASED.store(true, Ordering::Release);
-    let pending_result = poll_pinned_to_completion(pending.as_mut())?;
-    println!(
-        "concurrency_result mode=pending_overlap workers=2 calls=2 throughput_per_sec={:.3} p50_ns={} p95_ns={} p99_ns={} allocation_count_source=actor_memory_calibration lock_wait_ns=0 lock_wait_source=workload_has_no_mutable_cache_site independent_result={} pending_result={} overlapped=true",
-        2.0 / independent_latency.as_secs_f64(),
-        independent_latency.as_nanos(),
-        independent_latency.as_nanos(),
-        independent_latency.as_nanos(),
-        independent,
-        pending_result
-    );
-    Ok(())
-}
-
 fn concurrent_hot(
     fixture: &ConcurrencyFixture,
     workers: usize,
@@ -195,7 +141,7 @@ fn concurrent_hot(
         .map(|_| fixture.actor())
         .collect::<Result<Vec<_>, _>>()?;
     for actor in &mut actors {
-        black_box(poll_to_completion(actor_turn(actor, 41))?);
+        black_box(actor_turn(actor, 41)?);
     }
     let barrier = Arc::new(Barrier::new(workers));
     let wall_started = Instant::now();
@@ -210,8 +156,8 @@ fn concurrent_hot(
                     barrier.wait();
                     for _ in 0..calls_per_worker {
                         let started = Instant::now();
-                        let value = poll_to_completion(actor_turn(&mut actor, 41))
-                            .map_err(|error| error.to_string())?;
+                        let value =
+                            actor_turn(&mut actor, 41).map_err(|error| error.to_string())?;
                         samples.push(started.elapsed());
                         checksum = checksum.wrapping_add(value);
                     }
@@ -251,8 +197,8 @@ fn concurrent_cold(
                     barrier.wait();
                     for mut actor in worker_actors {
                         let started = Instant::now();
-                        let value = poll_to_completion(actor_turn(&mut actor, 41))
-                            .map_err(|error| error.to_string())?;
+                        let value =
+                            actor_turn(&mut actor, 41).map_err(|error| error.to_string())?;
                         samples.push(started.elapsed());
                         checksum = checksum.wrapping_add(value);
                     }
@@ -464,23 +410,6 @@ struct ContentionResult {
     throughput_per_sec: f64,
     p95_ns: u128,
     checksum: i64,
-}
-
-fn poll_to_completion<T>(future: impl Future<Output = VmResult<T>>) -> VmResult<T> {
-    let mut future = std::pin::pin!(future);
-    poll_pinned_to_completion(future.as_mut())
-}
-
-fn poll_pinned_to_completion<T>(
-    mut future: Pin<&mut impl Future<Output = VmResult<T>>>,
-) -> VmResult<T> {
-    let mut task = Context::from_waker(Waker::noop());
-    loop {
-        if let Poll::Ready(result) = future.as_mut().poll(&mut task) {
-            return result;
-        }
-        thread::yield_now();
-    }
 }
 
 fn percentile_ns(samples: &[Duration], percentile: usize) -> u128 {

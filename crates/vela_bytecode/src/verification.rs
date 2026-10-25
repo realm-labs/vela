@@ -50,7 +50,6 @@ pub enum VerificationErrorKind {
         instruction: &'static str,
         reason: &'static str,
     },
-    InvalidAwaitOperation,
     InvalidSelectedPlan {
         detail: &'static str,
     },
@@ -613,24 +612,6 @@ fn verify_instruction(
         UnlinkedInstructionKind::Jump { target } => {
             verify_jump(function, instruction_index, code, *target)
         }
-        UnlinkedInstructionKind::AwaitCall { operation, resume } => {
-            verify_jump(function, instruction_index, code, *resume)?;
-            if !is_unlinked_await_operation(operation) {
-                return Err(error(
-                    function,
-                    instruction_index,
-                    VerificationErrorKind::InvalidAwaitOperation,
-                ));
-            }
-            verify_instruction(
-                function,
-                code,
-                index,
-                &UnlinkedInstruction::new((**operation).clone()),
-                closure_scope,
-                cache_scope,
-            )
-        }
         UnlinkedInstructionKind::CallNative { dst, args, .. } => {
             if let Some(dst) = dst {
                 verify_register(function, instruction_index, code, *dst)?;
@@ -640,10 +621,6 @@ fn verify_instruction(
         UnlinkedInstructionKind::CallFunction { dst, args, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_call_arguments(function, instruction_index, code, args)
-        }
-        UnlinkedInstructionKind::Task(task) => {
-            verify_register(function, instruction_index, code, task.dst)?;
-            verify_call_arguments(function, instruction_index, code, &task.args)
         }
         UnlinkedInstructionKind::MakeClosure {
             dst,
@@ -904,22 +881,6 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *src)
         }
     }
-}
-
-fn is_unlinked_await_operation(operation: &UnlinkedInstructionKind) -> bool {
-    matches!(
-        operation,
-        UnlinkedInstructionKind::CallNative { .. }
-            | UnlinkedInstructionKind::CallFunction { .. }
-            | UnlinkedInstructionKind::CallClosure { .. }
-            | UnlinkedInstructionKind::CallDynamicMethod { .. }
-            | UnlinkedInstructionKind::CallMethodId { .. }
-            | UnlinkedInstructionKind::HostRead { .. }
-            | UnlinkedInstructionKind::HostWrite { .. }
-            | UnlinkedInstructionKind::HostMutate { .. }
-            | UnlinkedInstructionKind::HostRemove { .. }
-            | UnlinkedInstructionKind::HostCall { .. }
-    )
 }
 
 fn verify_instruction_cache_site(

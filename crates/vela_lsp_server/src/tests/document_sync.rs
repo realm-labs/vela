@@ -78,7 +78,7 @@ fn lsp_did_open_publishes_diagnostics() {
 }
 
 #[test]
-fn lsp_did_open_publishes_detached_value_and_continuation_diagnostics() {
+fn lsp_did_open_publishes_removed_async_and_task_diagnostics() {
     let mut server = TestServer::new();
     initialize_server(&mut server);
     let notification = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
@@ -100,15 +100,7 @@ fn lsp_did_open_publishes_detached_value_and_continuation_diagnostics() {
         .filter_map(|diagnostic| diagnostic["code"].as_str())
         .collect::<Vec<_>>();
 
-    assert_eq!(
-        codes,
-        [
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_continuation_invalid",
-        ]
-    );
+    assert_eq!(codes, ["syntax::removed_task", "syntax::removed_async"]);
     assert!(diagnostics.iter().all(|diagnostic| {
         diagnostic["range"]["end"]["character"]
             .as_u64()

@@ -3,7 +3,7 @@
   "id": "callable-imports",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.ordinary_calls\"\nname = \"ordinary_calls\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "schema.json": "{\n  \"formatVersion\": 2,\n  \"facts\": {\n    \"functions\": [\n      {\n        \"name\": \"host::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"amount\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"other::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"issue\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"borrowed\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::grant\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"schema_bogus\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"schema_secret\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"math::max\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"collision\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::number\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::State::Ready\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::Private::Ready\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      }\n    ]\n  }\n}\n",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{\"functions\":[{\"name\":\"host::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"amount\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"other::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"issue\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"borrowed\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"api::grant\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"schema_bogus\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"api::hidden\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"schema_secret\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"math::max\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"collision\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"api::number\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"api::State::Ready\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"api::Private::Ready\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}",
     "scripts/api.vela": "pub fn grant(source_value: i64) -> bool { return true; } fn hidden(secret: i64) -> bool { return true; }\npub const number: i64 = 1;\npub enum State { Ready(value: i64) } enum Private { Ready(secret: bool) }\n",
     "scripts/foreign.vela": "pub fn grant(unrelated: String) -> bool { return true; }\n",
     "scripts/host_direct.vela": "/* 中😀 */   fn main() { host::grant([[replace:start]][[cursor]][[replace:end]]); }\n",
@@ -45,7 +45,7 @@
       {
         "id": "host_direct",
         "file": "scripts/host_direct.vela",
-        "signature": "async host::grant(amount: u32) -> bool",
+        "signature": "host::grant(amount: u32) -> bool",
         "parameters": [
           {
             "name": "amount",
@@ -63,7 +63,7 @@
       {
         "id": "host_import",
         "file": "scripts/host_import.vela",
-        "signature": "async host::grant(amount: u32) -> bool",
+        "signature": "host::grant(amount: u32) -> bool",
         "parameters": [
           {
             "name": "amount",
@@ -84,7 +84,7 @@
       {
         "id": "host_alias",
         "file": "scripts/host_alias.vela",
-        "signature": "async host::grant(amount: u32) -> bool",
+        "signature": "host::grant(amount: u32) -> bool",
         "parameters": [
           {
             "name": "amount",
@@ -103,7 +103,7 @@
       {
         "id": "host_namespace",
         "file": "scripts/host_namespace.vela",
-        "signature": "async host::grant(amount: u32) -> bool",
+        "signature": "host::grant(amount: u32) -> bool",
         "parameters": [
           {
             "name": "amount",
@@ -416,7 +416,7 @@
       {
         "id": "incomplete",
         "file": "scripts/incomplete.vela",
-        "signature": "async host::grant(amount: u32) -> bool",
+        "signature": "host::grant(amount: u32) -> bool",
         "parameters": [
           {
             "name": "amount",
@@ -684,8 +684,6 @@
         "stdlib_direct",
         "stdlib_namespace",
         "stdlib_unimported",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",
@@ -842,8 +840,6 @@
         "stdlib_direct",
         "stdlib_namespace",
         "stdlib_unimported",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",
@@ -1000,8 +996,6 @@
         "stdlib_direct",
         "stdlib_namespace",
         "stdlib_unimported",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",
@@ -1159,8 +1153,6 @@
         "stdlib_direct",
         "stdlib_namespace",
         "stdlib_unimported",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",
@@ -1315,8 +1307,6 @@
         "stdlib_direct",
         "stdlib_namespace",
         "stdlib_unimported",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",

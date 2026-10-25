@@ -1,5 +1,10 @@
 # Folding members and constructors
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.20 reviews only S4 positive/negative service/protocol, four cells.
 Existing declaration evidence remains linked for required/default/async trait
 and implementation signatures. Literal/operator/body/import tests remain active.

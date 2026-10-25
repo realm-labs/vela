@@ -255,7 +255,6 @@ fn expression_inputs(expression: &HirExprKind) -> Vec<HirExprId> {
     match expression {
         HirExprKind::Paren { expression }
         | HirExprKind::Try { expression }
-        | HirExprKind::Await { expression }
         | HirExprKind::Unary {
             operand: expression,
             ..

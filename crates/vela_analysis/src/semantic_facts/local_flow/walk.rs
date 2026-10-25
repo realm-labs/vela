@@ -107,7 +107,6 @@ impl LocalFlow<'_> {
             }
             HirExprKind::Paren { expression }
             | HirExprKind::Try { expression }
-            | HirExprKind::Await { expression }
             | HirExprKind::Unary {
                 operand: expression,
                 ..

@@ -57,11 +57,6 @@ pub(crate) fn function_contract(
         &signature.returns.ty,
     );
     let effects = effect_tokens(&signature.effects);
-    let asyncness = if signature.is_async {
-        quote! { ::vela_common::CallableAsyncness::Async }
-    } else {
-        quote! { ::vela_common::CallableAsyncness::Sync }
-    };
     let docs = docs.map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
 
     quote! {
@@ -76,7 +71,6 @@ pub(crate) fn function_contract(
                 public_path: #public_path.to_owned(),
                 parameters: vec![#(#parameters),*],
                 returns: #return_contract,
-                asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
                 docs: #docs,
@@ -96,9 +90,6 @@ pub(crate) fn function_value_adapter(
 ) -> Option<TokenStream> {
     if signature.supports_sync_scoped_host_adapter() {
         return Some(function_sync_scoped_host_adapter(item, signature));
-    }
-    if signature.supports_async_host_adapter() {
-        return Some(function_async_host_adapter(item, signature));
     }
     if signature.supports_sync_host_adapter() {
         return Some(function_sync_host_adapter(item, signature));
@@ -121,94 +112,18 @@ pub(crate) fn function_value_adapter(
         [ty] => quote! { (#ty,) },
         types => quote! { (#(#types),*) },
     };
-    let expected = value_types.len();
-    let mut runtime_index = 0_usize;
-    let async_bindings = signature
-        .parameters
-        .iter()
-        .filter_map(|parameter| {
-            if parameter.mode == ParameterMode::HiddenContext {
-                return None;
-            }
-            let index = runtime_index;
-            runtime_index += 1;
-            let name = format_ident!("__vela_arg_{}", parameter.name);
-            let ty = parameter
-                .rust_ty
-                .as_ref()
-                .expect("value parameters retain their Rust type");
-            Some(quote! {
-                let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
-                    &args[#index],
-                )?;
-            })
-        })
-        .collect::<Vec<_>>();
-    let async_call_args = signature
-        .parameters
-        .iter()
-        .map(|parameter| {
-            if parameter.mode == ParameterMode::HiddenContext {
-                quote! { __vela_context }
-            } else {
-                let name = format_ident!("__vela_arg_{}", parameter.name);
-                quote! { #name }
-            }
-        })
-        .collect::<Vec<_>>();
-    let registration = match (signature.is_async, signature.has_hidden_context()) {
-        (false, true) => quote! {
+    let registration = if signature.has_hidden_context() {
+        quote! {
             builder.register_typed_context_host_native_fn::<#args_tuple, _>(
                 #contract_ident().native_function_desc(), #function_ident,
             )
-        },
-        (false, false) => quote! {
+        }
+    } else {
+        quote! {
             builder.register_typed_native_fn::<#args_tuple, _>(
                 #contract_ident().native_function_desc(), #function_ident,
             )
-        },
-        (true, true) => quote! {
-            builder.register_async_context_fn(
-                #contract_ident().native_function_desc(),
-                move |args, __vela_context| {
-                    ::std::boxed::Box::pin(async move {
-                        if args.len() != #expected {
-                            return Err(::vela_vm::error::VmError::new(
-                                ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                    name: #contract_ident().public_path,
-                                    expected: #expected,
-                                    actual: args.len(),
-                                },
-                            ));
-                        }
-                        #(#async_bindings)*
-                        let __vela_result = #function_ident(#(#async_call_args),*).await;
-                        ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
-                    })
-                },
-            )
-        },
-        (true, false) => quote! {
-            builder.register_async_fn(
-                #contract_ident().native_function_desc(),
-                move |args| {
-                    ::std::boxed::Box::pin(async move {
-                        if args.len() != #expected {
-                            return Err(::vela_vm::error::VmError::new(
-                                ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                    name: #contract_ident().public_path,
-                                    expected: #expected,
-                                    actual: args.len(),
-                                },
-                            ));
-                        }
-                        #(#async_bindings)*
-                        let __vela_result = #function_ident(#(#async_call_args),*).await;
-                        ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
-                    })
-                },
-            )
-        },
+        }
     };
 
     Some(quote! {
@@ -580,132 +495,6 @@ fn function_sync_scoped_host_adapter(
     }
 }
 
-fn function_async_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
-    let collection_registrations = collection_registration_tokens(signature);
-    let function_ident = &item.sig.ident;
-    let contract_ident = format_ident!("vela_callable_contract_{function_ident}");
-    let register_ident = format_ident!("vela_register_export_{function_ident}");
-    let bundle_ident = format_ident!("vela_function_{function_ident}");
-    let expected = signature.parameters.len();
-    let request_plans = signature
-        .parameters
-        .iter()
-        .enumerate()
-        .filter_map(|(index, parameter)| {
-            let (_, access) = parameter.ty.host_boundary()?;
-            let type_id = host_type_id_tokens(&parameter.ty)
-                .expect("host parameter has a runtime type identity");
-            let kind = match access {
-                HostAccess::Shared => quote! { ::vela_host::lease::HostLeaseKind::Shared },
-                HostAccess::Exclusive => {
-                    quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
-                }
-            };
-            Some(quote! {
-                ::vela_engine::interop::HostLeaseParameterPlan::argument(
-                    #index,
-                    #index,
-                    #type_id,
-                    #kind,
-                )
-            })
-        })
-        .collect::<Vec<_>>();
-    let argument_bindings = signature
-        .parameters
-        .iter()
-        .enumerate()
-        .map(|(index, parameter)| {
-            let name = format_ident!("__vela_arg_{}", parameter.name);
-            match parameter.ty.host_boundary() {
-                Some((_, HostAccess::Shared)) => {
-                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
-                    quote! {
-                        let #name = __vela_leases
-                            .next()
-                            .and_then(|lease| #value)
-                            .expect("preflight-validated shared host lease");
-                    }
-                }
-                Some((_, HostAccess::Exclusive)) => {
-                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
-                    quote! {
-                        let #name = __vela_leases
-                            .next()
-                            .and_then(|lease| lease.object_mut())
-                            .and_then(|object| #value)
-                            .expect("preflight-validated exclusive host lease");
-                    }
-                }
-                None => {
-                    let ty = parameter
-                        .rust_ty
-                        .as_ref()
-                        .expect("value parameters retain their Rust type");
-                    quote! {
-                        let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
-                            &args[#index],
-                        )?;
-                    }
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-    let argument_names = signature
-        .parameters
-        .iter()
-        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
-        .collect::<Vec<_>>();
-
-    quote! {
-        #[doc(hidden)]
-        #[must_use]
-        pub fn #register_ident(
-            builder: ::vela_engine::builder::EngineBuilder,
-        ) -> ::vela_engine::builder::EngineBuilder {
-            #(#collection_registrations)*
-            let __vela_contract = #contract_ident();
-            let __vela_desc = __vela_contract.native_function_desc();
-            let __vela_plan = ::vela_engine::interop::PreparedHostLeasePlan::new(
-                __vela_contract,
-                #expected,
-                [#(#request_plans),*],
-            );
-            let __vela_callable = __vela_plan.callable().to_owned();
-            builder.register_async_direct_host_fn(
-                __vela_desc,
-                move |args| __vela_plan.prepare(args),
-                move |leases, args| {
-                    let __vela_callable = __vela_callable.clone();
-                    ::std::boxed::Box::pin(async move {
-                        if args.len() != #expected {
-                            return Err(::vela_vm::error::VmError::new(
-                                ::vela_vm::error::VmErrorKind::ArityMismatch {
-                                    name: __vela_callable,
-                                    expected: #expected,
-                                    actual: args.len(),
-                                },
-                            ));
-                        }
-                        let mut __vela_leases = leases.iter_mut();
-                        #(#argument_bindings)*
-                        let __vela_result = #function_ident(#(#argument_names),*).await;
-                        ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
-                    })
-                },
-            )
-        }
-
-        #[must_use]
-        pub fn #bundle_ident() -> ::vela_engine::registration::ModuleRegistration {
-            ::vela_engine::registration::ModuleRegistration::new(
-                vec![#contract_ident()],
-                #register_ident,
-            )
-        }
-    }
-}
-
 fn function_sync_host_adapter(item: &ItemFn, signature: &ClassifiedSignature) -> TokenStream {
     let collection_registrations = collection_registration_tokens(signature);
     let function_ident = &item.sig.ident;
@@ -930,11 +719,6 @@ pub(crate) fn protocol_contract(
             &signature.returns.ty,
         );
         let effects = effect_tokens(&signature.effects);
-        let asyncness = if signature.is_async {
-            quote! { ::vela_common::CallableAsyncness::Async }
-        } else {
-            quote! { ::vela_common::CallableAsyncness::Sync }
-        };
         let method_docs = crate::signature::docs_from_attrs(&method.attrs)
             .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
         quote! {
@@ -946,7 +730,6 @@ pub(crate) fn protocol_contract(
                 public_path: #method_path.to_owned(),
                 parameters: vec![#(#parameters),*],
                 returns: #return_contract,
-                asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess::default(),
                 docs: #method_docs,
@@ -1057,7 +840,6 @@ pub(crate) fn effect_tokens(effects: &std::collections::BTreeSet<EffectName>) ->
             EffectName::ReflectionCall => {
                 quote! { ::vela_engine::native::EffectSet::reflection_call() }
             }
-            EffectName::TaskSpawn => quote! { ::vela_engine::native::EffectSet::task_spawn() },
         };
         tokens = quote! { #tokens.union(#next) };
     }

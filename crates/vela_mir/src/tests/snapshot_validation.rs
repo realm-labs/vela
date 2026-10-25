@@ -21,7 +21,6 @@ fn script_function(
         canonical_symbol: format!("test::function_{}", function.get()),
         debug_name: format!("function_{}", function.get()),
         signature: CompileSignature {
-            asyncness: vela_common::CallableAsyncness::Sync,
             parameters,
             positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
             return_contract: None,
@@ -333,7 +332,6 @@ fn finalization_reports_missing_nested_contract_type_at_descriptor_origin() {
                 canonical_symbol: "host::invalid".to_owned(),
                 debug_name: "invalid".to_owned(),
                 signature: CompileSignature {
-                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::RuntimeChecked,
                     return_contract: Some(MirTypeContract::Array(Some(Box::new(
@@ -495,7 +493,6 @@ fn finalization_rejects_unregistered_script_method_executables() {
                     code_symbol: format!("test::function_{}", executable.function.get()),
                 },
                 signature: CompileSignature {
-                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,

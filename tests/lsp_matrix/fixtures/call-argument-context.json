@@ -362,8 +362,6 @@
         "result::to_option",
         "result::unwrap_or",
         "set::from_array",
-        "task::spawn_scoped",
-        "task::spawn_scoped_then",
         "time::elapsed_since",
         "time::now",
         "time::tick",

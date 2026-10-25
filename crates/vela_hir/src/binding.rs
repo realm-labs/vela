@@ -42,12 +42,6 @@ pub enum BindingResolution {
     QualifiedPath(Vec<String>),
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum TaskLexicalCapability {
-    SpawnScoped,
-    SpawnScopedThen,
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ConstructorResolution {
     Declaration(HirDeclId),
@@ -70,8 +64,6 @@ pub struct BindingMap {
     pub(crate) pattern_resolutions: BTreeMap<Vec<String>, BindingResolution>,
     pub(crate) pending_constructor_paths: BTreeMap<HirExprId, Vec<String>>,
     pub(crate) pending_pattern_paths: BTreeMap<Vec<String>, Vec<String>>,
-
-    pub(crate) task_capabilities: BTreeMap<HirExprId, TaskLexicalCapability>,
 }
 
 impl BindingMap {
@@ -123,19 +115,6 @@ impl BindingMap {
         self.resolutions
             .iter()
             .map(|(expression, resolution)| (*expression, resolution))
-    }
-
-    #[must_use]
-    pub fn task_capability(&self, expression: HirExprId) -> Option<TaskLexicalCapability> {
-        self.task_capabilities.get(&expression).copied()
-    }
-
-    pub fn task_capabilities(
-        &self,
-    ) -> impl Iterator<Item = (HirExprId, TaskLexicalCapability)> + '_ {
-        self.task_capabilities
-            .iter()
-            .map(|(expression, capability)| (*expression, *capability))
     }
 
     #[must_use]

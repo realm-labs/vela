@@ -592,7 +592,7 @@ fn lsp_code_action_ranges_follow_open_overlay_text() {
 
 fn schema_with_player_level_field() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

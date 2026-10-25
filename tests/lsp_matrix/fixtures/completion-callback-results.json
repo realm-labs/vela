@@ -18,7 +18,7 @@
     "scripts/iterator_factory.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.iter().map(api::factory()).collect_array()[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
     "scripts/lambda_erased.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { items.map(|value| dynamic)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
     "scripts/lambda_local.vela": "/* 中😀 */\nfn run(items: Array<i64>, dynamic: Any, closure: Closure) { let callback = |value| api::produce(value); items.map(callback)[0].[[replace:start]]pay[[cursor]][[replace:end]]; }\n",
-    "schema.json": "{\"formatVersion\":2,\"facts\":{}}"
+    "schema.json": "{\"formatVersion\":3,\"facts\":{}}"
   },
   "actions": [],
   "oracle": {

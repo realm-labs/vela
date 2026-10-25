@@ -141,7 +141,7 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_method_return() {
 
 fn schema_with_inventory_method_return() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -182,7 +182,7 @@ fn schema_with_inventory_method_return() -> &'static str {
 
 fn schema_with_rewardable_method_return() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

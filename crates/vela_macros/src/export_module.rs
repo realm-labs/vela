@@ -55,7 +55,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
         let adapter = emission::function_value_adapter(function, &classified).ok_or_else(|| {
             syn::Error::new_spanned(
                 &function.sig,
-                "this export-module signature requires the direct host/async adapter batch",
+                "this export-module signature has no supported synchronous adapter",
             )
         })?;
         generated.push(adapter);
@@ -162,7 +162,7 @@ mod tests {
                     #[vela(effects(random))]
                     pub fn roll() -> i64 { 4 }
 
-                    fn helper() -> i64 { 1 }
+                    async fn helper() -> i64 { 1 }
                 }
             },
         )

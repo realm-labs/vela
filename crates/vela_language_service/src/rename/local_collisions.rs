@@ -71,10 +71,7 @@ pub(super) fn conflicts(
                 continue;
             }
             // Bare Map keys are literal keys, not unresolved identifier reads.
-            // Contextual task capabilities likewise bypass local lookup.
-            if (resolution.is_none() && !unresolved_reads.contains(&expression.id))
-                || bindings.task_capability(expression.id).is_some()
-            {
+            if resolution.is_none() && !unresolved_reads.contains(&expression.id) {
                 continue;
             }
             let resolved = renamed_lookup(

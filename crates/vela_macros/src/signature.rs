@@ -11,6 +11,17 @@ pub(crate) fn reject_generic_signature(generics: &Generics, context: &str) -> Re
     ))
 }
 
+pub(crate) fn reject_async_signature(signature: &Signature) -> Result<()> {
+    let Some(asyncness) = signature.asyncness else {
+        return Ok(());
+    };
+
+    Err(syn::Error::new_spanned(
+        asyncness,
+        "Vela exports are synchronous; async Rust functions cannot be exported or registered",
+    ))
+}
+
 pub(crate) fn reject_unsafe_signature(signature: &Signature, context: &str) -> Result<()> {
     if signature.unsafety.is_none() {
         return Ok(());

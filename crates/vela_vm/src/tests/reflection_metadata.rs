@@ -298,47 +298,42 @@ fn main() {
 }
 
 #[test]
-fn compiled_source_reads_is_async_with_normal_dot_syntax() {
-    let program = compile_reflection_metadata_source(
-        SourceId::new(1),
-        r#"
-fn main() {
-    let function = reflect::function("game::async_probe");
-    let method = reflect::method(reflect::type_info("AsyncHost"), "wait");
-    return function.is_async && method.is_async;
-}
-"#,
-    )
-    .expect("compile script-addressable async metadata source");
-    let mut graph = ModuleGraph::new();
-    graph.add_source(ModuleSource::new(
-        SourceId::new(2),
-        vela_package::PackageId::anonymous(),
-        ModulePath::from_qualified("game"),
-        "pub async fn async_probe() { return 1; }",
-    ));
-    let mut registry = TypeRegistry::new();
-    registry.register_script_modules(&graph);
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(0xA535), "AsyncHost")).method(
-            MethodDesc::new(HostMethodId::new(0xA535), "wait")
-                .asyncness(vela_common::CallableAsyncness::Async),
-        ),
-    );
-    let mut vm = Vm::new();
-    vm.register_reflection_natives(Arc::new(registry));
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    assert_eq!(
-        exec_reflection_metadata_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Bool(true))
-    );
+fn compiled_source_rejects_removed_async_metadata_fields() {
+    for target in [
+        r#"reflect::function("game::probe")"#,
+        r#"reflect::method(reflect::type_info("ProbeHost"), "probe")"#,
+    ] {
+        let program = compile_reflection_metadata_source(
+            SourceId::new(1),
+            &format!("fn main() {{ let target = {target}; return target.is_async; }}"),
+        )
+        .expect("compile ordinary metadata field access");
+        let mut graph = ModuleGraph::new();
+        graph.add_source(ModuleSource::new(
+            SourceId::new(2),
+            vela_package::PackageId::anonymous(),
+            ModulePath::from_qualified("game"),
+            "pub fn probe() { return 1; }",
+        ));
+        let mut registry = TypeRegistry::new();
+        registry.register_script_modules(&graph);
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(0xA535), "ProbeHost"))
+                .method(MethodDesc::new(HostMethodId::new(0xA535), "probe")),
+        );
+        let mut vm = Vm::new();
+        vm.register_reflection_natives(Arc::new(registry));
+        let mut adapter = MockStateAdapter::new();
+        let mut access = HostAccess::new();
+        let mut host = HostExecution {
+            adapter: &mut adapter,
+            access: &mut access,
+            state_values: None,
+        };
+        let error = exec_reflection_metadata_program(&vm, &program, &[], &mut host)
+            .expect_err("removed async metadata must not be projected");
+        assert!(error.to_string().contains("is_async"), "{error}");
+    }
 }
 
 #[test]

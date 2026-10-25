@@ -16,7 +16,7 @@ use vela_reflect::type_binding::TypeBindingDesc;
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{HostNativeFunctionEntry, NativeFunctionDesc, TypeHint};
 use crate::typed::TypedNativeMethodFunction;
 use crate::{args::FromScriptArg, args::IntoScriptArg};
@@ -31,7 +31,6 @@ pub struct TypeBinding<T: 'static> {
     collection_views: Option<CollectionViewCapabilities>,
     value_codec: Option<ValueCodec<T>>,
     constructors: Vec<TypeConstructorEntry>,
-    async_native_methods: Vec<AsyncNativeMethodEntry>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -65,7 +64,6 @@ impl<T: 'static> TypeBinding<T> {
             collection_views: None,
             value_codec: Some(codec),
             constructors: Vec::new(),
-            async_native_methods: Vec::new(),
         }
     }
 
@@ -78,7 +76,6 @@ impl<T: 'static> TypeBinding<T> {
             collection_views: None,
             value_codec: None,
             constructors: Vec::new(),
-            async_native_methods: Vec::new(),
         }
     }
 
@@ -309,55 +306,6 @@ impl<T: 'static> TypeBinding<T> {
         self.typed_native_method_fn(desc, function)
     }
 
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_async_direct_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        lease_kind: vela_host::lease::HostLeaseKind,
-        function: impl for<'host> Fn(
-            vela_host::path::HostRef,
-            vela_host::lease::ErasedHostLease<'host>,
-            Vec<OwnedValue>,
-        ) -> crate::native::NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new_direct(
-                desc, lease_kind, function,
-            ));
-        self
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_async_context_direct_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        lease_kind: vela_host::lease::HostLeaseKind,
-        param_leases: Vec<(usize, vela_host::lease::HostLeaseKind)>,
-        function: impl for<'invoke, 'lease> Fn(
-            vela_host::path::HostRef,
-            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-            &'invoke mut crate::context::NativeCallContext<'invoke, 'invoke>,
-        ) -> crate::native::NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new_direct_context(
-                desc,
-                lease_kind,
-                param_leases,
-                function,
-            ));
-        self
-    }
-
     pub(crate) fn into_parts(
         self,
     ) -> (
@@ -365,17 +313,13 @@ impl<T: 'static> TypeBinding<T> {
         TypeDesc,
         Vec<NativeMethodDesc>,
         Vec<NativeMethodEntry>,
-        Vec<AsyncNativeMethodEntry>,
         Vec<HostNativeFunctionEntry>,
     ) {
         let storage = self.storage;
         let capabilities = self.capabilities;
         let collection_views = self.collection_views;
         let constructors = self.constructors;
-        let mut async_native_methods = self.async_native_methods;
-        let (type_desc, method_metadata, native_methods, spec_async_native_methods) =
-            self.spec.into_parts();
-        async_native_methods.extend(spec_async_native_methods);
+        let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
         let registration = TypeBindingRegistration {
             key: type_desc.key.clone(),
             storage,
@@ -397,7 +341,6 @@ impl<T: 'static> TypeBinding<T> {
             type_desc,
             method_metadata,
             native_methods,
-            async_native_methods,
             constructors.into_iter().map(|entry| entry.native).collect(),
         )
     }
@@ -773,10 +716,9 @@ fn type_abi_fingerprint(
     methods.sort_by_key(|method| method.id);
     for method in methods {
         parts.push(format!(
-            "method={:032x}:{}:{}:{}:{}:{}:{}:{}",
+            "method={:032x}:{}:{}:{}:{}:{}:{}",
             method.id.get(),
             method.name,
-            method.asyncness.is_async(),
             method.receiver.as_str(),
             method.access.public,
             method_effect_bits(&method.effects),
@@ -818,10 +760,9 @@ fn type_abi_fingerprint(
         methods.sort_by_key(|method| method.id);
         for method in methods {
             parts.push(format!(
-                "trait-method={:032x}:{}:{}:{}:{}",
+                "trait-method={:032x}:{}:{}:{}",
                 method.id.get(),
                 method.name,
-                method.asyncness.is_async(),
                 method.has_default,
                 method.return_type.as_deref().unwrap_or("")
             ));
@@ -924,13 +865,7 @@ fn validate_constructors(
                 "qualified name is not directly owned by the bound type",
             ));
         }
-        if constructor_desc.asyncness.is_async() {
-            return Err(invalid_constructor(
-                desc,
-                constructor_desc,
-                "constructors must be synchronous",
-            ));
-        }
+
         let expected = match (registration.storage, constructor.storage, desc.kind) {
             (StoragePolicy::Value, ConstructorStorage::Value, TypeKind::ScriptStruct) => {
                 TypeHint::Record(desc.key.clone())
@@ -1001,10 +936,9 @@ fn invalid_constructor(
 
 fn constructor_abi(constructor: &NativeFunctionDesc) -> String {
     format!(
-        "constructor={:032x}:{}:{}:{}:{}:{}:{}:{}",
+        "constructor={:032x}:{}:{}:{}:{}:{}:{}",
         constructor.id.get(),
         constructor.name,
-        constructor.asyncness.is_async(),
         constructor.effects.bits(),
         constructor.access.public,
         constructor.access.reflect_visible,
@@ -1066,5 +1000,4 @@ const fn method_effect_bits(effects: &vela_reflect::access::MethodEffectSet) -> 
         | (effects.reads_reflection as u16) << 7
         | (effects.writes_reflection as u16) << 8
         | (effects.calls_reflection as u16) << 9
-        | (effects.spawns_tasks as u16) << 10
 }

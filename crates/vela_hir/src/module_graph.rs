@@ -7,7 +7,6 @@ mod queries;
 mod schema_diagnostics;
 mod syntax_metadata;
 mod syntax_summary;
-mod task_diagnostics;
 mod validation;
 
 use vela_common::{Diagnostic, SourceId, Span};
@@ -78,7 +77,6 @@ pub struct ModuleGraph {
     impl_method_bindings: BTreeMap<HirNodeId, BindingMap>,
     diagnostics: Vec<Diagnostic>,
     schema_references_validated: bool,
-    task_references_validated: bool,
     next_node_id: u32,
     next_decl_id: u32,
     next_body_id: u32,
@@ -502,7 +500,6 @@ impl ModuleGraph {
         }
 
         self.schema_references_validated = false;
-        self.task_references_validated = false;
         self.modules.push(hir_module);
         module
     }
@@ -521,7 +518,6 @@ impl ModuleGraph {
             }
         }
         self.refresh_import_binding_resolutions();
-        task_diagnostics::validate_once(self);
         schema_diagnostics::validate_once(self);
     }
 

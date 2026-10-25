@@ -10,12 +10,12 @@ fn call_expression_matrix_preserves_complete_choices_and_distinct_insertions() {
 }
 
 #[test]
-fn task_operand_matrix_inserts_calls_and_static_continuation_paths() {
+fn removed_task_operand_matrix_rejects_calls_and_continuations() {
     verify_fixture("completion-task-operands");
 }
 
 #[test]
-fn task_eligibility_matrix_keeps_static_async_workers_and_matching_continuations() {
+fn removed_task_eligibility_matrix_rejects_async_workers() {
     verify_fixture("completion-task-eligibility");
 }
 
@@ -35,18 +35,27 @@ fn callback_factory_matrix_preserves_existing_calls_and_reference_boundaries() {
 }
 
 #[test]
-fn task_value_matrix_preserves_argument_choices_and_exact_admission_diagnostics() {
+fn removed_task_value_matrix_rejects_admission() {
     verify_fixture("completion-task-values");
 }
 
 #[test]
-fn task_effect_matrix_preserves_choices_and_reports_transitive_denials() {
+fn removed_task_effect_matrix_rejects_admission() {
     verify_fixture("completion-task-effects");
     verify_fixture("completion-task-spawn-ceiling");
     verify_fixture("completion-task-unknown-ceiling");
 }
 
 fn verify_fixture(name: &str) {
+    if name.starts_with("completion-task-")
+        || matches!(
+            name,
+            "completion-async-callables" | "completion-await-contexts"
+        )
+    {
+        crate::removed_execution_tests::verify_fixture(name);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(name);
         if crlf {
@@ -189,13 +198,7 @@ fn verify_fixture(name: &str) {
                     let actual = diagnostics
                         .diagnostics()
                         .iter()
-                        .filter(|d| {
-                            d.code().is_some_and(|code| {
-                                code.starts_with("analysis::task_")
-                                    || code.starts_with("hir::task_")
-                                    || code == "analysis::async_call_requires_await"
-                            })
-                        })
+                        .filter(|d| d.code().is_some_and(|code| code.starts_with("syntax::")))
                         .collect::<Vec<_>>();
                     let oracle = expected["diagnostics"].as_array().expect("diagnostics");
                     assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
@@ -251,11 +254,7 @@ fn verify_fixture(name: &str) {
                         .diagnostics()
                         .iter()
                         .filter_map(|d| d.code())
-                        .filter(|code| {
-                            code.starts_with("hir::task_")
-                                || code.starts_with("analysis::task_")
-                                || *code == "analysis::async_call_requires_await"
-                        })
+                        .filter(|code| code.starts_with("syntax::"))
                         .collect::<Vec<_>>();
                     assert_eq!(
                         codes,

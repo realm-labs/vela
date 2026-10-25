@@ -237,7 +237,7 @@ pub fn main() -> i64 {
         .expect("schema source should be indexed");
     let preview_start = schema_text.find("preview").expect("preview marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "traits": [
                 {

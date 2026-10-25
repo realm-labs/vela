@@ -59,7 +59,6 @@ fn validate_contract_at(
     };
     match contract {
         MirTypeContract::Any
-        | MirTypeContract::TaskError
         | MirTypeContract::Primitive(_)
         | MirTypeContract::Range
         | MirTypeContract::Callable { .. } => {}

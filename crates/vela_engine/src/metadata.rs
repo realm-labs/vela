@@ -6,9 +6,8 @@ use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, Typ
 
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::interop::{BorrowedReturnOrigin, ReturnMode, ScopedHostAccess};
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    AsyncContextHostNativeFunctionEntry, AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry,
     ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
     NativeFunctionEntry, TypeHint,
 };
@@ -17,12 +16,10 @@ pub(crate) fn inject_host_method_metadata(
     types: &mut [TypeDesc],
     host_method_metadata: &[NativeMethodDesc],
     native_methods: &[NativeMethodEntry],
-    async_native_methods: &[AsyncNativeMethodEntry],
 ) -> EngineResult<()> {
     for desc in host_method_metadata
         .iter()
         .chain(native_methods.iter().map(|entry| &entry.desc))
-        .chain(async_native_methods.iter().map(|entry| &entry.desc))
     {
         let owner = find_type_mut(types, &desc.owner).ok_or_else(|| {
             EngineError::new(EngineErrorKind::UnknownNativeMethodOwner {
@@ -32,7 +29,6 @@ pub(crate) fn inject_host_method_metadata(
         let mut method = MethodDesc::new(desc.id, desc.name.clone())
             .return_type(type_hint_display(&desc.returns))
             .effects(reflect_effects(&desc.effects))
-            .asyncness(desc.asyncness)
             .receiver(desc.receiver)
             .access(reflect_access(&desc.access));
         if let Some(mutation) = type_hint_collection_mutation(&desc.returns) {
@@ -71,34 +67,17 @@ fn type_hint_collection_mutation(hint: &TypeHint) -> Option<vela_common::Collect
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
-    async_native_functions: &[AsyncNativeFunctionEntry],
-    async_host_native_functions: &[AsyncHostNativeFunctionEntry],
-    async_direct_host_native_functions: &[crate::native::AsyncDirectHostNativeFunctionEntry],
     scoped_host_native_functions: &[crate::native::ScopedHostNativeFunctionEntry],
-    async_context_host_native_functions: &[AsyncContextHostNativeFunctionEntry],
     host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
 ) {
     for desc in native_functions
         .iter()
         .map(|entry| &entry.desc)
-        .chain(async_native_functions.iter().map(|entry| &entry.desc))
-        .chain(async_host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(
-            async_direct_host_native_functions
-                .iter()
-                .map(|entry| &entry.desc),
-        )
         .chain(scoped_host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(
-            async_context_host_native_functions
-                .iter()
-                .map(|entry| &entry.desc),
-        )
         .chain(host_native_functions.iter().map(|entry| &entry.desc))
         .chain(
             context_host_native_functions
@@ -152,7 +131,6 @@ fn native_module_desc(module_name: &str) -> ModuleDesc {
 fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     let mut reflected = FunctionDesc::new(desc.id, desc.name.clone())
         .origin(DeclOrigin::Host)
-        .asyncness(desc.asyncness)
         .return_type(type_hint_display(&desc.returns))
         .effects(reflect_function_effects(&desc.effects))
         .access(reflect_function_access(&desc.access));
@@ -221,7 +199,6 @@ fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
         reads_reflection: effects.reads_reflection(),
         writes_reflection: effects.writes_reflection(),
         calls_reflection: effects.calls_reflection(),
-        spawns_tasks: effects.spawns_tasks(),
     }
 }
 
@@ -243,7 +220,6 @@ fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffec
         reads_reflection: effects.reads_reflection(),
         writes_reflection: effects.writes_reflection(),
         calls_reflection: effects.calls_reflection(),
-        spawns_tasks: effects.spawns_tasks(),
     }
 }
 

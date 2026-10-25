@@ -10,7 +10,6 @@ use vela_analysis::{
     },
     stdlib::stdlib_method_fact,
     type_fact::TypeFact,
-    validation::ExecutableValidationFacts,
 };
 use vela_common::{Diagnostic, PrimitiveTag, SourceId, Span};
 use vela_hir::{
@@ -129,27 +128,6 @@ pub(super) fn source_diagnostics(
             parsed, source, graph, module,
         ));
     }
-    let executable_validation = ExecutableValidationFacts::for_bodies(
-        graph,
-        Some(facts),
-        analysis,
-        graph
-            .bodies()
-            .filter(|body| body.origin.span.source == source)
-            .map(|body| body.id),
-    );
-    diagnostics.extend(
-        executable_validation
-            .diagnostics()
-            .iter()
-            .filter(|diagnostic| {
-                diagnostic.code.as_deref().is_some_and(|code| {
-                    code == "analysis::async_call_requires_await"
-                        || code.starts_with("analysis::task_")
-                })
-            })
-            .cloned(),
-    );
     diagnostics
 }
 

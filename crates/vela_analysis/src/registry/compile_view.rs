@@ -369,7 +369,7 @@ impl<'registry> CompileViewFacts<'registry> {
             .return_type
             .as_ref()
             .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
-        CallableSignatureFact::new(parameters, returns).asyncness(signature.asyncness)
+        CallableSignatureFact::new(parameters, returns)
     }
 
     fn type_hint_fact(&self, hint: &TypeHintDef) -> TypeFact {
@@ -439,7 +439,6 @@ fn definition_effect_fact(effects: EffectSet) -> RegistryEffectFact {
         reads_reflection: effects.reflection_read,
         writes_reflection: effects.reflection_write,
         calls_reflection: effects.reflection_call,
-        spawns_tasks: effects.task_spawn,
     }
 }
 

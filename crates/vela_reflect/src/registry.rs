@@ -6,7 +6,7 @@ use lookup::{find_field, find_method, stable_trait_id};
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
 use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
-use crate::modules::{DeclOrigin, DetachedTargetDesc, FunctionDesc, ModuleDesc, StateDesc};
+use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
 use crate::type_binding::{TypeBindingDesc, TypeBindingSnapshot};
 use vela_common::{CollectionViewMutation, HostMethodId, HostTypeId, Span};
 use vela_common::{InteropTypeId, TypeBindingRegistryChecksum};
@@ -382,7 +382,6 @@ pub struct MethodDesc {
     pub return_type: Option<String>,
     pub return_collection_mutation: Option<CollectionViewMutation>,
     pub effects: MethodEffectSet,
-    pub asyncness: vela_common::CallableAsyncness,
     pub receiver: vela_common::ReceiverCapability,
     pub access: MethodAccess,
     pub origin: DeclOrigin,
@@ -401,7 +400,6 @@ impl MethodDesc {
             return_type: None,
             return_collection_mutation: None,
             effects: MethodEffectSet::default(),
-            asyncness: vela_common::CallableAsyncness::Sync,
             receiver: vela_common::ReceiverCapability::Shared,
             access: MethodAccess::default(),
             origin: DeclOrigin::Host,
@@ -414,12 +412,6 @@ impl MethodDesc {
     #[must_use]
     pub fn effects(mut self, effects: MethodEffectSet) -> Self {
         self.effects = effects;
-        self
-    }
-
-    #[must_use]
-    pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -572,7 +564,6 @@ pub struct TraitMethodDesc {
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
     pub has_default: bool,
-    pub asyncness: vela_common::CallableAsyncness,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -588,7 +579,6 @@ impl TraitMethodDesc {
             params: Vec::new(),
             return_type: None,
             has_default: false,
-            asyncness: vela_common::CallableAsyncness::Sync,
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
@@ -599,12 +589,6 @@ impl TraitMethodDesc {
     #[must_use]
     pub fn defaulted(mut self, has_default: bool) -> Self {
         self.has_default = has_default;
-        self
-    }
-
-    #[must_use]
-    pub fn asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -782,23 +766,6 @@ impl TypeRegistry {
             module_desc.export_function(desc.name.clone(), desc.id);
         }
         self.functions_by_id.insert(desc.id, desc);
-    }
-
-    /// Attaches sealed linked-artifact facts to an already registered script
-    /// function. This is metadata-only and does not add a reflective call path.
-    pub fn register_detached_target(
-        &mut self,
-        function: FunctionId,
-        target: DetachedTargetDesc,
-    ) -> bool {
-        let Some(desc) = self.functions_by_id.get_mut(&function) else {
-            return false;
-        };
-        if let Some(existing) = &desc.detached_target {
-            debug_assert_eq!(existing, &target);
-        }
-        desc.detached_target = Some(target);
-        true
     }
 
     pub fn register_state(&mut self, desc: StateDesc) {

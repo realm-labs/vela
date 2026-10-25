@@ -178,7 +178,7 @@ state target: i64 = pending().await;
         &error.kind,
         CompileErrorKind::InvalidHirGraph(diagnostics)
             if diagnostics.iter().any(|diagnostic| {
-                diagnostic.code.as_deref() == Some("syntax::await_outside_async")
+                diagnostic.code.as_deref() == Some("syntax::removed_async")
             })
     ));
 }

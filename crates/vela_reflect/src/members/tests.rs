@@ -33,7 +33,6 @@ fn registry() -> TypeRegistry {
             )
             .method(
                 MethodDesc::new(HostMethodId::new(5), "grant_exp")
-                    .asyncness(vela_common::CallableAsyncness::Async)
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .source_span(Span::new(SourceId::new(8), 60, 80))
@@ -53,7 +52,6 @@ fn registry() -> TypeRegistry {
                     .attr("combat", "true")
                     .method(
                         TraitMethodDesc::new(MethodId::new(9), "damage")
-                            .asyncness(vela_common::CallableAsyncness::Async)
                             .param(MethodParamDesc::new("amount").type_hint("i64"))
                             .return_type("i64")
                             .defaulted(true)

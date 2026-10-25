@@ -33,9 +33,9 @@ and editor integrations, a browser playground, and measured interpreter baseline
 
 The active work is the removal-only [runtime simplification pass](docs/runtime-simplification-plan.md).
 Checkpoint B removes Rust/Vela Service hotfixing and Provider discovery/selection;
-ordinary packages, traits and script reload remain. Checkpoints C/D remove script
-async/tasks, caller-borrowed Rust values and transparent host paths. Some examples
-and implementation surfaces still await those owning checkpoints; their presence
+ordinary packages, traits and script reload remain. Checkpoint C removes script
+async/tasks and the CLI async mode. Borrowed-host examples and transparent paths
+remain checkpoint D removal work; their presence
 does not establish the target boundary. No replacement features are added here.
 
 See [`docs/progress.md`](docs/progress.md) for the active milestone state.
@@ -76,7 +76,7 @@ fn main() {
 
 There are no script-language generics, overload sets, Rust-style borrow syntax,
 script-visible task/coroutine handles, arbitrary `eval`, or runtime monkey
-patching. Script `async fn`/`.await` are scheduled for removal; editor worker
+patching. Script `async fn`/`.await` and detached tasks are unsupported; editor worker
 scheduling and protocol cancellation are independent tooling concerns.
 
 ## Repository Layout
@@ -134,7 +134,6 @@ cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
 cargo run --manifest-path examples/Cargo.toml --bin script_state
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
-cargo run --manifest-path examples/Cargo.toml --bin async_basic
 
 ```
 
@@ -142,7 +141,6 @@ Run the CLI on a simple script:
 
 ```bash
 cargo run -p vela_cli -- examples/src/bin/io_stdlib/main.vela
-cargo run -p vela_cli -- --async examples/src/bin/async_basic/main.vela
 ```
 
 Some host-boundary examples need their Rust embedding setup and should be run

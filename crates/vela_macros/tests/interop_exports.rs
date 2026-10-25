@@ -333,23 +333,6 @@ pub fn panic_grant(_player: &mut Player) {
     panic!("authored Rust panic payload must not cross the boundary");
 }
 
-#[export(path = "game::double_async")]
-pub async fn double_async(amount: i64) -> i64 {
-    amount * 2
-}
-
-#[export(path = "game::transfer_async")]
-pub async fn transfer_async(first: &mut Player, second: &mut Player, amount: i64) -> i64 {
-    first.level -= amount;
-    second.level += amount;
-    first.level + second.level
-}
-
-#[export(path = "game::hold_player_async")]
-pub async fn hold_player_async(_player: &mut Player) {
-    std::future::pending::<()>().await;
-}
-
 #[export(path = "game::roll", effects(random))]
 pub fn roll(_ctx: &mut NativeCallContext<'_, '_>, player: &Player) -> i64 {
     player.level
@@ -374,31 +357,6 @@ impl Player {
 
     pub fn combined(&self, other: &Player) -> i64 {
         self.level + other.level
-    }
-
-    pub async fn increment_async(&mut self, amount: i64) -> i64 {
-        self.level += amount;
-        self.level
-    }
-
-    pub async fn absorb_async(&mut self, other: &mut Player) -> i64 {
-        self.level += other.level;
-        other.level = 0;
-        self.level
-    }
-
-    pub async fn hold_async(&mut self) {
-        std::future::pending::<()>().await;
-    }
-
-    pub async fn context_increment_async(
-        &mut self,
-        context: &mut NativeCallContext<'_, '_>,
-        amount: i64,
-    ) -> VmResult<i64> {
-        context.charge_execution_units(1)?;
-        self.level += amount;
-        Ok(self.level)
     }
 
     fn rust_only_helper(&self) -> i64 {
@@ -567,9 +525,6 @@ fn host_export_runtime(source: &str) -> Runtime {
         .install_registration(vela_function_strict_grant())
         .install_registration(vela_function_fail_grant())
         .install_registration(vela_function_panic_grant())
-        .install_registration(vela_function_double_async())
-        .install_registration(vela_function_transfer_async())
-        .install_registration(vela_function_hold_player_async())
         .install_registration(Player::vela_methods())
         .install_registration(PlayerService::vela_methods())
         .install_registration(Team::vela_methods())
@@ -1712,4 +1667,5 @@ fn inherent_method_exports_apply_alias_matrix_to_receiver_and_parameters() {
     assert_eq!(player.level, 7);
 }
 
-mod interop_exports_async_and_traits;
+#[path = "interop_exports/trait_tests.rs"]
+mod trait_tests;

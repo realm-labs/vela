@@ -18,33 +18,15 @@ use crate::symbol_ref::{
 pub(super) struct SourceMemberCompletion {
     pub(super) item: AnalysisCompletionItem,
     pub(super) symbol: CompletionSymbol,
-    asyncness: vela_common::CallableAsyncness,
 }
 
 impl SourceMemberCompletion {
     fn new(item: AnalysisCompletionItem, symbol: CompletionSymbol) -> Self {
-        Self {
-            item,
-            symbol,
-            asyncness: vela_common::CallableAsyncness::Sync,
-        }
-    }
-
-    fn with_asyncness(mut self, asyncness: vela_common::CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
+        Self { item, symbol }
     }
 
     pub(super) fn detail(&self) -> String {
-        format!(
-            "{}{}",
-            if self.asyncness.is_async() {
-                "async "
-            } else {
-                ""
-            },
-            self.item.fact.display_name()
-        )
+        self.item.fact.display_name()
     }
 }
 
@@ -191,22 +173,14 @@ fn source_impl_method_completion_items(
         })
         .flat_map(|(declaration, metadata)| {
             metadata.methods.iter().filter_map(move |method| {
-                Some(
-                    SourceMemberCompletion::new(
-                        AnalysisCompletionItem {
-                            label: method.name.clone(),
-                            kind: AnalysisCompletionKind::Method,
-                            fact: function_fact_from_signature(
-                                graph,
-                                schema,
-                                &method.signature,
-                                true,
-                            ),
-                        },
-                        source_impl_method_symbol(graph, declaration, &method.name)?,
-                    )
-                    .with_asyncness(method.signature.asyncness),
-                )
+                Some(SourceMemberCompletion::new(
+                    AnalysisCompletionItem {
+                        label: method.name.clone(),
+                        kind: AnalysisCompletionKind::Method,
+                        fact: function_fact_from_signature(graph, schema, &method.signature, true),
+                    },
+                    source_impl_method_symbol(graph, declaration, &method.name)?,
+                ))
             })
         })
         .collect()
@@ -235,22 +209,14 @@ fn source_trait_receiver_method_completion_items(
         })
         .flat_map(|(declaration, shape)| {
             shape.methods.iter().filter_map(move |method| {
-                Some(
-                    SourceMemberCompletion::new(
-                        AnalysisCompletionItem {
-                            label: method.name.clone(),
-                            kind: AnalysisCompletionKind::Method,
-                            fact: function_fact_from_signature(
-                                graph,
-                                schema,
-                                &method.signature,
-                                true,
-                            ),
-                        },
-                        source_member_symbol(graph, declaration, &method.name)?,
-                    )
-                    .with_asyncness(method.signature.asyncness),
-                )
+                Some(SourceMemberCompletion::new(
+                    AnalysisCompletionItem {
+                        label: method.name.clone(),
+                        kind: AnalysisCompletionKind::Method,
+                        fact: function_fact_from_signature(graph, schema, &method.signature, true),
+                    },
+                    source_member_symbol(graph, declaration, &method.name)?,
+                ))
             })
         })
         .collect()
@@ -310,22 +276,19 @@ fn source_trait_default_method_completion_items(
                             {
                                 return None;
                             }
-                            Some(
-                                SourceMemberCompletion::new(
-                                    AnalysisCompletionItem {
-                                        label: method.name.clone(),
-                                        kind: AnalysisCompletionKind::Method,
-                                        fact: function_fact_from_signature(
-                                            graph,
-                                            schema,
-                                            &method.signature,
-                                            true,
-                                        ),
-                                    },
-                                    source_member_symbol(graph, trait_declaration, &method.name)?,
-                                )
-                                .with_asyncness(method.signature.asyncness),
-                            )
+                            Some(SourceMemberCompletion::new(
+                                AnalysisCompletionItem {
+                                    label: method.name.clone(),
+                                    kind: AnalysisCompletionKind::Method,
+                                    fact: function_fact_from_signature(
+                                        graph,
+                                        schema,
+                                        &method.signature,
+                                        true,
+                                    ),
+                                },
+                                source_member_symbol(graph, trait_declaration, &method.name)?,
+                            ))
                         }
                     })
                 })

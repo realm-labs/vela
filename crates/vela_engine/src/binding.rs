@@ -1,8 +1,6 @@
 //! Runtime authority for compiler-schema-backed generated Rust bindings.
 
 use std::fmt;
-use std::future::Future;
-use std::pin::Pin;
 
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
 use vela_common::{Capability, CapabilitySet, SourceId, Span};
@@ -23,8 +21,6 @@ const DEFAULT_BINDING_MEMORY_BYTES: usize = 8 * 1024 * 1024;
 const DEFAULT_BINDING_CALL_DEPTH: usize = 128;
 
 pub type BindingResult<T> = Result<T, BindingError>;
-pub type BindingCallFuture<'call, T> = Pin<Box<dyn Future<Output = VmResult<T>> + Send + 'call>>;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum BindingCallableIdentitySpec {
     Function(u128),
@@ -347,15 +343,6 @@ pub trait BindingAuthority {
         R: FromScriptArg,
         A: IntoBindingArgs;
 
-    fn call_async<'call, R, A>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: A,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-        A: IntoBindingArgs + Send + 'call;
-
     fn call_prepared<'args, R>(
         &mut self,
         callable: &BindingCallable,
@@ -363,14 +350,6 @@ pub trait BindingAuthority {
     ) -> VmResult<R>
     where
         R: FromScriptArg;
-
-    fn call_prepared_async<'call, R>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: CallArgs<'call>,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call;
 
     fn push_host_ref<'args, T>(
         &mut self,
@@ -407,30 +386,6 @@ impl BindingAuthority for RootBinding<'_> {
         R::from_script_arg(&owned)
     }
 
-    fn call_async<'call, R, A>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: A,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-        A: IntoBindingArgs + Send + 'call,
-    {
-        Box::pin(async move {
-            let spec = callable.spec()?;
-            let result = self
-                .runtime
-                .call_async(
-                    stable_target(spec),
-                    args.into_call_args(),
-                    self.options.call.clone(),
-                )
-                .await?;
-            let owned = self.runtime.value_to_owned(&result)?;
-            R::from_script_arg(&owned)
-        })
-    }
-
     fn call_prepared<'args, R>(
         &mut self,
         callable: &BindingCallable,
@@ -445,25 +400,6 @@ impl BindingAuthority for RootBinding<'_> {
             .call(stable_target(spec), args, self.options.call.clone())?;
         let owned = self.runtime.value_to_owned(&result)?;
         R::from_script_arg(&owned)
-    }
-
-    fn call_prepared_async<'call, R>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: CallArgs<'call>,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-    {
-        Box::pin(async move {
-            let spec = callable.spec()?;
-            let result = self
-                .runtime
-                .call_async(stable_target(spec), args, self.options.call.clone())
-                .await?;
-            let owned = self.runtime.value_to_owned(&result)?;
-            R::from_script_arg(&owned)
-        })
     }
 
     fn push_host_ref<'args, T>(
@@ -511,30 +447,6 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         R::from_script_arg(&owned)
     }
 
-    fn call_async<'call, R, A>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: A,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-        A: IntoBindingArgs + Send + 'call,
-    {
-        Box::pin(async move {
-            let spec = callable.spec()?;
-            self.context.require_capabilities(
-                spec.public_path,
-                binding_required_capabilities(spec.effect_bits),
-            )?;
-            let result = self
-                .context
-                .call_async(stable_target(spec), args.into_call_args())
-                .await?;
-            let owned = self.context.value_to_owned(&result)?;
-            R::from_script_arg(&owned)
-        })
-    }
-
     fn call_prepared<'args, R>(
         &mut self,
         callable: &BindingCallable,
@@ -551,26 +463,6 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         let result = self.context.call(stable_target(spec), args)?;
         let owned = self.context.value_to_owned(&result)?;
         R::from_script_arg(&owned)
-    }
-
-    fn call_prepared_async<'call, R>(
-        &'call mut self,
-        callable: &'static BindingCallable,
-        args: CallArgs<'call>,
-    ) -> BindingCallFuture<'call, R>
-    where
-        R: FromScriptArg + Send + 'call,
-    {
-        Box::pin(async move {
-            let spec = callable.spec()?;
-            self.context.require_capabilities(
-                spec.public_path,
-                binding_required_capabilities(spec.effect_bits),
-            )?;
-            let result = self.context.call_async(stable_target(spec), args).await?;
-            let owned = self.context.value_to_owned(&result)?;
-            R::from_script_arg(&owned)
-        })
     }
 
     fn push_host_ref<'args, T>(

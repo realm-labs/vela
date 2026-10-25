@@ -15,8 +15,8 @@ pub use crate::registration::{
 };
 pub use crate::runtime::{
     CallArgs, CallControl, CallOptions, CallSnapshot, CallStatus, ReloadSource, Runtime,
-    RuntimeBuildError, RuntimeBuilder, RuntimeCallFuture, RuntimeInitializationLimits,
-    RuntimeReloadError, VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
+    RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits, RuntimeReloadError,
+    VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
 };
 pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};

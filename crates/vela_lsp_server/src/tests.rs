@@ -274,3 +274,5 @@ mod workspace_symbol_sources;
 mod workspace_symbol_states;
 mod workspace_symbol_types;
 mod workspace_symbol_worker;
+
+mod removed_execution;

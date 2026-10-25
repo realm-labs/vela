@@ -401,7 +401,6 @@ fn observed_capabilities(
             (effect.reflection_read, Capability::ReflectionRead),
             (effect.reflection_write, Capability::ReflectionWrite),
             (effect.reflection_call, Capability::ReflectionCall),
-            (effect.task_spawn, Capability::TaskSpawn),
         ] {
             if present {
                 capabilities.insert(capability);
@@ -460,17 +459,12 @@ fn validate_initializer_root(
             reject_initializer_effect(state, statement.effect, statement.origin.span)?;
             if let vela_mir::MirStatementKind::Call(call) = &statement.kind {
                 match call {
-                    vela_mir::MirCall::ScriptFunction {
-                        function,
-                        signature,
-                        ..
-                    } if !signature.asyncness.is_async() => callees.push(*function),
-                    vela_mir::MirCall::ScriptFunction { .. }
-                    | vela_mir::MirCall::ScriptMethod { .. } => {
+                    vela_mir::MirCall::ScriptFunction { function, .. } => callees.push(*function),
+                    vela_mir::MirCall::ScriptMethod { .. } => {
                         return Err(invalid_state_initializer(
                             state,
                             Some(statement.origin.span),
-                            "async or method calls are not allowed",
+                            "method calls are not allowed",
                         ));
                     }
                     vela_mir::MirCall::ValueMethod {
@@ -491,16 +485,6 @@ fn validate_initializer_root(
                 continue;
             };
             reject_initializer_effect(state, terminator.effect, terminator.origin.span)?;
-            if matches!(
-                terminator.kind,
-                vela_mir::MirTerminatorKind::AwaitCall { .. }
-            ) {
-                return Err(invalid_state_initializer(
-                    state,
-                    Some(terminator.origin.span),
-                    "await is not allowed",
-                ));
-            }
         }
     }
     for callee in callees {
@@ -544,7 +528,6 @@ fn reject_initializer_effect(
         (effect.reads_time, "time access"),
         (effect.uses_random, "random access"),
         (effect.reads_io || effect.writes_io, "IO access"),
-        (effect.task_spawn, "task spawning"),
     ]
     .into_iter()
     .find_map(|(present, reason)| present.then_some(reason));

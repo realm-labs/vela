@@ -248,8 +248,7 @@ fn host_value_state(
             .map_or(HostValueState::NonHost, HostValueState::Exact),
         Some(MirTypeContract::Any) | None => HostValueState::Unknown,
         Some(
-            MirTypeContract::TaskError
-            | MirTypeContract::Primitive(_)
+            MirTypeContract::Primitive(_)
             | MirTypeContract::Range
             | MirTypeContract::Array(_)
             | MirTypeContract::Map { .. }

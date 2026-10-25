@@ -428,7 +428,7 @@ pub(crate) struct LinkedCodeHostCallPlan<'a> {
     pub(crate) wants_return: bool,
 }
 
-pub(crate) struct PreparedAsyncHostMethodArgs {
+pub(crate) struct PreparedHostMethodArgs {
     pub(crate) receiver: HostPath,
     pub(crate) args: Vec<OwnedValue>,
 }
@@ -558,7 +558,7 @@ pub(crate) fn linked_host_method_id(
     })
 }
 
-pub(crate) fn prepare_async_host_method_args(
+pub(crate) fn prepare_host_method_args(
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
     host: Option<&HostExecution<'_>>,
@@ -566,7 +566,7 @@ pub(crate) fn prepare_async_host_method_args(
     target: CodeHostTargetPlan<'_>,
     args: &[Register],
     source_span: Option<Span>,
-) -> VmResult<PreparedAsyncHostMethodArgs> {
+) -> VmResult<PreparedHostMethodArgs> {
     let root = expect_host_ref(&frame.read(root)?, host, "host_call")?;
     let plan = code_host_target(target.targets, target.target_id, source_span)?;
     let dynamic_args = materialize_host_args(frame, plan, target.dynamic_args, heap, "host_call")?;
@@ -585,16 +585,16 @@ pub(crate) fn prepare_async_host_method_args(
             )
         })
         .collect::<VmResult<Vec<_>>>()?;
-    Ok(PreparedAsyncHostMethodArgs { receiver, args })
+    Ok(PreparedHostMethodArgs { receiver, args })
 }
 
-pub(crate) fn prepare_async_host_root_method_args(
+pub(crate) fn prepare_host_root_method_args(
     frame: &CallFrame,
     heap: Option<&HeapExecution<'_>>,
     host: Option<&HostExecution<'_>>,
     receiver: Register,
     args: &[DynamicCallArgumentLinked],
-) -> VmResult<PreparedAsyncHostMethodArgs> {
+) -> VmResult<PreparedHostMethodArgs> {
     let root = expect_host_ref(&frame.read(receiver)?, host, "host_call")?;
     let args = crate::script_method_calls::dynamic_value_args_from_linked_arguments(frame, args)?
         .iter()
@@ -608,7 +608,7 @@ pub(crate) fn prepare_async_host_root_method_args(
             )
         })
         .collect::<VmResult<Vec<_>>>()?;
-    Ok(PreparedAsyncHostMethodArgs {
+    Ok(PreparedHostMethodArgs {
         receiver: HostPath::new(root),
         args,
     })

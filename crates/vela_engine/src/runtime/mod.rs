@@ -7,7 +7,6 @@ use vela_hot_reload::runtime::HotReloadRuntime;
 pub use vela_hot_reload::runtime::HotReloadStagingHandle;
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::HostExecution;
-use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
@@ -24,9 +23,9 @@ mod bytecode_profile;
 #[cfg(test)]
 mod bytecode_profile_tests;
 mod call_args;
-mod call_future;
 mod control;
-mod detached_task;
+#[cfg(test)]
+mod control_tests;
 pub(crate) mod execution_data;
 mod execution_host;
 mod extern_state_bindings;
@@ -38,16 +37,13 @@ mod inline_cache;
 mod lifetime;
 mod metadata;
 mod options;
-#[cfg(test)]
-mod ownership_proof;
 mod profile_api;
 mod reentry;
+#[cfg(test)]
+mod reentry_tests;
 mod reload_api;
 mod state;
 mod state_api;
-mod task_continuation;
-#[cfg(test)]
-mod task_tests;
 #[cfg(test)]
 mod tests;
 mod value_support;
@@ -60,7 +56,6 @@ pub use bytecode_profile::{
     ScalarLoopBytecodeProfile, ScalarUnitBytecodeProfile, SuperinstructionBytecodeProfile,
 };
 pub use call_args::{CallArgs, DirectHostIdentity};
-pub use call_future::RuntimeCallFuture;
 pub use control::{CallControl, CallSnapshot, CallStatus};
 pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{
@@ -78,9 +73,8 @@ use handles::{
     RuntimeMethodSelectorKind,
 };
 use host_arena::RuntimeHostArena;
-use reentry::{ActiveNativeReentry, invoke_prepared_async, invoke_prepared_context};
+use reentry::{ActiveNativeReentry, invoke_prepared_context};
 use state::RuntimeState;
-pub(crate) use task_continuation::resume_task_continuation;
 use value_support::{runtime_vm, unknown_function, unknown_method, value_type_id};
 use vm_states::RuntimeValueRoots;
 
@@ -122,17 +116,6 @@ impl RuntimeImpl<OwnedImage> {
         artifact: std::sync::Arc<vela_bytecode::LinkedArtifact>,
     ) -> Result<Self, RuntimeBuildError> {
         Self::builder_from_linked_artifact(engine, artifact).build()
-    }
-
-    /// Drops every execution-local owner without running script code. A pooled
-    /// detached Runtime must call `initialize_detached_pool_state` before reuse.
-    pub(crate) fn clear_detached_pool_state(&mut self) {
-        debug_assert!(self.hot_reload.is_none());
-        self.state = RuntimeState::for_image(&self.image);
-    }
-
-    pub(crate) fn initialize_detached_pool_state(&mut self) -> Result<(), RuntimeBuildError> {
-        self.initialize_vm_states(RuntimeInitializationLimits::default())
     }
 
     pub fn builder(
@@ -291,108 +274,37 @@ where
     where
         T: RuntimeCallTarget,
     {
-        self.call_impl(entry, args, options)
-    }
-
-    fn call_impl<'host, T>(
-        &mut self,
-        entry: T,
-        args: CallArgs<'host>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue>
-    where
-        T: RuntimeCallTarget,
-    {
-        let task_scope = options.task_scope().cloned();
-        let mut budget = options.budget();
-        let target = handles::call_target_sealed::Sealed::into_call_target(entry);
-        let target = self.resolve_call_target(target)?;
-        if target.asyncness.is_async() {
-            return Err(VmError::new(VmErrorKind::AsyncEntryRequiresCallAsync {
-                name: target.name,
-            }));
-        }
-        let state = &mut self.state;
-        Self::call_runtime_args(RuntimeCallExecution {
-            runtime_id: state.id,
-            engine: self.image.engine(),
-            registry_image: self.image.program_image(),
-            artifact: self.image.linked_artifact(),
-            hot_reload: self.hot_reload.as_ref(),
-            extern_states: &mut state.extern_states,
-            host_arena: &mut state.host_arena,
-            host_slots: &mut state.host_slots,
-            vm_states: &mut state.vm_states,
-            generations: &mut state.generations,
-            target,
-            args,
-            budget: &mut budget,
-            task_scope,
-        })
-    }
-
-    pub fn call_async<'call, 'args, T>(
-        &'call mut self,
-        entry: T,
-        args: CallArgs<'args>,
-        options: CallOptions,
-    ) -> RuntimeCallFuture<'call>
-    where
-        T: RuntimeCallTarget + Send + 'call,
-        'args: 'call,
-    {
         let policy = options.call_policy();
-        RuntimeCallFuture::new_controlled(self.call_impl_async(entry, args, options), policy)
-    }
-
-    async fn call_impl_async<'call, 'args, T>(
-        &'call mut self,
-        entry: T,
-        args: CallArgs<'args>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue>
-    where
-        T: RuntimeCallTarget + Send + 'call,
-        'args: 'call,
-    {
-        self.call_impl_async_with_budget(entry, args, options)
-            .await
-            .map(|(value, _)| value)
-    }
-
-    async fn call_impl_async_with_budget<'call, 'args, T>(
-        &'call mut self,
-        entry: T,
-        args: CallArgs<'args>,
-        options: CallOptions,
-    ) -> VmResult<(VelaValue, ExecutionBudget)>
-    where
-        T: RuntimeCallTarget + Send + 'call,
-        'args: 'call,
-    {
-        let task_scope = options.task_scope().cloned();
-        let mut budget = options.budget();
-        let target = handles::call_target_sealed::Sealed::into_call_target(entry);
-        let target = self.resolve_call_target(target)?;
-        let state = &mut self.state;
-        let value = Self::call_runtime_args_async(RuntimeCallExecution {
-            runtime_id: state.id,
-            engine: self.image.engine(),
-            registry_image: self.image.program_image(),
-            artifact: self.image.linked_artifact(),
-            hot_reload: self.hot_reload.as_ref(),
-            extern_states: &mut state.extern_states,
-            host_arena: &mut state.host_arena,
-            host_slots: &mut state.host_slots,
-            vm_states: &mut state.vm_states,
-            generations: &mut state.generations,
-            target,
-            args,
-            budget: &mut budget,
-            task_scope,
-        })
-        .await?;
-        Ok((value, budget))
+        if let Some(policy) = &policy {
+            policy.attach();
+            policy.check()?;
+        }
+        let result = (|| {
+            let mut budget = options.budget();
+            let target = handles::call_target_sealed::Sealed::into_call_target(entry);
+            let target = self.resolve_call_target(target)?;
+            let state = &mut self.state;
+            Self::call_runtime_args(RuntimeCallExecution {
+                runtime_id: state.id,
+                engine: self.image.engine(),
+                registry_image: self.image.program_image(),
+                artifact: self.image.linked_artifact(),
+                hot_reload: self.hot_reload.as_ref(),
+                extern_states: &mut state.extern_states,
+                host_arena: &mut state.host_arena,
+                host_slots: &mut state.host_slots,
+                vm_states: &mut state.vm_states,
+                generations: &mut state.generations,
+                target,
+                args,
+                budget: &mut budget,
+            })
+        })();
+        if let Some(policy) = &policy {
+            policy.check()?;
+            policy.finish(&result);
+        }
+        result
     }
 
     pub fn bind_method<T>(&self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
@@ -690,186 +602,6 @@ where
                     return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
                         opcode: "unexpected root reentry completion",
                     }));
-                }
-                LinkedDriveOutcome::AsyncBoundary(prepared) => {
-                    return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                        name: prepared.name().to_owned(),
-                    }));
-                }
-                LinkedDriveOutcome::TaskBoundary(prepared) => {
-                    detached_task::admit(
-                        call.engine,
-                        call.task_scope.as_ref(),
-                        prepared,
-                        heap.heap,
-                        budget,
-                    )?;
-                }
-                LinkedDriveOutcome::ContextBoundary(prepared) => {
-                    let result = {
-                        let mut active = ActiveNativeReentry {
-                            runtime_id: call.runtime_id,
-                            engine: call.engine,
-                            registry_image: call.registry_image,
-                            artifact: call.artifact,
-                            vm: &vm,
-                            session: &mut session,
-                            host: &mut execution_host,
-                            access: &mut access,
-                            heap: &mut heap,
-                            budget,
-                            vm_state_values,
-                            retained_values: std::sync::Arc::clone(&retained_values),
-                            generations: &mut *call.generations,
-                        };
-                        invoke_prepared_context(&prepared, &mut active)
-                    };
-                    let mut host = HostExecution {
-                        adapter: &mut execution_host,
-                        access: &mut access,
-                        state_values: Some(&mut *vm_state_values),
-                    };
-                    vm.resume_linked_context_call(
-                        &mut session,
-                        result,
-                        Some(&mut host),
-                        Some(&mut heap),
-                        Some(budget),
-                    )?;
-                }
-            }
-        }
-    }
-
-    async fn call_runtime_args_async(
-        call: RuntimeCallExecution<'_, '_, '_, '_>,
-    ) -> VmResult<VelaValue> {
-        let budget = call.budget;
-        let mut execution_host = ExecutionHost::new(
-            call.args,
-            call.extern_states,
-            call.host_arena,
-            call.host_slots,
-        );
-        let resolved = execution_host.resolve_values(
-            &call.target.name,
-            &call.target.params,
-            &call.target.param_defaults,
-            call_args::CallArgRuntime::new(
-                call.runtime_id,
-                call.artifact.program(),
-                &mut call.vm_states.heap,
-                budget,
-            ),
-        )?;
-        let mut access = HostAccess::new();
-        let vm = runtime_vm(call.engine, call.artifact, call.hot_reload);
-        let roots = call.vm_states.roots();
-        let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
-        let vm_state_values = &mut call.vm_states.values;
-        let mut entry_args = Vec::with_capacity(
-            resolved
-                .len()
-                .saturating_add(usize::from(call.target.receiver.is_some())),
-        );
-        if let Some(receiver) = &call.target.receiver {
-            entry_args.push(receiver.value);
-        }
-        entry_args.extend_from_slice(&resolved);
-        let mut heap = HeapExecution::new(&mut call.vm_states.heap);
-        let initial_host = HostExecution {
-            adapter: &mut execution_host,
-            access: &mut access,
-            state_values: Some(&mut *vm_state_values),
-        };
-        let mut session = vm.start_linked_execution(
-            LinkedExecutionStart {
-                artifact: call.artifact,
-                function: call.target.function,
-                args: &entry_args,
-                roots: &roots,
-                inline_caches: Some(&*call.generations),
-                bytecode_profiler: call.generations.bytecode_profiler(),
-            },
-            Some(&initial_host),
-            &mut heap,
-            budget,
-        )?;
-        session.enable_context_native_boundaries();
-
-        loop {
-            let outcome = {
-                let mut host = HostExecution {
-                    adapter: &mut execution_host,
-                    access: &mut access,
-                    state_values: Some(&mut *vm_state_values),
-                };
-                vm.drive_linked_execution(
-                    &mut session,
-                    Some(&mut host),
-                    &mut heap,
-                    budget,
-                    Some(&*call.generations),
-                    call.generations.bytecode_profiler(),
-                )?
-            };
-            match outcome {
-                LinkedDriveOutcome::Complete(value) => {
-                    let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
-                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
-                    drop(heap);
-                    return Ok(RuntimeValueRoots::retain(
-                        &retained_values,
-                        call.runtime_id,
-                        value,
-                    ));
-                }
-                LinkedDriveOutcome::ReentryComplete(_) => {
-                    return Err(VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                        opcode: "unexpected root reentry completion",
-                    }));
-                }
-                LinkedDriveOutcome::AsyncBoundary(prepared) => {
-                    lifetime::validate_async_suspend(&session, heap.heap, &execution_host)?;
-                    let result = {
-                        let mut active = ActiveNativeReentry {
-                            runtime_id: call.runtime_id,
-                            engine: call.engine,
-                            registry_image: call.registry_image,
-                            artifact: call.artifact,
-                            vm: &vm,
-                            session: &mut session,
-                            host: &mut execution_host,
-                            access: &mut access,
-                            heap: &mut heap,
-                            budget,
-                            vm_state_values,
-                            retained_values: std::sync::Arc::clone(&retained_values),
-                            generations: &mut *call.generations,
-                        };
-                        invoke_prepared_async(&prepared, &mut active).await
-                    };
-                    let mut host = HostExecution {
-                        adapter: &mut execution_host,
-                        access: &mut access,
-                        state_values: Some(&mut *vm_state_values),
-                    };
-                    vm.resume_linked_async_call(
-                        &mut session,
-                        result,
-                        Some(&mut host),
-                        Some(&mut heap),
-                        Some(budget),
-                    )?;
-                }
-                LinkedDriveOutcome::TaskBoundary(prepared) => {
-                    detached_task::admit(
-                        call.engine,
-                        call.task_scope.as_ref(),
-                        prepared,
-                        heap.heap,
-                        budget,
-                    )?;
                 }
                 LinkedDriveOutcome::ContextBoundary(prepared) => {
                     let result = {

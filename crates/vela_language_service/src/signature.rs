@@ -109,14 +109,8 @@ impl LanguageServiceDatabases {
     }
 }
 
-fn signature_label(
-    asyncness: vela_common::CallableAsyncness,
-    name: &str,
-    parameters: &[SignatureParameter],
-    returns: &str,
-) -> String {
-    DisplayParts::callable_signature_with_asyncness(
-        asyncness,
+fn signature_label(name: &str, parameters: &[SignatureParameter], returns: &str) -> String {
+    DisplayParts::callable_signature(
         name,
         parameters.iter().map(|param| param.label_parts.clone()),
         Some(returns),
@@ -145,7 +139,6 @@ fn callable_signature_information(callable: &CallableFacts) -> SignatureInformat
         .collect::<Vec<_>>();
     SignatureInformation {
         label: signature_label(
-            callable.asyncness(),
             callable.name(),
             &parameters,
             &callable.return_display_name(),
@@ -166,7 +159,6 @@ mod tests {
         CallableSignatureFact, RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef,
         ScopedResourceReturnDef,
     };
-    use vela_common::CallableAsyncness;
 
     use super::*;
     use crate::{
@@ -213,32 +205,29 @@ mod tests {
     }
 
     #[test]
-    fn signature_help_displays_source_callable_asyncness() {
+    fn signature_help_displays_source_callable_signatures() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "async fn load(value: i64) -> String { return \"ready\"; }\n\
-                    async fn main() { return load(1).await; }";
+        let text = "fn load(value: i64) -> String { return \"ready\"; }\n\
+                    fn main() { return load(1); }";
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
         let mut databases = LanguageServiceDatabases::new();
         databases.update(&project);
         let line_index = LineIndex::new(text);
-        let call = text.rfind("load(1)").expect("async call");
+        let call = text.rfind("load(1)").expect("call");
 
         let help = databases
             .signature_help(&document, line_index.position(call + "load(".len()))
-            .expect("signature help should resolve async source function");
+            .expect("signature help should resolve source function");
 
-        assert_eq!(
-            help.signatures()[0].label(),
-            "async load(value: i64) -> String"
-        );
+        assert_eq!(help.signatures()[0].label(), "load(value: i64) -> String");
     }
 
     #[test]
-    fn signature_help_displays_schema_callable_asyncness() {
+    fn signature_help_displays_schema_callable_signatures() {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "async fn main() { return load(1).await; }";
+        let text = "fn main() { return load(1); }";
         let files = vec![SourceFileSnapshot::new(document.clone(), text)];
         let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
@@ -257,8 +246,7 @@ mod tests {
                     vela_analysis::registry::CallableParameterRequirementFact::Required,
                 )],
                 TypeFact::STRING,
-            )
-            .asyncness(CallableAsyncness::Async),
+            ),
         );
         databases.set_schema_facts(schema);
         databases.update(&project);
@@ -268,12 +256,9 @@ mod tests {
                 &document,
                 Position::new(0, text.find("1)").expect("schema call argument")),
             )
-            .expect("signature help should resolve async schema function");
+            .expect("signature help should resolve schema function");
 
-        assert_eq!(
-            help.signatures()[0].label(),
-            "async load(value: i64) -> String"
-        );
+        assert_eq!(help.signatures()[0].label(), "load(value: i64) -> String");
     }
 
     #[test]

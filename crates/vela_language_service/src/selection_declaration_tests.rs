@@ -35,11 +35,26 @@ fn check(db: &LanguageServiceDatabases, main: &Document, helper: &Document, case
                 .to_string(),
             doc.text
         );
-        assert!(
+        assert_eq!(
             db.parse_db()
                 .parse_diagnostics(&id)
                 .expect("parsed source")
-                .is_empty()
+                .iter()
+                .map(|d| d.code.as_deref().expect("syntax code"))
+                .collect::<Vec<_>>(),
+            if file == "scripts/main.vela" {
+                case["syntaxCodes"]
+                    .as_array()
+                    .map_or_else(Vec::new, |codes| {
+                        codes
+                            .iter()
+                            .map(|code| code.as_str().expect("syntax code"))
+                            .collect()
+                    })
+            } else {
+                Vec::new()
+            },
+            "non-executing selection recovery: {file}"
         );
     }
     assert_eq!(db.schema_db().facts().types().count(), 0);

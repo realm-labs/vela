@@ -27,7 +27,7 @@ fn callable_return_schema_lifecycle_refreshes_nested_facts_and_docs() {
         let text = if step["mode"] == "invalid" {
             "{".to_owned()
         } else {
-            json!({"formatVersion":2,"facts":step["schema"]}).to_string()
+            json!({"formatVersion":3,"facts":step["schema"]}).to_string()
         };
         db.load_schema_artifact_json("/workspace/schema.json", &text);
         assert_eq!(

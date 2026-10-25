@@ -521,7 +521,7 @@
       },
       {
         "id": "async-method-named-callback",
-        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n async fn read(self, value) [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]).await;\n}[[body:end]]\n}[[item:end]]\n",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]impl Row {\n fn read(self, value) [[body:start]]{\n return consume(callback = [[lambda:start]]|item| [[lambda-body:start]]{\n return item + value;\n}[[lambda-body:end]][[lambda:end]]);\n}[[body:end]]\n}[[item:end]]\n",
         "ranges": [
           {
             "kind": "region",
@@ -563,7 +563,7 @@
       },
       {
         "id": "trait-multiple-required-methods",
-        "source": "struct Row {}\n/*中😀*/ [[item:start]]trait Reader {\n fn first(self);\n fn second(self, value);\n async fn third(self);\n}[[item:end]]\n",
+        "source": "struct Row {}\n/*中😀*/ [[item:start]]trait Reader {\n fn first(self);\n fn second(self, value);\n fn third(self);\n}[[item:end]]\n",
         "ranges": [
           {
             "kind": "region",
@@ -588,7 +588,7 @@
       },
       {
         "id": "single-line-inherent-members",
-        "source": "/*中😀*/ struct Row {} impl Row { pub fn new(value) { return value; } fn read(self, value = 1) {} async fn worker(self) {} }\n",
+        "source": "/*中😀*/ struct Row {} impl Row { pub fn new(value) { return value; } fn read(self, value = 1) {} fn worker(self) {} }\n",
         "ranges": []
       },
       {

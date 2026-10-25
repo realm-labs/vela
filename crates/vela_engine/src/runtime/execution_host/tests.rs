@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 use vela_common::{HostObjectId, HostTypeId, ScalarValue};
 use vela_host::access::HostAccess;
 use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::{HostErrorKind, HostResult};
+use vela_host::error::{HostErrorKind, HostRefLifetimeBoundary, HostResult};
 use vela_host::lease::{HostLeaseKind, ScopedHostLeaseSlot};
 use vela_host::object::ScriptHostObject;
 use vela_host::path::HostRef;
@@ -421,19 +421,15 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
     };
     assert_eq!(inner.type_id, inner_type);
 
-    let await_error = host
-        .validate_scoped_resources_before_await()
-        .expect_err("the complete active table must block await");
-    let HostErrorKind::UnreleasedScopedResourcesAtAwait { resources } = await_error.kind else {
-        panic!("await should report every active scoped resource");
-    };
-    assert_eq!(resources.len(), 2);
-    assert_eq!(resources[0].path.root, inner);
-    assert_eq!(
-        resources[0].parent.as_ref().map(|path| path.root),
-        Some(outer)
-    );
-    assert_eq!(resources[1].path.root, outer);
+    for root in [inner, outer] {
+        let error = host
+            .validate_host_ref_lifetime(root, HostRefLifetimeBoundary::RootReturn)
+            .expect_err("nested borrowed collection views cannot escape the root call");
+        assert!(matches!(
+            error.kind,
+            HostErrorKind::BorrowedHostRefEscape { .. }
+        ));
+    }
 
     let error = host
         .try_release_scoped_host(outer)
@@ -465,20 +461,21 @@ fn nested_standard_collection_views_keep_exact_identity_and_release_order() {
         Ok(false),
         "known expiry should be the only idempotent no-op"
     );
-    let await_error = host
-        .validate_scoped_resources_before_await()
-        .expect_err("the remaining outer resource must still block await");
-    assert!(matches!(
-        await_error.kind,
-        HostErrorKind::UnreleasedScopedResourcesAtAwait { ref resources } if resources.len() == 1
-    ));
+    assert!(
+        host.validate_host_ref_lifetime(outer, HostRefLifetimeBoundary::RootReturn)
+            .is_err(),
+        "the remaining outer view still cannot escape"
+    );
     assert_eq!(
         host.try_release_scoped_host(outer),
         Ok(true),
         "outer view should release after its child"
     );
-    host.validate_scoped_resources_before_await()
-        .expect("explicit child-to-parent release must permit await");
+    assert!(
+        host.validate_host_ref_lifetime(inner, HostRefLifetimeBoundary::RootReturn)
+            .is_err(),
+        "release must not make an expired alias a safe return value"
+    );
 
     let inner_error = access
         .read_resolved_scoped(&mut host, scalar_write, scalar_target, None)
@@ -515,7 +512,6 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         object: ScopedHostObjectBinding::Single(object),
         activity: Arc::new(()),
         _parent_activity: None,
-        parent: None,
     });
     let root = ExecutionHost::scoped_root(dense_handle, type_id);
     let alias = root;
@@ -568,7 +564,6 @@ fn scoped_hosts_use_dense_generation_checked_identity() {
         object: ScopedHostObjectBinding::Single(replacement),
         activity: Arc::new(()),
         _parent_activity: None,
-        parent: None,
     });
     let replacement_root = ExecutionHost::scoped_root(replacement_handle, type_id);
     let replacement_borrow_lease_id = host

@@ -466,9 +466,7 @@ mod tests {
     use super::*;
     use vela_analysis::registry::RegistryFacts;
     use vela_analysis::type_fact::TypeFact;
-    use vela_common::{
-        CallableAsyncness, InteropBindingContract, InteropRepresentation, ScalarValue, SourceId,
-    };
+    use vela_common::{InteropBindingContract, InteropRepresentation, ScalarValue, SourceId};
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
@@ -820,7 +818,6 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
                 ReturnMode::OwnedValue,
                 ErrorMode::Value,
             ),
-            asyncness: CallableAsyncness::Sync,
             effects: EffectSet::host_write(),
             access: CallableAccess::default(),
             docs: None,

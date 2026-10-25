@@ -272,7 +272,7 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -396,7 +396,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -908,7 +908,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -941,7 +941,7 @@ fn schema_with_quest_state_tuple_variant() -> &'static str {
 
 fn schema_with_dynamic_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

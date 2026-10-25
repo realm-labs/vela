@@ -5,18 +5,12 @@ use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use crate::{
     CompileCallArguments, CompileCalleeTarget, CompileFunctionClass, CompileMethodClass,
     CompileParameterDefault, CompilePlacedCallArgument, CompilePlacedCallValue, CompileSignature,
-    MirAwaitOperation, MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirHostOperation,
-    MirOperand, MirPlace, MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode,
-    MirSourceOrigin, MirStatement, MirStatementKind, MirTaskContinuation, MirTaskOperation,
-    MirTerminator, MirTerminatorKind, MirValueType,
+    MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirHostOperation, MirOperand, MirPlace,
+    MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
+    MirStatementKind, MirValueType,
 };
 
 use super::core::{FunctionBuilder, value_type};
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct AwaitContext {
-    pub origin: MirSourceOrigin,
-}
 
 impl FunctionBuilder<'_> {
     /// Lower one call from the immutable compile-target generation.
@@ -29,19 +23,12 @@ impl FunctionBuilder<'_> {
         expression: HirExprId,
         call: &HirCall,
         origin: MirSourceOrigin,
-        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         if call.expression != expression {
             return Err(self.inconsistent(
                 origin,
                 "call record expression identity disagrees with its HIR arena key",
             ));
-        }
-        if self.input.targets().task(expression).is_some() {
-            if await_context.is_some() {
-                return Err(self.unsupported(origin, "awaiting task admission"));
-            }
-            return self.lower_task(expression, call, origin);
         }
         let target = self
             .input
@@ -57,10 +44,10 @@ impl FunctionBuilder<'_> {
                 | CompileCalleeTarget::HostRemove { .. }
                 | CompileCalleeTarget::HostPush { .. }
         ) {
-            return self.lower_host_call(expression, call, &target, origin, await_context);
+            return self.lower_host_call(expression, call, &target, origin);
         }
         if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
-            return self.lower_reflection_call(expression, call, &target, origin, await_context);
+            return self.lower_reflection_call(expression, call, &target, origin);
         }
         if let CompileCalleeTarget::NativeFunction { function, .. } = target.callee
             && (function == vela_def::host_release_function_id()
@@ -72,9 +59,6 @@ impl FunctionBuilder<'_> {
             } else {
                 "host::release"
             };
-            if await_context.is_some() {
-                return Err(self.unsupported(origin, &format!("awaiting {intrinsic_name}")));
-            }
             let descriptor = self
                 .input
                 .targets()
@@ -368,147 +352,7 @@ impl FunctionBuilder<'_> {
             }
         };
 
-        self.append_call(expression, origin, call, effect, await_context)
-    }
-
-    fn lower_task(
-        &mut self,
-        expression: HirExprId,
-        call: &HirCall,
-        origin: MirSourceOrigin,
-    ) -> Result<MirOperand, MirBuildError> {
-        let target = self
-            .input
-            .targets()
-            .task(expression)
-            .cloned()
-            .ok_or_else(|| self.inconsistent(origin, "task expression has no compile target"))?;
-        let worker_expression = call
-            .arguments
-            .first()
-            .and_then(|argument| argument.value)
-            .ok_or_else(|| self.inconsistent(origin, "task expression has no worker call"))?;
-        if worker_expression != target.worker_call {
-            return Err(
-                self.inconsistent(origin, "task target worker expression disagrees with HIR")
-            );
-        }
-        let worker = self
-            .body
-            .call(worker_expression)
-            .cloned()
-            .ok_or_else(|| self.inconsistent(origin, "task worker is not a direct call"))?;
-        let worker_origin = self.call_expression_origin(worker_expression)?;
-        let worker_target = self
-            .input
-            .targets()
-            .call(worker_expression)
-            .cloned()
-            .ok_or_else(|| self.inconsistent(worker_origin, "task worker has no call target"))?;
-        self.validate_source_arguments(&worker, &worker_target.arguments, worker_origin)?;
-        let CompileCalleeTarget::ScriptFunction {
-            function,
-            debug_name,
-        } = worker_target.callee
-        else {
-            return Err(self.inconsistent(worker_origin, "task worker is not a script function"));
-        };
-        if function != target.worker || debug_name != target.worker_debug_name {
-            return Err(self.inconsistent(
-                worker_origin,
-                "task worker call identity disagrees with its task target",
-            ));
-        }
-        let descriptor = self
-            .input
-            .targets()
-            .function_descriptor(function)
-            .cloned()
-            .ok_or_else(|| self.inconsistent(worker_origin, "task worker has no descriptor"))?;
-        if descriptor.class != CompileFunctionClass::Script
-            || descriptor.signature.asyncness != vela_common::CallableAsyncness::Async
-        {
-            return Err(self.inconsistent(
-                worker_origin,
-                "task worker descriptor is not an async script function",
-            ));
-        }
-        let (arguments, parameter_guards) = self.lower_script_arguments(
-            &worker_target.arguments,
-            &descriptor.signature,
-            worker_origin,
-        )?;
-        if self.current_is_terminated()? {
-            return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
-        }
-        let continuation = target
-            .continuation
-            .map(|continuation| {
-                let descriptor = self
-                    .input
-                    .targets()
-                    .function_descriptor(continuation.function)
-                    .cloned()
-                    .ok_or_else(|| {
-                        self.inconsistent(origin, "task continuation has no descriptor")
-                    })?;
-                if descriptor.class != CompileFunctionClass::Script
-                    || descriptor.signature.asyncness != vela_common::CallableAsyncness::Sync
-                {
-                    return Err(self.inconsistent(
-                        origin,
-                        "task continuation descriptor is not a sync script function",
-                    ));
-                }
-                Ok(MirTaskContinuation {
-                    function: continuation.function,
-                    debug_name: continuation.debug_name,
-                    signature: descriptor.signature,
-                    outcome_contract: continuation.outcome_contract,
-                    resume_parameters: continuation.resume_parameters,
-                })
-            })
-            .transpose()?;
-        let destination = self.function.add_temp(MirValueType::Unit, origin);
-        let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
-        self.function.append_statement(
-            self.current_block,
-            MirStatement::new(
-                origin,
-                Some(MirPlace::temp(destination)),
-                MirStatementKind::Task(Box::new(MirTaskOperation {
-                    worker: function,
-                    worker_debug_name: debug_name,
-                    worker_signature: descriptor.signature,
-                    arguments,
-                    parameter_guards,
-                    detachability: target.detachability,
-                    continuation,
-                })),
-                MirEffect::task_spawn(),
-                Some(safepoint),
-            ),
-        )?;
-        Ok(MirOperand::Temp(destination))
-    }
-
-    pub(super) fn lower_await(
-        &mut self,
-        operand: Option<HirExprId>,
-        origin: MirSourceOrigin,
-    ) -> Result<MirOperand, MirBuildError> {
-        let operand = operand.ok_or_else(|| {
-            self.inconsistent(origin, "await expression is missing its call operand")
-        })?;
-        let record = self.body.expression(operand).ok_or_else(|| {
-            self.inconsistent(origin, "await expression references a missing call operand")
-        })?;
-        let HirExprKind::Call(call) = &record.kind else {
-            return Err(self.inconsistent(origin, "await operand is not a direct call expression"));
-        };
-        let call = call.clone();
-        let call_origin = MirSourceOrigin::expression(self.body.id, operand, record.origin.span);
-        self.lower_call(operand, &call, call_origin, Some(AwaitContext { origin }))
+        self.append_call(expression, origin, call, effect)
     }
 
     fn validate_source_arguments(
@@ -857,7 +701,6 @@ impl FunctionBuilder<'_> {
         origin: MirSourceOrigin,
         call: MirCall,
         effect: MirEffect,
-        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         if self.current_is_terminated()? {
             return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
@@ -873,14 +716,6 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| {
                 self.inconsistent(origin, "call expression has no analysis type fact")
             })?;
-        if let Some(await_context) = await_context {
-            return self.append_await_operation(
-                await_context,
-                MirAwaitOperation::Call(call),
-                result_type,
-                effect,
-            );
-        }
         let destination = self.function.add_temp(result_type, origin);
         let safepoint = self.function.add_safepoint(MirSafepoint::new(origin));
         self.function.append_statement(
@@ -894,40 +729,6 @@ impl FunctionBuilder<'_> {
             ),
         )?;
         Ok(MirOperand::Temp(destination))
-    }
-
-    pub(super) fn append_await_operation(
-        &mut self,
-        context: AwaitContext,
-        operation: MirAwaitOperation,
-        result_type: MirValueType,
-        effect: MirEffect,
-    ) -> Result<MirOperand, MirBuildError> {
-        if self.current_is_terminated()? {
-            return Ok(MirOperand::Immediate(crate::MirImmediate::Unit));
-        }
-        let destination = self
-            .function
-            .add_synthetic_local(result_type, context.origin);
-        let resume = self.function.add_block();
-        let safepoint = self
-            .function
-            .add_safepoint(MirSafepoint::new(context.origin));
-        self.function.set_terminator(
-            self.current_block,
-            MirTerminator::new(
-                context.origin,
-                MirTerminatorKind::AwaitCall {
-                    operation: Box::new(operation),
-                    destination: MirPlace::Local(destination),
-                    resume,
-                },
-                effect,
-                Some(safepoint),
-            ),
-        )?;
-        self.current_block = resume;
-        Ok(MirOperand::Local(destination))
     }
 }
 

@@ -7,14 +7,14 @@ use libfuzzer_sys::fuzz_target;
 use serde::{Deserialize, Serialize};
 use vela_bytecode::script_methods::ScriptMethodTable;
 use vela_bytecode::{
-    ArtifactFeatureSet, ArtifactTaskTarget, InstructionOffset, NominalTypeDescriptor,
-    PortableProgramArtifact, Register, RustBindingSchema, ScalarBlockPlanId, ScalarSourcePointId,
-    StateDescriptor, UnlinkedCodeObject, UnlinkedInstructionKind,
+    InstructionOffset, NominalTypeDescriptor, PortableProgramArtifact, Register, RustBindingSchema,
+    ScalarBlockPlanId, ScalarSourcePointId, StateDescriptor, UnlinkedCodeObject,
+    UnlinkedInstructionKind,
 };
 use vela_engine::engine::Engine;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-const FORMAT_VERSION: u32 = 6;
+const FORMAT_VERSION: u32 = 7;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -25,8 +25,6 @@ struct PortableProgramPayload {
     nominal_types: Vec<NominalTypeDescriptor>,
     script_methods: ScriptMethodTable,
     binding_schema: RustBindingSchema,
-    required_features: ArtifactFeatureSet,
-    task_targets: Box<[ArtifactTaskTarget]>,
 }
 
 fuzz_target!(|input: &[u8]| {
@@ -45,7 +43,7 @@ fuzz_target!(|input: &[u8]| {
 
     let mut payload: PortableProgramPayload = codec()
         .deserialize(&base[HEADER_LEN..])
-        .expect("the static fuzz seed is a valid v6 payload");
+        .expect("the static fuzz seed is a valid v7 payload");
     let value = fuzz_value(bytes);
 
     match kind {

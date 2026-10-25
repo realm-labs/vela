@@ -903,7 +903,7 @@
       },
       {
         "id": "await-array-call",
-        "source": "/*中😀*/ [[item:start]]async fn main(value: i64) -> i64 [[body:start]]{\n let values = consume([[array:start]][\n 1,\n 2\n][[array:end]]).await;\n return value;\n}[[body:end]][[item:end]]\n",
+        "source": "/*中😀*/ [[item:start]]fn main(value: i64) -> i64 [[body:start]]{\n let values = consume([[array:start]][\n 1,\n 2\n][[array:end]]);\n return value;\n}[[body:end]][[item:end]]\n",
         "ranges": [
           {
             "kind": "region",

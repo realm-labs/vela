@@ -64,7 +64,6 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
                     access: kind,
                 },
                 parent_activity,
-                Some(target.root),
             ))),
             Err(ScopedProjectionError::Missing) => Ok(None),
             Err(ScopedProjectionError::Host(error)) => Err(error),
@@ -134,7 +133,6 @@ impl<'state, 'host> ExecutionHost<'state, 'host> {
         let roots = self.retain_scoped_host_group_with_parent_activity(
             ScopedHostReturnGroup { object, accesses },
             parent_activity,
-            Some(target.root),
         )?;
         let snapshot = match shape
             .into_inner()

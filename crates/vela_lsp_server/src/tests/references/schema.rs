@@ -36,7 +36,7 @@ fn lsp_references_find_schema_field_reads_and_writes() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -188,7 +188,7 @@ fn lsp_references_find_schema_record_constructor_field_labels() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -339,7 +339,7 @@ fn lsp_references_find_schema_method_calls() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -492,7 +492,7 @@ fn lsp_references_find_schema_variant_constructors_and_patterns() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -660,7 +660,7 @@ fn lsp_document_highlight_marks_schema_variant_uses() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -834,7 +834,7 @@ fn lsp_references_find_schema_trait_method_calls() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "traits": [
                     {
@@ -989,7 +989,7 @@ pub fn preview() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

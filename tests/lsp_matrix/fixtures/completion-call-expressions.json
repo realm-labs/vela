@@ -3,7 +3,7 @@
   "id": "completion-call-expressions",
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.ordinary_calls\"\nname = \"ordinary_calls\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
-    "schema.json": "{\n  \"formatVersion\": 2,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Context\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Context\"\n        }\n      },\n      {\n        \"name\": \"host::Reply\",\n        \"fact\": {\n          \"kind\": \"record\",\n          \"name\": \"host::Reply\"\n        }\n      },\n      {\n        \"name\": \"host::Failure\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Failure\",\n          \"variant\": null\n        }\n      }\n    ],\n    \"functions\": []\n  }\n}\n",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"host::Context\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Context\"}},{\"name\":\"host::Reply\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Reply\"}},{\"name\":\"host::Failure\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Failure\",\"variant\":null}}],\"functions\":[]}}",
     "scripts/api.vela": "pub fn grant(chosen: i64, flag: bool = false) -> bool { return true; }\npub fn empty() {}\npub fn factory() -> i64 { return 1; }\npub enum State { Ready(value: i64) }\nfn hidden() -> i64 { return 1; }\n",
     "scripts/case_source_value.vela": "/* 中😀 */ fn main() { let chosen_value = 1; api::grant([[replace:start]]chosen[[cursor]][[replace:end]]); }\n",
     "scripts/case_same_binding.vela": "/* 中😀 */ fn main() { let chosen = 1; api::grant([[replace:start]]chosen[[cursor]][[replace:end]]); }\n",

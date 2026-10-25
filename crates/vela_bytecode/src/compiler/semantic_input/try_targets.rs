@@ -44,7 +44,6 @@ impl TryLayouts {
             Some(MirTypeContract::Result { .. }) => CompileTryTarget::Expected(self.result),
             Some(
                 MirTypeContract::Any
-                | MirTypeContract::TaskError
                 | MirTypeContract::Primitive(_)
                 | MirTypeContract::Tuple(_)
                 | MirTypeContract::Array(_)

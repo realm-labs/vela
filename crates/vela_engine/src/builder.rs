@@ -15,19 +15,16 @@ use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::host_type::HostTypeSpec;
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
-    AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
-    HostNativeFunctionEntry, NativeCallFuture, NativeFunctionDesc, NativeFunctionEntry,
-    ScopedHostNativeFunctionEntry,
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry, ScopedHostNativeFunctionEntry,
 };
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::type_binding::{TypeBinding, TypeBindingRegistration, TypeBindingRegistry};
 use crate::typed::{
-    TypedAsyncContextHostNativeFunction, TypedAsyncHostNativeFunction, TypedAsyncNativeFunction,
-    TypedAsyncNativeMethodFunction, TypedContextHostNativeFunction, TypedHostNativeFunction,
-    TypedNativeFunction, TypedNativeMethodFunction,
+    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
+    TypedNativeMethodFunction,
 };
 use crate::{metadata, validation};
 
@@ -39,16 +36,11 @@ pub struct EngineBuilder {
     type_dependency_closure: HashSet<RustTypeId>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
-    async_native_functions: Vec<AsyncNativeFunctionEntry>,
-    async_host_native_functions: Vec<AsyncHostNativeFunctionEntry>,
-    async_direct_host_native_functions: Vec<AsyncDirectHostNativeFunctionEntry>,
     scoped_host_native_functions: Vec<ScopedHostNativeFunctionEntry>,
-    async_context_host_native_functions: Vec<AsyncContextHostNativeFunctionEntry>,
     host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
     host_method_metadata: Vec<NativeMethodDesc>,
     native_methods: Vec<NativeMethodEntry>,
-    async_native_methods: Vec<AsyncNativeMethodEntry>,
     capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
     reflection_lookup_limit: Option<u64>,
@@ -114,7 +106,7 @@ impl EngineBuilder {
     /// are not stored in the Engine.
     #[must_use]
     pub fn register_host_type(mut self, spec: HostTypeSpec) -> Self {
-        let (type_desc, method_metadata, native_methods, async_native_methods) = spec.into_parts();
+        let (type_desc, method_metadata, native_methods) = spec.into_parts();
         self.type_bindings
             .push(TypeBindingRegistration::host_contract(
                 type_desc.key.clone(),
@@ -122,7 +114,6 @@ impl EngineBuilder {
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
-        self.async_native_methods.extend(async_native_methods);
         self
     }
 
@@ -185,14 +176,8 @@ impl EngineBuilder {
 
     fn push_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
         let binding_identity = (binding.type_desc().key.clone(), binding.abi_fingerprint());
-        let (
-            mut registration,
-            type_desc,
-            method_metadata,
-            native_methods,
-            async_native_methods,
-            constructors,
-        ) = binding.into_parts();
+        let (mut registration, type_desc, method_metadata, native_methods, constructors) =
+            binding.into_parts();
         registration.bind_rust_type::<T>();
         self.rust_type_bindings
             .insert(RustTypeId::of::<T>(), binding_identity);
@@ -200,7 +185,6 @@ impl EngineBuilder {
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
-        self.async_native_methods.extend(async_native_methods);
         self.host_native_functions.extend(constructors);
         self
     }
@@ -214,12 +198,10 @@ impl EngineBuilder {
     #[doc(hidden)]
     #[must_use]
     pub fn register_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
-        let (type_desc, method_metadata, native_methods, async_native_methods) =
-            spec.into().into_parts();
+        let (type_desc, method_metadata, native_methods) = spec.into().into_parts();
         self.types.push(type_desc);
         self.host_method_metadata.extend(method_metadata);
         self.native_methods.extend(native_methods);
-        self.async_native_methods.extend(async_native_methods);
         self
     }
 
@@ -334,33 +316,11 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_async_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_functions
-            .push(AsyncNativeFunctionEntry::new(desc, function));
-        self
-    }
-
-    #[must_use]
     pub fn register_typed_native_fn<Args, F>(self, desc: NativeFunctionDesc, function: F) -> Self
     where
         F: TypedNativeFunction<Args>,
     {
         self.register_native_fn(desc, move |args| function.call(args))
-    }
-
-    #[must_use]
-    pub fn register_typed_async_fn<Args, F>(self, desc: NativeFunctionDesc, function: F) -> Self
-    where
-        F: TypedAsyncNativeFunction<Args>,
-    {
-        self.register_async_fn(desc, move |args| function.call_async(args))
     }
 
     #[must_use]
@@ -374,49 +334,6 @@ impl EngineBuilder {
     ) -> Self {
         self.host_native_functions
             .push(HostNativeFunctionEntry::new(desc, function));
-        self
-    }
-
-    #[must_use]
-    pub fn register_async_host_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_host_native_functions
-            .push(AsyncHostNativeFunctionEntry::new(desc, function));
-        self
-    }
-
-    /// Registers an async native whose complete host borrow set is acquired
-    /// atomically before its future is created.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_async_direct_host_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
-        + Send
-        + Sync
-        + 'static,
-        function: impl for<'invoke, 'lease> Fn(
-            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_direct_host_native_functions
-            .push(AsyncDirectHostNativeFunctionEntry::new(
-                desc, requests, function,
-            ));
         self
     }
 
@@ -456,18 +373,6 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_typed_async_host_fn<Args, F>(
-        self,
-        desc: NativeFunctionDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedAsyncHostNativeFunction<Args>,
-    {
-        self.register_async_host_fn(desc, move |args, host| function.call_async_host(args, host))
-    }
-
-    #[must_use]
     pub fn register_context_host_native_fn(
         mut self,
         desc: NativeFunctionDesc,
@@ -485,23 +390,6 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_async_context_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut NativeCallContext<'call, 'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_context_host_native_functions
-            .push(AsyncContextHostNativeFunctionEntry::new(desc, function));
-        self
-    }
-
-    #[must_use]
     pub fn register_typed_context_host_native_fn<Args, F>(
         self,
         desc: NativeFunctionDesc,
@@ -512,20 +400,6 @@ impl EngineBuilder {
     {
         self.register_context_host_native_fn(desc, move |args, ctx| {
             function.call_context(args, ctx)
-        })
-    }
-
-    #[must_use]
-    pub fn register_typed_async_context_fn<Args, F>(
-        self,
-        desc: NativeFunctionDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedAsyncContextHostNativeFunction<Args>,
-    {
-        self.register_async_context_fn(desc, move |args, context| {
-            function.call_async_context(args, context)
         })
     }
 
@@ -548,73 +422,6 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_async_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call vela_host::path::HostPath,
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new(desc, function));
-        self
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_async_direct_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        lease_kind: vela_host::lease::HostLeaseKind,
-        function: impl for<'host> Fn(
-            vela_host::path::HostRef,
-            vela_host::lease::ErasedHostLease<'host>,
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new_direct(
-                desc, lease_kind, function,
-            ));
-        self
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_async_context_direct_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        lease_kind: vela_host::lease::HostLeaseKind,
-        param_leases: Vec<(usize, vela_host::lease::HostLeaseKind)>,
-        function: impl for<'invoke, 'lease> Fn(
-            vela_host::path::HostRef,
-            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-            &'invoke mut crate::context::NativeCallContext<'invoke, 'invoke>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new_direct_context(
-                desc,
-                lease_kind,
-                param_leases,
-                function,
-            ));
-        self
-    }
-
-    #[must_use]
     pub fn register_typed_native_method_fn<Args, F>(
         self,
         desc: NativeMethodDesc,
@@ -625,20 +432,6 @@ impl EngineBuilder {
     {
         self.register_native_method_fn(desc, move |receiver, args, host| {
             function.call_method(receiver, args, host)
-        })
-    }
-
-    #[must_use]
-    pub fn register_typed_async_method_fn<Args, F>(
-        self,
-        desc: NativeMethodDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedAsyncNativeMethodFunction<Args>,
-    {
-        self.register_async_method_fn(desc, move |receiver, args, host| {
-            function.call_async_method(receiver, args, host)
         })
     }
 
@@ -698,12 +491,10 @@ impl EngineBuilder {
             &mut types,
             &self.host_method_metadata,
             &self.native_methods,
-            &self.async_native_methods,
         )?;
         validation::validate_native_method_type_hints(
             &self.host_method_metadata,
             &self.native_methods,
-            &self.async_native_methods,
             &types,
             self.standard_natives,
         )?;
@@ -719,11 +510,7 @@ impl EngineBuilder {
         validation::validate_native_functions(
             EngineFunctionEntries {
                 native: &self.native_functions,
-                async_native: &self.async_native_functions,
-                async_host: &self.async_host_native_functions,
-                async_direct_host: &self.async_direct_host_native_functions,
                 scoped_host: &self.scoped_host_native_functions,
-                async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
             },
@@ -737,11 +524,7 @@ impl EngineBuilder {
             &type_bindings,
             EngineFunctionEntries {
                 native: &self.native_functions,
-                async_native: &self.async_native_functions,
-                async_host: &self.async_host_native_functions,
-                async_direct_host: &self.async_direct_host_native_functions,
                 scoped_host: &self.scoped_host_native_functions,
-                async_context_host: &self.async_context_host_native_functions,
                 host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
             },
@@ -768,11 +551,7 @@ impl EngineBuilder {
         metadata::inject_native_function_metadata(
             &mut registry,
             &self.native_functions,
-            &self.async_native_functions,
-            &self.async_host_native_functions,
-            &self.async_direct_host_native_functions,
             &self.scoped_host_native_functions,
-            &self.async_context_host_native_functions,
             &self.host_native_functions,
             &self.context_host_native_functions,
         );
@@ -782,15 +561,10 @@ impl EngineBuilder {
             type_bindings,
             definition_registry,
             native_functions: self.native_functions,
-            async_native_functions: self.async_native_functions,
-            async_host_native_functions: self.async_host_native_functions,
-            async_direct_host_native_functions: self.async_direct_host_native_functions,
             scoped_host_native_functions: self.scoped_host_native_functions,
-            async_context_host_native_functions: self.async_context_host_native_functions,
             host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,
             native_methods: self.native_methods,
-            async_native_methods: self.async_native_methods,
             capabilities: self.capabilities,
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,

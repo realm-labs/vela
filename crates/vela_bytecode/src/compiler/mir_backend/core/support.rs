@@ -178,7 +178,6 @@ fn type_guard_plan(
             name: "Any".to_owned(),
             type_id: None,
         },
-        MirTypeContract::TaskError => UnlinkedTypeGuardPlan::TaskError,
         MirTypeContract::Primitive(value) => UnlinkedTypeGuardPlan::Primitive(*value),
         MirTypeContract::Range => UnlinkedTypeGuardPlan::Standard(StandardTypeGuard::Range),
         MirTypeContract::Array(value) => UnlinkedTypeGuardPlan::Array {

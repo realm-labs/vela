@@ -41,9 +41,7 @@ impl HirSemanticFacts {
                 }
                 _ => None,
             },
-            HirExprKind::Paren { expression }
-            | HirExprKind::Try { expression }
-            | HirExprKind::Await { expression } => {
+            HirExprKind::Paren { expression } | HirExprKind::Try { expression } => {
                 expression.and_then(|expression| self.script_types.get(&expression).cloned())
             }
             HirExprKind::Block { block } => {

@@ -284,7 +284,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_field(name: &str, kind: &str) -> String {
     serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

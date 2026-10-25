@@ -35,7 +35,7 @@ The core standard-library callback sites are iterator adapters such as `map`, `f
 
 ## Runtime Boundaries
 
-Closure execution is budgeted like other script calls. Async functions can
-suspend while awaiting calls, but closures do not become task handles or gain
-manual-resume semantics. Suspended frames keep their original code version
-during hot reload, and closures cannot move across unrelated Runtime instances.
+Closure execution is synchronous and budgeted like other script calls. Active
+calls and retained closures keep their exact original executable generation
+during hot reload, including nested dispatch and state. Closures cannot move
+across unrelated Runtime instances or schedule background work.

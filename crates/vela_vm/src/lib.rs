@@ -3,7 +3,6 @@
 //! Register VM for Vela bytecode.
 
 mod array_methods;
-mod async_resume;
 pub mod backend_conformance;
 pub mod budget;
 mod bytes_methods;
@@ -13,7 +12,7 @@ mod closure_calls;
 mod collection_mutation;
 mod constant_loads;
 mod container_contracts;
-mod detached_value;
+mod context_resume;
 mod dynamic_method_resolution;
 mod equality;
 pub mod error;
@@ -91,8 +90,6 @@ mod value_key;
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
-use std::future::Future;
-use std::pin::Pin;
 use std::sync::Arc;
 
 pub(crate) use equality::{identity_equal, identity_not_equal};
@@ -142,103 +139,18 @@ use vela_reflect::registry::TypeRegistry;
 use budget::ExecutionBudget;
 use value::Value;
 
-pub use async_resume::PreparedAsyncCall;
-pub use detached_value::DetachedValueImage;
 pub use execution_reentry::LinkedExecutionReentry;
 pub use execution_session::{LinkedExecutionSession, LinkedExecutionStart};
-pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall, PreparedTaskCall};
+pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall};
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
-pub type NativeCallFuture<'call> =
-    Pin<Box<dyn Future<Output = VmResult<OwnedValue>> + Send + 'call>>;
-pub type AsyncNativeFunction =
-    Arc<dyn for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call> + Send + Sync + 'static>;
-pub type AsyncHostNativeFunction = Arc<
-    dyn for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-            Option<&'call mut ExecutionBudget>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
->;
 pub type HostMethodFunction = Arc<
     dyn for<'host> Fn(
             &vela_host::path::HostPath,
             &[OwnedValue],
             &mut HostExecution<'host>,
         ) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncHostMethodFunction = Arc<
-    dyn for<'call, 'host> Fn(
-            &'call vela_host::path::HostPath,
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-            Option<&'call mut ExecutionBudget>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncDirectHostMethodFunction = Arc<
-    dyn for<'host> Fn(
-            vela_host::path::HostRef,
-            vela_host::lease::ErasedHostLease<'host>,
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncDirectHostFunction = Arc<
-    dyn for<'invoke, 'lease> Fn(
-            &'invoke mut [vela_host::lease::ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
->;
-#[doc(hidden)]
-pub enum ConditionalAsyncNativeFunction {
-    Pure(AsyncNativeFunction),
-    Host(AsyncHostNativeFunction),
-    HostMethod {
-        function: AsyncHostMethodFunction,
-        receiver: vela_host::path::HostPath,
-    },
-    DirectHostMethod {
-        function: AsyncDirectHostMethodFunction,
-        receiver: vela_host::path::HostPath,
-        lease_kind: vela_host::lease::HostLeaseKind,
-    },
-    DirectHostFunction {
-        function: AsyncDirectHostFunction,
-        requests: Box<vela_host::lease::HostLeaseRequestSet>,
-    },
-}
-
-#[doc(hidden)]
-pub enum ConditionalHostNativeOutcome {
-    Complete(OwnedValue),
-    Async {
-        function: ConditionalAsyncNativeFunction,
-        args: Vec<OwnedValue>,
-        diagnostic_name: String,
-    },
-}
-
-pub(crate) type ConditionalHostNativeFunction = Arc<
-    dyn for<'host, 'budget> Fn(
-            &[OwnedValue],
-            &mut HostExecution<'host>,
-            Option<&'budget mut ExecutionBudget>,
-        ) -> VmResult<ConditionalHostNativeOutcome>
         + Send
         + Sync
         + 'static,
@@ -275,21 +187,31 @@ pub(crate) type BorrowedHostNativeFunction = Arc<
         + 'static,
 >;
 
+/// Synchronous bytecode execution and native dispatch.
+///
+/// Native futures and detached task calls are not part of the embedding API.
+///
+/// ```compile_fail,E0599
+/// use vela_vm::{Vm, owned_value::OwnedValue};
+/// let mut vm = Vm::new();
+/// vm.register_async_native("probe", |_| Box::pin(async { Ok(OwnedValue::Unit) }));
+/// ```
+///
+/// ```compile_fail,E0432
+/// use vela_vm::PreparedAsyncCall;
+/// ```
+///
+/// ```compile_fail,E0432
+/// use vela_vm::PreparedTaskCall;
+/// ```
+///
+/// ```compile_fail,E0432
+/// use vela_vm::DetachedValueImage;
+/// ```
 #[derive(Clone, Default)]
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
-    async_native_ids: HashMap<FunctionId, AsyncNativeFunction>,
-    async_host_native_ids: HashMap<FunctionId, AsyncHostNativeFunction>,
     host_method_ids: HashMap<HostMethodId, HostMethodFunction>,
-    async_host_method_ids: HashMap<HostMethodId, AsyncHostMethodFunction>,
-    async_direct_host_method_ids: HashMap<
-        HostMethodId,
-        (
-            vela_host::lease::HostLeaseKind,
-            AsyncDirectHostMethodFunction,
-        ),
-    >,
-    conditional_host_native_ids: HashMap<FunctionId, ConditionalHostNativeFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
@@ -781,60 +703,6 @@ impl Vm {
         self.native_ids.insert(id, Arc::new(function));
     }
 
-    pub fn register_async_native(
-        &mut self,
-        name: impl Into<String>,
-        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        let name = name.into();
-        self.register_async_native_with_id(function_id_for_native_name(&name), function);
-    }
-
-    pub fn register_async_native_with_id(
-        &mut self,
-        id: FunctionId,
-        function: impl for<'call> Fn(&'call [OwnedValue]) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.async_native_ids.insert(id, Arc::new(function));
-    }
-
-    pub fn register_async_host_native_with_id(
-        &mut self,
-        id: FunctionId,
-        function: impl for<'call, 'host> Fn(
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-            Option<&'call mut ExecutionBudget>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.async_host_native_ids.insert(id, Arc::new(function));
-    }
-
-    pub fn register_async_host_method_with_id(
-        &mut self,
-        id: HostMethodId,
-        function: impl for<'call, 'host> Fn(
-            &'call vela_host::path::HostPath,
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-            Option<&'call mut ExecutionBudget>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.async_host_method_ids.insert(id, Arc::new(function));
-    }
-
     pub fn register_host_method_with_id(
         &mut self,
         id: HostMethodId,
@@ -848,40 +716,6 @@ impl Vm {
         + 'static,
     ) {
         self.host_method_ids.insert(id, Arc::new(function));
-    }
-
-    pub fn register_async_direct_host_method_with_id(
-        &mut self,
-        id: HostMethodId,
-        lease_kind: vela_host::lease::HostLeaseKind,
-        function: impl for<'host> Fn(
-            vela_host::path::HostRef,
-            vela_host::lease::ErasedHostLease<'host>,
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.async_direct_host_method_ids
-            .insert(id, (lease_kind, Arc::new(function)));
-    }
-
-    #[doc(hidden)]
-    pub fn register_conditional_host_native_with_id(
-        &mut self,
-        id: FunctionId,
-        function: impl for<'host, 'budget> Fn(
-            &[OwnedValue],
-            &mut HostExecution<'host>,
-            Option<&'budget mut ExecutionBudget>,
-        ) -> VmResult<ConditionalHostNativeOutcome>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.conditional_host_native_ids
-            .insert(id, Arc::new(function));
     }
 
     pub fn register_borrowed_native(
@@ -1033,9 +867,6 @@ impl Vm {
     pub fn native_implementation_ids(&self) -> impl Iterator<Item = FunctionId> + '_ {
         self.native_ids
             .keys()
-            .chain(self.async_native_ids.keys())
-            .chain(self.async_host_native_ids.keys())
-            .chain(self.conditional_host_native_ids.keys())
             .chain(self.borrowed_native_ids.keys())
             .chain(self.host_native_ids.keys())
             .chain(self.borrowed_host_native_ids.keys())

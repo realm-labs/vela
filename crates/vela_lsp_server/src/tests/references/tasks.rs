@@ -1,13 +1,13 @@
 use super::*;
 
 #[test]
-fn lsp_references_find_detached_worker_and_continuation_operands() {
+fn lsp_references_find_nested_synchronous_call_operands() {
     let mut server = TestServer::new();
     let _ = initialize(&mut server);
     let text = "\
-async fn worker(value: i64) -> i64 { return value }
-fn continuation(result: Result<i64, task::Error>) {}
-pub fn main() { task::spawn_scoped_then(worker(7), continuation) }";
+fn worker(value: i64) -> i64 { return value }
+fn continuation(result: i64) {}
+pub fn main() { continuation(worker(7)) }";
     let uri = "file:///workspace/scripts/game/main.vela";
     open_document(&mut server, uri, text);
 

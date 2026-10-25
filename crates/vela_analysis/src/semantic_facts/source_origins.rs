@@ -136,9 +136,7 @@ impl HirSemanticFacts {
                         .unwrap_or_default()
                 })
             }
-            HirExprKind::Paren { expression }
-            | HirExprKind::Await { expression }
-            | HirExprKind::Try { expression } => {
+            HirExprKind::Paren { expression } | HirExprKind::Try { expression } => {
                 expression.map_or_else(ScriptTypeOrigins::default, origins)
             }
             HirExprKind::Assign { value, .. } => {

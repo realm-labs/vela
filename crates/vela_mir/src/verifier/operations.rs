@@ -18,15 +18,15 @@ use targets::{
     verify_aggregate, verify_field_operation, verify_guard_use, verify_predicate_targets,
 };
 
-use vela_common::{CallableAsyncness, PrimitiveTag};
+use vela_common::PrimitiveTag;
 
 use crate::operations::MirDestinationRequirement;
 use crate::{
-    CompileFunctionClass, CompileMethodClass, CompileStateStorage, MirAwaitOperation, MirBinaryOp,
-    MirCall, MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
+    CompileFunctionClass, CompileMethodClass, CompileStateStorage, MirBinaryOp, MirCall,
+    MirConstantProvenance, MirContextualBinaryOp, MirDynamicBinaryOp, MirEffect,
     MirGuardAssumption, MirIteratorOperation, MirOperand, MirPlace, MirReflectionOperation,
-    MirRvalue, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind,
-    MirTaskOperation, MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
+    MirRvalue, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatementKind,
+    MirTerminatorKind, MirTypeContract, MirUnaryOp, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -346,7 +346,6 @@ pub(crate) fn verify_operations(
             .terminator()
             .expect("CFG analysis retained a terminated block");
         verify_origin(verifier, Some(block_id), None, terminator.origin)?;
-        let await_boundary = matches!(terminator.kind, MirTerminatorKind::AwaitCall { .. });
         verify_effect_and_safepoint(
             verifier,
             block_id,
@@ -355,7 +354,7 @@ pub(crate) fn verify_operations(
             terminator.effect,
             terminator.kind.minimum_effect(),
             terminator.safepoint,
-            await_boundary || terminator.effect.requires_safepoint(),
+            terminator.effect.requires_safepoint(),
         )?;
         visit_terminator_operands(&terminator.kind, |operand| {
             verifier
@@ -679,28 +678,9 @@ fn verify_statement_kind(
             verify_aggregate(verifier, block, id, statement.origin, value, destination)?;
         }
         MirStatementKind::Call(call) => {
-            reject_known_async_call(
-                verifier,
-                block,
-                id,
-                statement.origin,
-                call.known_asyncness(),
-            )?;
             verify_call(verifier, block, id, statement.origin, call, destination)?
         }
-        MirStatementKind::Task(task) => {
-            verify_task(verifier, block, id, statement.origin, task, destination)?
-        }
         MirStatementKind::Host(operation) => {
-            if let crate::MirHostOperation::Call { target, .. } = operation {
-                reject_known_async_call(
-                    verifier,
-                    block,
-                    id,
-                    statement.origin,
-                    Some(target.signature.asyncness),
-                )?;
-            }
             verify_host(
                 verifier,
                 block,
@@ -711,22 +691,6 @@ fn verify_statement_kind(
             )?;
         }
         MirStatementKind::Reflect(operation) => {
-            let function = match operation {
-                MirReflectionOperation::Read { function, .. }
-                | MirReflectionOperation::Write { function, .. }
-                | MirReflectionOperation::Call { function, .. } => *function,
-            };
-            reject_known_async_call(
-                verifier,
-                block,
-                id,
-                statement.origin,
-                Some(
-                    function_target(verifier, function, statement.origin)?
-                        .signature
-                        .asyncness,
-                ),
-            )?;
             verify_reflection(
                 verifier,
                 block,
@@ -937,66 +901,6 @@ fn verify_terminator(
                 ));
             }
         }
-        MirTerminatorKind::AwaitCall {
-            operation,
-            destination,
-            resume,
-        } => {
-            if verifier.function.asyncness() != CallableAsyncness::Async {
-                return Err(error(
-                    verifier,
-                    Some(block),
-                    None,
-                    terminator.origin,
-                    MirVerifyErrorKind::InvalidTerminatorContract(
-                        "await terminator is only valid in an async function".to_owned(),
-                    ),
-                ));
-            }
-            if *resume == block {
-                return Err(error(
-                    verifier,
-                    Some(block),
-                    None,
-                    terminator.origin,
-                    MirVerifyErrorKind::InvalidTerminatorContract(
-                        "await resume block must differ from its source block".to_owned(),
-                    ),
-                ));
-            }
-            let MirPlace::Local(destination) = destination else {
-                return Err(error(
-                    verifier,
-                    Some(block),
-                    None,
-                    terminator.origin,
-                    MirVerifyErrorKind::InvalidTerminatorContract(
-                        "await destination must be a local defined on the resume edge".to_owned(),
-                    ),
-                ));
-            };
-            let destination =
-                require_local(verifier, block, terminator.origin, *destination)?.value_type;
-            if !operation.has_valid_call_contract() {
-                return Err(error(
-                    verifier,
-                    Some(block),
-                    None,
-                    terminator.origin,
-                    MirVerifyErrorKind::InvalidCallContract(
-                        "argument placement violates the MIR await call contract".to_owned(),
-                    ),
-                ));
-            }
-            verify_await_operation(
-                verifier,
-                block,
-                terminator.origin,
-                terminator.effect,
-                operation,
-                destination,
-            )?;
-        }
         MirTerminatorKind::Return(value) => {
             if let Some(value) = value {
                 let _ = verifier.operand_type(value, block, None, terminator.origin)?;
@@ -1007,68 +911,6 @@ fn verify_terminator(
         | MirTerminatorKind::Unreachable => {}
     }
     Ok(())
-}
-
-fn reject_known_async_call(
-    verifier: &FunctionVerifier<'_>,
-    block: crate::MirBlockId,
-    statement: MirStatementId,
-    origin: MirSourceOrigin,
-    asyncness: Option<CallableAsyncness>,
-) -> Result<(), MirVerifyError> {
-    if asyncness == Some(CallableAsyncness::Async) {
-        Err(error(
-            verifier,
-            Some(block),
-            Some(statement),
-            origin,
-            MirVerifyErrorKind::InvalidCallContract(
-                "known async call must use an await terminator".to_owned(),
-            ),
-        ))
-    } else {
-        Ok(())
-    }
-}
-
-fn verify_await_operation(
-    verifier: &FunctionVerifier<'_>,
-    block: crate::MirBlockId,
-    origin: MirSourceOrigin,
-    effect: MirEffect,
-    operation: &MirAwaitOperation,
-    destination: MirValueType,
-) -> Result<(), MirVerifyError> {
-    // The operation verifiers use a statement id only for point facts and
-    // error attribution. Await operands live at the terminator, so this id
-    // deliberately misses point facts and errors are normalized below.
-    let sentinel = MirStatementId::from_index(u32::MAX);
-    let result = match operation {
-        MirAwaitOperation::Call(call) => {
-            verify_call(verifier, block, sentinel, origin, call, Some(destination))
-        }
-        MirAwaitOperation::Host(operation) => verify_host(
-            verifier,
-            block,
-            sentinel,
-            origin,
-            operation,
-            Some(destination),
-        ),
-        MirAwaitOperation::Reflect(operation) => verify_reflection(
-            verifier,
-            block,
-            sentinel,
-            origin,
-            effect,
-            operation,
-            Some(destination),
-        ),
-    };
-    result.map_err(|mut error| {
-        error.statement = None;
-        error
-    })
 }
 
 fn verify_call_argument_contracts(
@@ -1202,131 +1044,5 @@ fn verify_reflection(
         origin,
         destination,
         descriptor.signature.return_contract.as_ref(),
-    )
-}
-
-fn verify_task(
-    verifier: &FunctionVerifier<'_>,
-    block: crate::MirBlockId,
-    statement: crate::MirStatementId,
-    origin: MirSourceOrigin,
-    task: &MirTaskOperation,
-    destination: Option<MirValueType>,
-) -> Result<(), MirVerifyError> {
-    function_call_target(
-        verifier,
-        origin,
-        task.worker,
-        &task.worker_debug_name,
-        &task.worker_signature,
-        CompileFunctionClass::Script,
-    )?;
-    if task.worker_signature.asyncness != CallableAsyncness::Async {
-        return Err(bad_target(
-            verifier,
-            origin,
-            MirVerifyTarget::Function(task.worker),
-            "task worker must be asynchronous",
-        ));
-    }
-    let worker_call = MirCall::ScriptFunction {
-        function: task.worker,
-        debug_name: task.worker_debug_name.clone(),
-        signature: task.worker_signature.clone(),
-        arguments: task.arguments.clone(),
-        parameter_guards: task.parameter_guards,
-    };
-    verify_call_argument_contracts(verifier, block, statement, origin, &worker_call)?;
-    if task.detachability.parameters.len() != task.worker_signature.parameters.len()
-        || task
-            .detachability
-            .parameters
-            .iter()
-            .any(|fact| fact.rejection().is_some())
-    {
-        return Err(bad_target(
-            verifier,
-            origin,
-            MirVerifyTarget::Function(task.worker),
-            "task parameter detachability is invalid",
-        ));
-    }
-    for (parameter, fact) in task
-        .worker_signature
-        .parameters
-        .iter()
-        .zip(&task.detachability.parameters)
-    {
-        let expected =
-            crate::contract_detachability(verifier.program.targets(), parameter.contract.as_ref())
-                .fact;
-        if expected.rejection().is_some() || expected.union(*fact) != *fact {
-            return Err(bad_target(
-                verifier,
-                origin,
-                MirVerifyTarget::Function(task.worker),
-                "task parameter detachability is weaker than the worker contract",
-            ));
-        }
-    }
-    let expected_result = crate::contract_detachability(
-        verifier.program.targets(),
-        task.worker_signature.return_contract.as_ref(),
-    )
-    .fact;
-    if task.detachability.result != expected_result || expected_result.rejection().is_some() {
-        return Err(bad_target(
-            verifier,
-            origin,
-            MirVerifyTarget::Function(task.worker),
-            "task result detachability disagrees with the worker contract",
-        ));
-    }
-    if let Some(continuation) = &task.continuation {
-        function_call_target(
-            verifier,
-            origin,
-            continuation.function,
-            &continuation.debug_name,
-            &continuation.signature,
-            CompileFunctionClass::Script,
-        )?;
-        if continuation.signature.asyncness != CallableAsyncness::Sync {
-            return Err(bad_target(
-                verifier,
-                origin,
-                MirVerifyTarget::Function(continuation.function),
-                "task continuation must be synchronous",
-            ));
-        }
-        let expected_outcome = crate::MirTypeContract::Result {
-            ok: task.worker_signature.return_contract.clone().map(Box::new),
-            err: Some(Box::new(crate::MirTypeContract::TaskError)),
-        };
-        if continuation.outcome_contract != expected_outcome
-            || continuation
-                .signature
-                .parameters
-                .first()
-                .and_then(|parameter| parameter.contract.as_ref())
-                != Some(&expected_outcome)
-            || continuation.signature.parameters.get(1..)
-                != Some(continuation.resume_parameters.as_slice())
-        {
-            return Err(bad_target(
-                verifier,
-                origin,
-                MirVerifyTarget::Function(continuation.function),
-                "task continuation ABI disagrees with the worker outcome",
-            ));
-        }
-    }
-    destination_accepts(
-        verifier,
-        block,
-        statement,
-        origin,
-        destination,
-        MirValueType::Unit,
     )
 }

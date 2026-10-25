@@ -1,5 +1,10 @@
 # Hover S8 modules and imports
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: `hover/syntax/S8/{positive,negative}/{service,protocol}` only. Exact tests:
 `hover::module_matrix_tests::hover_module_matrix_preserves_import_paths_aliases_and_visibility`
 and `tests::hover::modules::hover_module_matrix_preserves_import_paths_aliases_and_visibility`.

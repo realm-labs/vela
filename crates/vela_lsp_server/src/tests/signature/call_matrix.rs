@@ -35,7 +35,7 @@ fn signature_type_matrix_preserves_complete_hints_and_unknown_boundaries() {
 
 #[test]
 fn signature_ownership_matrix_preserves_static_targets_and_lexical_shadowing() {
-    verify_fixture("signature-s10", 75);
+    verify_fixture("signature-s10", 70);
 }
 
 #[test]
@@ -44,7 +44,7 @@ fn signature_client_capability_matrix_preserves_triggers_labels_and_current_targ
     assert_eq!(clients.len(), 5, "all required capability profiles");
     for client in clients {
         assert_eq!(client.contexts.len(), 5, "all required contexts");
-        verify_client("signature-s10", 75, &client);
+        verify_client("signature-s10", 70, &client);
     }
 }
 

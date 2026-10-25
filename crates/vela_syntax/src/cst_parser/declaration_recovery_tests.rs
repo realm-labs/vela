@@ -8,7 +8,7 @@ fn bodyless_function_headers_do_not_borrow_following_declaration_bodies() {
     for newline in ["\n", "\r\n"] {
         for neighbor in [
             "#[doc(\"中😀\")] pub fn intact(value: i64) {\n return value;\n}",
-            "pub async fn intact() {\n}",
+            "pub fn intact() {\n}",
             "struct Intact {\n value: i64\n}",
             "enum Intact {\n Empty\n}",
             "trait Intact {\n fn read(self);\n}",

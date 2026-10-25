@@ -2985,6 +2985,10 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_async",
+          "syntax::removed_async"
         ]
       },
       {

@@ -235,18 +235,6 @@ impl CompletionItem {
         self.metadata.detail_parts = Some(detail_parts);
     }
 
-    pub(super) fn with_callable_asyncness(
-        mut self,
-        asyncness: vela_common::CallableAsyncness,
-    ) -> Self {
-        if asyncness.is_async() {
-            let mut parts = DisplayParts::plain("async ");
-            parts.extend(self.detail_parts());
-            self.set_detail_parts(parts);
-        }
-        self
-    }
-
     #[must_use]
     pub(super) fn with_symbol(mut self, symbol: CompletionSymbol) -> Self {
         self.metadata.resolve = Some(CompletionResolvePayload::Documentation {

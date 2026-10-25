@@ -1,4 +1,4 @@
-use vela_common::{CallableAsyncness, SourceId, Span};
+use vela_common::{SourceId, Span};
 use vela_def::FunctionId;
 use vela_hir::body::HirExprKind;
 use vela_hir::ids::{HirDeclId, HirExprId};
@@ -370,80 +370,33 @@ fn main() { Pair::Values(second = 2, first = 1); }
 }
 
 #[test]
-fn known_async_calls_require_await_while_sync_and_dynamic_calls_remain_legal() {
+fn ordinary_source_and_dynamic_calls_remain_legal() {
     let source = SourceId::new(112);
     let text = r#"
-async fn fetch() -> i64 { 1 }
-fn sync_value() -> i64 { 2 }
-
-async fn main(dynamic: Any) {
+fn fetch() -> i64 { 1 }
+fn main(dynamic: Any) {
     fetch();
-    fetch().await;
-    sync_value().await;
     dynamic.load();
-    dynamic.load().await;
 }
 "#;
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(11_201);
     let generation = generation(&graph, None, main, function);
     let view = generation.view(function).expect("main view");
-    let diagnostics = view.validation_diagnostics();
-
-    assert_eq!(diagnostics.len(), 1);
-    assert_eq!(
-        diagnostics[0].code.as_deref(),
-        Some("analysis::async_call_requires_await")
-    );
-    assert_eq!(
-        span_text(text, diagnostics[0].span.expect("async call span")),
-        "fetch()"
-    );
+    assert!(view.validation_diagnostics().is_empty());
 }
 
 #[test]
-fn scoped_task_worker_is_the_only_async_call_that_does_not_require_await() {
-    let source = SourceId::new(114);
-    let text = r#"
-async fn fetch() -> i64 { 1 }
-
-fn main() {
-    task::spawn_scoped(fetch());
-    fetch();
-}
-"#;
-    let (graph, main) = graph(source, text);
-    let function = FunctionId::new(11_401);
-    let generation = generation(&graph, None, main, function);
-    let view = generation.view(function).expect("main view");
-    let diagnostics = view.validation_diagnostics();
-
-    assert_eq!(diagnostics.len(), 1);
-    assert_eq!(
-        diagnostics[0].code.as_deref(),
-        Some("analysis::async_call_requires_await")
-    );
-    assert_eq!(
-        span_text(text, diagnostics[0].span.expect("async call span")),
-        "fetch()"
-    );
-    assert_eq!(
-        diagnostics[0].span.expect("async call span").start,
-        u32::try_from(text.rfind("fetch()").expect("ordinary call")).expect("test source offset")
-    );
-}
-
-#[test]
-fn trait_call_validation_uses_declared_asyncness_and_parameter_slots() {
+fn trait_call_validation_preserves_parameter_slots() {
     let source = SourceId::new(115);
     let text = r#"
 trait Loader {
-    async fn load(self, amount: i64 = 1) -> i64;
+    fn load(self, amount: i64 = 1) -> i64;
     fn keep(self, amount: i64) -> i64 { amount }
 }
-async fn main(loader: Loader, dynamic: Any) {
+fn main(loader: Loader, dynamic: Any) {
     loader.load(amount = 2);
-    loader.load(3).await;
+    loader.load(3);
     loader.keep(4);
     dynamic.load(5);
 }
@@ -453,15 +406,7 @@ async fn main(loader: Loader, dynamic: Any) {
     let generation = generation(&graph, None, main, function);
     let view = generation.view(function).expect("main view");
     let diagnostics = view.validation_diagnostics();
-    assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
-    assert_eq!(
-        diagnostics[0].code.as_deref(),
-        Some("analysis::async_call_requires_await")
-    );
-    assert_eq!(
-        span_text(text, diagnostics[0].span.expect("call span")),
-        "loader.load(amount = 2)"
-    );
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
     let call = expression_exact(&graph, source, text, "loader.load(amount = 2)");
     let placement = view.call_argument_placement(call).expect("trait placement");
     assert_eq!(placement.mode, CallPlacementModeFact::Strict);
@@ -470,12 +415,11 @@ async fn main(loader: Loader, dynamic: Any) {
 }
 
 #[test]
-fn registry_async_calls_require_await() {
+fn ordinary_registry_calls_remain_legal() {
     let source = SourceId::new(113);
     let text = r#"
-async fn main() {
+fn main() {
     game::load();
-    game::load().await;
 }
 "#;
     let (graph, main) = graph(source, text);
@@ -483,22 +427,14 @@ async fn main() {
     schema.insert_function("game::load", TypeFact::function(Vec::new(), TypeFact::I64));
     schema.insert_function_signature(
         "game::load",
-        CallableSignatureFact::new(Vec::new(), TypeFact::I64).asyncness(CallableAsyncness::Async),
+        CallableSignatureFact::new(Vec::new(), TypeFact::I64),
     );
     let function = FunctionId::new(11_301);
     let generation = generation(&graph, Some(&schema), main, function);
     let view = generation.view(function).expect("main view");
     let diagnostics = view.validation_diagnostics();
 
-    assert_eq!(diagnostics.len(), 1);
-    assert_eq!(
-        diagnostics[0].code.as_deref(),
-        Some("analysis::async_call_requires_await")
-    );
-    assert_eq!(
-        span_text(text, diagnostics[0].span.expect("async call span")),
-        "game::load()"
-    );
+    assert!(diagnostics.is_empty(), "{diagnostics:?}");
 }
 
 fn graph(source: SourceId, text: &str) -> (ModuleGraph, HirDeclId) {

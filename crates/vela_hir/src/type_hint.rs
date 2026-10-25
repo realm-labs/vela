@@ -1,7 +1,7 @@
 mod syntax;
 pub use syntax::lower_syntax_type_hint;
 
-use vela_common::{CallableAsyncness, Span};
+use vela_common::Span;
 
 use crate::{
     attributes::HirAttribute,
@@ -61,7 +61,6 @@ pub struct ParamHint {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionSignature {
-    pub asyncness: CallableAsyncness,
     pub params: Vec<ParamHint>,
     pub return_type: Option<HirTypeHint>,
 }

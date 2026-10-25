@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::task::{Context, Poll, Waker};
 
 use vela_bytecode::UnlinkedInstructionKind;
 use vela_engine::engine::Engine;
@@ -85,11 +84,6 @@ pub fn first_row(table: &Table) -> &Row {
     &table.rows[0]
 }
 
-#[export(path = "host::ready")]
-pub async fn ready() -> i64 {
-    1
-}
-
 fn engine() -> Engine {
     Engine::builder()
         .capability(Capability::HostRead)
@@ -101,7 +95,6 @@ fn engine() -> Engine {
         .install_generated_type::<Config>()
         .install_registration(vela_function_lookup())
         .install_registration(vela_function_first_row())
-        .install_registration(vela_function_ready())
         .install_registration(Row::vela_methods())
         .install_registration(Table::vela_methods())
         .install_registration(Config::vela_methods())
@@ -154,22 +147,6 @@ fn call(runtime: &mut Runtime, entry: &str, table: &mut Table) -> VmResult<Owned
         CallArgs::new().with_host_mut("table", table),
         CallOptions::unbounded(),
     )?;
-    runtime.value_to_owned(&result)
-}
-
-fn call_async(runtime: &mut Runtime, entry: &str, table: &mut Table) -> VmResult<OwnedValue> {
-    let mut future = Box::pin(runtime.call_async(
-        entry,
-        CallArgs::new().with_host_mut("table", table),
-        CallOptions::unbounded(),
-    ));
-    let mut context = Context::from_waker(Waker::noop());
-    let result = loop {
-        if let Poll::Ready(result) = std::future::Future::poll(future.as_mut(), &mut context) {
-            break result;
-        }
-    }?;
-    drop(future);
     runtime.value_to_owned(&result)
 }
 
@@ -360,37 +337,6 @@ fn persistent_state_root_return_and_closure_capture_cannot_escape() {
             }) if actual == boundary
         ));
     }
-}
-
-#[test]
-fn live_optional_child_cannot_cross_async_suspend() {
-    let mut runtime = runtime(
-        "async fn rejected(table: Table) { \
-             let row = table.get(1)?; \
-             host::ready().await; \
-             return row.value; \
-         } \
-         async fn released(table: Table) { \
-             let row = table.get(2)?; \
-             let value = row.value; \
-             host::release(row); \
-             host::ready().await; \
-             return value; \
-         }",
-    );
-    let mut table = Table::fixture();
-
-    let error = call_async(&mut runtime, "rejected", &mut table)
-        .expect_err("a live borrowed child cannot cross suspension");
-    assert!(matches!(
-        error.kind(),
-        VmErrorKind::Host(HostErrorKind::UnreleasedScopedResourcesAtAwait { .. })
-    ));
-    assert_eq!(
-        call_async(&mut runtime, "released", &mut table),
-        Ok(OwnedValue::i64(22)),
-        "an explicitly released child should permit suspension"
-    );
 }
 
 #[test]

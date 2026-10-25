@@ -1,4 +1,4 @@
-use vela_common::{CallableAsyncness, HostTypeId, SourceId};
+use vela_common::{HostTypeId, SourceId};
 use vela_def::{DefPath, FieldId};
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::build_module_source_set;
@@ -148,24 +148,21 @@ fn linker_maps_native_functions_to_dense_handles() {
 }
 
 #[test]
-fn linker_preserves_explicit_async_await_resume_input() {
+fn linker_preserves_synchronous_native_call_input() {
     let path = DefPath::function("host", std::iter::empty::<&str>(), "ready");
     let native = FunctionId::from_def_id(path.id());
     let mut registry = DefinitionRegistry::new();
     registry
         .register_function(FunctionDef::new(path, FunctionSignature::default()))
         .expect("native definition registration should succeed");
-    let mut code = UnlinkedCodeObject::new("main", 1).with_asyncness(CallableAsyncness::Async);
+    let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::AwaitCall {
-            operation: Box::new(UnlinkedInstructionKind::CallNative {
-                dst: Some(Register(0)),
-                name: "ready".to_owned(),
-                native,
-                cache_site: None,
-                args: Vec::new(),
-            }),
-            resume: InstructionOffset(1),
+        UnlinkedInstructionKind::CallNative {
+            dst: Some(Register(0)),
+            name: "ready".to_owned(),
+            native,
+            cache_site: None,
+            args: Vec::new(),
         },
     ));
     code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
@@ -177,22 +174,16 @@ fn linker_preserves_explicit_async_await_resume_input() {
     let linked = Linker::with_registry(&registry)
         .with_native_implementation(native)
         .link_test_program(&program)
-        .expect("explicit await should verify and link");
+        .expect("synchronous call should verify and link");
     let main = linked
         .functions()
         .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
         .map(|(_, code)| code)
         .expect("main function should link");
 
-    assert_eq!(main.asyncness, CallableAsyncness::Async);
     assert!(matches!(
         &main.instructions[0].kind,
-        InstructionKind::AwaitCall { operation, resume }
-            if *resume == InstructionOffset(1)
-                && matches!(operation.as_ref(), InstructionKind::CallNative {
-                    native: handle,
-                    ..
-                } if handle.index() == 0)
+        InstructionKind::CallNative { native: handle, .. } if handle.index() == 0
     ));
 }
 

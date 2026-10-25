@@ -22,9 +22,6 @@ pub fn type_fact_from_hint_with_schema(
     if !hint.args.is_empty() {
         return TypeFact::Unknown;
     }
-    if hint.path.as_slice() == ["task", "Error"] {
-        return TypeFact::record("task::Error");
-    }
     let Some(path) = graph.expand_import_path(module, &hint.path) else {
         return TypeFact::Unknown;
     };

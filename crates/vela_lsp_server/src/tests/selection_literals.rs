@@ -102,9 +102,15 @@ impl Harness {
             );
         }
         assert_eq!(counts(&self.test_server.snapshot()), before_counts);
-        self.facts(&self.test_server.snapshot(), doc, disk);
+        self.facts(&self.test_server.snapshot(), doc, &json!({}), disk);
     }
-    fn facts(&self, snapshot: &GlobalStateSnapshot, doc: &Document, disk: &FixtureWorkspace) {
+    fn facts(
+        &self,
+        snapshot: &GlobalStateSnapshot,
+        doc: &Document,
+        case: &Value,
+        disk: &FixtureWorkspace,
+    ) {
         let db = snapshot.databases();
         assert_eq!(db.source_db().records().len(), 2);
         for (file, effective) in [
@@ -122,14 +128,26 @@ impl Harness {
                     .to_string(),
                 effective.text
             );
-            assert!(
+            assert_eq!(
                 db.parse_db()
                     .parse_diagnostics(&id)
                     .expect("parsed source")
-                    .is_empty(),
-                "{file} source={} diagnostics={:?}",
-                effective.text,
-                db.parse_db().parse_diagnostics(&id)
+                    .iter()
+                    .map(|d| d.code.as_deref().expect("syntax code"))
+                    .collect::<Vec<_>>(),
+                if file == "scripts/main.vela" {
+                    case["syntaxCodes"]
+                        .as_array()
+                        .map_or_else(Vec::new, |codes| {
+                            codes
+                                .iter()
+                                .map(|code| code.as_str().expect("syntax code"))
+                                .collect()
+                        })
+                } else {
+                    Vec::new()
+                },
+                "non-executing selection recovery: {file}"
             );
         }
         assert_eq!(db.schema_db().facts().types().count(), 0);
@@ -144,7 +162,7 @@ impl Harness {
     }
     fn check(&mut self, doc: &Document, case: &Value, disk: &FixtureWorkspace) {
         let before = self.test_server.snapshot();
-        self.facts(&before, doc, disk);
+        self.facts(&before, doc, case, disk);
         let before_counts = counts(&before);
         for _ in 0..3 {
             for (file, positions, wanted) in queries(doc, case, disk) {
@@ -163,7 +181,7 @@ impl Harness {
             }
         }
         assert_eq!(counts(&self.test_server.snapshot()), before_counts);
-        self.facts(&self.test_server.snapshot(), doc, disk);
+        self.facts(&self.test_server.snapshot(), doc, case, disk);
     }
     fn frozen(
         &mut self,
@@ -172,7 +190,7 @@ impl Harness {
         case: &Value,
         disk: &FixtureWorkspace,
     ) {
-        self.facts(snapshot, doc, disk);
+        self.facts(snapshot, doc, case, disk);
         let before = counts(snapshot);
         for _ in 0..3 {
             for (file, positions, wanted) in queries(doc, case, disk) {
@@ -190,7 +208,7 @@ impl Harness {
             }
         }
         assert_eq!(counts(snapshot), before);
-        self.facts(snapshot, doc, disk);
+        self.facts(snapshot, doc, case, disk);
     }
 }
 fn queries(

@@ -261,20 +261,11 @@ impl ResumableIteratorMethod {
         if self.callback.is_none() {
             let callback = self.callback_value.ok_or_else(incomplete_iterator_method)?;
             let closure = expect_closure_ref(&callback, heap, self.operation)?;
-            let code = closure.owner.function(closure.function).ok_or_else(|| {
+            closure.owner.function(closure.function).ok_or_else(|| {
                 VmError::new(VmErrorKind::UnknownFunction {
                     name: format!("<linked closure#{}>", closure.function.index()),
                 })
             })?;
-            if code.asyncness.is_async() {
-                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                    name: closure
-                        .owner
-                        .program()
-                        .debug_name(code.debug_name)
-                        .to_owned(),
-                }));
-            }
             self.callback = Some(PreparedCallback {
                 owner: Arc::clone(&closure.owner),
                 function: closure.function,

@@ -1,164 +1,98 @@
-use vela_common::{CallableAsyncness, SourceId};
-use vela_def::FunctionId;
-use vela_hir::ids::HirDeclId;
+use vela_common::SourceId;
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
-use vela_package::ModulePath;
+use vela_package::{ModulePath, PackageId};
 
-use crate::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
 use crate::facts::AnalysisFacts;
-use crate::registry::{CallableSignatureFact, RegistryEffectFact, RegistryFacts};
+use crate::hints::{type_fact_from_hint, type_fact_from_path};
+use crate::registry::RegistryEffectFact;
+use crate::semantic_facts::CallTargetFact;
 use crate::type_fact::TypeFact;
-use crate::validation::ExecutableValidationFacts;
 
 #[test]
-fn detached_task_diagnostics_name_nested_value_paths_and_continuation_abi() {
-    let source = SourceId::new(115);
-    let text = r#"
-async fn worker(callback: Closure) -> Array<Closure> { return [callback]; }
-fn continuation(result: Any) {}
-fn main() {
-    task::spawn_scoped_then(worker(|value| value), continuation);
-}
-"#;
-    let (graph, main) = graph(source, text);
-    let generation = ExecutableAnalysisGeneration::from_module_graph(
-        &graph,
-        [ExecutableAnalysisInput::new(
-            FunctionId::new(11_501),
-            graph.function_body(main).expect("main body").id,
-        )],
-    )
-    .expect("task analysis");
-    let view = generation.view(FunctionId::new(11_501)).expect("main view");
-    let diagnostics = view.validation_diagnostics();
-
-    assert_eq!(
-        diagnostics
-            .iter()
-            .filter_map(|diagnostic| diagnostic.code.as_deref())
-            .collect::<Vec<_>>(),
-        [
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_value_not_detachable",
-            "analysis::task_continuation_invalid",
-        ]
-    );
-    assert!(diagnostics[0].message.contains("target `worker`"));
-    assert!(diagnostics[0].message.contains("parameter `callback`"));
-    assert!(diagnostics[0].message.contains("callable"));
-    assert!(diagnostics.iter().any(|diagnostic| {
-        diagnostic
-            .message
-            .contains("argument for parameter `callback`")
-    }));
-    assert!(
-        diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.message.contains("return value.element"))
-    );
-    assert!(
-        diagnostics.iter().any(|diagnostic| {
-            diagnostic
-                .message
-                .contains("Result<Array<Closure>, task::Error>")
-        }),
-        "{diagnostics:#?}"
-    );
-    assert!(
-        diagnostics
-            .iter()
-            .all(|diagnostic| diagnostic.span.is_some())
-    );
+fn removed_async_syntax_is_rejected_before_executable_analysis() {
+    for text in [
+        "async fn worker() -> i64 { 1 }",
+        "fn main() { worker().await; }",
+        "trait Loader { async fn load(self) -> i64; }",
+    ] {
+        let graph = graph(text);
+        assert!(
+            !graph.diagnostics().is_empty(),
+            "removed syntax must be rejected: {text}"
+        );
+        assert!(
+            graph
+                .diagnostics()
+                .iter()
+                .any(|diagnostic| diagnostic.span.is_some())
+        );
+    }
 }
 
 #[test]
-fn erased_detached_values_and_exact_continuations_remain_valid() {
-    let source = SourceId::new(116);
-    let text = r#"
-async fn worker(value: Any) -> Any { return value; }
-fn continuation(result: Result<Any, task::Error>, turn: i64 = 0) {}
-fn main(value: Any) {
-    task::spawn_scoped_then(worker(value), continuation);
-}
-"#;
-    let (graph, main) = graph(source, text);
-    let generation = ExecutableAnalysisGeneration::from_module_graph(
-        &graph,
-        [ExecutableAnalysisInput::new(
-            FunctionId::new(11_601),
-            graph.function_body(main).expect("main body").id,
-        )],
-    )
-    .expect("task analysis");
-
-    assert!(
-        generation
-            .view(FunctionId::new(11_601))
-            .expect("main view")
-            .validation_diagnostics()
-            .is_empty()
-    );
+fn removed_task_calls_have_no_builtin_targets_or_effects() {
+    for text in [
+        "fn main() { task::spawn_scoped(worker()); }",
+        "fn main() { task::spawn_scoped_then(worker(), continuation); }",
+        "use task as jobs; fn main() { jobs::spawn_scoped(worker()); }",
+        "use task::spawn_scoped as spawn; fn main() { spawn(worker()); }",
+    ] {
+        let graph = graph(text);
+        let facts = AnalysisFacts::from_module_graph(&graph);
+        let main = graph
+            .declarations()
+            .find(|declaration| declaration.name == "main")
+            .expect("main");
+        let body = graph.function_body(main.id).expect("main body");
+        let (call, _) = body
+            .calls()
+            .find(|(_, call)| {
+                body.expression(call.callee).is_some_and(|expression| {
+                    let span = expression.origin.span;
+                    text[span.start as usize..span.end as usize].contains("spawn")
+                })
+            })
+            .expect("removed task call");
+        assert_eq!(
+            facts.call_target(call),
+            Some(&CallTargetFact::Unresolved),
+            "{text}"
+        );
+        assert_eq!(
+            facts.effect(call),
+            Some(&RegistryEffectFact::pure()),
+            "{text}"
+        );
+    }
 }
 
 #[test]
-fn detached_task_effect_diagnostic_closes_over_worker_calls_and_engine_ceiling() {
-    let source = SourceId::new(117);
-    let text = r#"
-async fn worker() -> i64 { return database::load().await; }
-fn main() { task::spawn_scoped(worker()); }
-"#;
-    let (graph, main) = graph(source, text);
-    let mut schema = RegistryFacts::default();
-    schema.insert_function(
-        "database::load",
-        TypeFact::function(Vec::new(), TypeFact::I64),
-    );
-    schema.insert_function_signature(
-        "database::load",
-        CallableSignatureFact::new(Vec::new(), TypeFact::I64).asyncness(CallableAsyncness::Async),
-    );
-    schema.insert_function_effect(
-        "database::load",
-        RegistryEffectFact {
-            reads_io: true,
-            ..RegistryEffectFact::pure()
-        },
-    );
-    schema.set_execution_effect_ceiling(RegistryEffectFact::pure());
-    let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
-    let validation = ExecutableValidationFacts::for_bodies(
-        &graph,
-        Some(&schema),
-        &facts,
-        [graph.function_body(main).expect("main body").id],
-    );
-    let diagnostic = validation
-        .diagnostics()
-        .iter()
-        .find(|diagnostic| diagnostic.code.as_deref() == Some("analysis::task_effect_denied"))
-        .expect("effect diagnostic");
-
-    assert!(diagnostic.message.contains("target `worker`"));
-    assert!(diagnostic.message.contains("`reads_io` / `io_read`"));
-    assert!(diagnostic.message.contains("`spawns_tasks` / `task_spawn`"));
-    assert!(diagnostic.labels[0].message.contains("TaskScope"));
-}
-
-fn graph(source: SourceId, text: &str) -> (ModuleGraph, HirDeclId) {
-    let mut graph = ModuleGraph::new();
-    graph.add_source(ModuleSource::new(
-        source,
-        vela_package::PackageId::anonymous(),
-        ModulePath::from_qualified("game"),
-        text,
-    ));
-    graph.resolve_imports();
-    assert_eq!(graph.diagnostics(), &[]);
+fn removed_task_error_has_no_builtin_type_fact() {
+    let graph = graph("fn main(value: task::Error) {}");
+    let path = vec!["task".to_owned(), "Error".to_owned()];
+    assert_eq!(type_fact_from_path(&graph, &path), TypeFact::Unknown);
     let main = graph
         .declarations()
         .find(|declaration| declaration.name == "main")
-        .map(|declaration| declaration.id)
-        .expect("main declaration");
-    (graph, main)
+        .expect("main");
+    let signature = graph.function_signature(main.id).expect("signature");
+    assert_eq!(
+        type_fact_from_hint(
+            &graph,
+            signature.params[0].type_hint.as_ref().expect("hint")
+        ),
+        TypeFact::Unknown
+    );
+}
+
+fn graph(text: &str) -> ModuleGraph {
+    let mut graph = ModuleGraph::new();
+    graph.add_source(ModuleSource::new(
+        SourceId::new(115),
+        PackageId::anonymous(),
+        ModulePath::from_qualified("app"),
+        text,
+    ));
+    graph.resolve_imports();
+    graph
 }

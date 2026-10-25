@@ -736,7 +736,7 @@ fn mir_i64_compare_immediate_branch_candidate(
 
 fn terminator_successor_count(kind: &MirTerminatorKind) -> usize {
     match kind {
-        MirTerminatorKind::Jump(_) | MirTerminatorKind::AwaitCall { .. } => 1,
+        MirTerminatorKind::Jump(_) => 1,
         MirTerminatorKind::Branch { .. }
         | MirTerminatorKind::GuardBranch { .. }
         | MirTerminatorKind::IteratorNext { .. }
@@ -808,10 +808,8 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::JumpIfFalse { .. } => "JumpIfFalse",
         InstructionKind::JumpIfNotMissing { .. } => "JumpIfNotMissing",
         InstructionKind::Jump { .. } => "Jump",
-        InstructionKind::AwaitCall { .. } => "AwaitCall",
         InstructionKind::CallNative { .. } => "CallNative",
         InstructionKind::CallFunction { .. } => "CallFunction",
-        InstructionKind::Task(_) => "Task",
         InstructionKind::MakeClosure { .. } => "MakeClosure",
         InstructionKind::CallClosure { .. } => "CallClosure",
         InstructionKind::CallMethod { .. } => "CallMethod",

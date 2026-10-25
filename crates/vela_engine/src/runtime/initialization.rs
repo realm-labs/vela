@@ -219,14 +219,9 @@ where
             let initializer = state
                 .initializer
                 .expect("verified VM state descriptor has an initializer");
-            let code = self
-                .image
-                .linked_program()
-                .function(initializer)
-                .expect("verified state initializer handle resolves");
+
             let target = handles::EntryRequest {
                 name: state.qualified_name.clone(),
-                asyncness: code.asyncness,
                 function: initializer,
                 params: Vec::new(),
                 param_defaults: Vec::new(),
@@ -247,7 +242,6 @@ where
                 target,
                 args: CallArgs::new(),
                 budget,
-                task_scope: None,
             })
             .map_err(|error| RuntimeBuildError::Initializer {
                 state: state.qualified_name.clone(),

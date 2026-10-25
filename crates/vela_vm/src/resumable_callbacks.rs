@@ -723,15 +723,6 @@ impl ResumableCallbackMethod {
                     name: format!("<linked closure#{}>", closure.function.index()),
                 })
             })?;
-            if code.asyncness.is_async() {
-                return Err(VmError::new(VmErrorKind::AsyncCallRequiresAwait {
-                    name: closure
-                        .owner
-                        .program()
-                        .debug_name(code.debug_name)
-                        .to_owned(),
-                }));
-            }
             self.callback = Some(PreparedCallback {
                 owner: Arc::clone(&closure.owner),
                 function: closure.function,

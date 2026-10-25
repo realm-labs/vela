@@ -1,6 +1,4 @@
-use super::{
-    AstChildren, SyntaxAttribute, SyntaxItem, SyntaxKind, SyntaxToken, TextRange, pub_token, token,
-};
+use super::{AstChildren, SyntaxAttribute, SyntaxItem, SyntaxToken, TextRange, pub_token};
 
 impl SyntaxItem {
     #[must_use]
@@ -21,15 +19,5 @@ impl SyntaxItem {
     #[must_use]
     pub fn is_public(&self) -> bool {
         self.pub_token().is_some()
-    }
-
-    #[must_use]
-    pub fn async_token(&self) -> Option<SyntaxToken> {
-        token(&self.syntax, SyntaxKind::AsyncKw)
-    }
-
-    #[must_use]
-    pub fn is_async(&self) -> bool {
-        self.async_token().is_some()
     }
 }

@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use syn::{FnArg, PatType, Result, ReturnType, Signature, Type, TypePath};
 
-use crate::signature::{param_name, type_generic_args, type_ident, wrapper_inner_type};
+use crate::signature::{
+    param_name, reject_async_signature, type_generic_args, type_ident, wrapper_inner_type,
+};
 
 const BOUNDARY_WRAPPERS: &[&str] = &[
     "HostRef",
@@ -30,7 +32,6 @@ pub(crate) enum EffectName {
     ReflectionRead,
     ReflectionWrite,
     ReflectionCall,
-    TaskSpawn,
 }
 
 impl EffectName {
@@ -46,7 +47,6 @@ impl EffectName {
             "reflection_read" => Ok(Self::ReflectionRead),
             "reflection_write" => Ok(Self::ReflectionWrite),
             "reflection_call" => Ok(Self::ReflectionCall),
-            "task_spawn" => Ok(Self::TaskSpawn),
             "pure" => Ok(Self::Pure),
             _ => Err(syn::Error::new(
                 ident.span(),
@@ -167,7 +167,6 @@ pub(crate) struct ClassifiedSignature {
     pub(crate) parameters: Vec<ClassifiedParameter>,
     pub(crate) returns: ClassifiedReturn,
     pub(crate) effects: BTreeSet<EffectName>,
-    pub(crate) is_async: bool,
 }
 
 pub(crate) fn classify_function(
@@ -197,6 +196,7 @@ fn classify_signature(
     allow_receiver: bool,
     host_collection_returns: bool,
 ) -> Result<ClassifiedSignature> {
+    reject_async_signature(signature)?;
     let mut parameters: Vec<ClassifiedParameter> = Vec::new();
     let mut host_origins = Vec::new();
     let mut receiver_access = None;
@@ -275,12 +275,6 @@ fn classify_signature(
         classify_return_type(&signature.output, host_collection_returns)?;
     let host_return = host_return_access(&return_shape)?;
     let mode = if let Some(child) = host_return {
-        if signature.asyncness.is_some() {
-            return Err(syn::Error::new_spanned(
-                &signature.output,
-                "async exported Rust callables cannot return call-scoped host borrows",
-            ));
-        }
         let (origin, parent) = if let Some(parent) = receiver_access {
             (BorrowOrigin::Receiver, parent)
         } else {
@@ -333,7 +327,6 @@ fn classify_signature(
             error_mode,
         },
         effects,
-        is_async: signature.asyncness.is_some(),
     })
 }
 
@@ -879,53 +872,28 @@ impl ClassifiedSignature {
     }
 
     pub(crate) fn supports_sync_host_adapter(&self) -> bool {
-        !self.is_async
-            && matches!(
-                self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
+        matches!(
+            self.returns.mode,
+            ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
+        ) && self.parameters.iter().all(|parameter| {
+            matches!(
+                parameter.mode,
+                ParameterMode::Value
+                    | ParameterMode::ReadOnlyValueBorrow
+                    | ParameterMode::SharedHost
+                    | ParameterMode::ExclusiveHost
+                    | ParameterMode::HiddenContext
             )
-            && self.parameters.iter().all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value
-                        | ParameterMode::ReadOnlyValueBorrow
-                        | ParameterMode::SharedHost
-                        | ParameterMode::ExclusiveHost
-                        | ParameterMode::HiddenContext
-                )
-            })
-            && self.parameters.iter().any(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-                )
-            })
-    }
-
-    pub(crate) fn supports_async_host_adapter(&self) -> bool {
-        self.is_async
-            && !self.has_hidden_context()
-            && matches!(
-                self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
+        }) && self.parameters.iter().any(|parameter| {
+            matches!(
+                parameter.mode,
+                ParameterMode::SharedHost | ParameterMode::ExclusiveHost
             )
-            && self.parameters.iter().all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value | ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-                )
-            })
-            && self.parameters.iter().any(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-                )
-            })
+        })
     }
 
     pub(crate) fn supports_sync_scoped_host_adapter(&self) -> bool {
-        !self.is_async
-            && !self.has_hidden_context()
+        !self.has_hidden_context()
             && matches!(
                 self.returns.mode,
                 ReturnMode::ScopedHost {
@@ -967,8 +935,7 @@ impl ClassifiedSignature {
     }
 
     pub(crate) fn supports_sync_scoped_method_adapter(&self) -> bool {
-        !self.is_async
-            && !self.has_hidden_context()
+        !self.has_hidden_context()
             && matches!(
                 self.returns.mode,
                 ReturnMode::ScopedHost {
@@ -996,27 +963,6 @@ impl ClassifiedSignature {
                 .parameters
                 .first()
                 .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
-    }
-
-    pub(crate) fn supports_async_method_adapter(&self) -> bool {
-        self.is_async
-            && matches!(
-                self.returns.mode,
-                ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
-            )
-            && self
-                .parameters
-                .first()
-                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
-            && self.parameters.iter().all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value
-                        | ParameterMode::SharedHost
-                        | ParameterMode::ExclusiveHost
-                        | ParameterMode::HiddenContext
-                )
-            })
     }
 }
 

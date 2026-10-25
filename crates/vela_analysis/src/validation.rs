@@ -22,7 +22,6 @@ mod constructors;
 mod diagnostics;
 mod host_access;
 mod state_assignments;
-mod tasks;
 
 #[cfg(test)]
 mod call_tests;
@@ -39,7 +38,6 @@ use capabilities::CapabilityIndex;
 pub use host_access::{
     HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact, HostIndexUseFact,
 };
-pub use tasks::task_continuation_parameter_matches;
 
 /// Whether analysis can prove a required semantic capability at a use site.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -288,7 +286,7 @@ impl ExecutableValidationFacts {
         for body in bodies.iter().filter_map(|body| graph.body(*body)) {
             capabilities::record_body(&mut validation, &capabilities, graph, facts, body);
             calls::record_body(&mut validation, graph, schema, facts, body);
-            tasks::record_body(&mut validation, graph, schema, facts, body);
+
             constructors::record_body(&mut validation, graph, schema, facts, body);
             host_access::record_body(&mut validation, schema, facts, body);
             state_assignments::record_body(&mut validation, graph, body);

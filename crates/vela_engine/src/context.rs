@@ -17,8 +17,7 @@ use crate::native::EffectSet;
 use crate::permission::{Capability, CapabilitySet};
 use crate::runtime::handles::{RuntimeCallTargetKind, RuntimeMethodSelectorKind};
 use crate::runtime::{
-    CallArgs, RuntimeCallFuture, RuntimeCallTarget, RuntimeMethodSelector, VelaMethodTarget,
-    VelaValue,
+    CallArgs, RuntimeCallTarget, RuntimeMethodSelector, VelaMethodTarget, VelaValue,
 };
 
 pub(crate) trait NativeReentry: Send {
@@ -48,14 +47,6 @@ pub(crate) trait NativeReentry: Send {
         target: RuntimeCallTargetKind,
         args: CallArgs<'args>,
     ) -> VmResult<VelaValue>;
-
-    fn call_async<'call, 'args>(
-        &'call mut self,
-        target: RuntimeCallTargetKind,
-        args: CallArgs<'args>,
-    ) -> RuntimeCallFuture<'call>
-    where
-        'args: 'call;
 
     fn bind_method(
         &mut self,
@@ -131,22 +122,6 @@ impl<'ctx, 'host> NativeCallContext<'ctx, 'host> {
             .as_deref_mut()
             .ok_or_else(reentry_unavailable)?
             .call(target, args)
-    }
-
-    pub fn call_async<'call, 'args, T>(
-        &'call mut self,
-        target: T,
-        args: CallArgs<'args>,
-    ) -> RuntimeCallFuture<'call>
-    where
-        T: RuntimeCallTarget + Send + 'call,
-        'args: 'call,
-    {
-        let target = crate::runtime::handles::call_target_sealed::Sealed::into_call_target(target);
-        match self.reentry.as_deref_mut() {
-            Some(reentry) => reentry.call_async(target, args),
-            None => RuntimeCallFuture::new(async { Err(reentry_unavailable()) }),
-        }
     }
 
     pub fn bind_method<T>(&mut self, receiver: &VelaValue, method: T) -> VmResult<VelaMethodTarget>
@@ -581,7 +556,7 @@ fn invoke_context_with_host_leases<R>(
 
 fn reentry_unavailable() -> vela_vm::error::VmError {
     vela_vm::error::VmError::new(vela_vm::error::VmErrorKind::TypeMismatch {
-        operation: "native call context reentry outside an active async execution",
+        operation: "native call context reentry outside an active execution",
     })
 }
 

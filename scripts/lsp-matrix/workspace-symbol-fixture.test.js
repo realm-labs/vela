@@ -17,7 +17,7 @@ test("workspace symbol corpus pins 31 owned rows and declaration partitions in f
   }
   assert.deepEqual(counts, { Module: 4, File: 4, Enum: 2, Interface: 2, Constant: 3, Struct: 4, Function: 6, Variable: 4, Object: 2 });
   assert(symbols.every(row => row.file.startsWith("scripts/") && typeof row.protocolKind === "number"));
-  assert.equal(symbols.find(row => row.id === "api-async").detail, "async (value: i64) -> i64");
+  assert.equal(symbols.find(row => row.id === "api-async").detail, "(value: i64) -> i64");
   assert.equal(symbols.find(row => row.id === "api-choose").detail, "(value: i64, amount: i64) -> i64");
 });
 

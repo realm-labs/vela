@@ -5,12 +5,11 @@ use vela_hir::ids::HirExprId;
 use crate::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileHostPathSegment,
     CompileHostPathTarget, CompileMemberTarget, CompileMethodClass, CompileTypeClass,
-    HostMethodTarget, HostTypeTarget, MirAwaitOperation, MirBuildError, MirEffect, MirHostMutation,
-    MirHostOperation, MirHostPath, MirHostPathSegment, MirImmediate, MirOperand, MirPlace,
-    MirSafepoint, MirSourceOrigin, MirStatement, MirStatementKind, MirTypeContract, MirValueType,
+    HostMethodTarget, HostTypeTarget, MirBuildError, MirEffect, MirHostMutation, MirHostOperation,
+    MirHostPath, MirHostPathSegment, MirImmediate, MirOperand, MirPlace, MirSafepoint,
+    MirSourceOrigin, MirStatement, MirStatementKind, MirTypeContract, MirValueType,
 };
 
-use super::calls::AwaitContext;
 use super::core::{FunctionBuilder, value_type};
 
 enum PreparedHostPath {
@@ -220,7 +219,6 @@ impl FunctionBuilder<'_> {
         call: &HirCall,
         placed: &CompileCallTarget,
         origin: MirSourceOrigin,
-        await_context: Option<AwaitContext>,
     ) -> Result<MirOperand, MirBuildError> {
         let field = self.host_call_field(expression, call, origin)?;
         match &placed.callee {
@@ -248,15 +246,7 @@ impl FunctionBuilder<'_> {
                     arguments,
                 };
                 let effect = MirEffect::host_call().union(method.signature.effect);
-                match await_context {
-                    Some(context) => self.append_await_operation(
-                        context,
-                        MirAwaitOperation::Host(operation),
-                        result_type,
-                        effect,
-                    ),
-                    None => self.append_host_value(origin, result_type, operation, effect),
-                }
+                self.append_host_value(origin, result_type, operation, effect)
             }
             CompileCalleeTarget::HostRemove { path } => {
                 if field.name != "remove"
@@ -276,18 +266,8 @@ impl FunctionBuilder<'_> {
                     return Ok(unit());
                 };
                 let operation = MirHostOperation::Remove { root, path };
-                match await_context {
-                    Some(context) => self.append_await_operation(
-                        context,
-                        MirAwaitOperation::Host(operation),
-                        MirValueType::Unit,
-                        MirEffect::host_write(),
-                    ),
-                    None => {
-                        self.append_host_effect(origin, operation, MirEffect::host_write())?;
-                        Ok(unit())
-                    }
-                }
+                self.append_host_effect(origin, operation, MirEffect::host_write())?;
+                Ok(unit())
             }
             CompileCalleeTarget::HostPush { path } => {
                 if field.name != "push" || path.segments.is_empty() {
@@ -314,18 +294,8 @@ impl FunctionBuilder<'_> {
                     operation: MirHostMutation::Push,
                     value,
                 };
-                match await_context {
-                    Some(context) => self.append_await_operation(
-                        context,
-                        MirAwaitOperation::Host(operation),
-                        MirValueType::Unit,
-                        MirEffect::host_write(),
-                    ),
-                    None => {
-                        self.append_host_effect(origin, operation, MirEffect::host_write())?;
-                        Ok(unit())
-                    }
-                }
+                self.append_host_effect(origin, operation, MirEffect::host_write())?;
+                Ok(unit())
             }
             CompileCalleeTarget::ScriptFunction { .. }
             | CompileCalleeTarget::ScriptMethod { .. }
@@ -823,7 +793,6 @@ impl FunctionBuilder<'_> {
                 }
             }
             MirTypeContract::Any
-            | MirTypeContract::TaskError
             | MirTypeContract::Array(_)
             | MirTypeContract::Map { .. }
             | MirTypeContract::Set(_)

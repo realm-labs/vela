@@ -38,7 +38,7 @@ fn lsp_source_backed_schema_function_rename_updates_call_sites() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "functions": [
                     {
@@ -183,7 +183,7 @@ fn lsp_source_backed_schema_variant_rename_updates_constructors_and_patterns() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

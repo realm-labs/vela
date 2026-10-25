@@ -8,7 +8,7 @@ use crate::compiler_registry::EngineFunctionEntries;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
 use crate::interop::{BoundaryMode, ReturnMode};
 use crate::metadata::type_hint_display;
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{NativeFunctionDesc, TypeHint};
 use crate::type_binding::TypeBindingRegistry;
 
@@ -504,11 +504,7 @@ pub(crate) fn validate_native_functions(
         .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(functions.async_native.iter().map(|entry| &entry.desc))
-        .chain(functions.async_host.iter().map(|entry| &entry.desc))
-        .chain(functions.async_direct_host.iter().map(|entry| &entry.desc))
         .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
-        .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
         .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
@@ -593,7 +589,6 @@ fn return_mode_matches_representation(
 pub(crate) fn validate_native_method_type_hints(
     host_method_metadata: &[NativeMethodDesc],
     native_methods: &[NativeMethodEntry],
-    async_native_methods: &[AsyncNativeMethodEntry],
     types: &[TypeDesc],
     include_standard_types: bool,
 ) -> EngineResult<()> {
@@ -601,7 +596,6 @@ pub(crate) fn validate_native_method_type_hints(
     for desc in host_method_metadata
         .iter()
         .chain(native_methods.iter().map(|entry| &entry.desc))
-        .chain(async_native_methods.iter().map(|entry| &entry.desc))
     {
         validate_attr_names(
             &format!("host method {}.{}", desc.owner.name, desc.name),

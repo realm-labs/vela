@@ -66,11 +66,6 @@ pub(crate) fn method_contract(
         &signature.returns.ty,
     );
     let effects = effect_tokens(&signature.effects);
-    let asyncness = if signature.is_async {
-        quote! { ::vela_common::CallableAsyncness::Async }
-    } else {
-        quote! { ::vela_common::CallableAsyncness::Sync }
-    };
     let docs = metadata
         .docs
         .map_or_else(|| quote! { None }, |docs| quote! { Some(#docs.to_owned()) });
@@ -91,7 +86,6 @@ pub(crate) fn method_contract(
                 public_path: #public_path.to_owned(),
                 parameters: vec![#(#parameters),*],
                 returns: #return_contract,
-                asyncness: #asyncness,
                 effects: #effects,
                 access: ::vela_engine::interop::CallableAccess {
                     reflect_callable: #reflect_callable,
@@ -117,15 +111,6 @@ pub(crate) fn method_adapter(
 ) -> Option<TokenStream> {
     if signature.supports_sync_scoped_method_adapter() {
         return Some(method_sync_scoped_host_adapter(
-            method,
-            self_ty,
-            trait_path,
-            public_name,
-            signature,
-        ));
-    }
-    if signature.supports_async_method_adapter() {
-        return Some(method_async_adapter(
             method,
             self_ty,
             trait_path,
@@ -768,227 +753,6 @@ fn method_sync_scoped_host_adapter(
                         .expect("missing scoped method invocation result"),
                 }
             })
-        }
-    }
-}
-
-fn method_async_adapter(
-    method: &ImplItemFn,
-    self_ty: &syn::Type,
-    trait_path: Option<&syn::Path>,
-    public_name: &str,
-    signature: &ClassifiedSignature,
-) -> TokenStream {
-    let method_ident = &method.sig.ident;
-    let helper_ident = method_ident.unraw();
-    let collection_registrations = collection_registration_tokens(signature);
-    let contract_ident = format_ident!("vela_callable_contract_{helper_ident}");
-    let register_ident = format_ident!("vela_register_export_{helper_ident}");
-    let receiver = signature
-        .parameters
-        .first()
-        .expect("method classifier emits a receiver");
-    let (receiver_kind, owned_receiver, borrowed_receiver, direct_receiver) = match receiver.mode {
-        ParameterMode::SharedHost => (
-            quote! { ::vela_host::lease::HostLeaseKind::Shared },
-            quote! {
-                let __vela_receiver = ::vela_engine::host_lease::HostLeaseRef::<#self_ty>::from_erased(
-                    lease, root,
-                )?;
-            },
-            quote! {
-                let __vela_receiver = __vela_leases
-                    .next()
-                    .and_then(|lease| lease.object().lease_any())
-                    .and_then(|object| object.downcast_ref::<#self_ty>())
-                    .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-            },
-            quote! { &*__vela_receiver },
-        ),
-        ParameterMode::ExclusiveHost => (
-            quote! { ::vela_host::lease::HostLeaseKind::Exclusive },
-            quote! {
-                let mut __vela_receiver = ::vela_engine::host_lease::HostLeaseMut::<#self_ty>::from_erased(
-                    lease, root,
-                )?;
-            },
-            quote! {
-                let __vela_receiver = __vela_leases
-                    .next()
-                    .and_then(|lease| lease.object_mut())
-                    .and_then(|object| object.lease_any_mut())
-                    .and_then(|object| object.downcast_mut::<#self_ty>())
-                    .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-            },
-            quote! { &mut *__vela_receiver },
-        ),
-        _ => unreachable!("method receiver must be a host borrow"),
-    };
-    let call_target = trait_path.map_or_else(
-        || quote! { <#self_ty>::#method_ident },
-        |path| quote! { <#self_ty as #path>::#method_ident },
-    );
-    let expected = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .filter(|parameter| parameter.mode != ParameterMode::HiddenContext)
-        .count();
-    let mut runtime_index = 0_usize;
-    let mut has_param_leases = false;
-    let param_leases = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .filter_map(|parameter| {
-            if parameter.mode == ParameterMode::HiddenContext {
-                return None;
-            }
-            let index = runtime_index;
-            runtime_index += 1;
-            let kind = match parameter.mode {
-                ParameterMode::SharedHost => {
-                    has_param_leases = true;
-                    quote! { ::vela_host::lease::HostLeaseKind::Shared }
-                }
-                ParameterMode::ExclusiveHost => {
-                    has_param_leases = true;
-                    quote! { ::vela_host::lease::HostLeaseKind::Exclusive }
-                }
-                _ => return None,
-            };
-            Some(quote! { (#index, #kind) })
-        })
-        .collect::<Vec<_>>();
-    let mut runtime_index = 0_usize;
-    let argument_bindings = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .map(|parameter| {
-            let name = format_ident!("__vela_arg_{}", parameter.name);
-            if parameter.mode == ParameterMode::HiddenContext {
-                return quote! { let #name = &mut *__vela_context; };
-            }
-            let index = runtime_index;
-            runtime_index += 1;
-            match parameter.ty.host_boundary() {
-                Some((_, HostAccess::Shared)) => {
-                    let value = shared_host_value_tokens(&parameter.ty, quote! { lease.object() });
-                    quote! {
-                        let #name = __vela_leases
-                            .next()
-                            .and_then(|lease| #value)
-                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-                    }
-                }
-                Some((_, HostAccess::Exclusive)) => {
-                    let value = exclusive_host_value_tokens(&parameter.ty, quote! { object });
-                    quote! {
-                        let #name = __vela_leases
-                            .next()
-                            .and_then(|lease| lease.object_mut())
-                            .and_then(|object| #value)
-                            .ok_or_else(|| ::vela_host::lease::host_lease_unsupported(root))?;
-                    }
-                }
-                None => {
-                    let ty = parameter
-                        .rust_ty
-                        .as_ref()
-                        .expect("value parameters retain their Rust type");
-                    quote! {
-                        let #name = <#ty as ::vela_engine::args::FromScriptArg>::from_script_arg(
-                            &args[#index],
-                        )?;
-                    }
-                }
-            }
-        })
-        .collect::<Vec<_>>();
-    let argument_names = signature
-        .parameters
-        .iter()
-        .skip(1)
-        .map(|parameter| format_ident!("__vela_arg_{}", parameter.name))
-        .collect::<Vec<_>>();
-    let descriptor = quote! {
-        let __vela_contract = Self::#contract_ident();
-        let mut __vela_desc = __vela_contract.native_method_desc(
-            <#self_ty as ::vela_engine::schema::ScriptHostSchema>::script_host_type_desc().key,
-        );
-        __vela_desc.id = ::vela_common::HostMethodId::new(
-            ::core::primitive::u128::from(::vela_common::stable_id(
-                "host_method",
-                <#self_ty>::vela_stable_type_path(),
-                #public_name,
-            )),
-        );
-    };
-    let arity = quote! {
-        if args.len() != #expected {
-            return Err(::vela_vm::error::VmError::new(
-                ::vela_vm::error::VmErrorKind::ArityMismatch {
-                    name: __vela_callable.clone(),
-                    expected: #expected,
-                    actual: args.len(),
-                },
-            ));
-        }
-    };
-    let registration = if signature.has_hidden_context() || has_param_leases {
-        quote! {
-            builder.register_async_context_direct_method_fn(
-                __vela_desc,
-                #receiver_kind,
-                vec![#(#param_leases),*],
-                move |root, leases, args, __vela_context| {
-                    let __vela_callable = __vela_contract.public_path.clone();
-                    ::std::boxed::Box::pin(async move {
-                        #arity
-                        let mut __vela_leases = leases.iter_mut();
-                        #borrowed_receiver
-                        #(#argument_bindings)*
-                        let __vela_result = #call_target(
-                            __vela_receiver,
-                            #(#argument_names),*
-                        ).await;
-                        ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
-                    })
-                },
-            )
-        }
-    } else {
-        quote! {
-            builder.register_async_direct_method_fn(
-                __vela_desc,
-                #receiver_kind,
-                move |root, lease, args| {
-                    let __vela_callable = __vela_contract.public_path.clone();
-                    ::std::boxed::Box::pin(async move {
-                        #arity
-                        #owned_receiver
-                        #(#argument_bindings)*
-                        let __vela_result = #call_target(
-                            #direct_receiver,
-                            #(#argument_names),*
-                        ).await;
-                        ::vela_engine::typed::IntoNativeReturn::into_native_return(__vela_result)
-                    })
-                },
-            )
-        }
-    };
-
-    quote! {
-        #[doc(hidden)]
-        #[must_use]
-        pub fn #register_ident(
-            builder: ::vela_engine::builder::EngineBuilder,
-        ) -> ::vela_engine::builder::EngineBuilder {
-            #(#collection_registrations)*
-            #descriptor
-            #registration
         }
     }
 }

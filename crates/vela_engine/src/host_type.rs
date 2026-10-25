@@ -1,13 +1,12 @@
-use vela_common::ReceiverCapability;
 use vela_host::path::{HostPath, PathSegment};
 use vela_host::resolved::{HostAccessOp, HostAccessSpec};
 use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_reflect::registry::TypeDesc;
 use vela_vm::HostExecution;
-use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::method::{AsyncNativeMethodEntry, NativeMethodDesc, NativeMethodEntry};
+use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::typed::TypedNativeMethodFunction;
 
 use crate::host_call::{host_call_to_owned_value, owned_to_host_call_value};
@@ -17,7 +16,6 @@ pub struct HostTypeSpec {
     type_desc: TypeDesc,
     method_metadata: Vec<NativeMethodDesc>,
     native_methods: Vec<NativeMethodEntry>,
-    async_native_methods: Vec<AsyncNativeMethodEntry>,
 }
 
 impl HostTypeSpec {
@@ -27,7 +25,6 @@ impl HostTypeSpec {
             type_desc,
             method_metadata: Vec::new(),
             native_methods: Vec::new(),
-            async_native_methods: Vec::new(),
         }
     }
 
@@ -84,48 +81,6 @@ impl HostTypeSpec {
         self
     }
 
-    /// Registers an async method implemented by the call-scoped erased Host
-    /// vtable. Its lease remains live until the Rust Future completes or drops.
-    #[must_use]
-    pub fn erased_async_method(mut self, desc: NativeMethodDesc) -> Self {
-        let method = desc.id;
-        let lease_kind = match desc.receiver {
-            ReceiverCapability::Shared => vela_host::lease::HostLeaseKind::Shared,
-            ReceiverCapability::Exclusive
-            | ReceiverCapability::Owned
-            | ReceiverCapability::Construct => vela_host::lease::HostLeaseKind::Exclusive,
-        };
-        self.async_native_methods
-            .push(AsyncNativeMethodEntry::new_direct(
-                desc,
-                lease_kind,
-                move |_root, mut lease, args| {
-                    Box::pin(async move {
-                        let args = args
-                            .iter()
-                            .map(owned_to_host_call_value)
-                            .collect::<VmResult<Vec<_>>>()?;
-                        let call = match lease_kind {
-                            vela_host::lease::HostLeaseKind::Shared => {
-                                lease.object().call_async_host_shared(method, args)
-                            }
-                            vela_host::lease::HostLeaseKind::Exclusive => lease
-                                .object_send_mut()
-                                .ok_or_else(|| {
-                                    VmError::new(VmErrorKind::TypeMismatch {
-                                        operation: "exclusive erased Host method lease",
-                                    })
-                                })?
-                                .call_async_host_exclusive(method, args),
-                        };
-                        let result = call.await?;
-                        Ok(host_call_to_owned_value(result))
-                    })
-                },
-            ));
-        self
-    }
-
     #[must_use]
     pub fn typed_native_method_fn<Args, F>(self, desc: NativeMethodDesc, function: F) -> Self
     where
@@ -136,20 +91,8 @@ impl HostTypeSpec {
         })
     }
 
-    pub(crate) fn into_parts(
-        self,
-    ) -> (
-        TypeDesc,
-        Vec<NativeMethodDesc>,
-        Vec<NativeMethodEntry>,
-        Vec<AsyncNativeMethodEntry>,
-    ) {
-        (
-            self.type_desc,
-            self.method_metadata,
-            self.native_methods,
-            self.async_native_methods,
-        )
+    pub(crate) fn into_parts(self) -> (TypeDesc, Vec<NativeMethodDesc>, Vec<NativeMethodEntry>) {
+        (self.type_desc, self.method_metadata, self.native_methods)
     }
 }
 

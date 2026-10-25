@@ -32,6 +32,7 @@ impl SchemaSourceSpan {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct SchemaNamedFact {
     pub(super) name: String,
     pub(super) fact: SchemaTypeFact,
@@ -67,6 +68,7 @@ impl SchemaNamedFact {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct SchemaMemberFact {
     pub(super) owner: String,
     pub(super) name: String,
@@ -113,6 +115,7 @@ impl SchemaMemberFact {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(super) struct SchemaFunctionFact {
     pub(super) name: String,
     pub(super) fact: SchemaTypeFact,

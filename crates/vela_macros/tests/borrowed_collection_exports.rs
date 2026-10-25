@@ -1,9 +1,6 @@
 #![allow(clippy::ptr_arg)] // The boundary contract intentionally distinguishes &Vec from slices.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::future::poll_fn;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::task::Poll;
 
 use vela_common::{CollectionViewKind, CollectionViewMutation, InteropRepresentation};
 use vela_engine::context::NativeCallContext;
@@ -15,8 +12,6 @@ use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
 use vela_macros::{ScriptHost, export, methods};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
-
-static SLICE_GATE_READY: AtomicBool = AtomicBool::new(false);
 
 #[path = "borrowed_collection_exports/slice_erasure_acceptance.rs"]
 mod slice_erasure_acceptance;
@@ -52,11 +47,6 @@ pub fn retain_non_two(value: i64) -> VmResult<bool> {
         }));
     }
     Ok(value > 0)
-}
-
-#[export(path = "collections::merge_async")]
-pub async fn merge_async(values: &Vec<i64>, totals: &mut BTreeMap<String, i64>) -> i64 {
-    merge(values, totals)
 }
 
 #[export(path = "collections::fixed_sum")]
@@ -98,11 +88,6 @@ pub fn byte_vec_push(values: &mut Vec<u8>, value: u8) -> i64 {
     i64::try_from(values.len()).expect("test byte vector length must fit i64")
 }
 
-#[export(path = "collections::slice_sum_async")]
-pub async fn slice_sum_async(values: &[i64]) -> i64 {
-    slice_sum(values)
-}
-
 #[export(path = "collections::slice_pair_sum")]
 pub fn slice_pair_sum(left: &[i64], right: &[i64]) -> i64 {
     left.iter().sum::<i64>() + right.iter().sum::<i64>()
@@ -127,47 +112,6 @@ pub fn slice_fail(values: &mut [i64]) -> VmResult<i64> {
     }))
 }
 
-#[export(path = "collections::slice_yield_once")]
-pub async fn slice_yield_once(values: &[i64]) -> i64 {
-    let mut first_poll = true;
-    poll_fn(|context| {
-        if std::mem::take(&mut first_poll) {
-            context.waker().wake_by_ref();
-            Poll::Pending
-        } else {
-            Poll::Ready(())
-        }
-    })
-    .await;
-    slice_sum(values)
-}
-
-#[export(path = "collections::slice_wait")]
-pub async fn slice_wait(values: &mut [i64]) -> i64 {
-    values[0] += 1;
-    std::future::pending().await
-}
-
-#[export(path = "collections::slice_panic_async")]
-pub async fn slice_panic_async(values: &mut [i64]) -> i64 {
-    values[0] += 1;
-    std::future::ready(()).await;
-    panic!("borrowed slice panic fixture")
-}
-
-#[export(path = "collections::slice_gate")]
-pub async fn slice_gate(values: &[i64]) -> i64 {
-    poll_fn(|_| {
-        if SLICE_GATE_READY.load(Ordering::SeqCst) {
-            Poll::Ready(())
-        } else {
-            Poll::Pending
-        }
-    })
-    .await;
-    slice_sum(values)
-}
-
 #[export(path = "collections::slice_reenter")]
 pub fn slice_reenter(context: &mut NativeCallContext<'_, '_>, values: &[i64]) -> VmResult<i64> {
     let mut args = CallArgs::new();
@@ -190,16 +134,8 @@ impl CollectionService {
         totals["sum"]
     }
 
-    pub async fn add_async(&self, totals: &mut BTreeMap<String, i64>, amount: i64) -> i64 {
-        add(totals, amount + self.offset)
-    }
-
     pub fn slice_sum(&self, values: &[i64]) -> i64 {
         values.iter().sum::<i64>() + self.offset
-    }
-
-    pub async fn slice_sum_async(&self, values: &[i64]) -> i64 {
-        self.slice_sum(values)
     }
 }
 
@@ -1154,9 +1090,6 @@ mod borrowed_host_iterator_tests;
 #[path = "borrowed_collection_exports/keyed_callback_tests.rs"]
 mod borrowed_host_keyed_callback_tests;
 
-#[path = "borrowed_collection_exports/async_tests.rs"]
-mod borrowed_collection_async_tests;
-
 fn runtime(source: &str) -> Runtime {
     let engine = collection_engine();
     let program = engine
@@ -1177,7 +1110,6 @@ fn collection_engine() -> Engine {
         .install_registration(vela_function_lookup_i32())
         .install_registration(vela_function_contains_i32())
         .install_registration(vela_function_retain_non_two())
-        .install_registration(vela_function_merge_async())
         .install_registration(vela_function_fixed_sum())
         .install_registration(vela_function_fixed_bump())
         .install_registration(vela_function_slice_sum())
@@ -1185,15 +1117,10 @@ fn collection_engine() -> Engine {
         .install_registration(vela_function_byte_slice_sum())
         .install_registration(vela_function_byte_slice_bump())
         .install_registration(vela_function_byte_vec_push())
-        .install_registration(vela_function_slice_sum_async())
         .install_registration(vela_function_slice_pair_sum())
         .install_registration(vela_function_slice_pair_mut())
         .install_registration(vela_function_slice_len_mut())
         .install_registration(vela_function_slice_fail())
-        .install_registration(vela_function_slice_yield_once())
-        .install_registration(vela_function_slice_wait())
-        .install_registration(vela_function_slice_panic_async())
-        .install_registration(vela_function_slice_gate())
         .install_registration(vela_function_slice_reenter())
         .install_registration(CollectionService::vela_methods())
         .install_registration(CollectionOwner::vela_methods())

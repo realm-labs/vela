@@ -10,8 +10,7 @@ use std::hash::Hash;
 use std::sync::Arc;
 
 use vela_common::{
-    CallableAsyncness, CapabilitySet, HostTypeId, InteropBindingContract, Span, StoragePolicy,
-    stable_id,
+    CapabilitySet, HostTypeId, InteropBindingContract, Span, StoragePolicy, stable_id,
 };
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 
@@ -571,7 +570,6 @@ pub struct CallableContract {
     pub public_path: String,
     pub parameters: Vec<CallableParameter>,
     pub returns: CallableReturn,
-    pub asyncness: CallableAsyncness,
     pub effects: EffectSet,
     pub access: CallableAccess,
     pub docs: Option<String>,
@@ -598,7 +596,6 @@ impl CallableContract {
         )
         .returns(self.returns.ty.clone())
         .effects(self.effects)
-        .asyncness(self.asyncness)
         .access(crate::native::FunctionAccess {
             public: self.access.public,
             reflect_visible: self.access.reflect_visible,
@@ -642,7 +639,6 @@ impl CallableContract {
         )
         .returns(self.returns.ty.clone())
         .effects(self.effects)
-        .asyncness(self.asyncness)
         .receiver(receiver)
         .access(crate::native::FunctionAccess {
             public: self.access.public,
@@ -710,12 +706,6 @@ impl CallableContract {
         );
         push_difference(
             &mut differences,
-            "asyncness",
-            &self.asyncness,
-            &candidate.asyncness,
-        );
-        push_difference(
-            &mut differences,
             "effects",
             &self.effects,
             &candidate.effects,
@@ -726,11 +716,10 @@ impl CallableContract {
 
     fn canonical_abi(&self) -> String {
         let mut value = format!(
-            "{}|{}|{:032x}|{}|{}|{}|{}|{}",
+            "{}|{}|{:032x}|{}|{}|{}|{}",
             self.identity.kind.abi_name(),
             self.public_path,
             self.identity.stable,
-            asyncness_name(self.asyncness),
             self.effects.bits(),
             u8::from(self.access.public),
             u8::from(self.access.reflect_visible),
@@ -801,13 +790,6 @@ fn push_difference<T: fmt::Debug + PartialEq>(
             expected: format!("{expected:?}"),
             actual: format!("{actual:?}"),
         });
-    }
-}
-
-fn asyncness_name(asyncness: CallableAsyncness) -> &'static str {
-    match asyncness {
-        CallableAsyncness::Sync => "sync",
-        CallableAsyncness::Async => "async",
     }
 }
 

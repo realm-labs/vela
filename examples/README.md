@@ -3,10 +3,10 @@
 Each example is a standalone Cargo bin with its own `main`, so examples do not
 depend on a parameter-dispatched demo runner.
 
-Checkpoint B removes the Service/Provider examples and their executable tests.
+Checkpoints B/C remove the Service/Provider and async/task examples and their executable registrations.
 Ordinary packages, traits, native/value calls and script reload remain. The
-async and borrowed-host examples below still describe the implementation awaiting
-checkpoints C/D; they are not the reduced target boundary or replacement APIs.
+borrowed-host examples below still describe the implementation awaiting
+checkpoint D; they are not the reduced target boundary or replacement APIs.
 
 ```bash
 cargo run --manifest-path examples/Cargo.toml --bin level_up
@@ -14,7 +14,6 @@ cargo run --manifest-path examples/Cargo.toml --bin monster_kill_reward
 cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap
 cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
 cargo run --manifest-path examples/Cargo.toml --bin script_state
-cargo run --manifest-path examples/Cargo.toml --bin async_stateful_reentry
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
@@ -56,10 +55,6 @@ Other useful embedding examples:
   exported Rust function and methods using normal syntax, while Rust calls the
   Vela entry through build-time generated typed bindings. Authored calls do not
   assemble `CallArgs`, erase values, or resolve runtime target strings.
-- `async_stateful_reentry`: a mutable state lease held across a Rust method
-  await, followed by same-session Vela reentry with an explicit mutable
-  reborrow. Its actor-shaped container keeps Runtime and host storage disjoint
-  without depending on an actor framework or async executor crate.
 - `script_state`: per-Runtime VM state initialized by Vela and updateable from Rust.
 - `serde_value`: snapshot-style serde conversion between Rust structs/enums and
   Vela owned values.

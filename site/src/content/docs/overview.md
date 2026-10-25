@@ -24,7 +24,7 @@ That syntax does not expose a Rust `&mut Player` to script code. The VM routes t
 
 ## What Vela Is Not
 
-Vela is not dynamic Rust, not a Lua table/metatable clone, and not an unbounded plugin sandbox. The MVP intentionally excludes script-language generics, JIT compilation, script-visible task or coroutine handles, monkey patching, runtime type-structure mutation, and exposing real Rust references to scripts. Its executor-neutral `async fn` and `.await` model remains sequential and does not expose script-level concurrency.
+Vela is not dynamic Rust, not a Lua table/metatable clone, and not an unbounded plugin sandbox. The MVP intentionally excludes script-language generics, JIT compilation, script-visible task or coroutine handles, monkey patching, runtime type-structure mutation, and exposing real Rust references to scripts. Script execution is synchronous: async declarations, await expressions, and detached tasks are unsupported. Editor workers and protocol cancellation are separate tooling infrastructure.
 
 The language is dynamic, but its embedding boundary is explicit. Hosts choose which types, fields, methods, native functions, extern state, capabilities, and budgets are available to each runtime.
 

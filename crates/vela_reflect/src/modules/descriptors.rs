@@ -1,4 +1,4 @@
-use vela_common::{CallableAsyncness, Span};
+use vela_common::Span;
 use vela_def::{FunctionId, StateId};
 
 use crate::{
@@ -27,31 +27,6 @@ pub struct FunctionParamDesc {
     pub name: String,
     pub type_hint: Option<String>,
     pub has_default: bool,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum DetachedValueMode {
-    Detachable,
-    RuntimeChecked,
-}
-
-impl DetachedValueMode {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Detachable => "detachable",
-            Self::RuntimeChecked => "runtime_checked",
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DetachedTargetDesc {
-    pub parameter_contracts: Vec<String>,
-    pub parameter_modes: Vec<DetachedValueMode>,
-    pub result_contract: String,
-    pub result_mode: DetachedValueMode,
-    pub effects: FunctionEffectSet,
 }
 
 impl FunctionParamDesc {
@@ -84,10 +59,10 @@ pub struct FunctionDesc {
     pub module: Option<String>,
     pub params: Vec<FunctionParamDesc>,
     pub return_type: Option<String>,
-    pub asyncness: CallableAsyncness,
+
     pub public: bool,
     pub effects: FunctionEffectSet,
-    pub detached_target: Option<DetachedTargetDesc>,
+
     pub access: FunctionAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
@@ -192,10 +167,10 @@ impl FunctionDesc {
             module: None,
             params: Vec::new(),
             return_type: None,
-            asyncness: CallableAsyncness::Sync,
+
             public: true,
             effects: FunctionEffectSet::default(),
-            detached_target: None,
+
             access: FunctionAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,
@@ -219,12 +194,6 @@ impl FunctionDesc {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
-        self
-    }
-
-    #[must_use]
-    pub const fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 

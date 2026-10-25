@@ -428,8 +428,7 @@ fn host_state(verifier: &FunctionVerifier<'_>, contract: Option<&MirTypeContract
             .map_or(HostState::NonHost, HostState::Exact),
         Some(MirTypeContract::Any) | None => HostState::Unknown,
         Some(
-            MirTypeContract::TaskError
-            | MirTypeContract::Primitive(_)
+            MirTypeContract::Primitive(_)
             | MirTypeContract::Range
             | MirTypeContract::Array(_)
             | MirTypeContract::Map { .. }

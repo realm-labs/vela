@@ -210,7 +210,7 @@ fn open_schema_method_return_fixture() -> SchemaReturnFixture {
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -267,7 +267,7 @@ fn open_schema_trait_method_return_fixture() -> SchemaReturnFixture {
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

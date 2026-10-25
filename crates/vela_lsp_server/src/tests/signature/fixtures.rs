@@ -1,6 +1,6 @@
 pub(super) fn schema_with_rewardable_function_and_trait_method() -> &'static str {
     r#"{
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "traits": [
                 {

@@ -18,14 +18,17 @@ function inspectArtifacts(value, file) {
     for (const item of value) inspectArtifacts(item, file);
   } else if (value && typeof value === "object") {
     if (Object.hasOwn(value, "formatVersion")) {
-      assert.notEqual(value.formatVersion, 1, `${file}: obsolete schema format`);
+      assert.ok(![1, 2].includes(value.formatVersion), `${file}: obsolete schema format`);
       assert.equal(Object.hasOwn(value, "serviceSet"), false, `${file}: removed schema metadata`);
     }
-    for (const item of Object.values(value)) inspectArtifacts(item, file);
+    for (const field of ["asyncness", "spawnsTasks", "taskTargets", "taskMetadata", "executionEffectCeiling"]) {
+          assert.equal(Object.hasOwn(value, field), false, `${file}: removed ${field} metadata`);
+        }
+        for (const item of Object.values(value)) inspectArtifacts(item, file);
   }
 }
 
-test("shared editor artifacts do not consume format 1 or Service metadata", () => {
+test("shared editor artifacts reject obsolete schema formats and removed metadata", () => {
   for (const file of fs.readdirSync(fixtures).filter((file) => file.endsWith(".json"))) {
     inspectArtifacts(JSON.parse(fs.readFileSync(path.join(fixtures, file), "utf8")), file);
   }
@@ -64,8 +67,41 @@ test("mixed call matrices keep ordinary coverage and no removed callable success
   assert.ok(load("selection-calls").oracle.cases.length > 0);
 });
 
+test("async and task-only matrices are rejection contracts, never synchronous success rewrites", () => {
+  const names = fs.readdirSync(fixtures).filter((file) => /^completion-(task-|async-callables|await-contexts)/.test(file));
+  assert.ok(names.length >= 10);
+  for (const file of names) {
+    const spec = load(file.slice(0, -5));
+    assert.equal(spec.oracle.removedSurface, true, file);
+    assert.ok(spec.oracle.cases.some((entry) => entry.syntaxError));
+    assert.ok(spec.oracle.cases.some((entry) => entry.signatureNull));
+    assert.match(Object.values(spec.files).join("\n"), /async fn/);
+    assert.match(Object.values(spec.files).join("\n"), /\.await/);
+    assert.equal(spec.oracle.queries, undefined);
+  }
+});
+
+test("removed spellings in selection sources are diagnosed nonexecuting recovery cases", () => {
+  for (const name of ["selection-declarations", "selection-calls", "selection-types", "selection-literals"]) {
+    for (const entry of load(name).oracle.cases) {
+      const source = entry.source.replace(/\[\[[^\]]+\]\]/g, "");
+      if (/\basync\b|\.await|task::spawn_scoped/.test(source)) {
+        assert.ok(entry.syntaxCodes.length > 0, `${name}/${entry.id}`);
+        assert.ok(entry.syntaxCodes.every((code) => /^syntax::removed_(async|task)$/.test(code)));
+      }
+    }
+  }
+});
+
+test("editor grammar does not advertise script async or await keywords", () => {
+  const grammar = fs.readFileSync(path.join(root, "editors/tree-sitter-vela/grammar.js"), "utf8");
+  assert.doesNotMatch(grammar, /["'](?:async|await)["']/);
+  const textmate = fs.readFileSync(path.join(root, "editors/vscode/syntaxes/vela.tmLanguage.json"), "utf8");
+  assert.doesNotMatch(textmate, /\basync\b|\bawait\b/);
+});
+
 test("removed example bins stay retired while ordinary consumer entrypoints remain", () => {
-  for (const name of ["service_hard_switch_fixture", "service_hotfix_coverage", "scoped_service_task", "plugin_provider_demo"]) {
+  for (const name of ["service_hard_switch_fixture", "service_hotfix_coverage", "scoped_service_task", "plugin_provider_demo", "async_basic", "async_stateful_reentry"]) {
     assert.equal(fs.existsSync(path.join(root, "examples/src/bin", name)), false);
   }
   for (const name of ["modules", "package_dependency_demo", "native_function", "serde_value", "hot_reload_function_swap"]) {

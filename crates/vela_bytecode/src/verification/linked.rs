@@ -329,23 +329,6 @@ fn verify_linked_instruction(
         InstructionKind::Jump { target } => {
             verify_linked_jump(function, instruction_index, code, *target)
         }
-        InstructionKind::AwaitCall { operation, resume } => {
-            verify_linked_jump(function, instruction_index, code, *resume)?;
-            if !is_linked_await_operation(operation) {
-                return Err(error(
-                    function,
-                    instruction_index,
-                    VerificationErrorKind::InvalidAwaitOperation,
-                ));
-            }
-            verify_linked_instruction(
-                function,
-                code,
-                index,
-                &Instruction::new((**operation).clone()),
-                context,
-            )
-        }
         InstructionKind::CallNative {
             dst,
             native,
@@ -371,27 +354,6 @@ fn verify_linked_instruction(
             verify_linked_function_handle(function, instruction_index, context, *callee)?;
             verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
             verify_linked_call_arguments(function, instruction_index, code, args)
-        }
-        InstructionKind::Task(task) => {
-            verify_linked_register(function, instruction_index, code, task.dst)?;
-            verify_linked_function_handle(function, instruction_index, context, task.worker)?;
-            verify_linked_debug_name(function, instruction_index, context, task.worker_debug_name)?;
-            verify_linked_call_arguments(function, instruction_index, code, &task.args)?;
-            if let Some(continuation) = &task.continuation {
-                verify_linked_function_handle(
-                    function,
-                    instruction_index,
-                    context,
-                    continuation.function,
-                )?;
-                verify_linked_debug_name(
-                    function,
-                    instruction_index,
-                    context,
-                    continuation.debug_name,
-                )?;
-            }
-            Ok(())
         }
         InstructionKind::MakeClosure {
             dst,
@@ -766,22 +728,6 @@ fn verify_linked_instruction(
     }
 }
 
-fn is_linked_await_operation(operation: &InstructionKind) -> bool {
-    matches!(
-        operation,
-        InstructionKind::CallNative { .. }
-            | InstructionKind::CallFunction { .. }
-            | InstructionKind::CallClosure { .. }
-            | InstructionKind::CallDynamicMethod { .. }
-            | InstructionKind::CallMethod { .. }
-            | InstructionKind::HostRead { .. }
-            | InstructionKind::HostWrite { .. }
-            | InstructionKind::HostMutate { .. }
-            | InstructionKind::HostRemove { .. }
-            | InstructionKind::HostCall { .. }
-    )
-}
-
 fn verify_linked_instruction_cache_site(
     function: &str,
     instruction_index: Option<usize>,
@@ -946,7 +892,6 @@ fn verify_linked_type_guard(
     match guard.plan {
         TypeGuardPlan::Primitive(_)
         | TypeGuardPlan::Standard(_)
-        | TypeGuardPlan::TaskError
         | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {
@@ -1016,7 +961,6 @@ fn verify_linked_type_guard_plan(
     match guard.plan {
         TypeGuardPlan::Primitive(_)
         | TypeGuardPlan::Standard(_)
-        | TypeGuardPlan::TaskError
         | TypeGuardPlan::Callable { .. } => Ok(()),
         TypeGuardPlan::Array { ref element } | TypeGuardPlan::Set { ref element } => {
             if let Some(element) = element {

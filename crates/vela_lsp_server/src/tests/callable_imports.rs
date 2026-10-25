@@ -9,11 +9,20 @@ fn callable_import_matrix_projects_owned_signatures_parameters_and_utf16_edits()
 }
 
 #[test]
-fn task_callable_matrix_projects_reserved_ownership_and_positional_operands() {
+fn removed_task_callable_matrix_projects_no_builtin_signatures() {
     verify_fixture("completion-task-calls");
 }
 
 fn verify_fixture(name: &str) {
+    if name.starts_with("completion-task-")
+        || matches!(
+            name,
+            "completion-async-callables" | "completion-await-contexts"
+        )
+    {
+        crate::tests::removed_execution::verify_fixture(name);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(name);
         if crlf {

@@ -7,7 +7,7 @@ Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定
 
 ## 当前可用
 
-当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、executor-neutral 的 `async fn`/`.await`、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、VM/extern state、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
+当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、VM/extern state、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
 
 项目还包含浏览器 Playground、文档站、独立嵌入示例、conformance 风格测试、benchmark harness 和 parser fuzz 基础设施。
 
@@ -15,7 +15,7 @@ Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定
 
 当前实现重点在解释器和 inline cache 性能、宿主边界 fast path，以及在保持 HostAccess、热更新兼容性、诊断和受控反射这些产品契约的同时继续清理架构。
 
-性能目标是先把非 JIT 解释器做好。JIT 是 post-MVP 方向，不是当前发布的前置条件。
+当前简化工作移除脚本 async/task 和借用宿主路径，不引入替代 API。保留解释器优化、普通热更新、CLI/浏览器执行和原生 LSP worker。JIT 不是产品路线。
 
 ## MVP 明确非目标
 

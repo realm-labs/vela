@@ -960,7 +960,6 @@ fn is_control_flow_keyword(keyword: Keyword) -> bool {
             | Keyword::Break
             | Keyword::Continue
             | Keyword::In
-            | Keyword::Await
     )
 }
 

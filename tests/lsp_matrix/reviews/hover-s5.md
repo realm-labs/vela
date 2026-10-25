@@ -1,5 +1,10 @@
 # Hover S5 calls and arguments
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: `hover/syntax/S5/{positive,negative}/{service,protocol}` only. Exact tests:
 `hover::call_matrix_tests::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments`
 and `tests::hover::calls::hover_call_matrix_preserves_parameter_labels_and_lexical_arguments`.

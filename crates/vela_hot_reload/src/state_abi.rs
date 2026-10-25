@@ -213,16 +213,13 @@ fn collect_script_call_targets(
         UnlinkedInstructionKind::MakeClosure { function, .. } => {
             targets.push(ExecutableTarget::Nested(*function));
         }
-        UnlinkedInstructionKind::AwaitCall { operation, .. } => {
-            collect_script_call_targets(operation, targets);
-        }
+
         _ => {}
     }
 }
 
 fn same_executable_body(old: &UnlinkedCodeObject, new: &UnlinkedCodeObject) -> bool {
-    old.asyncness == new.asyncness
-        && old.params == new.params
+    old.params == new.params
         && old.param_defaults == new.param_defaults
         && old.capture_count == new.capture_count
         && old.register_count == new.register_count
@@ -262,16 +259,7 @@ fn same_instruction_kind(old: &UnlinkedInstructionKind, new: &UnlinkedInstructio
                 ..
             },
         ) => old_dst == new_dst && old_captures == new_captures,
-        (
-            UnlinkedInstructionKind::AwaitCall {
-                operation: old_operation,
-                resume: old_resume,
-            },
-            UnlinkedInstructionKind::AwaitCall {
-                operation: new_operation,
-                resume: new_resume,
-            },
-        ) => old_resume == new_resume && same_instruction_kind(old_operation, new_operation),
+
         _ => old == new,
     }
 }

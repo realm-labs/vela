@@ -218,14 +218,22 @@ fn schema_watch_rejects_old_format_and_removed_service_set_then_recovers() {
     for (rejected, reason) in [
         (
             r#"{"formatVersion":1,"facts":{}}"#,
-            "unsupported schema artifact format version 1; expected 2",
+            "unsupported schema artifact format version 1; expected 3",
         ),
         (
-            r#"{"formatVersion":2,"serviceSet":null,"facts":{}}"#,
+            r#"{"formatVersion":2,"facts":{}}"#,
+            "unsupported schema artifact format version 2; expected 3",
+        ),
+        (
+            r#"{"formatVersion":3,"facts":{"executionEffectCeiling":{"spawnsTasks":false}}}"#,
+            "unknown field `executionEffectCeiling`",
+        ),
+        (
+            r#"{"formatVersion":3,"serviceSet":null,"facts":{}}"#,
             "unknown field `serviceSet`",
         ),
         (
-            r#"{"formatVersion":2,"serviceSet":{"services":[]},"facts":{}}"#,
+            r#"{"formatVersion":3,"serviceSet":{"services":[]},"facts":{}}"#,
             "unknown field `serviceSet`",
         ),
     ] {
@@ -525,7 +533,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_field(name: &str, kind: &str) -> String {
     serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

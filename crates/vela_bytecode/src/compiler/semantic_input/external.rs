@@ -321,7 +321,6 @@ impl GenerationBuilder<'_, '_> {
                         canonical_symbol: path.to_owned(),
                         debug_name: path.to_owned(),
                         signature: CompileSignature {
-                            asyncness: vela_common::CallableAsyncness::Sync,
                             parameters: Vec::new(),
                             positional: CompilePositionalPolicy::RuntimeChecked,
                             return_contract: None,
@@ -657,7 +656,6 @@ pub(super) fn effect(value: vela_registry::EffectSet) -> MirEffect {
         uses_random: value.random,
         reads_io: value.io_read,
         writes_io: value.io_write,
-        task_spawn: value.task_spawn,
         ..MirEffect::PURE
     }
 }
@@ -680,7 +678,6 @@ pub(super) fn external_signature(
     origin: MirSourceOrigin,
 ) -> CompileResult<CompileSignature> {
     Ok(CompileSignature {
-        asyncness: signature.asyncness,
         parameters: signature
             .params
             .iter()

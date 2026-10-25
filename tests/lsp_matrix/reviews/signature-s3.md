@@ -1,5 +1,10 @@
 # Signature help: S3 review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: the four `signature-help/syntax/S3/{positive,negative}/{service,protocol}`
 obligations. Exact tests are
 `signature::call_matrix_tests::signature_type_matrix_preserves_complete_hints_and_unknown_boundaries`

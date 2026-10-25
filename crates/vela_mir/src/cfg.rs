@@ -1,6 +1,6 @@
 use crate::{
-    CompileTryLayoutTarget, CompileTryTarget, MirAwaitOperation, MirBlockId, MirEffect, MirGuardId,
-    MirLocalId, MirOperand, MirPlace, MirSafepointId, MirSourceOrigin, MirStatementId,
+    CompileTryLayoutTarget, CompileTryTarget, MirBlockId, MirEffect, MirGuardId, MirLocalId,
+    MirOperand, MirSafepointId, MirSourceOrigin, MirStatementId,
 };
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -73,11 +73,6 @@ pub enum MirTerminatorKind {
         next: MirBlockId,
         done: MirBlockId,
     },
-    AwaitCall {
-        operation: Box<MirAwaitOperation>,
-        destination: MirPlace,
-        resume: MirBlockId,
-    },
     Return(Option<MirOperand>),
     TryTypeMismatch {
         target: CompileTryTarget,
@@ -113,7 +108,6 @@ impl MirTerminator {
 impl MirTerminatorKind {
     pub(crate) const fn minimum_effect(&self) -> MirEffect {
         match self {
-            Self::AwaitCall { operation, .. } => operation.minimum_effect(),
             Self::IteratorNext { .. } => MirEffect::dynamic_call(),
             Self::RangeNext {
                 mode: MirRangeStepMode::DynamicInteger,

@@ -5,12 +5,10 @@ use vela_analysis::semantic_facts::{
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_analysis::validation::{
-    CallParameterSlotValueFact, CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind,
-    HostIndexCapabilityResolutionFact,
+    CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact,
 };
-use vela_common::{Detachability, PrimitiveTag, ScalarValue};
+use vela_common::{PrimitiveTag, ScalarValue};
 use vela_def::{FieldId, FunctionId, TypeId};
-use vela_hir::binding::{BindingResolution, TaskLexicalCapability};
 use vela_hir::body::{
     HirAssignOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner,
     HirPatternKind,
@@ -21,10 +19,9 @@ use vela_mir::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
     CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
-    CompileMemberTarget, CompileParameterDefault, CompilePatternConstructorTarget,
-    CompilePlacedCallValue, CompileReflectionCall, CompileTaskContinuationTarget,
-    CompileTaskDetachability, CompileTaskOperation, CompileTaskTarget, DynamicMethodTarget,
-    HostFieldTarget, HostMethodTarget, MirBuildError, MirSourceOrigin,
+    CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
+    CompileReflectionCall, DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError,
+    MirSourceOrigin,
 };
 
 use super::contracts::{
@@ -179,9 +176,6 @@ impl GenerationBuilder<'_, '_> {
         let origin = self
             .expression_origin(expression)
             .ok_or_else(registry_input_error)?;
-        if self.insert_task_call(executable, body, expression, call, origin)? {
-            return Ok(());
-        }
         let placement = self.checked_call_placement(executable, call, origin)?;
         let target = require_analysis_call_target(
             self.executable_analysis(executable)?
@@ -370,212 +364,6 @@ impl GenerationBuilder<'_, '_> {
         self.targets
             .insert_call(executable, expression, placed, origin)
             .map_err(input_error)
-    }
-
-    fn insert_task_call(
-        &mut self,
-        executable: FunctionId,
-        body: &HirBody,
-        expression: HirExprId,
-        call: &vela_hir::body::HirCall,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<bool> {
-        let Some(bindings) = self.request.graph.bindings_for_body(body.id) else {
-            return Ok(false);
-        };
-        let Some(capability) = bindings.task_capability(call.callee) else {
-            return Ok(false);
-        };
-        let worker_call = call
-            .arguments
-            .first()
-            .and_then(|argument| argument.value)
-            .ok_or_else(registry_input_error)?;
-        let worker = body.call(worker_call).ok_or_else(registry_input_error)?;
-        let worker_declaration = match self
-            .executable_analysis(executable)?
-            .call_target(worker_call)
-        {
-            Some(CallTargetFact::Declaration(declaration)) => *declaration,
-            _ => return Err(registry_input_error()),
-        };
-        let worker_function = self
-            .function_ids
-            .get(&worker_declaration)
-            .copied()
-            .ok_or_else(registry_input_error)?;
-        if !matches!(
-            bindings.resolution(worker.callee),
-            Some(BindingResolution::Declaration(declaration)) if *declaration == worker_declaration
-        ) {
-            return Err(registry_input_error());
-        }
-        let worker_origin = self
-            .expression_origin(worker_call)
-            .ok_or_else(registry_input_error)?;
-        let placement = self.checked_call_placement(executable, worker, worker_origin)?;
-        let signature = self
-            .request
-            .graph
-            .function_signature(worker_declaration)
-            .cloned()
-            .ok_or_else(registry_input_error)?;
-        let slots = self.strict_parameter_slots(&placement, &signature.params, worker_origin)?;
-        let descriptor = self
-            .targets
-            .target_table()
-            .function(worker_function)
-            .cloned()
-            .ok_or_else(registry_input_error)?;
-        if descriptor.signature.parameters.len() != slots.len() {
-            return Err(registry_input_error());
-        }
-        let analysis = self.executable_analysis(executable)?;
-        let mut parameter_detachability = Vec::with_capacity(slots.len());
-        for (index, (slot, parameter)) in slots
-            .iter()
-            .zip(&descriptor.signature.parameters)
-            .enumerate()
-        {
-            let expected = vela_mir::contract_detachability(
-                self.targets.target_table(),
-                parameter.contract.as_ref(),
-            );
-            if let Some(kind) = expected.fact.rejection() {
-                let suffix = expected.rejection_path.concat();
-                return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
-                    target: descriptor.debug_name.clone(),
-                    path: format!("parameter `{}`{suffix}", parameter.name),
-                    kind,
-                })
-                .with_span(parameter.origin.unwrap_or(worker_origin).span));
-            }
-            let explicit_value = match &slot.value {
-                CallParameterSlotValueFact::Explicit { value, .. } => {
-                    Some(value.ok_or_else(registry_input_error)?)
-                }
-                CallParameterSlotValueFact::MissingDefault => None,
-            };
-            let actual = explicit_value.map_or(Detachability::Detachable, |value| {
-                analysis
-                    .expression(value)
-                    .map(TypeFact::detachability)
-                    .unwrap_or(Detachability::RuntimeChecked)
-            });
-            if let Some(kind) = actual.rejection() {
-                let span = match explicit_value {
-                    Some(value) => self
-                        .expression_origin(value)
-                        .map_or(worker_origin.span, |origin| origin.span),
-                    None => worker_origin.span,
-                };
-                return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
-                    target: descriptor.debug_name.clone(),
-                    path: format!("argument for parameter `{}`", parameter.name),
-                    kind,
-                })
-                .with_span(span));
-            }
-            debug_assert_eq!(slot.parameter_index, index);
-            parameter_detachability.push(expected.fact.union(actual));
-        }
-        let result = vela_mir::contract_detachability(
-            self.targets.target_table(),
-            descriptor.signature.return_contract.as_ref(),
-        );
-        if let Some(kind) = result.fact.rejection() {
-            let suffix = result.rejection_path.concat();
-            return Err(CompileError::new(CompileErrorKind::TaskValueNotDetachable {
-                target: descriptor.debug_name.clone(),
-                path: format!("return value{suffix}"),
-                kind,
-            })
-            .with_span(worker_origin.span));
-        }
-        let continuation = if capability == TaskLexicalCapability::SpawnScopedThen {
-            let expression = call
-                .arguments
-                .get(1)
-                .and_then(|argument| argument.value)
-                .ok_or_else(registry_input_error)?;
-            let Some(BindingResolution::Declaration(declaration)) = bindings.resolution(expression)
-            else {
-                return Err(registry_input_error());
-            };
-            let function = self
-                .function_ids
-                .get(declaration)
-                .copied()
-                .ok_or_else(registry_input_error)?;
-            let continuation_descriptor = self
-                .targets
-                .target_table()
-                .function(function)
-                .cloned()
-                .ok_or_else(registry_input_error)?;
-            let outcome_contract = vela_mir::MirTypeContract::Result {
-                ok: descriptor.signature.return_contract.clone().map(Box::new),
-                err: Some(Box::new(vela_mir::MirTypeContract::TaskError)),
-            };
-            let continuation_origin = self
-                .expression_origin(expression)
-                .ok_or_else(registry_input_error)?;
-            let invalid = |reason: String| {
-                CompileError::new(CompileErrorKind::TaskContinuationInvalid {
-                    target: continuation_descriptor.debug_name.clone(),
-                    reason,
-                })
-                .with_span(continuation_origin.span)
-            };
-            let Some(outcome) = continuation_descriptor.signature.parameters.first() else {
-                return Err(invalid(format!(
-                    "first parameter must be `{}`",
-                    task_outcome_contract_name(&outcome_contract)
-                )));
-            };
-            if outcome.default != CompileParameterDefault::Required {
-                return Err(invalid(
-                    "the owned outcome parameter cannot have a default".to_owned(),
-                ));
-            }
-            if outcome.contract.as_ref() != Some(&outcome_contract) {
-                return Err(invalid(format!(
-                    "first parameter must be exactly `{}`",
-                    task_outcome_contract_name(&outcome_contract)
-                )));
-            }
-            Some(CompileTaskContinuationTarget {
-                function,
-                debug_name: self.request.script_function_symbols[declaration].clone(),
-                outcome_contract,
-                resume_parameters: continuation_descriptor
-                    .signature
-                    .parameters
-                    .into_iter()
-                    .skip(1)
-                    .collect(),
-            })
-        } else {
-            None
-        };
-        let task = CompileTaskTarget {
-            operation: match capability {
-                TaskLexicalCapability::SpawnScoped => CompileTaskOperation::SpawnScoped,
-                TaskLexicalCapability::SpawnScopedThen => CompileTaskOperation::SpawnScopedThen,
-            },
-            worker_call,
-            worker: worker_function,
-            worker_debug_name: self.request.script_function_symbols[&worker_declaration].clone(),
-            detachability: CompileTaskDetachability {
-                parameters: parameter_detachability,
-                result: result.fact,
-            },
-            continuation,
-        };
-        self.targets
-            .insert_task(executable, expression, task, origin)
-            .map_err(input_error)?;
-        Ok(true)
     }
 
     fn external_function_call(
@@ -1389,37 +1177,6 @@ fn borrowed_collection_source(actual: &TypeFact, expected: &TypeFact) -> bool {
                 TypeFact::Set { .. }
             )
         )
-}
-
-fn task_outcome_contract_name(contract: &vela_mir::MirTypeContract) -> String {
-    let vela_mir::MirTypeContract::Result { ok, .. } = contract else {
-        unreachable!("task outcome contract is always Result")
-    };
-    let ok = ok
-        .as_deref()
-        .map_or_else(|| "Any".to_owned(), task_contract_name);
-    format!("Result<{ok}, task::Error>")
-}
-
-fn task_contract_name(contract: &vela_mir::MirTypeContract) -> String {
-    match contract {
-        vela_mir::MirTypeContract::Any => "Any".to_owned(),
-        vela_mir::MirTypeContract::TaskError => "task::Error".to_owned(),
-        vela_mir::MirTypeContract::Primitive(tag) => tag.name().to_owned(),
-        vela_mir::MirTypeContract::Definition(type_id)
-        | vela_mir::MirTypeContract::Shape { type_id, .. }
-        | vela_mir::MirTypeContract::Variant { type_id, .. } => format!("type#{}", type_id.get()),
-        vela_mir::MirTypeContract::Host(target) => format!("host#{}", target.semantic.get()),
-        vela_mir::MirTypeContract::Range => "Range".to_owned(),
-        vela_mir::MirTypeContract::Array(_) => "Array".to_owned(),
-        vela_mir::MirTypeContract::Map { .. } => "Map".to_owned(),
-        vela_mir::MirTypeContract::Set(_) => "Set".to_owned(),
-        vela_mir::MirTypeContract::Iterator(_) => "Iterator".to_owned(),
-        vela_mir::MirTypeContract::Tuple(_) => "Tuple".to_owned(),
-        vela_mir::MirTypeContract::Option(_) => "Option".to_owned(),
-        vela_mir::MirTypeContract::Result { .. } => "Result".to_owned(),
-        vela_mir::MirTypeContract::Callable { .. } => "Callable".to_owned(),
-    }
 }
 
 fn external_parameter_expression(

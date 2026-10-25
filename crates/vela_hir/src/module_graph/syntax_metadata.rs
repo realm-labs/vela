@@ -40,7 +40,6 @@ pub(super) fn function_signature(summary: &SyntaxModuleSummary, index: usize) ->
     summary.function_signature_or(
         index,
         FunctionSignature {
-            asyncness: vela_common::CallableAsyncness::Sync,
             params: Vec::new(),
             return_type: None,
         },

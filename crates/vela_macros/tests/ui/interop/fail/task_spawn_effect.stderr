@@ -1,0 +1,17 @@
+error: unsupported Vela callable effect
+ --> tests/ui/interop/fail/task_spawn_effect.rs:3:40
+  |
+3 | #[export(path = "host::spawn", effects(task_spawn))]
+  |                                        ^^^^^^^^^^
+
+error: unsupported Vela callable effect
+ --> tests/ui/interop/fail/task_spawn_effect.rs:8:20
+  |
+8 |     #[vela(effects(task_spawn))]
+  |                    ^^^^^^^^^^
+
+error: unsupported Vela callable effect
+  --> tests/ui/interop/fail/task_spawn_effect.rs:16:20
+   |
+16 |     #[vela(effects(task_spawn))]
+   |                    ^^^^^^^^^^

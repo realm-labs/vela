@@ -10,11 +10,20 @@ fn callable_import_matrix_agrees_on_owned_parameters_signatures_and_edits() {
 }
 
 #[test]
-fn task_callable_matrix_preserves_reserved_ownership_and_positional_operands() {
+fn removed_task_callable_matrix_has_no_builtin_signatures() {
     verify_fixture("completion-task-calls");
 }
 
 fn verify_fixture(name: &str) {
+    if name.starts_with("completion-task-")
+        || matches!(
+            name,
+            "completion-async-callables" | "completion-await-contexts"
+        )
+    {
+        crate::removed_execution_tests::verify_fixture(name);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(name);
         if crlf {

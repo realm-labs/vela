@@ -25,7 +25,7 @@ use type_binding::{
     type_binding_to_schema, validate_type_binding_facts,
 };
 
-pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 2;
+pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 3;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const SCHEMA_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
 
@@ -170,10 +170,8 @@ fn parse_schema_hash(value: &str) -> Result<u64, SchemaArtifactError> {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct SchemaArtifactFacts {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    execution_effect_ceiling: Option<SchemaEffectFact>,
     #[serde(default)]
     types: Vec<SchemaNamedFact>,
     #[serde(default)]
@@ -212,10 +210,6 @@ impl SchemaArtifactFacts {
     #[must_use]
     pub fn from_registry_facts(facts: &RegistryFacts) -> Self {
         Self {
-            execution_effect_ceiling: facts
-                .execution_effect_ceiling()
-                .cloned()
-                .map(SchemaEffectFact::from),
             types: facts
                 .types()
                 .map(|(name, fact)| SchemaNamedFact::new(name, fact, facts.type_docs(name)))
@@ -304,9 +298,7 @@ impl SchemaArtifactFacts {
 
     fn to_registry_facts(&self) -> RegistryFacts {
         let mut facts = RegistryFacts::default();
-        if let Some(ceiling) = &self.execution_effect_ceiling {
-            facts.set_execution_effect_ceiling(ceiling.to_registry_fact());
-        }
+
         for entry in &self.types {
             facts.insert_type(entry.name.clone(), entry.fact.to_type_fact());
             if let Some(docs) = &entry.docs {
@@ -755,7 +747,7 @@ impl SchemaFunctionEffectFact {
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct SchemaEffectFact {
     reads_host: bool,
     writes_host: bool,
@@ -767,7 +759,6 @@ struct SchemaEffectFact {
     reads_reflection: bool,
     writes_reflection: bool,
     calls_reflection: bool,
-    spawns_tasks: bool,
 }
 
 impl SchemaEffectFact {
@@ -783,7 +774,6 @@ impl SchemaEffectFact {
             reads_reflection: self.reads_reflection,
             writes_reflection: self.writes_reflection,
             calls_reflection: self.calls_reflection,
-            spawns_tasks: self.spawns_tasks,
         }
     }
 }
@@ -801,7 +791,6 @@ impl From<RegistryEffectFact> for SchemaEffectFact {
             reads_reflection: value.reads_reflection,
             writes_reflection: value.writes_reflection,
             calls_reflection: value.calls_reflection,
-            spawns_tasks: value.spawns_tasks,
         }
     }
 }

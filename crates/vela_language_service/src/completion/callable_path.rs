@@ -1,54 +1,9 @@
 use vela_syntax::ast::AstNode;
 use vela_syntax::{SyntaxKind, TextSize};
 
-use crate::callable_context::CallableFacts;
-use crate::{CursorContextKind, DisplayParts, ModulePathRole, QueryContext};
+use crate::{CursorContextKind, ModulePathRole, QueryContext};
 
-use super::{CompletionInsertFormat, CompletionItem, CompletionKind};
-
-pub(super) fn callable_item(
-    callable: &CallableFacts,
-    label: &str,
-    has_arguments: bool,
-) -> CompletionItem {
-    let detail = DisplayParts::callable_signature_with_asyncness(
-        callable.asyncness(),
-        callable.name(),
-        callable
-            .params()
-            .iter()
-            .map(|param| DisplayParts::parameter(param.name(), &param.type_fact().display_name())),
-        Some(&callable.return_display_name()),
-    );
-    item(
-        label,
-        CompletionKind::Function,
-        if has_arguments {
-            label.to_owned()
-        } else {
-            format!("{label}($0)")
-        },
-    )
-    .with_detail_parts(detail)
-    .with_symbol(callable.symbol().clone())
-}
-
-pub(super) fn item(label: &str, kind: CompletionKind, insertion: String) -> CompletionItem {
-    let insert_format = if insertion.contains("$0") {
-        CompletionInsertFormat::Snippet
-    } else {
-        CompletionInsertFormat::PlainText
-    };
-    CompletionItem {
-        label: label.to_owned(),
-        kind,
-        detail: String::new(),
-        insert_text: Some(insertion),
-        insert_format,
-        sort_text: None,
-        metadata: Default::default(),
-    }
-}
+use super::{CompletionItem, CompletionKind};
 
 pub(super) fn adjust_call_insertion(query: &QueryContext<'_>, items: &mut [CompletionItem]) {
     let range = query

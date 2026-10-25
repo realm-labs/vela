@@ -160,7 +160,7 @@ fn assert_schema_return_navigation<F>(
         .expect("schema marker should exist");
     let target_end = target_start + schema_marker.len();
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": facts(schema_record.source_id().get(), target_start, target_end)
     })
     .to_string();

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::{CallableAsyncness, Span};
+use vela_common::Span;
 use vela_hir::module_graph::ModuleGraph;
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc};
 use vela_reflect::registry::{
@@ -221,7 +221,6 @@ pub struct FunctionAbi {
     pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
-    pub asyncness: CallableAsyncness,
     pub event: Option<String>,
     pub effects: EffectAbi,
     pub access: AccessAbi,
@@ -237,7 +236,6 @@ impl FunctionAbi {
             origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
-            asyncness: CallableAsyncness::Sync,
             event: None,
             effects,
             access,
@@ -260,7 +258,6 @@ impl FunctionAbi {
                 function.effects.reads_reflection,
                 function.effects.writes_reflection,
                 function.effects.calls_reflection,
-                function.effects.spawns_tasks,
             ),
             AccessAbi::function(
                 function.access.public,
@@ -269,8 +266,7 @@ impl FunctionAbi {
             ),
         )
         .id(function.id.get())
-        .origin(function.origin)
-        .asyncness(function.asyncness);
+        .origin(function.origin);
         if let Some(event) = function.attrs.get("event") {
             abi = abi.event(event);
         }
@@ -301,12 +297,6 @@ impl FunctionAbi {
     #[must_use]
     pub fn event(mut self, event: impl Into<String>) -> Self {
         self.event = Some(event.into());
-        self
-    }
-
-    #[must_use]
-    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -342,16 +332,7 @@ impl FunctionAbi {
                 },
             ));
         }
-        if self.asyncness != next.asyncness {
-            return Err(HotReloadError::new(
-                HotReloadErrorKind::ChangedFunctionAsyncness {
-                    function: self.name.clone(),
-                    old: self.asyncness,
-                    new: next.asyncness,
-                    source_span: next.source_span.map(Box::new),
-                },
-            ));
-        }
+
         ensure_function_params_compatible(self, next)?;
         if !type_hints_compatible(self.return_type.as_deref(), next.return_type.as_deref()) {
             return Err(HotReloadError::new(
@@ -506,7 +487,6 @@ pub struct MethodAbi {
     pub origin: DeclOrigin,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
-    pub asyncness: CallableAsyncness,
     pub effects: EffectAbi,
     pub access: AccessAbi,
     pub source_span: Option<Span>,
@@ -527,7 +507,6 @@ impl MethodAbi {
             origin: DeclOrigin::Host,
             params: Vec::new(),
             return_type: None,
-            asyncness: CallableAsyncness::Sync,
             effects,
             access,
             source_span: None,
@@ -550,13 +529,11 @@ impl MethodAbi {
                 method.effects.reads_reflection,
                 method.effects.writes_reflection,
                 method.effects.calls_reflection,
-                method.effects.spawns_tasks,
             ),
             AccessAbi::new(method.access.public, method.access.reflect_callable),
         )
         .id(method.id.get())
-        .origin(method.origin)
-        .asyncness(method.asyncness);
+        .origin(method.origin);
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
@@ -594,12 +571,6 @@ impl MethodAbi {
     }
 
     #[must_use]
-    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
-    }
-
-    #[must_use]
     pub fn source_span(mut self, source_span: Span) -> Self {
         self.source_span = Some(source_span);
         self
@@ -618,17 +589,7 @@ impl MethodAbi {
                 source_span: self.source_span.map(Box::new),
             }));
         }
-        if self.asyncness != next.asyncness {
-            return Err(HotReloadError::new(
-                HotReloadErrorKind::ChangedMethodAsyncness {
-                    type_name: self.type_name.clone(),
-                    method: self.name.clone(),
-                    old: self.asyncness,
-                    new: next.asyncness,
-                    source_span: next.source_span.map(Box::new),
-                },
-            ));
-        }
+
         ensure_method_params_compatible(self, next)?;
         if !type_hints_compatible(self.return_type.as_deref(), next.return_type.as_deref()) {
             return Err(HotReloadError::new(
@@ -799,7 +760,6 @@ pub(crate) fn trait_methods_compatible(old: &TraitMethodAbi, new: &TraitMethodAb
             .zip(&new.params)
             .all(|(old, new)| params_compatible(old, new))
         && type_hints_compatible(old.return_type.as_deref(), new.return_type.as_deref())
-        && old.asyncness == new.asyncness
         && old.has_default == new.has_default
 }
 
@@ -830,7 +790,6 @@ pub struct TraitMethodAbi {
     pub name: String,
     pub params: Vec<ParamAbi>,
     pub return_type: Option<String>,
-    pub asyncness: CallableAsyncness,
     pub has_default: bool,
 }
 
@@ -842,16 +801,13 @@ impl TraitMethodAbi {
             name: name.into(),
             params: Vec::new(),
             return_type: None,
-            asyncness: CallableAsyncness::Sync,
             has_default: false,
         }
     }
 
     #[must_use]
     pub fn from_method(method: &TraitMethodDesc) -> Self {
-        let mut abi = Self::new(method.id.get(), method.name.clone())
-            .asyncness(method.asyncness)
-            .defaulted(method.has_default);
+        let mut abi = Self::new(method.id.get(), method.name.clone()).defaulted(method.has_default);
         for param in &method.params {
             abi = abi.param(ParamAbi::from_method_param(param));
         }
@@ -874,12 +830,6 @@ impl TraitMethodAbi {
     }
 
     #[must_use]
-    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
-        self
-    }
-
-    #[must_use]
     pub fn defaulted(mut self, has_default: bool) -> Self {
         self.has_default = has_default;
         self
@@ -898,49 +848,48 @@ pub struct EffectAbi {
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
-    pub spawns_tasks: bool,
 }
 
 impl EffectAbi {
     #[must_use]
     pub const fn pure() -> Self {
         Self::new(
-            false, false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn host_read() -> Self {
         Self::new(
-            true, false, false, false, false, false, false, false, false, false, false,
+            true, false, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn host_write() -> Self {
         Self::new(
-            true, true, false, false, false, false, false, false, false, false, false,
+            true, true, false, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn event_emit() -> Self {
         Self::new(
-            false, false, true, false, false, false, false, false, false, false, false,
+            false, false, true, false, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn time() -> Self {
         Self::new(
-            false, false, false, true, false, false, false, false, false, false, false,
+            false, false, false, true, false, false, false, false, false, false,
         )
     }
 
     #[must_use]
     pub const fn random() -> Self {
         Self::new(
-            false, false, false, false, true, false, false, false, false, false, false,
+            false, false, false, false, true, false, false, false, false, false,
         )
     }
 
@@ -957,7 +906,6 @@ impl EffectAbi {
         reads_reflection: bool,
         writes_reflection: bool,
         calls_reflection: bool,
-        spawns_tasks: bool,
     ) -> Self {
         Self {
             reads_host,
@@ -970,7 +918,6 @@ impl EffectAbi {
             reads_reflection,
             writes_reflection,
             calls_reflection,
-            spawns_tasks,
         }
     }
 }

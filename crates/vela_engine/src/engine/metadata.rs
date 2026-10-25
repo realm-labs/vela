@@ -7,10 +7,7 @@ impl Engine {
         &self,
     ) -> Result<vela_analysis::registry::RegistryFacts, vela_registry::RegistryDeclarationSlotError>
     {
-        let mut facts =
-            vela_analysis::registry::RegistryFacts::from_compile_view(self.compiler_registry())?;
-        facts.set_execution_effect_ceiling(capability_effect_ceiling(self.capabilities()));
-        Ok(facts)
+        vela_analysis::registry::RegistryFacts::from_compile_view(self.compiler_registry())
     }
 
     /// Projects this engine's sealed compiler registry into the
@@ -32,51 +29,56 @@ impl Engine {
     }
 }
 
-fn capability_effect_ceiling(
-    capabilities: vela_common::CapabilitySet,
-) -> vela_analysis::registry::RegistryEffectFact {
-    use vela_common::Capability;
-
-    vela_analysis::registry::RegistryEffectFact {
-        reads_host: capabilities.contains(Capability::HostRead)
-            || capabilities.contains(Capability::HostWrite),
-        writes_host: capabilities.contains(Capability::HostWrite),
-        emits_events: capabilities.contains(Capability::EventEmit),
-        reads_time: capabilities.contains(Capability::Time),
-        uses_random: capabilities.contains(Capability::Random),
-        reads_io: capabilities.contains(Capability::IoRead),
-        writes_io: capabilities.contains(Capability::IoWrite),
-        reads_reflection: capabilities.contains(Capability::ReflectionRead),
-        writes_reflection: capabilities.contains(Capability::ReflectionWrite),
-        calls_reflection: capabilities.contains(Capability::ReflectionCall),
-        spawns_tasks: capabilities.contains(Capability::TaskSpawn),
-    }
-}
-
 #[cfg(all(test, feature = "schema-artifact"))]
 mod tests {
     use crate::engine::Engine;
+    use crate::native::{EffectSet, NativeFunctionDesc, NativeFunctionId, TypeHint};
     use crate::permission::Capability;
+    use vela_vm::owned_value::OwnedValue;
 
     #[test]
-    fn tooling_schema_round_trips_the_engine_execution_effect_ceiling() {
+    fn tooling_schema_round_trips_callable_effects_without_execution_effect_ceiling() {
         let engine = Engine::builder()
-            .capability(Capability::TaskSpawn)
             .capability(Capability::IoRead)
+            .register_native_fn(
+                NativeFunctionDesc::new("test::read", NativeFunctionId::new(0xC301))
+                    .returns(TypeHint::unit())
+                    .effects(EffectSet::io_read()),
+                |_| Ok(OwnedValue::Unit),
+            )
             .build()
             .expect("engine");
+        let facts = engine.tooling_registry_facts().expect("registry facts");
+        assert!(facts.execution_effect_ceiling().is_none());
         let artifact = engine.tooling_schema_artifact().expect("tooling schema");
         let json = artifact.to_json().expect("encode tooling schema");
-        assert!(json.contains("executionEffectCeiling"));
+        assert!(!json.contains("executionEffectCeiling"));
         let decoded =
             vela_language_service::SchemaArtifact::from_json(&json).expect("decode tooling schema");
-        let facts = decoded.to_registry_facts();
-        let ceiling = facts
-            .execution_effect_ceiling()
-            .expect("execution effect ceiling");
+        let decoded_facts = decoded.to_registry_facts();
+        assert!(decoded_facts.execution_effect_ceiling().is_none());
+        let effects = decoded_facts
+            .function_effect_fact("test::read")
+            .expect("retained callable effects");
+        assert!(effects.reads_io);
+        assert!(!effects.writes_io);
+        assert_eq!(Some(effects), facts.function_effect_fact("test::read"));
+        assert_eq!(
+            decoded_facts.function_signature_fact("test::read"),
+            facts.function_signature_fact("test::read")
+        );
 
-        assert!(ceiling.spawns_tasks);
-        assert!(ceiling.reads_io);
-        assert!(!ceiling.writes_io);
+        let legacy = json.replacen(
+            "\"facts\": {",
+            "\"facts\": {\"executionEffectCeiling\": {},",
+            1,
+        );
+        let error = vela_language_service::SchemaArtifact::from_json(&legacy)
+            .expect_err("removed execution ceiling must not be silently defaulted");
+        assert!(
+            error
+                .message()
+                .contains("unknown field `executionEffectCeiling`")
+        );
     }
 }

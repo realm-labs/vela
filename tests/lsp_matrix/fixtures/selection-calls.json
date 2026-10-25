@@ -1452,6 +1452,9 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_task"
         ]
       },
       {
@@ -1538,6 +1541,9 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_task"
         ]
       },
       {
@@ -2243,6 +2249,10 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_async",
+          "syntax::removed_async"
         ]
       },
       {
@@ -2299,6 +2309,10 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_async",
+          "syntax::removed_async"
         ]
       },
       {
@@ -2343,6 +2357,10 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_async",
+          "syntax::removed_async"
         ]
       },
       {

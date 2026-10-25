@@ -1,5 +1,10 @@
 # Signature help: S8 and source lifecycle review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: four `signature-help/syntax/S8/{positive,negative}/{service,protocol}`
 obligations and protocol states `dirty`, `close_restore`, `dependency_change`,
 `dependency_delete`. Exact matrix identities are

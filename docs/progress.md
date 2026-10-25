@@ -22,8 +22,13 @@ agent instructions are consolidated, deletion dependencies and existing tests
 are named in the architecture, and 27 focused retained-baseline tests pass.
 Checkpoint B removes Service/Provider declarations, compilation targets,
 dispatch, artifact/schema fields, tooling projections, macros, and callers.
-Portable program format is 6 and tooling schema format is 2; obsolete formats
-reject. The active checkpoint is C: detached task and script async removal.
+Checkpoint C removes detached tasks, script async/await, native futures,
+async registration/calls, and task/async metadata; existing synchronous callback
+and re-entry paths, cancellation/deadlines and finite budgets remain. Portable
+program format is 7, Rust-binding schema is 6, and tooling schema is 3; obsolete
+formats reject before activation. The active checkpoint is D: borrowed-host,
+transparent-path and dependent-binding removal. Full repository acceptance is
+still pending.
 The baseline and milestone records below describe existing implementation,
 including capabilities scheduled for removal, rather than the new target.
 
@@ -717,8 +722,8 @@ in the
 ### Runtime Simplification
 
 The [removal checklist](runtime-simplification-plan.md#removal-checklist) is
-recorded: A-B/R01/R03-R05 are complete, R02 is deferred, and C-E/R06-R16 remain
-open. A establishes the removal contract and existing retained-language
+recorded: A-C/R01/R03-R07 are implemented with focused proof, R02 is deferred,
+and D-E/R08-R16 remain open. A establishes the removal contract and existing retained-language
 baseline, not a replacement boundary. Opaque ownership, storage, re-entry, serialization,
 and reload design questions belong to a separate follow-up. Existing LSP and
 container gaps below remain baseline observations; affected evidence must be
@@ -1211,6 +1216,17 @@ Unrelated accepted editor evidence is preserved; changed schema/Service fixtures
 are not certified by old native captures. Validation used installed Rust 1.98.0
 because the default stable Cargo shim was intermittently unavailable.
 
+Checkpoint C focused gates pass across compiler (901 tests), VM (894 unit
+plus integration/conformance), host, shared metadata, macros (186 normal tests
+and two UI suites), Engine/reload/bindgen (755 tests), language service (769
+passed, two existing ignored in bounded partitions), affected LSP queries,
+CLI/WASM, all runnable examples, 306 Node checks and site syntax/docs/build.
+Workspace testing excluded separately verified macro UI but timed out at ten
+minutes in the LSP target without an observed failure; no monolithic pass is
+claimed. Rust 1.98.0 lacks the WASM target; cross-target verification and fresh
+affected native editor evidence remain acceptance gaps. The Zed package check
+reported a nonempty grammar checkout, left unchanged.
+
 Miri remains unavailable on the installed stable Rust 1.97.1
 `aarch64-apple-darwin` toolchain. The pre-existing erased-borrow boundary relies
 on its focused lifecycle, async, lease/re-entry, and source-audit proof until
@@ -1221,10 +1237,11 @@ provides it.
 
 ## Next Up
 
-1. Execute checkpoint C: remove detached task admission, then script async,
-   native futures, polling/resume machinery, metadata, and CLI async mode.
-   Preserve finite synchronous execution and independent LSP workers.
-2. Follow checkpoints D-E for borrowed-host and repository-wide cleanup. Do not implement a replacement opaque-object system or new
+1. Execute checkpoint D: remove borrowed roots/returns/views, transparent host
+   paths, leases/release, dependent registrations/extern bindings, and callers.
+   Preserve independent native/value calls, script reflection, state and exact
+   old closure generations; do not implement replacement objects.
+2. Follow checkpoint E for repository-wide cleanup and complete acceptance. Do not implement a replacement opaque-object system or new
    conversion APIs, or mark removals complete from documentation alone.
 3. Preserve existing LSP evidence and its execution checkpoint; revise affected
    language/schema contracts and capture fresh evidence during removal.

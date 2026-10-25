@@ -152,8 +152,7 @@ fn syntax_visibility(item: &SyntaxItem) -> &'static str {
 
 fn syntax_function_signature(function: &SyntaxFunctionItem) -> String {
     format!(
-        "{}fn {}({}) -> {}",
-        if function.is_async() { "async " } else { "" },
+        "fn {}({}) -> {}",
         function.name_text().unwrap_or_default(),
         syntax_params_signature(function.param_list().map(|list| list.params())),
         optional_syntax_hint(function.return_type())
@@ -173,8 +172,7 @@ fn syntax_trait_signature(item: &SyntaxTraitItem) -> String {
 
 fn syntax_trait_method_signature(method: &SyntaxTraitMethod) -> String {
     format!(
-        "{}{}({}) -> {} default:{}",
-        if method.is_async() { "async " } else { "" },
+        "{}({}) -> {} default:{}",
         method.name_text().unwrap_or_default(),
         syntax_params_signature(method.param_list().map(|list| list.params())),
         optional_syntax_hint(method.return_type()),
@@ -201,8 +199,7 @@ fn syntax_impl_signature(item: &SyntaxImplItem) -> String {
 
 fn syntax_impl_method_signature(method: &SyntaxImplMethod) -> String {
     format!(
-        "{}fn {}({}) -> {}",
-        if method.is_async() { "async " } else { "" },
+        "fn {}({}) -> {}",
         method.name_text().unwrap_or_default(),
         syntax_params_signature(method.param_list().map(|list| list.params())),
         optional_syntax_hint(method.return_type())
@@ -279,19 +276,19 @@ mod tests {
     use super::summarize_source;
 
     #[test]
-    fn callable_asyncness_changes_declaration_fingerprint() {
+    fn callable_parameters_change_declaration_fingerprint() {
         let sync = parse_source_with_id(
             SourceId::new(1),
             "fn load() {} trait Service { fn run(self); } impl Worker { fn work(self) {} }",
         );
-        let asynchronous = parse_source_with_id(
+        let changed = parse_source_with_id(
             SourceId::new(1),
-            "async fn load() {} trait Service { async fn run(self); } impl Worker { async fn work(self) {} }",
+            "fn load(value: i64) {} trait Service { fn run(self, value: i64); } impl Worker { fn work(self, value: i64) {} }",
         );
 
         assert_ne!(
             summarize_source(&sync).declaration_fingerprint,
-            summarize_source(&asynchronous).declaration_fingerprint
+            summarize_source(&changed).declaration_fingerprint
         );
     }
 }

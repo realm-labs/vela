@@ -11,19 +11,13 @@ use vela_registry::{
 };
 
 use crate::native::{
-    AsyncContextHostNativeFunctionEntry, AsyncDirectHostNativeFunctionEntry,
-    AsyncHostNativeFunctionEntry, AsyncNativeFunctionEntry, ContextHostNativeFunctionEntry,
-    HostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry,
-    ScopedHostNativeFunctionEntry,
+    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
+    NativeFunctionEntry, ScopedHostNativeFunctionEntry,
 };
 
 pub(crate) struct EngineFunctionEntries<'a> {
     pub(crate) native: &'a [NativeFunctionEntry],
-    pub(crate) async_native: &'a [AsyncNativeFunctionEntry],
-    pub(crate) async_host: &'a [AsyncHostNativeFunctionEntry],
-    pub(crate) async_direct_host: &'a [AsyncDirectHostNativeFunctionEntry],
     pub(crate) scoped_host: &'a [ScopedHostNativeFunctionEntry],
-    pub(crate) async_context_host: &'a [AsyncContextHostNativeFunctionEntry],
     pub(crate) host: &'a [HostNativeFunctionEntry],
     pub(crate) context_host: &'a [ContextHostNativeFunctionEntry],
 }
@@ -46,11 +40,7 @@ pub(crate) fn definition_registry_from_engine_parts(
         .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(functions.async_native.iter().map(|entry| &entry.desc))
-        .chain(functions.async_host.iter().map(|entry| &entry.desc))
-        .chain(functions.async_direct_host.iter().map(|entry| &entry.desc))
         .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
-        .chain(functions.async_context_host.iter().map(|entry| &entry.desc))
         .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
@@ -211,8 +201,7 @@ fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> 
     let mut definition = MethodDef::new(
         source_method_path("host", &desc.key.name, &method.name),
         owner,
-        FunctionSignature::new(method.params.iter().map(method_param_def), return_type)
-            .asyncness(method.asyncness),
+        FunctionSignature::new(method.params.iter().map(method_param_def), return_type),
     )
     .host_runtime_id(method.id.get())
     .effects(method_effects(&method.effects))
@@ -245,8 +234,7 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
                 .iter()
                 .map(|param| ParamDef::new(param.name.clone(), Some(type_hint_def(&param.hint)))),
             Some(type_hint_def(&desc.returns)),
-        )
-        .asyncness(desc.asyncness),
+        ),
     )
     .with_id(desc.id)
     .effects(native_function_effects(&desc.effects))
@@ -402,7 +390,6 @@ fn native_function_effects(effects: &crate::native::EffectSet) -> DefinitionEffe
         event_emit: effects.emits_events(),
         time: effects.reads_time(),
         random: effects.uses_random(),
-        task_spawn: effects.spawns_tasks(),
         io_read: effects.reads_io(),
         io_write: effects.writes_io(),
     }
@@ -418,7 +405,6 @@ fn method_effects(effects: &vela_reflect::access::MethodEffectSet) -> Definition
         event_emit: effects.emits_events,
         time: effects.reads_time,
         random: effects.uses_random,
-        task_spawn: effects.spawns_tasks,
         io_read: effects.reads_io,
         io_write: effects.writes_io,
     }
@@ -588,11 +574,7 @@ mod tests {
             &type_bindings,
             EngineFunctionEntries {
                 native: &[native],
-                async_native: &[],
-                async_host: &[],
-                async_direct_host: &[],
                 scoped_host: &[],
-                async_context_host: &[],
                 host: &[],
                 context_host: &[],
             },

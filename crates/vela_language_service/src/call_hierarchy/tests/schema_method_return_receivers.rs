@@ -187,7 +187,7 @@ pub fn grant() { return 1 }";
     let inventory_start = schema_text.find("inventory").expect("inventory marker");
     let grant_start = schema_text.find("grant").expect("grant marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -265,7 +265,7 @@ pub fn preview() { return 1 }";
     let rewardable_start = schema_text.find("rewardable").expect("rewardable marker");
     let preview_start = schema_text.find("preview").expect("preview marker");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

@@ -90,7 +90,7 @@ where
         self.hot_reload.as_ref().map(HotReloadRuntime::current)
     }
 
-    /// Returns a staging-only handle that may queue an update while an async
+    /// Returns a staging-only handle that may queue an update while a synchronous
     /// outer call has the Runtime borrowed.
     ///
     /// The handle cannot activate the update. Call [`Self::activate_reload`]

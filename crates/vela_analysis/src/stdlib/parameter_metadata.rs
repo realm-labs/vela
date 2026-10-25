@@ -124,8 +124,6 @@ mod tests {
                 "reflect::methods",
                 "reflect::traits",
                 "reflect::variants",
-                "task::spawn_scoped",
-                "task::spawn_scoped_then",
                 "time::elapsed_since",
                 "time::now",
                 "time::tick"

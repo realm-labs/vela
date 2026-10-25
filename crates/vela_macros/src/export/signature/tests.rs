@@ -14,6 +14,26 @@ fn classify(tokens: proc_macro2::TokenStream) -> super::ClassifiedSignature {
 }
 
 #[test]
+fn async_functions_and_methods_are_rejected_before_boundary_classification() {
+    let function: ItemFn = syn::parse_quote! {
+        async fn lookup(table: &Table) -> Option<&Row> { todo!() }
+    };
+    let method: syn::ImplItemFn = syn::parse_quote! {
+        async fn lookup(&self) -> Option<&Row> { todo!() }
+    };
+
+    for result in [
+        classify_function(&function.sig, &BTreeSet::new()),
+        classify_method(&method.sig, &BTreeSet::new()),
+    ] {
+        let Err(error) = result else {
+            panic!("async signatures must not classify");
+        };
+        assert!(error.to_string().contains("Vela exports are synchronous"));
+    }
+}
+
+#[test]
 fn signature_infers_normalized_effects() {
     let pure = classify(quote! { fn normalize(value: i64) -> i64 { value } });
     let shared = classify(quote! { fn level(player: &Player) -> i64 { 0 } });

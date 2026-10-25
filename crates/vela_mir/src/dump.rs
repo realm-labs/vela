@@ -1,12 +1,11 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    MirAggregate, MirAwaitOperation, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant,
-    MirFormatPart, MirFunction, MirFunctionOwner, MirHostOperation, MirImmediate,
-    MirIndexOperation, MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram,
-    MirReflectionOperation, MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin,
-    MirStateOperation, MirStatement, MirStatementKind, MirTaskOperation, MirTerminator,
-    MirTerminatorKind,
+    MirAggregate, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant, MirFormatPart,
+    MirFunction, MirFunctionOwner, MirHostOperation, MirImmediate, MirIndexOperation,
+    MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram, MirReflectionOperation,
+    MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatement,
+    MirStatementKind, MirTerminator, MirTerminatorKind,
 };
 
 impl MirProgram {
@@ -313,7 +312,6 @@ fn write_statement(formatter: &mut fmt::Formatter<'_>, statement: &MirStatement)
             operand_text(end)
         )?,
         MirStatementKind::Call(call) => write_call(formatter, call)?,
-        MirStatementKind::Task(task) => write_task(formatter, task)?,
         MirStatementKind::Host(operation) => write_host(formatter, operation)?,
         MirStatementKind::Reflect(operation) => write_reflection(formatter, operation)?,
         MirStatementKind::GuardTrap { value, guard } => {
@@ -626,32 +624,6 @@ fn write_call(formatter: &mut fmt::Formatter<'_>, call: &MirCall) -> fmt::Result
     formatter.write_char(')')
 }
 
-fn write_task(formatter: &mut fmt::Formatter<'_>, task: &MirTaskOperation) -> fmt::Result {
-    write!(
-        formatter,
-        "task.spawn worker#{} name={:?} parameter_guards={:?} detachability={:?} signature={:?}(",
-        task.worker.get(),
-        task.worker_debug_name,
-        task.parameter_guards,
-        task.detachability,
-        task.worker_signature,
-    )?;
-    write_script_arguments(formatter, &task.arguments)?;
-    formatter.write_char(')')?;
-    if let Some(continuation) = &task.continuation {
-        write!(
-            formatter,
-            " then continuation#{} name={:?} outcome={:?} resume={:?} signature={:?}",
-            continuation.function.get(),
-            continuation.debug_name,
-            continuation.outcome_contract,
-            continuation.resume_parameters,
-            continuation.signature,
-        )?;
-    }
-    Ok(())
-}
-
 fn write_operand_values(
     formatter: &mut fmt::Formatter<'_>,
     arguments: &[MirOperand],
@@ -800,21 +772,6 @@ fn write_iterator(
 
 fn write_terminator(formatter: &mut fmt::Formatter<'_>, terminator: &MirTerminator) -> fmt::Result {
     match &terminator.kind {
-        MirTerminatorKind::AwaitCall {
-            operation,
-            destination,
-            resume,
-        } => {
-            formatter.write_str("await ")?;
-            match operation.as_ref() {
-                MirAwaitOperation::Call(call) => write_call(formatter, call)?,
-                MirAwaitOperation::Host(operation) => write_host(formatter, operation)?,
-                MirAwaitOperation::Reflect(operation) => {
-                    write_reflection(formatter, operation)?;
-                }
-            }
-            write!(formatter, " -> {} resume {resume}", place(*destination))?;
-        }
         MirTerminatorKind::Jump(target) => write!(formatter, "jump {target}")?,
         MirTerminatorKind::Branch {
             condition,
@@ -1026,7 +983,6 @@ fn effect(effect: MirEffect) -> String {
         ("random", effect.uses_random),
         ("io-read", effect.reads_io),
         ("io-write", effect.writes_io),
-        ("task-spawn", effect.task_spawn),
     ] {
         if enabled {
             names.push(name);

@@ -13,7 +13,8 @@ use crate::export::signature::{
     EffectName, classify_method, classify_method_with_host_collection_returns,
 };
 use crate::signature::{
-    docs_from_attrs, reject_extern_signature, reject_generic_signature, reject_unsafe_signature,
+    docs_from_attrs, reject_async_signature, reject_extern_signature, reject_generic_signature,
+    reject_unsafe_signature,
 };
 
 pub(crate) fn expand(attr: TokenStream, input: TokenStream) -> TokenStream {
@@ -62,6 +63,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             }
             continue;
         };
+        reject_async_signature(&method.sig)?;
         if !method_attrs.explicit
             && (receiver.reference.is_none()
                 || !method.sig.generics.params.is_empty()
@@ -89,7 +91,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             if method_attrs.explicit {
                 return Err(syn::Error::new_spanned(
                     &method.sig,
-                    "this exported method requires the async or borrowed-return adapter batch",
+                    "this exported method has an unsupported borrowed-return signature",
                 ));
             }
             continue;
@@ -346,6 +348,43 @@ mod tests {
     use quote::quote;
 
     use super::expand_result;
+
+    #[test]
+    fn async_methods_are_rejected_even_when_otherwise_filtered_as_unsupported() {
+        for method in [
+            quote! { pub async fn read(&self) -> i64 { 1 } },
+            quote! { pub async fn read<T>(&self) -> T { todo!() } },
+            quote! { pub async fn read(self) -> i64 { 1 } },
+            quote! { pub async fn read(&self) -> impl Copy { 1 } },
+            quote! { #[vela] pub async fn read(&self) -> Option<&Row> { todo!() } },
+        ] {
+            let error = expand_result(
+                quote! { path = "host::Table" },
+                quote! { impl Table { #method } },
+            )
+            .expect_err("async methods must be rejected rather than silently skipped");
+            assert!(error.to_string().contains("Vela exports are synchronous"));
+        }
+    }
+
+    #[test]
+    fn skipped_async_helpers_are_not_exported() {
+        let expanded = expand_result(
+            quote! { path = "host::Table" },
+            quote! {
+                impl Table {
+                    pub fn value(&self) -> i64 { 1 }
+                    #[vela(skip)]
+                    pub async fn helper(&self) -> i64 { 2 }
+                }
+            },
+        )
+        .expect("unexported Rust helpers may remain async")
+        .to_string();
+
+        assert!(expanded.contains("vela_callable_contract_value"));
+        assert!(!expanded.contains("vela_callable_contract_helper"));
+    }
 
     #[test]
     fn methods_uses_shared_classifier_for_receivers() {

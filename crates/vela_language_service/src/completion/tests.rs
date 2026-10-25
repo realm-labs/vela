@@ -475,7 +475,7 @@ fn module_path_completion_uses_stdlib_function_segments() {
 }
 
 #[test]
-fn task_module_completion_exposes_only_the_static_scoped_forms() {
+fn task_module_completion_does_not_expose_removed_operations() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main() { task:: }";
     let files = vec![SourceFileSnapshot::new(document.clone(), text)];
@@ -489,8 +489,8 @@ fn task_module_completion_exposes_only_the_static_scoped_forms() {
         Position::new(0, text.find(" }").expect("completion point")),
     );
 
-    assert_completion(&completions, "spawn_scoped", CompletionKind::Function);
-    assert_completion(&completions, "spawn_scoped_then", CompletionKind::Function);
+    assert_no_completion(&completions, "spawn_scoped");
+    assert_no_completion(&completions, "spawn_scoped_then");
     assert_no_completion(&completions, "spawn");
     assert_no_completion(&completions, "join");
     assert_no_completion(&completions, "cancel");

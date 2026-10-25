@@ -109,7 +109,7 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             .ok_or_else(|| {
                 syn::Error::new_spanned(
                     &method.sig,
-                    "this external trait method requires the async or borrowed-return adapter batch",
+                    "this external trait method has an unsupported borrowed-return signature",
                 )
             })?,
         );

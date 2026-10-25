@@ -163,13 +163,7 @@ fn function_detail_parts(schema: &RegistryFacts, name: &str, fact: &TypeFact) ->
     if let Some(resource) = schema.function_scoped_resource(name) {
         metadata.push(scoped_resource_detail(resource));
     }
-    callable_metadata_detail_parts(
-        fact.display_name(),
-        schema
-            .function_signature_fact(name)
-            .is_some_and(|signature| signature.asyncness.is_async()),
-        metadata,
-    )
+    callable_metadata_detail_parts(fact.display_name(), metadata)
 }
 
 fn method_detail_parts(
@@ -190,14 +184,7 @@ fn method_detail_parts(
     if let Some(resource) = schema.method_scoped_resource(owner, method) {
         metadata.push(scoped_resource_detail(resource));
     }
-    callable_metadata_detail_parts(
-        fact.display_name(),
-        schema
-            .method_signature_fact(owner, method)
-            .or_else(|| schema.trait_method_signature_fact(owner, method))
-            .is_some_and(|signature| signature.asyncness.is_async()),
-        metadata,
-    )
+    callable_metadata_detail_parts(fact.display_name(), metadata)
 }
 
 fn scoped_resource_detail(resource: ScopedResourceReturnDef) -> String {
@@ -217,14 +204,9 @@ fn scoped_resource_detail(resource: ScopedResourceReturnDef) -> String {
 
 fn callable_metadata_detail_parts(
     type_name: impl Into<String>,
-    is_async: bool,
     metadata: impl IntoIterator<Item = String>,
 ) -> DisplayParts {
     let mut parts = DisplayParts::new();
-    if is_async {
-        parts.push(crate::DisplayPartKind::Text, "async");
-        parts.push(crate::DisplayPartKind::Text, " ");
-    }
     parts.extend(typed_metadata_detail_parts(type_name, metadata));
     parts
 }

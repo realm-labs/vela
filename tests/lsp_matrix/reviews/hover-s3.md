@@ -1,5 +1,10 @@
 # Hover S3 type positions
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: `hover/syntax/S3/{positive,negative}/{service,protocol}` only. Exact tests:
 `hover::type_matrix_tests::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries`
 and `tests::hover::type_matrix::hover_type_matrix_preserves_complete_scoped_hints_and_degraded_boundaries`.
@@ -21,7 +26,7 @@ through real initialization, document opening and typed request dispatch.
 | Containers and callable hints | Bare and parameterized Array/Map/Set families and their View/Mut forms, Iterator, Option/Result, tuples, nested containers, Function and Closure. Mutation modes follow the existing fixed ArrayMut and growable MapMut/SetMut contract; extra mode arguments are unsupported and remain unknown. Iterator's public hover label is deliberately erased to `Iterator`; this review does not infer hidden item identity from that label. |
 | Source type ownership | Qualified struct/enum/trait hints, individual and namespace aliases, nested imported types and exact docs. An unrelated same-short-name Row/Readable and conflicting registry facts cannot supply metadata. Unimported/private types, private aliases and source function/const names used as types degrade to Any without an identity, while parameter facts remain unknown. |
 | Schema type ownership | Qualified host and enum types, traits, schema aliases, nested containers and inner leaves retain exact canonical names/docs. Schema-only metadata needs no source span. When the physical schema is absent, schema tokens degrade to Any with no docs/identity, parameters become unknown, and container shapes preserve unknown leaves. Source/builtin facts remain unchanged. |
-| Compiler type facts | Literal `task::Error` retains the existing compiler-owned type fact and builtin identity; no task value, alias capability or language extension is introduced. |
+| Compiler type facts | Literal `task::Error` is diagnosed removed source; parameter facts are unknown and the `Error` hint is Any without a builtin identity. No task value or alias capability is introduced. |
 | Hint locations and inner leaves | Const, state, extern state, struct/enum fields, trait/method/function parameters and returns, let and lambda annotations. Inner source, String and host leaves have their own precise ranges and complete facts rather than borrowing the outer container. |
 | Unknown boundaries | Missing capital/lowercase hints, obsolete int/Future spellings and unsupported source/host type arguments have exact degraded results. Any/unknown member accesses, including type/builtin-looking names, and lower/uppercase unresolved expressions are null. A type context cannot borrow a value declaration, and a member cannot borrow unrelated global metadata. |
 

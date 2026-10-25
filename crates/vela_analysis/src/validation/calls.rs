@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use vela_common::{CallableAsyncness, Diagnostic, Span};
-use vela_hir::body::{HirArgument, HirBody, HirExprKind};
+use vela_common::{Diagnostic, Span};
+use vela_hir::body::{HirArgument, HirBody};
 use vela_hir::ids::{HirDeclId, HirNodeId, ModuleId};
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, ParamHint};
@@ -27,29 +27,6 @@ pub(super) fn record_body(
     facts: &AnalysisFacts,
     body: &HirBody,
 ) {
-    let awaited_calls = body
-        .expressions
-        .values()
-        .filter_map(|expression| match expression.kind {
-            HirExprKind::Await { expression } => expression,
-            _ => None,
-        })
-        .collect::<BTreeSet<_>>();
-    let detached_worker_calls = graph
-        .bindings_for_body(body.id)
-        .map(|bindings| {
-            bindings
-                .task_capabilities()
-                .filter_map(|(task_callee, _)| {
-                    body.calls()
-                        .find(|(_, call)| call.callee == task_callee)
-                        .and_then(|(_, call)| call.arguments.first())
-                        .and_then(|argument| argument.value)
-                        .filter(|expression| body.call(*expression).is_some())
-                })
-                .collect::<BTreeSet<_>>()
-        })
-        .unwrap_or_default();
     for (expression, call) in body.calls() {
         let Some(target) = facts.call_target(expression) else {
             continue;
@@ -60,12 +37,7 @@ pub(super) fn record_body(
             .expression(expression)
             .map_or(body.origin.span, |expression| expression.origin.span);
         let mut call_diagnostics = Vec::new();
-        if policy.asyncness().is_async()
-            && !awaited_calls.contains(&expression)
-            && !detached_worker_calls.contains(&expression)
-        {
-            call_diagnostics.push(async_call_requires_await_diagnostic(call_span));
-        }
+
         let (mode, parameter_slots) = match policy {
             PlacementPolicy::Strict(signature) => {
                 let slots =
@@ -127,18 +99,6 @@ enum PlacementPolicy {
     Dynamic,
     Positional,
     Unresolved,
-}
-
-impl PlacementPolicy {
-    const fn asyncness(&self) -> CallableAsyncness {
-        match self {
-            Self::Strict(signature) | Self::ExactExternal(signature) => signature.asyncness,
-            Self::External(Some(signature)) => signature.asyncness,
-            Self::External(None) | Self::Dynamic | Self::Positional | Self::Unresolved => {
-                CallableAsyncness::Sync
-            }
-        }
-    }
 }
 
 fn placement_policy(
@@ -378,7 +338,7 @@ fn hir_signature(
         .map_or(TypeFact::Unknown, |hint| {
             type_fact_from_hint_in_module(graph, module, hint)
         });
-    CallableSignatureFact::new(parameters, returns).asyncness(signature.asyncness)
+    CallableSignatureFact::new(parameters, returns)
 }
 
 fn hir_parameters<'a>(
@@ -622,14 +582,4 @@ fn missing_argument_diagnostic(parameter: &CallableParameterFact, call_span: Spa
     } else {
         diagnostic
     }
-}
-
-fn async_call_requires_await_diagnostic(call_span: Span) -> Diagnostic {
-    Diagnostic::error("async call requires `.await`")
-        .with_code("analysis::async_call_requires_await")
-        .with_span(call_span)
-        .with_label(
-            call_span,
-            "append `.await` to suspend until this call completes",
-        )
 }

@@ -56,18 +56,8 @@ fn describe(result) -> String {
 }
 ```
 
-## Async 函数和 Await
+## 同步执行
 
-模块函数和脚本方法可以声明为 `async fn`。后缀 `.await` 只能用于调用表达式，
-并且只能出现在 async 函数中。静态已知的 async callee 必须 await；awaited
-dynamic call 可以解析为同步或异步目标。
-
-```vela
-async fn load_profile(repository, player_id) {
-    return repository.load(player_id).await;
-}
-```
-
-Await 保持顺序脚本语义。挂起的调用会在嵌入方 executor 再次 poll 时恢复；
-它不会暴露 task handle、手动 resume、`yield`、脚本级线程，也不允许并发使用
-同一个 Runtime。宿主效果仍然受 capability、预算和 HostAccess 检查。
+函数、方法和闭包在有限的执行、内存和调用深度预算内同步运行。脚本不支持
+async 声明、await 表达式和分离任务操作。宿主可自行调度外部工作，完成后
+再同步调用 Vela。

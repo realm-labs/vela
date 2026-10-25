@@ -31,7 +31,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -121,7 +121,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -206,7 +206,7 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {
@@ -290,7 +290,7 @@ pub fn main(state: QuestState) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "count".len();
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

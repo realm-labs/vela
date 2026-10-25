@@ -204,3 +204,6 @@ mod document_change_tests;
 
 #[cfg(test)]
 mod document_close_tests;
+
+#[cfg(test)]
+mod removed_execution_tests;

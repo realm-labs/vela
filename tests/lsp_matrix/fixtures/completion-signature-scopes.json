@@ -3,7 +3,7 @@
   "id": "completion-signature-scopes",
   "files": {
     "vela.toml": "[package]\nid=\"dev.vela.signature_scopes\"\nname=\"signature_scopes\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
-    "schema.json": "{\"formatVersion\":2,\"facts\":{}}",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{}}",
     "scripts/lambda_shadow.vela": "trait Reader { fn read(self, zz_pick: i64, value = |[[decl:start]]zz_pick[[decl:end]]: bool| { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
     "scripts/lambda_capture.vela": "trait Reader { fn read(self, [[decl:start]]zz_pick[[decl:end]]: i64, value = || { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",
     "scripts/block_local.vela": "trait Reader { fn read(self, outer: i64, value = { let [[decl:start]]zz_pick[[decl:end]] = true; /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }); }\n",

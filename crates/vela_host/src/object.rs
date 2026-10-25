@@ -1,8 +1,6 @@
 use std::any::Any;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::future::Future;
 use std::hash::Hash;
-use std::pin::Pin;
 
 use vela_common::{HostMethodId, HostTypeId, ScalarValue};
 
@@ -39,9 +37,29 @@ pub use mutation::mutate_host_value;
 pub use slice::{lease_slice_mut, lease_slice_ref};
 use target::{target_index, target_is_leaf};
 
-pub type HostCallFuture<'call> =
-    Pin<Box<dyn Future<Output = HostResult<HostCallValue>> + Send + 'call>>;
-
+/// Synchronous access to a registered host object.
+///
+/// Host futures cannot be dispatched through this boundary.
+///
+/// ```compile_fail,E0432
+/// use vela_host::object::HostCallFuture;
+/// ```
+///
+/// ```compile_fail,E0599
+/// use vela_common::HostMethodId;
+/// use vela_host::object::ScriptHostObject;
+/// fn invoke(object: &dyn ScriptHostObject) {
+///     let _ = object.call_async_host_shared(HostMethodId::new(1), Vec::new());
+/// }
+/// ```
+///
+/// ```compile_fail,E0599
+/// use vela_common::HostMethodId;
+/// use vela_host::object::ScriptHostObject;
+/// fn invoke(object: &mut dyn ScriptHostObject) {
+///     let _ = object.call_async_host_exclusive(HostMethodId::new(1), Vec::new());
+/// }
+/// ```
 pub trait ScriptHostObject {
     fn host_type_id(&self) -> HostTypeId;
 
@@ -225,28 +243,6 @@ pub trait ScriptHostObject {
         } else {
             missing_target(target)
         })
-    }
-
-    /// Dispatches one schema-declared async shared receiver without requiring
-    /// a concrete Rust downcast.
-    fn call_async_host_shared<'call>(
-        &'call self,
-        method: HostMethodId,
-        _args: Vec<HostCallValue>,
-    ) -> HostCallFuture<'call> {
-        let error = unsupported_method(method);
-        Box::pin(async move { Err(error) })
-    }
-
-    /// Dispatches one schema-declared async exclusive receiver without
-    /// requiring a concrete Rust downcast.
-    fn call_async_host_exclusive<'call>(
-        &'call mut self,
-        method: HostMethodId,
-        _args: Vec<HostCallValue>,
-    ) -> HostCallFuture<'call> {
-        let error = unsupported_method(method);
-        Box::pin(async move { Err(error) })
     }
 }
 

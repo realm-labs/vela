@@ -288,7 +288,6 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
                 canonical_symbol: "game::main".to_owned(),
                 debug_name: "main".to_owned(),
                 signature: CompileSignature {
-                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: vec![CompileParameter {
                         name: "value".to_owned(),
                         contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
@@ -333,7 +332,6 @@ fn mir_model_compile_snapshot_owns_source_identity_and_diagnostic_origins() {
                 canonical_symbol: "game::helper".to_owned(),
                 debug_name: "helper".to_owned(),
                 signature: CompileSignature {
-                    asyncness: vela_common::CallableAsyncness::Sync,
                     parameters: Vec::new(),
                     positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
                     return_contract: None,
@@ -466,7 +464,6 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
     let field_access =
         CompileFieldAccess::new(true, false, true, false, vec!["player.inspect".to_owned()]);
     let signature = CompileSignature {
-        asyncness: vela_common::CallableAsyncness::Sync,
         parameters: Vec::new(),
         positional: CompilePositionalPolicy::RuntimeChecked,
         return_contract: None,

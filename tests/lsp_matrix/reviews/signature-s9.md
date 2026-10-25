@@ -1,5 +1,10 @@
 # Signature help: S9 recovery and unavailable schema review
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: four `signature-help/syntax/S9/{positive,negative}/{service,protocol}`
 obligations and protocol states `recovery`, `unresolved`, `dynamic`,
 `missing_schema`, `stale_schema`. Exact test identities are

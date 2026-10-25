@@ -59,29 +59,6 @@ fn semantic_tokens_cover_lexical_classes() {
 }
 
 #[test]
-fn semantic_tokens_classify_async_and_await_keywords() {
-    let document = DocumentId::from("/workspace/scripts/game/async.vela");
-    let text = "async fn main() { service::load().await; }";
-    let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-    let tokens = databases.semantic_tokens(&document);
-
-    for keyword in ["async", "await"] {
-        assert_token_at(
-            &tokens,
-            0,
-            text.find(keyword).expect("keyword should exist"),
-            keyword.len(),
-            SemanticTokenType::Keyword,
-            if keyword == "await" {
-                SemanticTokenModifiers::CONTROL_FLOW
-            } else {
-                SemanticTokenModifiers::NONE
-            },
-        );
-    }
-}
-
-#[test]
 fn semantic_tokens_treat_state_as_contextual_declaration_keyword() {
     let document = DocumentId::from("/workspace/scripts/game/state.vela");
     let text = "state state: i64 = 1;\nextern state player: Player;\nfn read(state: i64) -> i64 { return state; }";
@@ -1260,4 +1237,26 @@ fn databases_for_with_schema(
     databases.set_schema_facts(schema);
     databases.update(&project);
     databases
+}
+
+#[test]
+fn removed_async_spelling_has_no_control_flow_capability() {
+    let document = DocumentId::from("/workspace/scripts/game/removed.vela");
+    let text = "async fn main() { return load().await; }";
+    assert!(
+        !vela_syntax::parse::parse_source(text)
+            .diagnostics()
+            .is_empty()
+    );
+    let db = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
+    let tokens = db.semantic_tokens(&document);
+    for spelling in ["async", "await"] {
+        let start = Position::new(0, text.find(spelling).expect("recovery token"));
+        let token = tokens
+            .tokens()
+            .iter()
+            .find(|token| token.start() == start)
+            .expect("lexical recovery token");
+        assert_eq!(token.modifiers(), SemanticTokenModifiers::NONE);
+    }
 }

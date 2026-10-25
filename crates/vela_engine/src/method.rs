@@ -1,17 +1,14 @@
 use std::sync::Arc;
 
-use vela_common::{CallableAsyncness, HostMethodId, ReceiverCapability, Span};
-use vela_host::lease::{ErasedHostLease, HostLeaseKind};
+use vela_common::{HostMethodId, ReceiverCapability, Span};
 use vela_host::path::HostPath;
-use vela_host::path::HostRef;
 use vela_reflect::registry::{AttrMap, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
-use crate::context::NativeCallContext;
 use crate::interop::CallableContract;
-use crate::native::{EffectSet, FunctionAccess, NativeCallFuture, TypeHint};
+use crate::native::{EffectSet, FunctionAccess, TypeHint};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct NativeMethodDesc {
@@ -21,7 +18,6 @@ pub struct NativeMethodDesc {
     pub params: Vec<NativeMethodParamDesc>,
     pub returns: TypeHint,
     pub effects: EffectSet,
-    pub asyncness: CallableAsyncness,
     pub receiver: ReceiverCapability,
     pub access: FunctionAccess,
     pub docs: Option<String>,
@@ -40,7 +36,6 @@ impl NativeMethodDesc {
             params: Vec::new(),
             returns: TypeHint::Any,
             effects: EffectSet::default(),
-            asyncness: CallableAsyncness::Sync,
             receiver: ReceiverCapability::Shared,
             access: FunctionAccess::default(),
             docs: None,
@@ -68,12 +63,6 @@ impl NativeMethodDesc {
     #[must_use]
     pub fn effects(mut self, effects: EffectSet) -> Self {
         self.effects = effects;
-        self
-    }
-
-    #[must_use]
-    pub fn asyncness(mut self, asyncness: CallableAsyncness) -> Self {
-        self.asyncness = asyncness;
         self
     }
 
@@ -126,48 +115,6 @@ pub type NativeMethodFunction = Arc<
         + Sync
         + 'static,
 >;
-pub type AsyncNativeMethodFunction = Arc<
-    dyn for<'call, 'host> Fn(
-            &'call HostPath,
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncDirectNativeMethodFunction = Arc<
-    dyn for<'host> Fn(HostRef, ErasedHostLease<'host>, Vec<OwnedValue>) -> NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
->;
-pub type AsyncContextDirectNativeMethodFunction = Arc<
-    dyn for<'invoke, 'lease> Fn(
-            HostRef,
-            &'invoke mut [ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-            &'invoke mut NativeCallContext<'invoke, 'invoke>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
->;
-
-#[derive(Clone)]
-pub enum AsyncNativeMethodImplementation {
-    HostPath(AsyncNativeMethodFunction),
-    Direct {
-        lease_kind: HostLeaseKind,
-        function: AsyncDirectNativeMethodFunction,
-    },
-    DirectContext {
-        lease_kind: HostLeaseKind,
-        param_leases: Vec<(usize, HostLeaseKind)>,
-        function: AsyncContextDirectNativeMethodFunction,
-    },
-}
-
 #[derive(Clone)]
 pub struct NativeMethodEntry {
     pub desc: NativeMethodDesc,
@@ -190,82 +137,6 @@ impl NativeMethodEntry {
         Self {
             desc,
             function: Arc::new(function),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AsyncNativeMethodEntry {
-    pub desc: NativeMethodDesc,
-    pub function: AsyncNativeMethodImplementation,
-}
-
-impl AsyncNativeMethodEntry {
-    #[must_use]
-    pub fn new(
-        mut desc: NativeMethodDesc,
-        function: impl for<'call, 'host> Fn(
-            &'call HostPath,
-            &'call [OwnedValue],
-            &'call mut HostExecution<'host>,
-        ) -> NativeCallFuture<'call>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            function: AsyncNativeMethodImplementation::HostPath(Arc::new(function)),
-        }
-    }
-
-    #[must_use]
-    pub fn new_direct(
-        mut desc: NativeMethodDesc,
-        lease_kind: HostLeaseKind,
-        function: impl for<'host> Fn(
-            HostRef,
-            ErasedHostLease<'host>,
-            Vec<OwnedValue>,
-        ) -> NativeCallFuture<'host>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            function: AsyncNativeMethodImplementation::Direct {
-                lease_kind,
-                function: Arc::new(function),
-            },
-        }
-    }
-
-    #[must_use]
-    pub fn new_direct_context(
-        mut desc: NativeMethodDesc,
-        lease_kind: HostLeaseKind,
-        param_leases: Vec<(usize, HostLeaseKind)>,
-        function: impl for<'invoke, 'lease> Fn(
-            HostRef,
-            &'invoke mut [ErasedHostLease<'lease>],
-            Vec<OwnedValue>,
-            &'invoke mut NativeCallContext<'invoke, 'invoke>,
-        ) -> NativeCallFuture<'invoke>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        desc.asyncness = CallableAsyncness::Async;
-        Self {
-            desc,
-            function: AsyncNativeMethodImplementation::DirectContext {
-                lease_kind,
-                param_leases,
-                function: Arc::new(function),
-            },
         }
     }
 }

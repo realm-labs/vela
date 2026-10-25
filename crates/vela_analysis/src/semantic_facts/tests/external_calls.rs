@@ -135,8 +135,8 @@ fn external_function_aliases_preserve_returns_effects_and_ownership_boundaries()
             "use bridge as task;",
             "",
             "task::spawn_scoped",
-            Some(TypeFact::UNIT),
-            "stdlib",
+            None,
+            "unresolved",
         ),
     ] {
         let mut graph = ModuleGraph::new();

@@ -58,18 +58,12 @@ harness = false
 name = "actor_concurrency"
 harness = false
 
-[[bench]]
-name = "async_execution"
-harness = false
 
 [[bench]]
 name = "interop"
 harness = false
 
 
-[[bench]]
-name = "scoped_task_execution"
-harness = false
 
 [lints]
 workspace = true

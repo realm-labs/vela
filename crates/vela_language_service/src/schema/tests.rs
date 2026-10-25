@@ -195,7 +195,7 @@ fn schema_export_round_trips_registry_facts() {
 fn schema_artifact_accepts_docs_metadata() {
     let artifact = SchemaArtifact::from_json(
         r#"{
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {
@@ -304,11 +304,11 @@ fn schema_hash_compatibility_rejects_stale_facts() {
 
 #[test]
 fn schema_rejects_obsolete_format_and_removed_service_set() {
-    for version in [0, 1, 3] {
+    for version in [0, 1, 2, 4] {
         let json = serde_json::json!({"formatVersion": version, "facts": {}}).to_string();
         let error = SchemaArtifact::from_json(&json).expect_err("unsupported schema version");
         assert!(error.message().contains(&format!(
-            "unsupported schema artifact format version {version}; expected 2"
+            "unsupported schema artifact format version {version}; expected 3"
         )));
     }
     for service_set in [
@@ -317,7 +317,7 @@ fn schema_rejects_obsolete_format_and_removed_service_set() {
         serde_json::json!({"services": []}),
     ] {
         let json = serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {},
             "serviceSet": service_set,
         })
@@ -342,8 +342,8 @@ fn rejected_schema_clears_stale_facts_and_current_schema_restores_them() {
     let mut databases = LanguageServiceDatabases::new();
     for rejected in [
         r#"{"formatVersion":1,"facts":{}}"#,
-        r#"{"formatVersion":2,"serviceSet":null,"facts":{}}"#,
-        r#"{"formatVersion":2,"serviceSet":{"services":[]},"facts":{}}"#,
+        r#"{"formatVersion":3,"serviceSet":null,"facts":{}}"#,
+        r#"{"formatVersion":3,"serviceSet":{"services":[]},"facts":{}}"#,
     ] {
         databases.load_schema_artifact_json("/workspace/schema.json", &current);
         assert_eq!(databases.schema_db().facts(), &facts);
@@ -375,7 +375,7 @@ fn invalid_schema_metadata_reports_diagnostic() {
     let mut databases = LanguageServiceDatabases::new();
     databases.load_schema_artifact_json(
         "/workspace/target/vela/schema.json",
-        r#"{ "formatVersion": 2, "schemaVersion": " ", "facts": {} }"#,
+        r#"{ "formatVersion": 3, "schemaVersion": " ", "facts": {} }"#,
     );
 
     let diagnostics = databases.schema_db().diagnostics();

@@ -298,7 +298,6 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("reads_io", TypeFact::BOOL),
             ("reads_reflection", TypeFact::BOOL),
             ("reads_time", TypeFact::BOOL),
-            ("spawns_tasks", TypeFact::BOOL),
             ("uses_random", TypeFact::BOOL),
             ("writes_host", TypeFact::BOOL),
             ("writes_io", TypeFact::BOOL),
@@ -335,14 +334,7 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
         ],
         ReflectFunction => vec![
             ("access", fixed_record(ReflectFunctionAccess)),
-            ("is_async", TypeFact::BOOL),
             ("attrs", attrs()),
-            ("detached_effects", fixed_record(ReflectEffectSet)),
-            ("detached_parameter_contracts", strings()),
-            ("detached_parameter_modes", strings()),
-            ("detached_result_contract", TypeFact::Any),
-            ("detached_result_mode", TypeFact::Any),
-            ("detached_target", TypeFact::BOOL),
             ("docs", TypeFact::Any),
             ("effects", fixed_record(ReflectEffectSet)),
             ("id", TypeFact::I64),
@@ -365,7 +357,6 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
         ],
         ReflectMethod => vec![
             ("access", fixed_record(ReflectMethodAccess)),
-            ("is_async", TypeFact::BOOL),
             ("attrs", attrs()),
             ("docs", TypeFact::Any),
             ("effects", fixed_record(ReflectEffectSet)),
@@ -471,10 +462,82 @@ mod tests {
     }
 
     #[test]
+    fn reflection_record_producers_match_logical_field_slots_and_shapes() {
+        use vela_common::HostMethodId;
+        use vela_def::{FunctionId, TypeId};
+        use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
+        use vela_reflect::registry::{
+            MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry,
+        };
+        use vela_reflect::value::ReflectValue;
+
+        let mut registry = TypeRegistry::new();
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "sample")
+                .param(FunctionParamDesc::new("value").type_hint("i64"))
+                .return_type("i64"),
+        );
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(2), "Sample")).method(
+                MethodDesc::new(HostMethodId::new(3), "sample")
+                    .param(MethodParamDesc::new("value").type_hint("i64"))
+                    .return_type("i64"),
+            ),
+        );
+        let function = vela_reflect::modules::function(&registry, "sample").expect("function");
+        let target = vela_reflect::types::type_by_name(&registry, "Sample").expect("type");
+        let ReflectValue::Array(methods) =
+            vela_reflect::members::methods(&registry, &target).expect("methods")
+        else {
+            panic!("methods must be an array");
+        };
+        for (value, kind) in [
+            (&function, LogicalRecordKind::ReflectFunction),
+            (&methods[0], LogicalRecordKind::ReflectMethod),
+        ] {
+            assert_record_layout(value, kind);
+            let ReflectValue::ScriptRecord { fields, .. } = value else {
+                unreachable!();
+            };
+            assert_record_layout(&fields["effects"], LogicalRecordKind::ReflectEffectSet);
+            assert_record_layout(
+                &fields["access"],
+                if kind == LogicalRecordKind::ReflectFunction {
+                    LogicalRecordKind::ReflectFunctionAccess
+                } else {
+                    LogicalRecordKind::ReflectMethodAccess
+                },
+            );
+            let ReflectValue::Array(params) = &fields["params"] else {
+                panic!("params must be an array");
+            };
+            assert_record_layout(&params[0], LogicalRecordKind::ReflectParam);
+        }
+    }
+
+    fn assert_record_layout(value: &vela_reflect::value::ReflectValue, kind: LogicalRecordKind) {
+        let vela_reflect::value::ReflectValue::ScriptRecord { type_name, fields } = value else {
+            panic!("metadata must be a record");
+        };
+        let layout = LogicalRecordFact::fixed(kind);
+        assert_eq!(type_name, layout.runtime_name());
+        assert_eq!(
+            fields.keys().map(String::as_str).collect::<Vec<_>>(),
+            layout
+                .fields()
+                .map(LogicalRecordFieldFact::name)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(
+            script_shape_id(type_name, fields.keys().map(String::as_str)),
+            layout.shape()
+        );
+    }
+
+    #[test]
     fn reflection_manifest_covers_nested_metadata_layouts() {
         let function = LogicalRecordFact::fixed(LogicalRecordKind::ReflectFunction);
         let access = function.field("access").expect("function access field");
-        let asyncness = function.field("is_async").expect("function is_async field");
         let params = function.field("params").expect("function params field");
         let effects = function.field("effects").expect("function effects field");
 
@@ -494,6 +557,21 @@ mod tests {
             TypeFact::LogicalRecord(record)
                 if record.kind() == LogicalRecordKind::ReflectEffectSet
         ));
-        assert_eq!(asyncness.fact(), &TypeFact::BOOL);
+        assert!(function.field("is_async").is_none());
+        assert!(
+            !function
+                .fields()
+                .any(|field| field.name().starts_with("detached_"))
+        );
+        assert!(
+            LogicalRecordFact::fixed(LogicalRecordKind::ReflectMethod)
+                .field("is_async")
+                .is_none()
+        );
+        assert!(
+            LogicalRecordFact::fixed(LogicalRecordKind::ReflectEffectSet)
+                .field("spawns_tasks")
+                .is_none()
+        );
     }
 }

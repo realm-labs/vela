@@ -1,0 +1,23 @@
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+ --> tests/ui/interop/fail/async_export.rs:7:5
+  |
+7 | pub async fn value() -> i64 {
+  |     ^^^^^
+
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+  --> tests/ui/interop/fail/async_export.rs:12:5
+   |
+12 | pub async fn lookup(_table: &Table) -> Option<&Row> {
+   |     ^^^^^
+
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+  --> tests/ui/interop/fail/async_export.rs:17:5
+   |
+17 | pub async fn context(_context: &mut vela_engine::context::NativeCallContext<'_, '_>) {}
+   |     ^^^^^
+
+error: Vela exports are synchronous; async Rust functions cannot be exported or registered
+  --> tests/ui/interop/fail/async_export.rs:20:5
+   |
+20 | pub async fn collection(_values: &[i64]) -> i64 {
+   |     ^^^^^

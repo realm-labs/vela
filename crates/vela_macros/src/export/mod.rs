@@ -96,15 +96,19 @@ mod tests {
     }
 
     #[test]
-    fn export_accepts_task_spawn_effect() {
-        let expanded = expand_result(
+    fn export_rejects_task_spawn_effect() {
+        let error = expand_result(
             quote! { path = "game::repair", effects(task_spawn) },
             quote! {
                 pub fn repair() {}
             },
         )
-        .expect("task spawning should be an explicit host effect");
+        .expect_err("task spawning is no longer a supported effect");
 
-        assert!(expanded.to_string().contains("task_spawn"));
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Vela callable effect")
+        );
     }
 }

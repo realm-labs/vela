@@ -61,9 +61,7 @@ pub(super) fn hover(
             );
         }
         let hir = lower_syntax_type_hint(query.source_id()?, &hint);
-        if (hir.path.len() == 1 && hints::builtin_type_fact(&hir.path[0]).is_some())
-            || (hir.path.as_slice() == ["task", "Error"] && hir.args.is_empty())
-        {
+        if hir.path.len() == 1 && hints::builtin_type_fact(&hir.path[0]).is_some() {
             let fact = hints::type_fact_from_hint_with_schema(
                 graph,
                 module,

@@ -1,5 +1,10 @@
 # Selection type positions
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.27 closes only S3 positive/negative service/protocol. Other selection syntax,
 recovery, installed selection and native UX11/UX12 remain open.
 

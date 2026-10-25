@@ -29,7 +29,7 @@ pub fn main(state: QuestState) -> i64 {
         .find("Active")
         .expect("schema Active marker should exist");
     let artifact = serde_json::json!({
-        "formatVersion": 2,
+        "formatVersion": 3,
         "facts": {
             "types": [
                 {

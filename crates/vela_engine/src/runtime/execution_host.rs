@@ -7,10 +7,7 @@ use vela_host::adapter::{
     ScriptStateAdapter,
 };
 use vela_host::call_value::HostCallValue;
-use vela_host::error::{
-    HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult, ScopedResourceKind,
-    UnreleasedScopedResource,
-};
+use vela_host::error::{HostError, HostErrorKind, HostRefLifetimeBoundary, HostResult};
 use vela_host::lease::{
     BorrowLeaseId, ErasedHostLease, ErasedHostLeaseSet, HostLeaseKind, ScopedBorrowedHostGroupCell,
     ScopedHostLeaseSlot, host_lease_unsupported, host_object_busy,
@@ -24,9 +21,8 @@ use vela_host::resolved::{HostAccessSpec, HostMutationOp, HostSchemaEpoch, Resol
 use vela_host::slot::{HostRefSlots, HostSlotTable};
 use vela_host::target::HostTargetInstance;
 use vela_host::value::HostValue;
-use vela_vm::error::{VmError, VmErrorKind, VmResult};
+use vela_vm::error::VmResult;
 use vela_vm::value::Value;
-use vela_vm::{NativeCallFuture, PreparedAsyncCall};
 
 use super::call_args::CallArgRuntime;
 use super::{CallArgs, RuntimeExternStateBindings, RuntimeHostArena};
@@ -39,16 +35,6 @@ use fallback::FallbackAdapter;
 
 const EXECUTION_HOST_OBJECT_ID_BASE: u64 = 1 << 63;
 const SCOPED_HOST_OBJECT_ID_BASE: u64 = u64::MAX - 0xffff_ffff;
-
-pub(super) trait DirectContextInvoker: Send {
-    fn invoke<'invoke, 'lease>(
-        self: Box<Self>,
-        leases: &'invoke mut [ErasedHostLease<'lease>],
-        host: &'invoke mut dyn ExecutionHostBoundary,
-    ) -> NativeCallFuture<'invoke>
-    where
-        Self: 'invoke;
-}
 
 pub(super) struct ExecutionHost<'state, 'host> {
     args: CallArgs<'host>,
@@ -71,7 +57,6 @@ struct ScopedHostBinding<'host> {
     object: ScopedHostObjectBinding<'host>,
     activity: Arc<()>,
     _parent_activity: Option<Arc<()>>,
-    parent: Option<HostRef>,
 }
 
 enum ScopedHostObjectBinding<'host> {
@@ -96,22 +81,6 @@ pub(super) trait ExecutionHostBoundary: ScriptStateAdapter + Send {
         requests: &[(HostRef, HostLeaseKind)],
         invoke: &mut ExecutionHostLeaseInvoker<'_>,
     ) -> VmResult<()>;
-
-    fn invoke_prepared_with_lease<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call>;
-
-    fn invoke_prepared_with_leases<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call>;
-
-    fn invoke_direct_context<'call>(
-        &'call mut self,
-        requests: vela_host::lease::HostLeaseRequestSet,
-        invoke: Box<dyn DirectContextInvoker + 'call>,
-    ) -> NativeCallFuture<'call>;
 }
 
 pub(super) type ExecutionHostLeaseInvoker<'invoke> = dyn for<'lease, 'host> FnMut(
@@ -381,59 +350,6 @@ impl ExecutionHostBoundary for ExecutionHost<'_, '_> {
         let mut leases = self.take_execution_host_leases(requests)?;
         invoke(&mut leases, self)
     }
-
-    fn invoke_prepared_with_lease<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call> {
-        let Some((root, kind)) = prepared.host_lease_request() else {
-            return Box::pin(async {
-                Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "nested typed host lease",
-                }))
-            });
-        };
-        match self.take_execution_host_lease(root, kind) {
-            Ok(lease) => prepared.invoke_with_host_lease(lease),
-            Err(error) => Box::pin(async move { Err(error.into()) }),
-        }
-    }
-
-    fn invoke_prepared_with_leases<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call> {
-        Box::pin(async move {
-            let requests = prepared.host_lease_requests().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "async direct host function leases",
-                })
-            })?;
-            for (root, _) in &requests {
-                if self.extern_states.binding(*root).is_some() {
-                    return Err(host_lease_unsupported(*root).into());
-                }
-            }
-            let mut leases = self.take_execution_host_leases(&requests)?;
-            prepared.invoke_with_host_leases(&mut leases).await
-        })
-    }
-
-    fn invoke_direct_context<'call>(
-        &'call mut self,
-        requests: vela_host::lease::HostLeaseRequestSet,
-        invoke: Box<dyn DirectContextInvoker + 'call>,
-    ) -> NativeCallFuture<'call> {
-        Box::pin(async move {
-            for (root, _) in &requests {
-                if self.extern_states.binding(*root).is_some() {
-                    return Err(host_lease_unsupported(*root).into());
-                }
-            }
-            let mut leases = self.take_execution_host_leases(&requests)?;
-            invoke.invoke(&mut leases, self).await
-        })
-    }
 }
 
 pub(super) struct ReentryExecutionHost<'args, 'parent> {
@@ -493,67 +409,6 @@ impl ExecutionHostBoundary for ReentryExecutionHost<'_, '_> {
             return invoke(&mut leases, self);
         }
         self.parent.with_execution_host_leases(requests, invoke)
-    }
-
-    fn invoke_prepared_with_lease<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call> {
-        let Some((root, kind)) = prepared.host_lease_request() else {
-            return Box::pin(async {
-                Err(VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "nested typed host lease",
-                }))
-            });
-        };
-        if self.args.direct_binding(root).is_none() {
-            return self.parent.invoke_prepared_with_lease(prepared);
-        }
-        match self.args.take_host_leases(&[(root, kind)]) {
-            Ok(mut leases) => match leases.pop() {
-                Some(lease) => prepared.invoke_with_host_lease(lease),
-                None => Box::pin(async move { Err(host_lease_unsupported(root).into()) }),
-            },
-            Err(error) => Box::pin(async move { Err(error.into()) }),
-        }
-    }
-
-    fn invoke_prepared_with_leases<'call>(
-        &'call mut self,
-        prepared: &'call PreparedAsyncCall,
-    ) -> NativeCallFuture<'call> {
-        Box::pin(async move {
-            let requests = prepared.host_lease_requests().ok_or_else(|| {
-                VmError::new(VmErrorKind::TypeMismatch {
-                    operation: "nested async direct host function leases",
-                })
-            })?;
-            if requests
-                .iter()
-                .any(|(root, _)| self.args.direct_binding(*root).is_none())
-            {
-                return self.parent.invoke_prepared_with_leases(prepared).await;
-            }
-            let mut leases = self.args.take_host_leases(&requests)?;
-            prepared.invoke_with_host_leases(&mut leases).await
-        })
-    }
-
-    fn invoke_direct_context<'call>(
-        &'call mut self,
-        requests: vela_host::lease::HostLeaseRequestSet,
-        invoke: Box<dyn DirectContextInvoker + 'call>,
-    ) -> NativeCallFuture<'call> {
-        Box::pin(async move {
-            if requests
-                .iter()
-                .any(|(root, _)| self.args.direct_binding(*root).is_none())
-            {
-                return self.parent.invoke_direct_context(requests, invoke).await;
-            }
-            let mut leases = self.args.take_host_leases(&requests)?;
-            invoke.invoke(&mut leases, self).await
-        })
     }
 }
 
@@ -647,10 +502,6 @@ impl ScriptStateAdapter for ReentryExecutionHost<'_, '_> {
 
     fn try_release_scoped_host(&mut self, root: HostRef) -> HostResult<bool> {
         self.parent.try_release_scoped_host(root)
-    }
-
-    fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
-        self.parent.validate_scoped_resources_before_await()
     }
 
     fn retain_scoped_iterator_host(&mut self, root: HostRef) -> HostResult<HostRef> {
@@ -936,42 +787,6 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         self.release_scoped_host_impl(root, true)
     }
 
-    fn validate_scoped_resources_before_await(&self) -> HostResult<()> {
-        let mut resources = self
-            .scoped_hosts
-            .iter()
-            .map(|(handle, binding)| {
-                let path =
-                    vela_host::path::HostPath::new(Self::scoped_root(handle, binding.type_id));
-                let (kind, parent) = match &binding.object {
-                    ScopedHostObjectBinding::IteratorLease { source, .. } => (
-                        ScopedResourceKind::Iterator,
-                        Some(vela_host::path::HostPath::new(*source)),
-                    ),
-                    ScopedHostObjectBinding::Single(_) | ScopedHostObjectBinding::Group { .. } => (
-                        match binding.access {
-                            HostLeaseKind::Shared => ScopedResourceKind::View,
-                            HostLeaseKind::Exclusive => ScopedResourceKind::MutView,
-                        },
-                        binding.parent.map(vela_host::path::HostPath::new),
-                    ),
-                };
-                UnreleasedScopedResource { path, kind, parent }
-            })
-            .collect::<Vec<_>>();
-        if resources.is_empty() {
-            Ok(())
-        } else {
-            // Scoped children are retained after their parents. Report them in
-            // release order so the first suggested action is executable.
-            resources.reverse();
-            Err(HostError {
-                kind: HostErrorKind::UnreleasedScopedResourcesAtAwait { resources },
-                source_span: None,
-            })
-        }
-    }
-
     fn retain_scoped_iterator_host(&mut self, root: HostRef) -> HostResult<HostRef> {
         if self.extern_states.binding(root).is_some()
             || (!self.host_arena.contains(root)
@@ -994,7 +809,6 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
             },
             activity: Arc::new(()),
             _parent_activity: None,
-            parent: Some(root),
         });
         Ok(Self::scoped_root(handle, type_id))
     }
@@ -1009,7 +823,6 @@ impl ScriptStateAdapter for ExecutionHost<'_, '_> {
         let expired = self.expired_call_scoped_hosts.contains(&root)
             || self.expired_scoped_hosts.contains_key(&root);
         let invalid = match boundary {
-            HostRefLifetimeBoundary::AsyncSuspend => call_scoped || live,
             HostRefLifetimeBoundary::PersistentState | HostRefLifetimeBoundary::RootReturn => {
                 call_scoped || live || expired
             }

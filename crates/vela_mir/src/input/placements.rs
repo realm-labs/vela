@@ -13,8 +13,8 @@ use crate::{
 
 use super::{
     CompileCallTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileHostPathTarget,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTaskTarget, CompileTryTarget,
-    HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError,
+    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryTarget, HostFieldTarget,
+    HostMethodTarget, MethodExecutableTarget, MirBuildError,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -155,7 +155,6 @@ impl CompileGuardTarget {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CompileTargetKind {
     Call,
-    Task,
     Member,
     Constructor,
     HostPath,
@@ -166,7 +165,6 @@ impl fmt::Display for CompileTargetKind {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str(match self {
             Self::Call => "call",
-            Self::Task => "task",
             Self::Member => "member",
             Self::Constructor => "constructor",
             Self::HostPath => "host path",
@@ -207,11 +205,6 @@ impl<'a> CompileFunctionTargets<'a> {
     #[must_use]
     pub fn call(self, expression: HirExprId) -> Option<&'a CompileCallTarget> {
         self.snapshot.call(self.function(), expression)
-    }
-
-    #[must_use]
-    pub fn task(self, expression: HirExprId) -> Option<&'a CompileTaskTarget> {
-        self.snapshot.task(self.function(), expression)
     }
 
     #[must_use]
@@ -355,11 +348,6 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn task(&self, function: FunctionId, expression: HirExprId) -> Option<&CompileTaskTarget> {
-        self.tasks.get(&(function, expression))
-    }
-
-    #[must_use]
     pub fn member(
         &self,
         function: FunctionId,
@@ -425,28 +413,6 @@ impl CompileTargetSnapshotBuilder {
         self.snapshot
             .origins
             .calls
-            .insert((function, expression), origin);
-        Ok(())
-    }
-
-    pub fn insert_task(
-        &mut self,
-        function: FunctionId,
-        expression: HirExprId,
-        target: CompileTaskTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.tasks,
-            function,
-            expression,
-            target,
-            CompileTargetKind::Task,
-            origin,
-        )?;
-        self.snapshot
-            .origins
-            .tasks
             .insert((function, expression), origin);
         Ok(())
     }

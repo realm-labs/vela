@@ -1,5 +1,10 @@
 # Folding literals and operators
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 B10.19 reviews only S7 positive/negative service/protocol, four cells.
 Member/constructor, recovery/trivia, installed smoke and native UX12 remain
 separate. Previous declaration/body/import proofs remain active.

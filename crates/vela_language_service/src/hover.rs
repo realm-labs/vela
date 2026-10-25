@@ -677,7 +677,7 @@ fn signature_detail_parts(signature: &FunctionSignature) -> DisplayParts {
         )
     });
     let return_type = signature.return_type.as_ref().map(|hint| hint.display());
-    DisplayParts::signature_with_asyncness(signature.asyncness, params, return_type.as_deref())
+    DisplayParts::signature(params, return_type.as_deref())
 }
 
 fn enum_variant_hover_for_declaration(
@@ -1040,14 +1040,6 @@ fn span_text_range(span: Span) -> Option<TextRange> {
 }
 
 fn stdlib_function_detail_parts(function: &StdlibFunctionFact) -> DisplayParts {
-    if function.name == "task::spawn_scoped" {
-        return DisplayParts::type_name("task::spawn_scoped(invocation: static async call) -> ()");
-    }
-    if function.name == "task::spawn_scoped_then" {
-        return DisplayParts::type_name(
-            "task::spawn_scoped_then(invocation: static async call, continuation: static sync function) -> ()",
-        );
-    }
     DisplayParts::type_name(
         TypeFact::function(function.params.clone(), function.returns.clone()).display_name(),
     )

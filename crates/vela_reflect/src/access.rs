@@ -75,7 +75,6 @@ pub struct FunctionEffectSet {
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
-    pub spawns_tasks: bool,
 }
 
 impl FunctionEffectSet {
@@ -92,7 +91,6 @@ impl FunctionEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -109,7 +107,6 @@ impl FunctionEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -126,7 +123,6 @@ impl FunctionEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -143,7 +139,6 @@ impl FunctionEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 }
@@ -217,7 +212,6 @@ pub struct MethodEffectSet {
     pub reads_reflection: bool,
     pub writes_reflection: bool,
     pub calls_reflection: bool,
-    pub spawns_tasks: bool,
 }
 
 impl MethodEffectSet {
@@ -234,7 +228,6 @@ impl MethodEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -251,7 +244,6 @@ impl MethodEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -268,7 +260,6 @@ impl MethodEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 
@@ -285,7 +276,6 @@ impl MethodEffectSet {
             reads_reflection: false,
             writes_reflection: false,
             calls_reflection: false,
-            spawns_tasks: false,
         }
     }
 }

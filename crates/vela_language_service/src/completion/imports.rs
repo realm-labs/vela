@@ -169,19 +169,11 @@ impl<'a, 'db> ImportScope<'a, 'db> {
             let item =
                 declaration_completion(graph, self.databases.graph_analysis_facts(), declaration)?;
             let symbol = SymbolRef::Source(item.label.clone());
-            let mut completion = render(item, symbol, spelling, prefix);
-            if let Some(signature) = graph.function_signature(declaration.id) {
-                completion = completion.with_callable_asyncness(signature.asyncness);
-            }
+            let completion = render(item, symbol, spelling, prefix);
             return Some(completion);
         }
         let stdlib = stdlib_function_completion_facts();
         if let Some(function) = stdlib.iter().find(|function| function.name == path) {
-            if path.starts_with("task::") {
-                // Only literal task paths introduce the compiler capability.
-                // Real source declarations have already been resolved above.
-                return None;
-            }
             return Some(render(
                 AnalysisItem {
                     label: path.to_owned(),
@@ -195,15 +187,12 @@ impl<'a, 'db> ImportScope<'a, 'db> {
         }
         let globals = global_completions(schema);
         if let Some(item) = globals.iter().find(|item| item.label == path) {
-            let mut completion = render(
+            let completion = render(
                 item.clone(),
                 SymbolRef::Schema(path.to_owned()),
                 spelling,
                 prefix,
             );
-            if let Some(signature) = schema.function_signature_fact(path) {
-                completion = completion.with_callable_asyncness(signature.asyncness);
-            }
             return Some(completion);
         }
         let module_key = graph.resolve_module_path(current, &segments)?;

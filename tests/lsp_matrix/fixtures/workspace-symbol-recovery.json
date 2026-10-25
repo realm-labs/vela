@@ -4,7 +4,7 @@
   "files": {
     "scripts/main.vela": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
     "scripts/helper.vela": "[[file:start]]/* 中😀 */ [[helper-fn:start]]pub fn Broken() {}[[helper-fn:end]]\n[[helper-type:start]]pub struct Decoy { value: bool }[[helper-type:end]]\n[[file:end]]",
-    "schema.json": "{\"formatVersion\":2,\"facts\":{}}\n"
+    "schema.json": "{\"formatVersion\":3,\"facts\":{}}"
   },
   "actions": [],
   "oracle": {
@@ -3753,7 +3753,7 @@
       },
       {
         "id": "function-partial-type",
-        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[workspace-eof:start]][[broken-range:start]]async fn [[broken-name:start]]Broken[[broken-name:end]](value: Array<[[broken-range:end]]\n[[workspace-eof:end]][[file:end]]",
+        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[workspace-eof:start]][[broken-range:start]]fn [[broken-name:start]]Broken[[broken-name:end]](value: Array<[[broken-range:end]]\n[[workspace-eof:end]][[file:end]]",
         "parseError": true,
         "symbols": [
           {
@@ -3835,7 +3835,7 @@
             "protocolKind": 12,
             "file": "scripts/main.vela",
             "range": "workspace-eof",
-            "detail": "async (value: Array)",
+            "detail": "(value: Array)",
             "container": "main",
             "identity": "main::Broken",
             "ownership": "Source"

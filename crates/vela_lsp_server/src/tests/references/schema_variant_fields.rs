@@ -36,7 +36,7 @@ fn lsp_references_find_schema_record_variant_field_labels_and_patterns() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use vela_common::{
-    CallableAsyncness, Capability, CollectionViewKind, CollectionViewMutation, HostObjectId,
-    HostTypeId, InteropBindingContract, InteropRepresentation, InteropTypeId, TypeAbiFingerprint,
+    Capability, CollectionViewKind, CollectionViewMutation, HostObjectId, HostTypeId,
+    InteropBindingContract, InteropRepresentation, InteropTypeId, TypeAbiFingerprint,
 };
 use vela_host::lease::HostLeaseKind;
 use vela_host::path::HostRef;
@@ -32,7 +32,6 @@ fn contract(effects: EffectSet) -> CallableContract {
             ReturnMode::OwnedValue,
             ErrorMode::RuntimeResult,
         ),
-        asyncness: CallableAsyncness::Sync,
         effects,
         access: CallableAccess::default(),
         docs: Some("not ABI".to_owned()),

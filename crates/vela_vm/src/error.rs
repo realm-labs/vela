@@ -159,12 +159,6 @@ pub enum VmErrorKind {
     UnknownFunction {
         name: String,
     },
-    AsyncEntryRequiresCallAsync {
-        name: String,
-    },
-    AsyncCallRequiresAwait {
-        name: String,
-    },
     UnknownMethod {
         method: String,
     },
@@ -211,14 +205,6 @@ pub enum VmErrorKind {
     },
     CallCancelled,
     DeadlineExceeded,
-    TaskScopeUnavailable,
-    TaskAdmissionDenied {
-        reason: String,
-    },
-    TaskValueNotDetachable {
-        path: String,
-        kind: vela_common::NonDetachableValueKind,
-    },
     CollectionLimitExceeded {
         collection: &'static str,
         limit: usize,
@@ -259,8 +245,6 @@ impl VmErrorKind {
             Self::UnknownNative { .. } => "vm::unknown_native",
             Self::PermissionDenied { .. } => "vm::permission_denied",
             Self::UnknownFunction { .. } => "vm::unknown_function",
-            Self::AsyncEntryRequiresCallAsync { .. } => "vm::async_entry_requires_call_async",
-            Self::AsyncCallRequiresAwait { .. } => "vm::async_call_requires_await",
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
             Self::HostArgumentTypeMismatch { .. } => "vm::host_argument_type_mismatch",
@@ -275,9 +259,6 @@ impl VmErrorKind {
             Self::BudgetExceeded { .. } => "vm::budget_exceeded",
             Self::CallCancelled => "vm::call_cancelled",
             Self::DeadlineExceeded => "vm::deadline_exceeded",
-            Self::TaskScopeUnavailable => "vm::task_scope_unavailable",
-            Self::TaskAdmissionDenied { .. } => "vm::task_admission_denied",
-            Self::TaskValueNotDetachable { .. } => "vm::task_value_not_detachable",
             Self::CollectionLimitExceeded { .. } => "vm::collection_limit_exceeded",
             Self::CollectionChangedDuringCallback { .. } => {
                 "vm::collection_changed_during_callback"
@@ -323,12 +304,6 @@ impl VmErrorKind {
                 format!("native `{native}` requires capability `{capability}`")
             }
             Self::UnknownFunction { name } => format!("unknown function `{name}`"),
-            Self::AsyncEntryRequiresCallAsync { name } => {
-                format!("async entry `{name}` requires `Runtime::call_async`")
-            }
-            Self::AsyncCallRequiresAwait { name } => {
-                format!("async target `{name}` must be invoked with `await`")
-            }
             Self::UnknownMethod { method } => format!("unknown method `{method}`"),
             Self::ArityMismatch {
                 name,
@@ -355,25 +330,6 @@ impl VmErrorKind {
             Self::RustCallablePanicked { callable } => {
                 format!("exported Rust callable `{callable}` panicked")
             }
-            Self::Host(vela_host::error::HostErrorKind::UnreleasedScopedResourcesAtAwait {
-                resources,
-            }) => {
-                let blockers = resources
-                    .iter()
-                    .map(|resource| match &resource.parent {
-                        Some(parent) => format!(
-                            "{:?} {:?} (borrows {parent:?})",
-                            resource.kind, resource.path
-                        ),
-                        None => format!("{:?} {:?}", resource.kind, resource.path),
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!(
-                    "{} scoped Host resource(s) block await, in required release order: {blockers}; release each value with `host::release(value)` or `host::try_release(value)`",
-                    resources.len()
-                )
-            }
             Self::Host(kind) => format!("host error: {kind:?}"),
             Self::Reflect(kind) => kind.message(),
             Self::UnknownRecordField { type_name, field } => {
@@ -395,18 +351,6 @@ impl VmErrorKind {
             }
             Self::CallCancelled => "runtime call was cancelled".to_owned(),
             Self::DeadlineExceeded => "runtime call deadline was exceeded".to_owned(),
-            Self::TaskScopeUnavailable => {
-                "host-scoped task execution requires an installed task scope".to_owned()
-            }
-            Self::TaskAdmissionDenied { reason } => {
-                format!("host-scoped task admission was denied: {reason}")
-            }
-            Self::TaskValueNotDetachable { path, kind } => {
-                format!(
-                    "task value at `{path}` is not detachable: {}",
-                    kind.as_str()
-                )
-            }
             Self::CollectionLimitExceeded { collection, limit } => {
                 format!("{collection} length exceeds collection limit {limit}")
             }
@@ -524,6 +468,33 @@ fn leaf() {
             "`reward.grant` expected 2 arguments but got 1"
         );
         assert!(diagnostic.labels.is_empty());
+    }
+
+    #[test]
+    fn diagnostics_preserve_synchronous_call_control_errors() {
+        let span = Span::new(SourceId::new(1), 0, 4);
+        for (kind, code, message, display) in [
+            (
+                VmErrorKind::CallCancelled,
+                "vm::call_cancelled",
+                "runtime call was cancelled",
+                "CallCancelled",
+            ),
+            (
+                VmErrorKind::DeadlineExceeded,
+                "vm::deadline_exceeded",
+                "runtime call deadline was exceeded",
+                "DeadlineExceeded",
+            ),
+        ] {
+            let error = VmError::new(kind.clone()).with_source_span(Some(span));
+            let diagnostic = error.to_diagnostic();
+            assert_eq!(error.kind(), kind);
+            assert_eq!(error.to_string(), display);
+            assert_eq!(diagnostic.code.as_deref(), Some(code));
+            assert_eq!(diagnostic.message, message);
+            assert_eq!(diagnostic.span, Some(span));
+        }
     }
 
     #[test]

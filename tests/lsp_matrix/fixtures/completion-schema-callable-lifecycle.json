@@ -3,13 +3,13 @@
   "id": "completion-schema-callable-lifecycle",
   "files": {
     "vela.toml": "[package]\nid=\"dev.vela.schema_flow\"\nname=\"schema_flow\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
-    "scripts/function.vela": "/* 中😀 */\nasync fn run() { [[call:start]]native::[[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n",
-    "scripts/method.vela": "/* 中😀 */\nasync fn run(handle: host::Handle) { [[call:start]]handle.[[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n",
-    "scripts/function_result.vela": "/* 中😀 */\nasync fn run() { (native::work_make(1).await).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
-    "scripts/method_result.vela": "/* 中😀 */\nasync fn run(handle: host::Handle) { (handle.work_make(1).await).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
-    "scripts/function_signature.vela": "/* 中😀 */\nasync fn run() { native::work_make([[cursor]]1); }\n",
-    "scripts/method_signature.vela": "/* 中😀 */\nasync fn run(handle: host::Handle) { handle.work_make([[cursor]]1); }\n",
-    "schema.json": "{\"formatVersion\":2,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"asyncness\":\"sync\",\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}"
+    "scripts/function.vela": "/* 中😀 */\nfn run() { [[call:start]]native::[[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/method.vela": "/* 中😀 */\nfn run(handle: host::Handle) { [[call:start]]handle.[[replace:start]]work_[[cursor]][[replace:end]][[call:end]]; }\n",
+    "scripts/function_result.vela": "/* 中😀 */\nfn run() { (native::work_make(1)).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/method_result.vela": "/* 中😀 */\nfn run(handle: host::Handle) { (handle.work_make(1)).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
+    "scripts/function_signature.vela": "/* 中😀 */\nfn run() { native::work_make([[cursor]]1); }\n",
+    "scripts/method_signature.vela": "/* 中😀 */\nfn run(handle: host::Handle) { handle.work_make([[cursor]]1); }\n",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}"
   },
   "actions": [],
   "oracle": {
@@ -18,7 +18,7 @@
       {
         "id": "v1",
         "schema": {
-          "formatVersion": 2,
+          "formatVersion": 3,
           "facts": {
             "types": [
               {
@@ -60,7 +60,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_first",
@@ -97,7 +96,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_first",
@@ -144,7 +142,6 @@
             "file": "scripts/function.vela",
             "context": "ModulePath",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -161,8 +158,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -170,8 +166,7 @@
             "id": "v1_function_true",
             "file": "scripts/function.vela",
             "context": "ModulePath",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -188,8 +183,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -198,7 +192,6 @@
             "file": "scripts/method.vela",
             "context": "Member",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -215,8 +208,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -224,8 +216,7 @@
             "id": "v1_method_true",
             "file": "scripts/method.vela",
             "context": "Member",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -242,8 +233,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -307,7 +297,7 @@
       {
         "id": "v2",
         "schema": {
-          "formatVersion": 2,
+          "formatVersion": 3,
           "facts": {
             "types": [
               {
@@ -349,7 +339,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "async",
                   "parameters": [
                     {
                       "name": "zz_second",
@@ -386,7 +375,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "async",
                   "parameters": [
                     {
                       "name": "zz_second",
@@ -433,25 +421,23 @@
             "file": "scripts/function.vela",
             "context": "ModulePath",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
                 "insert": "work_make($0)",
                 "kind": "Function",
-                "detail": "async Function(bool) -> host::Other",
+                "detail": "Function(bool) -> host::Other",
                 "origin": "schema",
                 "symbol": "native::work_make",
                 "target": null,
                 "docs": "Function v2 中😀.",
                 "value": "true",
-                "signature": "async native::work_make(zz_second: bool) -> host::Other",
+                "signature": "native::work_make(zz_second: bool) -> host::Other",
                 "argument": {
                   "label": "zz_second",
                   "detail": "bool"
                 },
-                "inlay": "zz_second:",
-                "async": true
+                "inlay": "zz_second:"
               }
             ]
           },
@@ -459,26 +445,24 @@
             "id": "v2_function_true",
             "file": "scripts/function.vela",
             "context": "ModulePath",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
                 "insert": "work_make($0)",
                 "kind": "Function",
-                "detail": "async Function(bool) -> host::Other",
+                "detail": "Function(bool) -> host::Other",
                 "origin": "schema",
                 "symbol": "native::work_make",
                 "target": null,
                 "docs": "Function v2 中😀.",
                 "value": "true",
-                "signature": "async native::work_make(zz_second: bool) -> host::Other",
+                "signature": "native::work_make(zz_second: bool) -> host::Other",
                 "argument": {
                   "label": "zz_second",
                   "detail": "bool"
                 },
-                "inlay": "zz_second:",
-                "async": true
+                "inlay": "zz_second:"
               }
             ]
           },
@@ -487,25 +471,23 @@
             "file": "scripts/method.vela",
             "context": "Member",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
                 "insert": "work_make($0)",
                 "kind": "Method",
-                "detail": "async Function(bool) -> host::Other",
+                "detail": "Function(bool) -> host::Other",
                 "origin": "schema",
                 "symbol": "host::Handle.work_make",
                 "target": null,
                 "docs": "Method v2 中😀.",
                 "value": "true",
-                "signature": "async host::Handle.work_make(zz_second: bool) -> host::Other",
+                "signature": "host::Handle.work_make(zz_second: bool) -> host::Other",
                 "argument": {
                   "label": "zz_second",
                   "detail": "bool"
                 },
-                "inlay": "zz_second:",
-                "async": true
+                "inlay": "zz_second:"
               }
             ]
           },
@@ -513,26 +495,24 @@
             "id": "v2_method_true",
             "file": "scripts/method.vela",
             "context": "Member",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
                 "insert": "work_make($0)",
                 "kind": "Method",
-                "detail": "async Function(bool) -> host::Other",
+                "detail": "Function(bool) -> host::Other",
                 "origin": "schema",
                 "symbol": "host::Handle.work_make",
                 "target": null,
                 "docs": "Method v2 中😀.",
                 "value": "true",
-                "signature": "async host::Handle.work_make(zz_second: bool) -> host::Other",
+                "signature": "host::Handle.work_make(zz_second: bool) -> host::Other",
                 "argument": {
                   "label": "zz_second",
                   "detail": "bool"
                 },
-                "inlay": "zz_second:",
-                "async": true
+                "inlay": "zz_second:"
               }
             ]
           },
@@ -577,13 +557,13 @@
           {
             "file": "scripts/function_signature.vela",
             "labels": [
-              "async native::work_make(zz_second: bool) -> host::Other"
+              "native::work_make(zz_second: bool) -> host::Other"
             ]
           },
           {
             "file": "scripts/method_signature.vela",
             "labels": [
-              "async host::Handle.work_make(zz_second: bool) -> host::Other"
+              "host::Handle.work_make(zz_second: bool) -> host::Other"
             ]
           }
         ],
@@ -596,7 +576,7 @@
       {
         "id": "v3",
         "schema": {
-          "formatVersion": 2,
+          "formatVersion": 3,
           "facts": {
             "types": [
               {
@@ -638,7 +618,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_third",
@@ -675,7 +654,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_third",
@@ -722,7 +700,6 @@
             "file": "scripts/function.vela",
             "context": "ModulePath",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -739,8 +716,7 @@
                   "label": "zz_third",
                   "detail": "String"
                 },
-                "inlay": "zz_third:",
-                "async": false
+                "inlay": "zz_third:"
               }
             ]
           },
@@ -748,8 +724,7 @@
             "id": "v3_function_true",
             "file": "scripts/function.vela",
             "context": "ModulePath",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -766,8 +741,7 @@
                   "label": "zz_third",
                   "detail": "String"
                 },
-                "inlay": "zz_third:",
-                "async": false
+                "inlay": "zz_third:"
               }
             ]
           },
@@ -776,7 +750,6 @@
             "file": "scripts/method.vela",
             "context": "Member",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -793,8 +766,7 @@
                   "label": "zz_third",
                   "detail": "String"
                 },
-                "inlay": "zz_third:",
-                "async": false
+                "inlay": "zz_third:"
               }
             ]
           },
@@ -802,8 +774,7 @@
             "id": "v3_method_true",
             "file": "scripts/method.vela",
             "context": "Member",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -820,8 +791,7 @@
                   "label": "zz_third",
                   "detail": "String"
                 },
-                "inlay": "zz_third:",
-                "async": false
+                "inlay": "zz_third:"
               }
             ]
           },
@@ -885,7 +855,7 @@
       {
         "id": "removed",
         "schema": {
-          "formatVersion": 2,
+          "formatVersion": 3,
           "facts": {
             "types": [
               {
@@ -931,15 +901,13 @@
             "file": "scripts/function.vela",
             "context": "ModulePath",
             "applySuffix": "",
-            "checkAwait": true,
             "items": []
           },
           {
             "id": "removed_function_true",
             "file": "scripts/function.vela",
             "context": "ModulePath",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": []
           },
           {
@@ -947,15 +915,13 @@
             "file": "scripts/method.vela",
             "context": "Member",
             "applySuffix": "",
-            "checkAwait": true,
             "items": []
           },
           {
             "id": "removed_method_true",
             "file": "scripts/method.vela",
             "context": "Member",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": []
           },
           {
@@ -988,7 +954,7 @@
       {
         "id": "restored",
         "schema": {
-          "formatVersion": 2,
+          "formatVersion": 3,
           "facts": {
             "types": [
               {
@@ -1030,7 +996,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_first",
@@ -1067,7 +1032,6 @@
                   }
                 },
                 "signature": {
-                  "asyncness": "sync",
                   "parameters": [
                     {
                       "name": "zz_first",
@@ -1114,7 +1078,6 @@
             "file": "scripts/function.vela",
             "context": "ModulePath",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -1131,8 +1094,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -1140,8 +1102,7 @@
             "id": "restored_function_true",
             "file": "scripts/function.vela",
             "context": "ModulePath",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -1158,8 +1119,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -1168,7 +1128,6 @@
             "file": "scripts/method.vela",
             "context": "Member",
             "applySuffix": "",
-            "checkAwait": true,
             "items": [
               {
                 "label": "work_make",
@@ -1185,8 +1144,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },
@@ -1194,8 +1152,7 @@
             "id": "restored_method_true",
             "file": "scripts/method.vela",
             "context": "Member",
-            "applySuffix": ".await",
-            "checkAwait": true,
+            "applySuffix": "",
             "items": [
               {
                 "label": "work_make",
@@ -1212,8 +1169,7 @@
                   "label": "zz_first",
                   "detail": "i64"
                 },
-                "inlay": "zz_first:",
-                "async": false
+                "inlay": "zz_first:"
               }
             ]
           },

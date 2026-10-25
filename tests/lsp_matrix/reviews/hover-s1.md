@@ -1,5 +1,10 @@
 # Hover S1 top-level declarations
 
+Checkpoint C changes the async/task or schema portions described below. Those
+pre-removal acceptance claims are historical and require fresh evidence under
+[the consumer removal review](checkpoint-c-consumers.md); no native recapture
+is claimed here. Unaffected retained assertions and captures remain intact.
+
 Scope: `hover/syntax/S1/{positive,negative}/{service,protocol}` only. Exact tests:
 `hover::declaration_matrix_tests::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters`
 and `tests::hover::declarations::hover_declaration_matrix_preserves_complete_metadata_and_static_parameters`.

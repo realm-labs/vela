@@ -311,7 +311,6 @@ fn terminator_uses(kind: &MirTerminatorKind) -> BTreeSet<MirLiveValue> {
 
 fn successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
     match kind {
-        MirTerminatorKind::AwaitCall { resume, .. } => vec![*resume],
         MirTerminatorKind::Jump(target) => vec![*target],
         MirTerminatorKind::Branch {
             then_block,
@@ -347,13 +346,6 @@ fn successors(kind: &MirTerminatorKind) -> Vec<MirBlockId> {
 fn edge_definitions(kind: &MirTerminatorKind, successor: MirBlockId) -> BTreeSet<MirLiveValue> {
     let mut definitions = BTreeSet::new();
     match kind {
-        MirTerminatorKind::AwaitCall {
-            destination,
-            resume,
-            ..
-        } if *resume == successor => {
-            definitions.insert(place_value(*destination));
-        }
         MirTerminatorKind::IteratorNext { item, next, .. } if *next == successor => {
             definitions.insert(MirLiveValue::Local(*item));
         }

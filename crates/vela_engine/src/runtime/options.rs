@@ -12,7 +12,6 @@ pub struct CallOptions {
     host_call_budget: u64,
     deadline: Option<std::time::Instant>,
     control: Option<CallControl>,
-    task_scope: Option<crate::task::TaskScope>,
 }
 
 impl PartialEq for CallOptions {
@@ -25,7 +24,6 @@ impl PartialEq for CallOptions {
             && self.host_call_budget == other.host_call_budget
             && self.deadline == other.deadline
             && self.control == other.control
-            && self.task_scope == other.task_scope
     }
 }
 
@@ -43,7 +41,6 @@ impl CallOptions {
             host_call_budget: u64::MAX,
             deadline: None,
             control: None,
-            task_scope: None,
         }
     }
 
@@ -74,9 +71,8 @@ impl CallOptions {
     }
 
     #[must_use]
-    /// Sets a cooperative deadline checked whenever the Runtime future is polled.
-    /// The host must arrange a wake at the deadline if the awaited operation
-    /// does not wake independently.
+    /// Sets a cooperative deadline checked before and after the synchronous call.
+    /// Native calls are not preempted; use finite execution budgets for scripts.
     pub fn with_deadline(mut self, deadline: std::time::Instant) -> Self {
         self.deadline = Some(deadline);
         self
@@ -95,16 +91,6 @@ impl CallOptions {
         self
     }
 
-    #[must_use]
-    pub fn with_task_scope(mut self, task_scope: crate::task::TaskScope) -> Self {
-        self.task_scope = Some(task_scope);
-        self
-    }
-
-    pub(super) const fn task_scope(&self) -> Option<&crate::task::TaskScope> {
-        self.task_scope.as_ref()
-    }
-
     pub(super) fn call_policy(&self) -> Option<CallPolicy> {
         (self.deadline.is_some() || self.control.is_some()).then(|| CallPolicy {
             deadline: self.deadline,
@@ -120,27 +106,5 @@ impl CallOptions {
         )
         .with_collection_limits(self.collection_limits)
         .with_host_call_limit(self.host_call_budget)
-    }
-
-    pub(super) fn narrow_to_task_policy(mut self, policy: &crate::task::TaskPolicy) -> Self {
-        let limits = policy.child_execution_limits();
-        self.execution_unit_budget = self.execution_unit_budget.min(limits.execution_unit_limit);
-        self.memory_budget = self.memory_budget.min(limits.memory_limit_bytes);
-        self.call_depth = self.call_depth.min(limits.max_call_depth);
-        self.collection_limits.max_array_len = self
-            .collection_limits
-            .max_array_len
-            .min(limits.collection_limits.max_array_len);
-        self.collection_limits.max_map_entries = self
-            .collection_limits
-            .max_map_entries
-            .min(limits.collection_limits.max_map_entries);
-        self.collection_limits.max_set_len = self
-            .collection_limits
-            .max_set_len
-            .min(limits.collection_limits.max_set_len);
-        self.host_call_budget = self.host_call_budget.min(policy.max_host_calls().get());
-        self.managed_heap = true;
-        self
     }
 }

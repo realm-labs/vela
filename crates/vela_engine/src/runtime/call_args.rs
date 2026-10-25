@@ -20,15 +20,9 @@ use vela_vm::value::Value;
 
 use super::VelaValue;
 
-mod task_outcome;
-
-use task_outcome::task_outcome_value;
-
 #[derive(Default)]
 pub struct CallArgs<'a> {
     entries: Vec<CallArg<'a>>,
-    detached: Option<vela_vm::DetachedValueImage>,
-    task_outcome: Option<crate::task::ScopedTaskOutcome>,
     direct_host_slots: HostSlotTable<DirectHostSlot>,
     direct_host_object_id_base: Option<u64>,
     fallback: Option<&'a mut (dyn ScriptStateAdapter + Send)>,
@@ -93,8 +87,6 @@ impl<'a> CallArgs<'a> {
     pub fn from_positional(args: impl IntoIterator<Item = OwnedValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::Positional).collect(),
-            detached: None,
-            task_outcome: None,
             direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
@@ -105,8 +97,6 @@ impl<'a> CallArgs<'a> {
     pub fn from_values(args: impl IntoIterator<Item = VelaValue>) -> Self {
         Self {
             entries: args.into_iter().map(CallArg::PositionalValue).collect(),
-            detached: None,
-            task_outcome: None,
             direct_host_slots: HostSlotTable::new(),
             direct_host_object_id_base: None,
             fallback: None,
@@ -673,36 +663,6 @@ impl<'a> CallArgs<'a> {
         runtime: &mut CallArgRuntime<'_, '_, '_>,
         host: &mut (dyn ScriptStateAdapter + Send),
     ) -> VmResult<Vec<Value>> {
-        if let Some(outcome) = &self.task_outcome {
-            if self.detached.is_some() {
-                return Err(call_args_type_error(
-                    "task continuation outcome cannot contain detached arguments",
-                ));
-            }
-            let mut values = vec![task_outcome_value(outcome, runtime, host)?];
-            let trailing_params = params.get(1..).ok_or_else(|| {
-                call_args_type_error("task continuation has no outcome parameter")
-            })?;
-            let trailing_defaults = param_defaults
-                .get(1..)
-                .ok_or_else(|| call_args_type_error("task continuation defaults are malformed"))?;
-            values.extend(self.resolve_entries(
-                entry,
-                trailing_params,
-                trailing_defaults,
-                runtime,
-                host,
-            )?);
-            return Ok(values);
-        }
-        if let Some(detached) = &self.detached {
-            if !self.entries.is_empty() {
-                return Err(call_args_type_error(
-                    "detached task arguments cannot be mixed with call arguments",
-                ));
-            }
-            return detached.import_into(runtime.heap, runtime.budget);
-        }
         self.resolve_entries(entry, params, param_defaults, runtime, host)
     }
 
@@ -724,22 +684,6 @@ impl<'a> CallArgs<'a> {
                 self.resolve_named_values(entry, params, param_defaults, runtime, host)
             }
         }
-    }
-
-    pub(super) fn from_detached_image(detached: vela_vm::DetachedValueImage) -> Self {
-        Self {
-            entries: Vec::new(),
-            detached: Some(detached),
-            task_outcome: None,
-            direct_host_slots: HostSlotTable::new(),
-            direct_host_object_id_base: None,
-            fallback: None,
-        }
-    }
-
-    pub(super) fn with_task_outcome(mut self, outcome: crate::task::ScopedTaskOutcome) -> Self {
-        self.task_outcome = Some(outcome);
-        self
     }
 
     fn mode(&self) -> VmResult<CallArgsMode> {

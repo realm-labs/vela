@@ -1,6 +1,5 @@
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum MirJitIneligibility {
-    Async,
     Allocation,
     Call,
     DynamicWork,
@@ -48,9 +47,6 @@ pub fn restricted_jit_eligibility(
         };
     };
     let mut reasons = std::collections::BTreeSet::new();
-    if body.asyncness() == vela_common::CallableAsyncness::Async {
-        reasons.insert(MirJitIneligibility::Async);
-    }
     for (_, statement) in body.statements() {
         match &statement.kind {
             crate::MirStatementKind::Allocate(_) | crate::MirStatementKind::FormatString { .. } => {
@@ -61,10 +57,6 @@ pub fn restricted_jit_eligibility(
             }
             crate::MirStatementKind::Call(_) => {
                 reasons.insert(MirJitIneligibility::Call);
-            }
-            crate::MirStatementKind::Task(_) => {
-                reasons.insert(MirJitIneligibility::Call);
-                reasons.insert(MirJitIneligibility::Async);
             }
             crate::MirStatementKind::DynamicUnary { .. }
             | crate::MirStatementKind::DynamicBinary { .. }
@@ -84,12 +76,6 @@ pub fn restricted_jit_eligibility(
         }
     }
     for (_, block) in body.blocks() {
-        if matches!(
-            block.terminator().map(|terminator| &terminator.kind),
-            Some(crate::MirTerminatorKind::AwaitCall { .. })
-        ) {
-            reasons.insert(MirJitIneligibility::Async);
-        }
         if matches!(
             block.terminator().map(|terminator| &terminator.kind),
             Some(crate::MirTerminatorKind::IteratorNext { .. })

@@ -193,6 +193,9 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::removed_async"
         ]
       },
       {

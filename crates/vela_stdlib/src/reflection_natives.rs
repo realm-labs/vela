@@ -38,7 +38,6 @@ impl ReflectionNativeSpec {
                 random: false,
                 io_read: false,
                 io_write: false,
-                task_spawn: false,
             },
         }
     }
@@ -60,7 +59,6 @@ impl ReflectionNativeSpec {
                 random: false,
                 io_read: false,
                 io_write: false,
-                task_spawn: false,
             },
         }
     }
@@ -82,7 +80,6 @@ impl ReflectionNativeSpec {
                 random: false,
                 io_read: false,
                 io_write: false,
-                task_spawn: false,
             },
         }
     }

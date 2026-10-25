@@ -3,12 +3,12 @@ use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::input::{
-    CompileHostIndexCapability, CompileParameter, CompileParameterDefault, CompilePositionalPolicy,
-    CompileSignature, DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
+    CompileHostIndexCapability, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
+    DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
 };
 use crate::{
     HostTypeTarget, MirEffect, MirEvaluatedConstant, MirFunctionId, MirGuardId, MirOperand,
-    MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin, MirTypeContract,
+    MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -389,26 +389,6 @@ pub enum MirFormatPart {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct MirTaskContinuation {
-    pub function: FunctionId,
-    pub debug_name: String,
-    pub signature: CompileSignature,
-    pub outcome_contract: MirTypeContract,
-    pub resume_parameters: Vec<CompileParameter>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct MirTaskOperation {
-    pub worker: FunctionId,
-    pub worker_debug_name: String,
-    pub worker_signature: CompileSignature,
-    pub arguments: Vec<MirScriptArgument>,
-    pub parameter_guards: MirScriptParameterGuardMode,
-    pub detachability: crate::CompileTaskDetachability,
-    pub continuation: Option<MirTaskContinuation>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub enum MirStatementKind {
     Assign(MirRvalue),
     Unary {
@@ -466,7 +446,6 @@ pub enum MirStatementKind {
         inclusive: bool,
     },
     Call(MirCall),
-    Task(Box<MirTaskOperation>),
     Host(MirHostOperation),
     Reflect(MirReflectionOperation),
     GuardTrap {
@@ -476,56 +455,10 @@ pub enum MirStatementKind {
     Iterator(MirIteratorOperation),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum MirAwaitOperation {
-    Call(MirCall),
-    Host(MirHostOperation),
-    Reflect(MirReflectionOperation),
-}
-
-impl MirAwaitOperation {
-    pub(crate) const fn minimum_effect(&self) -> MirEffect {
-        match self {
-            Self::Call(call) => call.minimum_effect(),
-            Self::Host(
-                MirHostOperation::ReleaseBorrowLease { .. }
-                | MirHostOperation::TryReleaseBorrowLease { .. },
-            ) => MirEffect::PURE,
-            Self::Host(MirHostOperation::Read { .. }) => MirEffect::host_read(),
-            Self::Host(
-                MirHostOperation::Write { .. }
-                | MirHostOperation::Mutate { .. }
-                | MirHostOperation::Remove { .. },
-            ) => MirEffect::host_write(),
-            Self::Host(MirHostOperation::Call { target, .. }) => {
-                MirEffect::host_call().union(target.signature.effect)
-            }
-            Self::Reflect(MirReflectionOperation::Read { .. }) => MirEffect::reflection_read(),
-            Self::Reflect(MirReflectionOperation::Write { .. }) => MirEffect::reflection_write(),
-            Self::Reflect(MirReflectionOperation::Call { .. }) => MirEffect::reflection_call(),
-        }
-    }
-
-    pub(crate) fn has_valid_call_contract(&self) -> bool {
-        match self {
-            Self::Call(call) => call.has_valid_contract(),
-            Self::Host(MirHostOperation::Call {
-                target, arguments, ..
-            }) => external_arguments_match(&target.signature, arguments.len()),
-            Self::Host(_) | Self::Reflect(_) => true,
-        }
-    }
-}
-
 impl MirStatementKind {
     pub(crate) fn has_valid_call_contract(&self) -> bool {
         match self {
             Self::Call(call) => call.has_valid_contract(),
-            Self::Task(task) => script_arguments_match(
-                &task.worker_signature,
-                &task.arguments,
-                Some(task.parameter_guards),
-            ),
             Self::Host(MirHostOperation::Call {
                 target, arguments, ..
             }) => external_arguments_match(&target.signature, arguments.len()),
@@ -574,7 +507,6 @@ impl MirStatementKind {
             }
             Self::MakeRange { .. } => MirEffect::may_trap(),
             Self::Call(call) => call.minimum_effect(),
-            Self::Task(_) => MirEffect::task_spawn(),
             Self::Host(operation) => match operation {
                 MirHostOperation::ReleaseBorrowLease { .. }
                 | MirHostOperation::TryReleaseBorrowLease { .. } => MirEffect::PURE,
@@ -614,7 +546,6 @@ impl MirStatementKind {
             | Self::MaterializeConstant(_)
             | Self::MakeRange { .. }
             | Self::Call(_)
-            | Self::Task(_)
             | Self::Host(
                 MirHostOperation::ReleaseBorrowLease { .. }
                 | MirHostOperation::TryReleaseBorrowLease { .. }
@@ -644,7 +575,6 @@ impl MirStatementKind {
             self,
             Self::Allocate(_)
                 | Self::Call(_)
-                | Self::Task(_)
                 | Self::Host(MirHostOperation::Call { .. })
                 | Self::Reflect(MirReflectionOperation::Call { .. })
         )
@@ -701,19 +631,6 @@ impl MirCall {
             | Self::ValueMethod { signature, .. } => {
                 MirEffect::external_call().union(signature.effect)
             }
-        }
-    }
-
-    pub(crate) const fn known_asyncness(&self) -> Option<vela_common::CallableAsyncness> {
-        match self {
-            Self::ScriptFunction { signature, .. }
-            | Self::ScriptMethod { signature, .. }
-            | Self::NativeFunction { signature, .. }
-            | Self::StdlibFunction { signature, .. }
-            | Self::ValueMethod { signature, .. } => Some(signature.asyncness),
-            Self::CallableValue { .. }
-            | Self::DynamicCallable { .. }
-            | Self::DynamicMethod { .. } => None,
         }
     }
 }

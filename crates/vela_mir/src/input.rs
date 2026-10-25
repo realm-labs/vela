@@ -3,7 +3,6 @@ use std::error::Error;
 use std::fmt;
 
 use vela_analysis::executable::ExecutableAnalysisView;
-use vela_common::CallableAsyncness;
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::body::HirBodyOwner;
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId, HirPatternId};
@@ -22,7 +21,6 @@ mod identity;
 mod lambdas;
 mod origins;
 mod placements;
-mod tasks;
 mod try_targets;
 mod validation;
 
@@ -41,10 +39,6 @@ pub use placements::{
     CompileConstructorField, CompileConstructorTarget, CompileConstructorValue,
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionTargets, CompileGuardKey,
     CompileGuardTarget, CompileMemberTarget, CompilePatternConstructorTarget, CompileTargetKind,
-};
-pub use tasks::{
-    CompileTaskContinuationTarget, CompileTaskDetachability, CompileTaskOperation,
-    CompileTaskTarget,
 };
 pub use try_targets::{CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget};
 
@@ -120,7 +114,6 @@ pub enum CompileParameterDefault {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileSignature {
-    pub asyncness: CallableAsyncness,
     pub parameters: Vec<CompileParameter>,
     pub positional: CompilePositionalPolicy,
     pub return_contract: Option<MirTypeContract>,
@@ -149,7 +142,6 @@ pub struct CompileTargetSnapshot {
     types_by_declaration: BTreeMap<HirDeclId, TypeId>,
     types_by_name: BTreeMap<String, TypeId>,
     calls: BTreeMap<(FunctionId, HirExprId), CompileCallTarget>,
-    tasks: BTreeMap<(FunctionId, HirExprId), CompileTaskTarget>,
     members: BTreeMap<(FunctionId, HirExprId), CompileMemberTarget>,
     constructors: BTreeMap<(FunctionId, HirExprId), CompileConstructorTarget>,
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,

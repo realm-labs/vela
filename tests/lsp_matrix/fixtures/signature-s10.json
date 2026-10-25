@@ -3,8 +3,8 @@
   "id": "signature-s10",
   "files": {
     "vela.toml": "[package]\nid=\"dev.vela.signature_ownership\"\nname=\"signature_ownership\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
-    "schema.json": "{\n  \"formatVersion\": 2,\n  \"facts\": {\n    \"types\": [\n      {\n        \"name\": \"host::Row\",\n        \"fact\": {\n          \"kind\": \"host\",\n          \"name\": \"host::Row\"\n        }\n      },\n      {\n        \"name\": \"host::Choice\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\"\n        }\n      }\n    ],\n    \"traits\": [\n      {\n        \"name\": \"host::Readable\",\n        \"fact\": {\n          \"kind\": \"trait\",\n          \"name\": \"host::Readable\"\n        }\n      }\n    ],\n    \"functions\": [\n      {\n        \"name\": \"api::pick\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registry_decoy\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"api::hidden\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"private_decoy\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::pick\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"bool\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"async\",\n          \"parameters\": [\n            {\n              \"name\": \"host_flag\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"bool\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"host::legacy\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"i64\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"bool\"\n          }\n        }\n      },\n      {\n        \"name\": \"math::max\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registry_math\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"task::spawn_scoped\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registry_task\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      },\n      {\n        \"name\": \"task::unknown\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"registry_unknown\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      }\n    ],\n    \"methods\": [\n      {\n        \"name\": \"pick\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            },\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"string\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"host_value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            },\n            {\n              \"name\": \"reason\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"string\"\n              },\n              \"requirement\": \"defaulted\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"owner\": \"host::Row\"\n      }\n    ],\n    \"traitMethods\": [\n      {\n        \"owner\": \"host::Readable\",\n        \"name\": \"read\",\n        \"fact\": {\n          \"kind\": \"function\",\n          \"params\": [\n            {\n              \"kind\": \"primitive\",\n              \"name\": \"u32\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        },\n        \"signature\": {\n          \"asyncness\": \"sync\",\n          \"parameters\": [\n            {\n              \"name\": \"host_value\",\n              \"typeFact\": {\n                \"kind\": \"primitive\",\n                \"name\": \"u32\"\n              },\n              \"requirement\": \"required\"\n            }\n          ],\n          \"returns\": {\n            \"kind\": \"primitive\",\n            \"name\": \"string\"\n          }\n        }\n      }\n    ],\n    \"variants\": [\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Pair\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Pair\"\n        }\n      },\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Empty\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Empty\"\n        }\n      },\n      {\n        \"owner\": \"host::Choice\",\n        \"name\": \"Named\",\n        \"fact\": {\n          \"kind\": \"enum\",\n          \"name\": \"host::Choice\",\n          \"variant\": \"Named\"\n        }\n      }\n    ],\n    \"fields\": [\n      {\n        \"owner\": \"host::Choice::Pair\",\n        \"name\": \"0\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"u32\"\n        }\n      },\n      {\n        \"owner\": \"host::Choice::Pair\",\n        \"name\": \"1\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"string\"\n        }\n      },\n      {\n        \"owner\": \"host::Choice::Named\",\n        \"name\": \"value\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"u32\"\n        }\n      },\n      {\n        \"owner\": \"host::Row\",\n        \"name\": \"value\",\n        \"fact\": {\n          \"kind\": \"primitive\",\n          \"name\": \"i64\"\n        }\n      }\n    ]\n  }\n}\n",
-    "scripts/api.vela": "/* 中😀 */\npub fn pick(source_value: i64, reason: String = \"base\") -> bool { return true; }\nfn hidden(private_value: i64) -> bool { return true; }\npub fn zero() -> bool { return true; }\npub const token: i64 = 1;\npub state stored: i64 = 1;\npub struct Row { value: i64 }\nimpl Row { pub fn pick(self, source_method: i64, reason: String = \"base\") -> bool { return true; } }\npub trait Readable { fn read(self, source_trait: i64, reason: String = \"base\") -> bool { return true; } }\nimpl Readable for Row {}\npub enum Choice { Pair(arg0: i64, arg1: String), Empty, Named { value: i64 } }\npub fn current() -> Row { return Row { value: 1 }; }\npub fn opaque() -> Any { return Row { value: 1 }; }\npub async fn worker() -> i64 { return 1; }\npub fn done(result: Result<i64, task::Error>) {}\n",
+    "schema.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Choice\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\"}}],\"traits\":[{\"name\":\"host::Readable\",\"fact\":{\"kind\":\"trait\",\"name\":\"host::Readable\"}}],\"functions\":[{\"name\":\"api::pick\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"registry_decoy\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"name\":\"api::hidden\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"private_decoy\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"name\":\"host::pick\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"bool\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"host_flag\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"bool\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}},{\"name\":\"host::legacy\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}},{\"name\":\"math::max\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"registry_math\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"methods\":[{\"name\":\"pick\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"},{\"kind\":\"primitive\",\"name\":\"string\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"host_value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"},{\"name\":\"reason\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"string\"},\"requirement\":\"defaulted\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"owner\":\"host::Row\"}],\"traitMethods\":[{\"owner\":\"host::Readable\",\"name\":\"read\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"u32\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}},\"signature\":{\"parameters\":[{\"name\":\"host_value\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"u32\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"string\"}}}],\"variants\":[{\"owner\":\"host::Choice\",\"name\":\"Pair\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Pair\"}},{\"owner\":\"host::Choice\",\"name\":\"Empty\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Empty\"}},{\"owner\":\"host::Choice\",\"name\":\"Named\",\"fact\":{\"kind\":\"enum\",\"name\":\"host::Choice\",\"variant\":\"Named\"}}],\"fields\":[{\"owner\":\"host::Choice::Pair\",\"name\":\"0\",\"fact\":{\"kind\":\"primitive\",\"name\":\"u32\"}},{\"owner\":\"host::Choice::Pair\",\"name\":\"1\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"host::Choice::Named\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"u32\"}},{\"owner\":\"host::Row\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}}]}}",
+    "scripts/api.vela": "/* 中😀 */\npub fn pick(source_value: i64, reason: String = \"base\") -> bool { return true; }\nfn hidden(private_value: i64) -> bool { return true; }\npub fn zero() -> bool { return true; }\npub const token: i64 = 1;\npub state stored: i64 = 1;\npub struct Row { value: i64 }\nimpl Row { pub fn pick(self, source_method: i64, reason: String = \"base\") -> bool { return true; } }\npub trait Readable { fn read(self, source_trait: i64, reason: String = \"base\") -> bool { return true; } }\nimpl Readable for Row {}\npub enum Choice { Pair(arg0: i64, arg1: String), Empty, Named { value: i64 } }\npub fn current() -> Row { return Row { value: 1 }; }\npub fn opaque() -> Any { return Row { value: 1 }; }\n",
     "scripts/task.vela": "pub fn spawn_scoped(source_task: i64) -> String { return \"ordinary\"; }\n",
     "scripts/decoy.vela": "pub fn pick(decoy_value: bool) -> String { return \"decoy\"; }\n",
     "scripts/case_source_import.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { pick(1, [[cursor]]\"x\"); }\n",
@@ -36,11 +36,6 @@
     "scripts/case_stdlib_alias.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { maximum(1, [[cursor]]2); }\n",
     "scripts/case_builtin_string.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main(value: String) { value.split_once([[cursor]]\"x\"); }\n",
     "scripts/case_builtin_array.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main(values: Array<i64>) { values.filter([[cursor]]|value| value>0); }\n",
-    "scripts/case_task_spawn.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { task::spawn_scoped([[cursor]]api::worker()); }\n",
-    "scripts/case_task_then_first.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { task::spawn_scoped_then([[cursor]]api::worker(), api::done); }\n",
-    "scripts/case_task_then_second.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { task::spawn_scoped_then(api::worker(), [[cursor]]api::done); }\n",
-    "scripts/case_task_local_decoy.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main(task: i64) { task::spawn_scoped([[cursor]]api::worker()); }\n",
-    "scripts/case_task_namespace_decoy.vela": "use api as task;\n/* 中😀 */ fn main() { task::spawn_scoped([[cursor]]api::worker()); }\n",
     "scripts/case_task_source_alias.vela": "use task::spawn_scoped as enqueue;\n/* 中😀 */ fn main() { enqueue([[cursor]]1); }\n",
     "scripts/case_local_noncallable.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { let pick=1; pick([[cursor]]1); }\n",
     "scripts/case_local_callable_alias.vela": "use api::pick;\nuse api::Row;\nuse api::Readable;\nuse api::Choice;\nuse host::pick as send;\nuse math::max as maximum;\n/* 中😀 */ fn main() { let pick=api::pick; pick([[cursor]]1); }\n",
@@ -86,23 +81,285 @@
   "actions": [],
   "oracle": {
     "signatures": {
-      "source": {"label":"pick(source_value: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"source_value","type":"i64","label":"source_value: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::pick"},"origin":"Source","named":true},
-      "source-method": {"label":"Row.pick(source_method: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"source_method","type":"i64","label":"source_method: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Row.pick"},"origin":"SourceMethod","named":true},
-      "source-trait": {"label":"api::Readable.read(source_trait: i64, reason: String (defaulted)) -> bool","parameters":[{"name":"source_trait","type":"i64","label":"source_trait: i64"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Source","name":"api::Readable.read"},"origin":"SourceMethod","named":true},
-      "source-variant": {"label":"api::Choice::Pair(arg0: i64, arg1: String) -> api::Choice::Pair","parameters":[{"name":"arg0","type":"i64","label":"arg0: i64"},{"name":"arg1","type":"String","label":"arg1: String"}],"owner":{"kind":"Source","name":"api::Choice::Pair"},"origin":"SourceVariant","named":false},
-      "zero": {"label":"zero() -> bool","parameters":[],"owner":{"kind":"Source","name":"api::zero"},"origin":"Source","named":true},
-      "host": {"label":"async host::pick(host_flag: bool, reason: String (defaulted)) -> String","parameters":[{"name":"host_flag","type":"bool","label":"host_flag: bool"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Schema","name":"host::pick"},"origin":"Schema","named":true},
-      "host-method": {"label":"host::Row.pick(host_value: u32, reason: String (defaulted)) -> String","parameters":[{"name":"host_value","type":"u32","label":"host_value: u32"},{"name":"reason","type":"String","label":"reason: String (defaulted)"}],"owner":{"kind":"Schema","name":"host::Row.pick"},"origin":"SchemaMethod","named":true},
-      "host-trait": {"label":"host::Readable.read(host_value: u32) -> String","parameters":[{"name":"host_value","type":"u32","label":"host_value: u32"}],"owner":{"kind":"Schema","name":"host::Readable.read"},"origin":"SchemaMethod","named":true},
-      "host-variant": {"label":"host::Choice::Pair(arg0: u32, arg1: String) -> host::Choice::Pair","parameters":[{"name":"arg0","type":"u32","label":"arg0: u32"},{"name":"arg1","type":"String","label":"arg1: String"}],"owner":{"kind":"Schema","name":"host::Choice::Pair"},"origin":"SchemaVariant","named":false},
-      "legacy": {"label":"host::legacy(arg0: i64, arg1: String) -> bool","parameters":[{"name":"arg0","type":"i64","label":"arg0: i64"},{"name":"arg1","type":"String","label":"arg1: String"}],"owner":{"kind":"Schema","name":"host::legacy"},"origin":"Schema","named":false},
-      "math": {"label":"math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64","parameters":[{"name":"left","type":"i64 | f64","label":"left: i64 | f64"},{"name":"right","type":"i64 | f64","label":"right: i64 | f64"}],"owner":{"kind":"Builtin","name":"math::max"},"origin":"Stdlib","named":true},
-      "string": {"label":"String.split_once(separator: String) -> Option((String, String))","parameters":[{"name":"separator","type":"String","label":"separator: String"}],"owner":{"kind":"Builtin","name":"String.split_once"},"origin":"StdlibMethod","named":true},
-      "array": {"label":"Array(i64).filter(callback: Function(i64) -> bool) -> Array(i64)","parameters":[{"name":"callback","type":"Function(i64) -> bool","label":"callback: Function(i64) -> bool"}],"owner":{"kind":"Builtin","name":"Array(i64).filter"},"origin":"StdlibMethod","named":true},
-      "current-module": {"label":"pick(local_value: String) -> String","parameters":[{"name":"local_value","type":"String","label":"local_value: String"}],"owner":{"kind":"Source","name":"case_module_precedence::pick"},"origin":"Source","named":true},
-      "task-spawn": {"label":"task::spawn_scoped(invocation: Any) -> ()","parameters":[{"name":"invocation","type":"Any","label":"invocation: Any"}],"owner":{"kind":"Builtin","name":"task::spawn_scoped"},"origin":"Stdlib","named":false},
-      "task-then": {"label":"task::spawn_scoped_then(invocation: Any, continuation: Any) -> ()","parameters":[{"name":"invocation","type":"Any","label":"invocation: Any"},{"name":"continuation","type":"Any","label":"continuation: Any"}],"owner":{"kind":"Builtin","name":"task::spawn_scoped_then"},"origin":"Stdlib","named":false},
-      "task-source-alias": {"label":"spawn_scoped(source_task: i64) -> String","parameters":[{"name":"source_task","type":"i64","label":"source_task: i64"}],"owner":{"kind":"Source","name":"task::spawn_scoped"},"origin":"Source","named":true}
+      "source": {
+        "label": "pick(source_value: i64, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "source_value",
+            "type": "i64",
+            "label": "source_value: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::pick"
+        },
+        "origin": "Source",
+        "named": true
+      },
+      "source-method": {
+        "label": "Row.pick(source_method: i64, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "source_method",
+            "type": "i64",
+            "label": "source_method: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::Row.pick"
+        },
+        "origin": "SourceMethod",
+        "named": true
+      },
+      "source-trait": {
+        "label": "api::Readable.read(source_trait: i64, reason: String (defaulted)) -> bool",
+        "parameters": [
+          {
+            "name": "source_trait",
+            "type": "i64",
+            "label": "source_trait: i64"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::Readable.read"
+        },
+        "origin": "SourceMethod",
+        "named": true
+      },
+      "source-variant": {
+        "label": "api::Choice::Pair(arg0: i64, arg1: String) -> api::Choice::Pair",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "i64",
+            "label": "arg0: i64"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "api::Choice::Pair"
+        },
+        "origin": "SourceVariant",
+        "named": false
+      },
+      "zero": {
+        "label": "zero() -> bool",
+        "parameters": [],
+        "owner": {
+          "kind": "Source",
+          "name": "api::zero"
+        },
+        "origin": "Source",
+        "named": true
+      },
+      "host": {
+        "label": "host::pick(host_flag: bool, reason: String (defaulted)) -> String",
+        "parameters": [
+          {
+            "name": "host_flag",
+            "type": "bool",
+            "label": "host_flag: bool"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::pick"
+        },
+        "origin": "Schema",
+        "named": true
+      },
+      "host-method": {
+        "label": "host::Row.pick(host_value: u32, reason: String (defaulted)) -> String",
+        "parameters": [
+          {
+            "name": "host_value",
+            "type": "u32",
+            "label": "host_value: u32"
+          },
+          {
+            "name": "reason",
+            "type": "String",
+            "label": "reason: String (defaulted)"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Row.pick"
+        },
+        "origin": "SchemaMethod",
+        "named": true
+      },
+      "host-trait": {
+        "label": "host::Readable.read(host_value: u32) -> String",
+        "parameters": [
+          {
+            "name": "host_value",
+            "type": "u32",
+            "label": "host_value: u32"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Readable.read"
+        },
+        "origin": "SchemaMethod",
+        "named": true
+      },
+      "host-variant": {
+        "label": "host::Choice::Pair(arg0: u32, arg1: String) -> host::Choice::Pair",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "u32",
+            "label": "arg0: u32"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::Choice::Pair"
+        },
+        "origin": "SchemaVariant",
+        "named": false
+      },
+      "legacy": {
+        "label": "host::legacy(arg0: i64, arg1: String) -> bool",
+        "parameters": [
+          {
+            "name": "arg0",
+            "type": "i64",
+            "label": "arg0: i64"
+          },
+          {
+            "name": "arg1",
+            "type": "String",
+            "label": "arg1: String"
+          }
+        ],
+        "owner": {
+          "kind": "Schema",
+          "name": "host::legacy"
+        },
+        "origin": "Schema",
+        "named": false
+      },
+      "math": {
+        "label": "math::max(left: i64 | f64, right: i64 | f64) -> i64 | f64",
+        "parameters": [
+          {
+            "name": "left",
+            "type": "i64 | f64",
+            "label": "left: i64 | f64"
+          },
+          {
+            "name": "right",
+            "type": "i64 | f64",
+            "label": "right: i64 | f64"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "math::max"
+        },
+        "origin": "Stdlib",
+        "named": true
+      },
+      "string": {
+        "label": "String.split_once(separator: String) -> Option((String, String))",
+        "parameters": [
+          {
+            "name": "separator",
+            "type": "String",
+            "label": "separator: String"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "String.split_once"
+        },
+        "origin": "StdlibMethod",
+        "named": true
+      },
+      "array": {
+        "label": "Array(i64).filter(callback: Function(i64) -> bool) -> Array(i64)",
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "Function(i64) -> bool",
+            "label": "callback: Function(i64) -> bool"
+          }
+        ],
+        "owner": {
+          "kind": "Builtin",
+          "name": "Array(i64).filter"
+        },
+        "origin": "StdlibMethod",
+        "named": true
+      },
+      "current-module": {
+        "label": "pick(local_value: String) -> String",
+        "parameters": [
+          {
+            "name": "local_value",
+            "type": "String",
+            "label": "local_value: String"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "case_module_precedence::pick"
+        },
+        "origin": "Source",
+        "named": true
+      },
+      "task-source-alias": {
+        "label": "spawn_scoped(source_task: i64) -> String",
+        "parameters": [
+          {
+            "name": "source_task",
+            "type": "i64",
+            "label": "source_task: i64"
+          }
+        ],
+        "owner": {
+          "kind": "Source",
+          "name": "task::spawn_scoped"
+        },
+        "origin": "Source",
+        "named": true
+      }
     },
     "groups": [],
     "queries": [
@@ -135,11 +392,6 @@
       {"id":"stdlib-alias","file":"scripts/case_stdlib_alias.vela","marker":"cursor","signature":"math","active":1},
       {"id":"builtin-string","file":"scripts/case_builtin_string.vela","marker":"cursor","signature":"string","active":0},
       {"id":"builtin-array","file":"scripts/case_builtin_array.vela","marker":"cursor","signature":"array","active":0},
-      {"id":"task-spawn","file":"scripts/case_task_spawn.vela","marker":"cursor","signature":"task-spawn","active":0},
-      {"id":"task-then-first","file":"scripts/case_task_then_first.vela","marker":"cursor","signature":"task-then","active":0},
-      {"id":"task-then-second","file":"scripts/case_task_then_second.vela","marker":"cursor","signature":"task-then","active":1},
-      {"id":"task-local-decoy","file":"scripts/case_task_local_decoy.vela","marker":"cursor","signature":"task-spawn","active":0},
-      {"id":"task-namespace-decoy","file":"scripts/case_task_namespace_decoy.vela","marker":"cursor","signature":"task-spawn","active":0},
       {"id":"task-source-alias","file":"scripts/case_task_source_alias.vela","marker":"cursor","signature":"task-source-alias","active":0},
       {"id":"local-noncallable","file":"scripts/case_local_noncallable.vela","marker":"cursor","signature":null,"active":0,"localKind":"Let"},
       {"id":"local-callable-alias","file":"scripts/case_local_callable_alias.vela","marker":"cursor","signature":null,"active":0,"localKind":"Let"},

@@ -44,12 +44,12 @@ fn callback_slot_matrix_preserves_registered_slots_and_reordered_result_facts() 
 }
 
 #[test]
-fn async_callable_matrix_preserves_owner_metadata_and_applied_await_contracts() {
+fn removed_async_callable_matrix_rejects_syntax() {
     assert_type_ownership("completion-async-callables");
 }
 
 #[test]
-fn await_context_matrix_preserves_owned_choices_and_exact_syntax_diagnostics() {
+fn removed_await_context_matrix_rejects_syntax() {
     assert_type_ownership("completion-await-contexts");
 }
 
@@ -139,6 +139,13 @@ fn literal_operator_matrix_preserves_values_operands_and_member_owners() {
 }
 
 fn assert_type_ownership(fixture_id: &str) {
+    if matches!(
+        fixture_id,
+        "completion-async-callables" | "completion-await-contexts"
+    ) {
+        crate::removed_execution_tests::verify_fixture(fixture_id);
+        return;
+    }
     for crlf in [false, true] {
         let mut spec = load(fixture_id);
         if crlf {
@@ -440,18 +447,18 @@ fn assert_type_ownership(fixture_id: &str) {
                         let actual = diagnostics
                             .diagnostics()
                             .iter()
-                            .filter(|d| d.code().is_some_and(|code| code.contains("await")))
+                            .filter(|d| d.code().is_some_and(|code| code.starts_with("syntax::")))
                             .collect::<Vec<_>>();
                         let oracle = expected["diagnostics"]
                             .as_array()
-                            .expect("await diagnostics");
+                            .expect("application diagnostics");
                         assert_eq!(actual.len(), oracle.len(), "{case}: {actual:?}");
                         for (actual, expected) in actual.iter().zip(oracle) {
                             assert_eq!(actual.code(), expected["code"].as_str());
                             assert_eq!(actual.message(), string(expected, "message"));
                             assert_eq!(actual.severity(), crate::ServiceDiagnosticSeverity::Error);
                             let range = applied.markers[string(expected, "marker")];
-                            let actual_range = actual.range().expect("await diagnostic range");
+                            let actual_range = actual.range().expect("diagnostic range");
                             assert_eq!(actual_range.start(), position(&edited, range.start.byte));
                             assert_eq!(actual_range.end(), position(&edited, range.end.byte));
                             assert_eq!(actual.labels().len(), 1);
@@ -460,39 +467,7 @@ fn assert_type_ownership(fixture_id: &str) {
                             assert_eq!(actual.labels()[0].range(), actual_range);
                         }
                     }
-                    if case["checkAwait"] == true {
-                        let diagnostics = fresh.diagnostics_for_document(&uri(file));
-                        let missing = diagnostics
-                            .diagnostics()
-                            .iter()
-                            .filter(|diagnostic| {
-                                diagnostic.code() == Some("analysis::async_call_requires_await")
-                            })
-                            .collect::<Vec<_>>();
-                        let required =
-                            expected["async"] == true && string(case, "applySuffix").is_empty();
-                        assert_eq!(
-                            missing.len(),
-                            usize::from(required),
-                            "{case} {expected}: {missing:?}"
-                        );
-                        if let Some(diagnostic) = missing.first() {
-                            let call = source.markers["call"];
-                            let end = call.end.byte + insertion.len()
-                                - (range.end.byte - range.start.byte);
-                            assert_eq!(
-                                diagnostic.severity(),
-                                crate::ServiceDiagnosticSeverity::Error
-                            );
-                            let diagnostic_range =
-                                diagnostic.range().expect("call diagnostic range");
-                            assert_eq!(
-                                diagnostic_range.start(),
-                                position(&edited, call.start.byte)
-                            );
-                            assert_eq!(diagnostic_range.end(), position(&edited, end));
-                        }
-                    }
+
                     if let Some(signatures) = expected["signatures"].as_array() {
                         let open = range.start.byte + insertion.find('(').expect("call");
                         let help = fresh

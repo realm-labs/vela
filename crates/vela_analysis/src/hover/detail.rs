@@ -97,7 +97,6 @@ fn function_effect_detail(effects: &FunctionEffectSet) -> String {
         ("reads_reflection", effects.reads_reflection),
         ("writes_reflection", effects.writes_reflection),
         ("calls_reflection", effects.calls_reflection),
-        ("spawns_tasks", effects.spawns_tasks),
     ])
 }
 
@@ -113,7 +112,6 @@ fn method_effect_detail(effects: &MethodEffectSet) -> String {
         ("reads_reflection", effects.reads_reflection),
         ("writes_reflection", effects.writes_reflection),
         ("calls_reflection", effects.calls_reflection),
-        ("spawns_tasks", effects.spawns_tasks),
     ])
 }
 
@@ -162,9 +160,6 @@ fn function_capability_detail(effects: &FunctionEffectSet) -> String {
     }
     if effects.calls_reflection {
         capabilities.push("reflection_call");
-    }
-    if effects.spawns_tasks {
-        capabilities.push("task_spawn");
     }
     if capabilities.is_empty() {
         "none".to_owned()

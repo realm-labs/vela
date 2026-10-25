@@ -77,11 +77,11 @@ fn formatting_preserves_comments() {
 }
 
 #[test]
-fn formatting_preserves_async_and_await_syntax() {
-    let source = "async   fn main(){return load( ).await}";
+fn formatting_preserves_synchronous_call_syntax() {
+    let source = "fn main(){return load( )}";
     let formatted = apply_edits(source, &format_source(source));
 
-    assert_eq!(formatted, "async fn main() {\n    return load().await\n}\n");
+    assert_eq!(formatted, "fn main() {\n    return load()\n}\n");
 }
 
 #[test]

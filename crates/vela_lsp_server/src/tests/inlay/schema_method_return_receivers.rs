@@ -30,7 +30,7 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 2,
+            "formatVersion": 3,
             "facts": {
                 "types": [
                     {

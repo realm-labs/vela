@@ -65,53 +65,44 @@ fn parser_parse_source_wraps_top_level_items_in_cst_nodes() {
 }
 
 #[test]
-fn parser_keeps_async_functions_and_methods_lossless() {
-    let source = r#"pub async fn run() { service::load().await; }
-trait Service { async fn refresh(self); }
-impl Service for Worker { pub async fn refresh(self) { service::load().await; } }
-"#;
-    let parse = parse_source_with_id(SourceId::new(12), source);
-    let tree = parse.tree();
-    let function = tree.functions().next().expect("async function");
-    let trait_method = tree
-        .traits()
-        .next()
-        .expect("trait")
-        .methods()
-        .next()
-        .expect("async trait method");
-    let impl_method = tree
-        .impls()
-        .next()
-        .expect("impl")
-        .methods()
-        .next()
-        .expect("async impl method");
-
-    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
-    assert_eq!(tree.syntax().text().to_string(), source);
-    assert!(function.is_async());
-    assert!(trait_method.is_async());
-    assert!(impl_method.is_async());
+fn removed_async_syntax_is_lossless_but_always_diagnosed() {
+    for source in [
+        "pub async fn run() { load().await; }",
+        "trait Worker { async fn run(self); }",
+        "impl Worker { pub async fn run(self) { load().await; } }",
+        "fn run() { let callback = || load().await; }",
+        "fn run() { value.await; }",
+    ] {
+        let parse = parse_source_with_id(SourceId::new(12), source);
+        assert_eq!(parse.tree().syntax().text().to_string(), source);
+        assert!(
+            parse
+                .diagnostics()
+                .iter()
+                .any(
+                    |diagnostic| diagnostic.code.as_deref() == Some("syntax::removed_async")
+                        && diagnostic.span.is_some()
+                ),
+            "{source}: {:?}",
+            parse.diagnostics()
+        );
+    }
 }
 
 #[test]
-fn parser_reports_invalid_await_context_and_operand() {
-    let parse = parse_source_with_id(
-        SourceId::new(13),
-        "fn sync() { load().await; } async fn invalid() { value.await; }",
-    );
-    let codes = parse
-        .diagnostics()
-        .iter()
-        .filter_map(|diagnostic| diagnostic.code.as_deref())
-        .collect::<Vec<_>>();
-
-    assert!(codes.contains(&"syntax::await_outside_async"), "{codes:?}");
-    assert!(
-        codes.contains(&"syntax::invalid_await_operand"),
-        "{codes:?}"
-    );
+fn task_rejection_does_not_reserve_unrelated_qualified_names() {
+    for source in [
+        "fn main() { jobs::spawn_scoped(1); task::ordinary(2); }",
+        "use jobs::spawn_scoped as spawn; fn main() { spawn(1); }",
+        "fn main(task) { return task.spawn_scoped(); }",
+    ] {
+        let parse = parse_source_with_id(SourceId::new(13), source);
+        assert!(
+            parse.diagnostics().is_empty(),
+            "{source}: {:?}",
+            parse.diagnostics()
+        );
+    }
 }
 
 #[test]
