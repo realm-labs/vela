@@ -375,25 +375,23 @@ impl SemanticTokenModifiers {
     pub const READONLY: Self = Self(1 << 2);
     pub const DEPRECATED: Self = Self(1 << 3);
     pub const BUILTIN: Self = Self(1 << 4);
-    pub const HOST: Self = Self(1 << 5);
-    pub const UNRESOLVED: Self = Self(1 << 6);
-    pub const SOURCE: Self = Self(1 << 7);
-    pub const PUBLIC: Self = Self(1 << 8);
-    pub const MUTABLE: Self = Self(1 << 9);
-    pub const CALLABLE: Self = Self(1 << 10);
-    pub const CONTROL_FLOW: Self = Self(1 << 11);
-    pub const ASSOCIATED: Self = Self(1 << 12);
-    pub const TRAIT: Self = Self(1 << 13);
-    pub const SCHEMA: Self = Self(1 << 14);
-    pub const DOCUMENTATION: Self = Self(1 << 15);
+    pub const UNRESOLVED: Self = Self(1 << 5);
+    pub const SOURCE: Self = Self(1 << 6);
+    pub const PUBLIC: Self = Self(1 << 7);
+    pub const MUTABLE: Self = Self(1 << 8);
+    pub const CALLABLE: Self = Self(1 << 9);
+    pub const CONTROL_FLOW: Self = Self(1 << 10);
+    pub const ASSOCIATED: Self = Self(1 << 11);
+    pub const TRAIT: Self = Self(1 << 12);
+    pub const SCHEMA: Self = Self(1 << 13);
+    pub const DOCUMENTATION: Self = Self(1 << 14);
 
-    pub const LEGEND: [&'static str; 16] = [
+    pub const LEGEND: [&'static str; 15] = [
         "declaration",
         "definition",
         "readonly",
         "deprecated",
         "defaultLibrary",
-        "host",
         "unresolved",
         "source",
         "public",
@@ -406,13 +404,12 @@ impl SemanticTokenModifiers {
         "documentation",
     ];
 
-    pub const FALLBACKS: [Option<&'static str>; 16] = [
+    pub const FALLBACKS: [Option<&'static str>; 15] = [
         Some("declaration"),
         Some("definition"),
         Some("readonly"),
         Some("deprecated"),
         Some("defaultLibrary"),
-        None,
         None,
         None,
         None,

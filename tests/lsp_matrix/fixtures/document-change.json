@@ -4,9 +4,9 @@
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.diagnostic_declarations\"\nname = \"diagnostic_declarations\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n",
     "scripts/defs.vela": "pub fn helper() -> i64 { return 1; }\n",
-    "scripts/valid.vela": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub extern state host_count: i64\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
+    "scripts/valid.vela": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub state host_count: i64 = 1\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
     "scripts/invalid.vela": "/* 中😀 */ fn duplicate_param([[param-first:start]]amount[[param-first:end]]: i64, [[param-second:start]]amount[[param-second:end]]: i64) {}\nstruct BadFields { [[field-first:start]]count[[field-first:end]]: i64, [[field-second:start]]count[[field-second:end]]: String }\nenum BadVariants { [[variant-first:start]]Active[[variant-first:end]] { [[variant-field-first:start]]count[[variant-field-first:end]]: i64, [[variant-field-second:start]]count[[variant-field-second:end]]: String }, [[variant-second:start]]Active[[variant-second:end]] }\ntrait BadTrait { fn [[trait-first:start]]score[[trait-first:end]](self) -> i64; fn [[trait-second:start]]score[[trait-second:end]](self) -> i64; }\nimpl BadFields { fn [[impl-first:start]]size[[impl-first:end]](self) -> i64 { return 1; } fn [[impl-second:start]]size[[impl-second:end]](self) -> i64 { return 2; } }\n",
-    "scripts/invalid_state.vela": "/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\nextern state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
+    "scripts/invalid_state.vela": "/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\n[[removed-extern:start]]extern[[removed-extern:end]] state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
     "scripts/legacy.vela": "/* 中😀 */ [[legacy:start]]global[[legacy:end]] cache: i64;\n",
     "scripts/empty.vela": "",
     "scripts/comments.vela": "// 中😀\n/* preserved % source */\n",
@@ -55,19 +55,19 @@
           {
             "id": "shifted",
             "version": -6,
-            "text": "// opened 中😀 %\nuse defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub extern state host_count: i64\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
+            "text": "// opened 中😀 %\nuse defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub state host_count: i64 = 1\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
             "diagnostics": []
           },
           {
             "id": "repaired",
             "version": 0,
-            "text": "// synchronized 中😀 %\nuse defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub extern state host_count: i64\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
+            "text": "// synchronized 中😀 %\nuse defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub state host_count: i64 = 1\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
             "diagnostics": []
           },
           {
             "id": "restored",
             "version": 2147483647,
-            "text": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub extern state host_count: i64\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
+            "text": "use defs::helper\n/* 中😀 */ pub const BASE: i64 = 1\nstate local_count: i64 = 1\npub state host_count: i64 = 1\npub struct Point { x: i64, y: i64 }\npub enum Choice { Empty, Number(value: i64), Named { value: i64 } }\npub trait Scored { fn score(self) -> i64; fn offset(self, amount: i64 = 1) -> i64 { return amount; } }\nimpl Point { fn x_value(self) -> i64 { return self.x; } }\nimpl Scored for Point { fn score(self) -> i64 { return self.x; } }\npub fn calculate(value: i64, bonus: i64 = BASE) -> i64 { return helper() + value + bonus; }\n",
             "diagnostics": []
           }
         ]
@@ -510,6 +510,13 @@
           },
           {
             "code": "E_PARSE",
+            "message": "`extern state` was removed; use script-owned `state` with an initializer",
+            "marker": "removed-extern",
+            "labels": [],
+            "candidates": []
+          },
+          {
+            "code": "E_PARSE",
             "message": "extern state cannot have an initializer",
             "marker": "error1",
             "labels": [],
@@ -527,12 +534,19 @@
           {
             "id": "shifted",
             "version": -6,
-            "text": "// opened 中😀 %\n/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\nextern state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
+            "text": "// opened 中😀 %\n/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\n[[removed-extern:start]]extern[[removed-extern:end]] state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
             "diagnostics": [
               {
                 "code": "E_PARSE",
                 "message": "expected state initializer",
                 "marker": "error0",
+                "labels": [],
+                "candidates": []
+              },
+              {
+                "code": "E_PARSE",
+                "message": "`extern state` was removed; use script-owned `state` with an initializer",
+                "marker": "removed-extern",
                 "labels": [],
                 "candidates": []
               },
@@ -555,18 +569,25 @@
           {
             "id": "repaired",
             "version": 0,
-            "text": "/* 中😀 */ state missing_initializer: i64 = 1;\nextern state host: i64;\nstate missing_type: i64 = 1;\n",
+            "text": "/* 中😀 */ state missing_initializer: i64 = 1;\nstate host: i64 = 1;\nstate missing_type: i64 = 1;\n",
             "diagnostics": []
           },
           {
             "id": "restored",
             "version": 2147483647,
-            "text": "/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\nextern state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
+            "text": "/* 中😀 */ state missing_initializer: [[error0:start]]i64[[error0:end]];\n[[removed-extern:start]]extern[[removed-extern:end]] state host: i64 [[error1:start]]=[[error1:end]] 1;\nstate [[error2:start]]missing_type[[error2:end]] = 1;\n",
             "diagnostics": [
               {
                 "code": "E_PARSE",
                 "message": "expected state initializer",
                 "marker": "error0",
+                "labels": [],
+                "candidates": []
+              },
+              {
+                "code": "E_PARSE",
+                "message": "`extern state` was removed; use script-owned `state` with an initializer",
+                "marker": "removed-extern",
                 "labels": [],
                 "candidates": []
               },
@@ -593,12 +614,11 @@
         "diagnostics": [
           {
             "code": "syntax::legacy_global_decl",
-            "message": "`global` declarations were removed; use `state` with an initializer or `extern state` for a host-provided root",
+            "message": "`global` declarations were removed; use `state` with an initializer",
             "marker": "legacy",
             "labels": [],
             "candidates": [
-              "state name: Type = expression;",
-              "extern state name: Type;"
+              "state name: Type = expression;"
             ]
           }
         ],
@@ -610,12 +630,11 @@
             "diagnostics": [
               {
                 "code": "syntax::legacy_global_decl",
-                "message": "`global` declarations were removed; use `state` with an initializer or `extern state` for a host-provided root",
+                "message": "`global` declarations were removed; use `state` with an initializer",
                 "marker": "legacy",
                 "labels": [],
                 "candidates": [
-                  "state name: Type = expression;",
-                  "extern state name: Type;"
+                  "state name: Type = expression;"
                 ]
               }
             ]
@@ -633,12 +652,11 @@
             "diagnostics": [
               {
                 "code": "syntax::legacy_global_decl",
-                "message": "`global` declarations were removed; use `state` with an initializer or `extern state` for a host-provided root",
+                "message": "`global` declarations were removed; use `state` with an initializer",
                 "marker": "legacy",
                 "labels": [],
                 "candidates": [
-                  "state name: Type = expression;",
-                  "extern state name: Type;"
+                  "state name: Type = expression;"
                 ]
               }
             ]

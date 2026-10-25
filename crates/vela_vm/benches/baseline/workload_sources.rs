@@ -63,17 +63,6 @@ fn main() {
 }
 "#;
 
-pub(crate) const HOST_FIELD_READ_WRITE_SOURCE: &str = r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..32 {
-        player.level = tick + 1;
-        total += player.level;
-    }
-    return total;
-}
-"#;
-
 pub(crate) const VM_STATE_READ_WRITE_SOURCE: &str = r#"
 state counter: i64 = 0;
 
@@ -82,74 +71,6 @@ fn main() {
     for tick in 0..64 {
         counter += 1;
         total += counter - tick;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const HOST_EXTERN_STATE_READ_WRITE_SOURCE: &str = r#"
-extern state state: Player;
-
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..32 {
-        state.level = tick + 1;
-        total += state.level + player.exp - player.exp;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const HOST_NESTED_READ_WRITE_SOURCE: &str = r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..32 {
-        player.inventory.gold = tick + 3;
-        total += player.inventory.gold;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const HOST_RMW_MUTATION_SOURCE: &str = r#"
-fn main(player: Player) {
-    for tick in 0..32 {
-        player.level += 1;
-        player.exp += tick;
-    }
-    return player.level + player.exp;
-}
-"#;
-
-pub(crate) const HOST_DYNAMIC_KEY_ACCESS_SOURCE: &str = r#"
-fn main(player: Player) {
-    let item_id = "gold";
-    let total = 0;
-    for tick in 0..32 {
-        player.inventory.items[item_id].count += 1;
-        total += player.inventory.items[item_id].count + tick - tick;
-    }
-    return total;
-}
-"#;
-
-pub(crate) const HOST_METHOD_CALLS_SOURCE: &str = r#"
-fn main(player: Player) {
-    for tick in 0..32 {
-        player.add_reward("gold", tick + 1);
-    }
-    return player.level;
-}
-"#;
-
-pub(crate) const HOST_ACCESS_HOT_OFFSETS_SOURCE: &str = r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..48 {
-        player.level = tick + 1;
-        player.exp += tick;
-        player.inventory.gold += 1;
-        total += player.level + player.exp + player.inventory.gold;
     }
     return total;
 }

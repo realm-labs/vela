@@ -39,7 +39,7 @@ pub(crate) fn schema_artifact(
                 json!({"source":source_id(file),"start":marker.start.byte,"end":marker.end.byte});
         }
     }
-    json!({"formatVersion":3,"facts":facts})
+    json!({"formatVersion":4,"facts":facts})
 }
 
 pub(crate) fn lifecycle_facts(base: &Value, step: &Value) -> Value {

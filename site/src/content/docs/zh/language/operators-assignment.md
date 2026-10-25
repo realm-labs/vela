@@ -22,7 +22,7 @@ Vela 使用常见的运算符，但不会偷偷猜类型，也不会自动把值
 选择的能力：record、array、map、set、closure、iterator 和 host ref 不会
 因为字段或内容相同就自动做结构比较。record 或 enum 可以实现封闭内建
 `PartialEq` trait，并提供 `fn eq(self, other: Type) -> bool` 来显式加入；
-`==` 和 `!=` 会对该类型调用这个方法。需要比较脚本对象或 `HostRef` 的引用
+`==` 和 `!=` 会对该类型调用这个方法。需要比较脚本对象的引用
 身份时，使用 `===` 和 `!==`。这两个身份运算符不会读取宿主状态，也不会使用
 Map/Set 的 key 等价规则。
 
@@ -65,7 +65,6 @@ fn count_even(limit: i64) -> i64 {
 - 局部变量：`score = 10`
 - 脚本 record 字段：`reward.amount = 25`
 - 集合索引位置：`tags["last_reward"] = reward.code`
-- 可写的宿主对象字段：`player.gold += reward.amount`
 
 如果目标属于 Rust 宿主对象，Vela 会请求宿主应用这次写入。宿主可以允许写入，
 也可以因为字段只读或当前 capability profile 不允许写入而拒绝。

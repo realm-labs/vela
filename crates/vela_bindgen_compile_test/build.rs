@@ -7,41 +7,18 @@ use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_macros::export;
 
-#[path = "src/model.rs"]
-mod model;
-
-#[export(path = "test::reenter_player")]
-pub fn reenter_player(
-    _context: &mut NativeCallContext<'_, '_>,
-    player: &mut model::Player,
-    amount: i64,
-) -> VmResult<i64> {
-    Ok(player.level + amount)
-}
-
-#[export(path = "test::reject_unrelated")]
-pub fn reject_unrelated(
-    _context: &mut NativeCallContext<'_, '_>,
-    player: &mut model::Player,
-) -> VmResult<i64> {
-    Ok(player.level)
-}
-
 #[export(path = "test::deny_effect_expansion")]
-pub fn deny_effect_expansion(_context: &mut NativeCallContext<'_, '_>) -> VmResult<i64> {
+pub fn deny_effect_expansion(_context: &mut NativeCallContext<'_>) -> VmResult<i64> {
     Ok(0)
 }
 
 #[export(path = "test::deny_context_random")]
-pub fn deny_context_random(_context: &mut NativeCallContext<'_, '_>) -> VmResult<i64> {
+pub fn deny_context_random(_context: &mut NativeCallContext<'_>) -> VmResult<i64> {
     Ok(0)
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder()
-        .install_generated_type::<model::Player>()
-        .install_registration(vela_function_reenter_player())
-        .install_registration(vela_function_reject_unrelated())
         .install_registration(vela_function_deny_effect_expansion())
         .install_registration(vela_function_deny_context_random())
         .with_controlled_random(7)

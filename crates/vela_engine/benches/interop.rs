@@ -3,7 +3,6 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
-use vela_common::Capability;
 use vela_engine::binding::{
     BindingAuthority, BindingCallable, BindingCallableIdentitySpec, BindingCallableSpec,
     BindingSchemaSpec, RootBinding, VmResult,
@@ -11,7 +10,7 @@ use vela_engine::binding::{
 use vela_engine::context::NativeCallContext;
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_macros::{ScriptHost, ScriptReflect, export, methods};
+use vela_macros::export;
 
 const DEFAULT_ITERATIONS: usize = 10_000;
 const QUICK_ITERATIONS: usize = 1_000;
@@ -21,43 +20,16 @@ const SOURCE: &str = r#"
 pub fn generated_target(value: i64) -> i64 { return value + 1; }
 fn child(value: i64) -> i64 { return value + 1; }
 fn scalar_entry(value: i64) -> i64 { return bench::scalar(value); }
-fn shared_entry(player: Player) -> i64 { return bench::read_player(player); }
-fn exclusive_entry(player: Player) -> i64 { return bench::write_player(player); }
 fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }
 "#;
-
-#[derive(ScriptHost, ScriptReflect)]
-#[vela(path = "bench::Player")]
-pub struct Player {
-    #[vela(get, set)]
-    value: i64,
-}
-
-#[methods]
-impl Player {
-    pub fn current(&self) -> i64 {
-        self.value
-    }
-}
 
 #[export(path = "bench::scalar")]
 pub fn scalar(value: i64) -> i64 {
     value + 1
 }
 
-#[export(path = "bench::read_player")]
-pub fn read_player(player: &Player) -> i64 {
-    player.value
-}
-
-#[export(path = "bench::write_player")]
-pub fn write_player(player: &mut Player) -> i64 {
-    player.value += 1;
-    player.value
-}
-
 #[export(path = "bench::round_trip")]
-pub fn round_trip(context: &mut NativeCallContext<'_, '_>, value: i64) -> VmResult<i64> {
+pub fn round_trip(context: &mut NativeCallContext<'_>, value: i64) -> VmResult<i64> {
     let child = context.call("child", CallArgs::new().with(value))?;
     black_box(child);
     Ok(value + 1)
@@ -72,46 +44,23 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("vela_engine_interop iterations={iterations}");
 
     let engine = Engine::builder()
-        .install_generated_type::<Player>()
         .install_registration(vela_function_scalar())
-        .install_registration(vela_function_read_player())
-        .install_registration(vela_function_write_player())
         .install_registration(vela_function_round_trip())
-        .capability(Capability::HostRead)
-        .capability(Capability::HostWrite)
         .build()?;
     let program = engine.compile_source(SOURCE)?;
     let generated_schema = generated_schema(program.binding_schema(), "generated_target")?;
 
     let mut scalar_runtime = Runtime::new(engine.clone(), engine.compile_source(SOURCE)?)?;
-    let mut shared_runtime = Runtime::new(engine.clone(), engine.compile_source(SOURCE)?)?;
-    let mut exclusive_runtime = Runtime::new(engine.clone(), engine.compile_source(SOURCE)?)?;
     let mut round_trip_runtime = Runtime::new(engine.clone(), engine.compile_source(SOURCE)?)?;
     let mut generated_runtime = Runtime::new(engine, program)?;
     let mut generated = RootBinding::bind(&mut generated_runtime, generated_schema)?;
     let generated_target = BindingCallable::new(generated_schema, 0);
-    let mut shared_player = Player { value: 41 };
-    let mut exclusive_player = Player { value: 0 };
     report("direct_rust_scalar", iterations, || Ok(scalar(41)))?;
     report("vela_to_rust_scalar", iterations, || {
         call_i64(
             &mut scalar_runtime,
             "scalar_entry",
             CallArgs::new().with(41_i64),
-        )
-    })?;
-    report("vela_to_rust_shared_host", iterations, || {
-        call_i64(
-            &mut shared_runtime,
-            "shared_entry",
-            CallArgs::new().with_host_mut("player", &mut shared_player),
-        )
-    })?;
-    report("vela_to_rust_exclusive_host", iterations, || {
-        call_i64(
-            &mut exclusive_runtime,
-            "exclusive_entry",
-            CallArgs::new().with_host_mut("player", &mut exclusive_player),
         )
     })?;
     report("rust_to_vela_generated_root", iterations, || {
@@ -163,11 +112,7 @@ fn generated_schema(
     })))
 }
 
-fn call_i64(
-    runtime: &mut Runtime,
-    target: &str,
-    args: CallArgs<'_>,
-) -> Result<i64, Box<dyn Error>> {
+fn call_i64(runtime: &mut Runtime, target: &str, args: CallArgs) -> Result<i64, Box<dyn Error>> {
     let value = runtime.call(target, args, CallOptions::unbounded())?;
     let owned = runtime.value_to_owned(&value)?;
     Ok(<i64 as vela_engine::args::FromScriptArg>::from_script_arg(

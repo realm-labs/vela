@@ -6,7 +6,7 @@
     "scripts/api.vela": "[[file:start]]/* 中😀 */ [[widget-range:start]]pub struct [[widget-name:start]]Widget[[widget-name:end]] { [[api-field-range:start]][[api-field-name:start]]value[[api-field-name:end]]: i64[[api-field-range:end]] }[[widget-range:end]]\n[[make-range:start]]pub fn [[make-name:start]]make[[make-name:end]]() -> Widget { return Widget { value: 1 }; }[[make-range:end]]\n[[api-impl-range:start]][[api-impl-name:start]]impl Widget[[api-impl-name:end]] { [[api-method-range:start]]fn [[api-method-name:start]]read[[api-method-name:end]](self) -> bool { return true; }[[api-method-range:end]] }[[api-impl-range:end]]\n[[file:end]]",
     "scripts/origins.vela": "[[file:start]][[origin-a-range:start]]fn [[origin-a-name:start]]origin_a[[origin-a-name:end]]() {}[[origin-a-range:end]]\n[[origin-b-range:start]]fn [[origin-b-name:start]]origin_b[[origin-b-name:end]]() {}[[origin-b-range:end]]\n[[file:end]]",
     "vela.toml": "[package]\nid = 'dev.vela.outline.lifecycle'\nname = 'outline_lifecycle'\nversion = '0.1.0'\n[source]\nroots = ['scripts']\n[host]\nschema = 'schema.json'\n",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{}}"
+    "schema.json": "{\"formatVersion\":4,\"facts\":{}}"
   },
   "actions": [],
   "oracle": {
@@ -490,7 +490,7 @@
           {
             "name": "host::Box",
             "fact": {
-              "kind": "host",
+              "kind": "record",
               "name": "host::Box"
             },
             "sourceSpan": {
@@ -519,7 +519,7 @@
           {
             "name": "host::Box",
             "fact": {
-              "kind": "host",
+              "kind": "record",
               "name": "host::Box"
             },
             "sourceSpan": {
@@ -548,7 +548,7 @@
           {
             "name": "host::Box",
             "fact": {
-              "kind": "host",
+              "kind": "record",
               "name": "host::Box"
             },
             "sourceSpan": {
@@ -663,8 +663,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -1096,8 +1096,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -1530,8 +1530,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -1964,8 +1964,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -2398,8 +2398,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -2829,8 +2829,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -4046,8 +4046,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -4419,8 +4419,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -4767,8 +4767,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -5119,8 +5119,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -5472,8 +5472,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -5885,8 +5885,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -6714,8 +6714,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -7147,8 +7147,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -7586,8 +7586,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",
@@ -8019,8 +8019,8 @@
             {
               "id": "schema-box",
               "name": "host::Box",
-              "kind": "Class",
-              "protocolKind": 5,
+              "kind": "Struct",
+              "protocolKind": 23,
               "detail": "host::Box",
               "container": null,
               "identity": "host::Box",

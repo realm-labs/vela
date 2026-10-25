@@ -4,7 +4,7 @@
   "files": {
     "scripts/main.vela": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
     "scripts/helper.vela": "[[file:start]]/* 中😀 */ [[helper-fn:start]]pub fn Broken() {}[[helper-fn:end]]\n[[helper-type:start]]pub struct Decoy { value: bool }[[helper-type:end]]\n[[file:end]]",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{}}"
+    "schema.json": "{\"formatVersion\":4,\"facts\":{}}"
   },
   "actions": [],
   "oracle": {
@@ -1621,7 +1621,7 @@
       },
       {
         "id": "extern-no-name",
-        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nextern state : i64;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
+        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nstate : i64 = 1;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
         "parseError": true,
         "symbols": [
           {
@@ -1964,18 +1964,6 @@
             "ownership": "Schema"
           },
           {
-            "id": "main-broken",
-            "name": "main::Broken",
-            "kind": "Variable",
-            "protocolKind": 13,
-            "file": "scripts/main.vela",
-            "range": "broken-range",
-            "detail": null,
-            "container": "main",
-            "identity": "main::Broken",
-            "ownership": "Source"
-          },
-          {
             "id": "main-after",
             "name": "main::after",
             "kind": "Function",
@@ -2012,7 +2000,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2028,7 +2015,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2040,7 +2026,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2050,16 +2035,14 @@
             "query": "Broken",
             "symbols": [
               "helper-fn",
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
             "id": "schema-collision",
             "query": "main::Broken",
             "symbols": [
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
@@ -2098,16 +2081,14 @@
             "query": "bRoKeN",
             "symbols": [
               "helper-fn",
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
             "id": "exact-trim",
             "query": " main::Broken ",
             "symbols": [
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
@@ -2240,18 +2221,6 @@
             "ownership": "Schema"
           },
           {
-            "id": "main-broken",
-            "name": "main::Broken",
-            "kind": "Variable",
-            "protocolKind": 13,
-            "file": "scripts/main.vela",
-            "range": "broken-range",
-            "detail": "i64",
-            "container": "main",
-            "identity": "main::Broken",
-            "ownership": "Source"
-          },
-          {
             "id": "main-after",
             "name": "main::after",
             "kind": "Function",
@@ -2288,7 +2257,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2304,7 +2272,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2316,7 +2283,6 @@
               "main-module",
               "main-file",
               "schema-collision",
-              "main-broken",
               "main-after",
               "main-before"
             ]
@@ -2326,16 +2292,14 @@
             "query": "Broken",
             "symbols": [
               "helper-fn",
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
             "id": "schema-collision",
             "query": "main::Broken",
             "symbols": [
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
@@ -2374,16 +2338,14 @@
             "query": "bRoKeN",
             "symbols": [
               "helper-fn",
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
             "id": "exact-trim",
             "query": " main::Broken ",
             "symbols": [
-              "schema-collision",
-              "main-broken"
+              "schema-collision"
             ]
           },
           {
@@ -6637,7 +6599,7 @@
       },
       {
         "id": "extern-state-name-after-punctuation",
-        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nextern state : Ghost;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
+        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\nstate : Ghost = Ghost {};\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
         "parseError": true,
         "symbols": [
           {
@@ -7151,7 +7113,7 @@
       },
       {
         "id": "extern-state-name-from-path",
-        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub extern state :: Ghost: i64;\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
+        "source": "[[file:start]]/* 中😀 */ [[before-range:start]]fn [[before-name:start]]before[[before-name:end]]() {}[[before-range:end]]\npub state :: Ghost: i64 = : Ghost: i64 {};\n[[after-range:start]]fn [[after-name:start]]after[[after-name:end]]() {}[[after-range:end]]\n[[file:end]]",
         "parseError": true,
         "symbols": [
           {

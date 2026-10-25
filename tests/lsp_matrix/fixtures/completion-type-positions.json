@@ -12,8 +12,8 @@
     "scripts/enum_record.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ enum Holder { Value { value: [[replace:start]]Pl[[cursor]][[replace:end]] } }\n",
     "scripts/trait_method.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ trait Holder { fn call(value: [[replace:start]]Pl[[cursor]][[replace:end]]); }\n",
     "scripts/inherent_method.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ struct Holder {} impl Holder { fn call(self, value: [[replace:start]]Pl[[cursor]][[replace:end]]) {} }\n",
-    "scripts/extern_state.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ extern state holder: [[replace:start]]Pl[[cursor]][[replace:end]];\n",
-    "scripts/state.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ state holder: [[replace:start]]Pl[[cursor]][[replace:end]] = null;\n",
+    "scripts/extern_state.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ state holder: [[replace:start]]Pl[[cursor]][[replace:end]] = Pl {};\n",
+    "scripts/state.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ state holder: [[replace:start]]Pl[[cursor]][[replace:end]] = Pl {};\n",
     "scripts/nested_array.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: Array<[[replace:start]]Pl[[cursor]][[replace:end]]>) {}\n",
     "scripts/nested_result.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: Result<Option<[[replace:start]]Pl[[cursor]][[replace:end]]>, String>) {}\n",
     "scripts/tuple.vela": "use defs::Player;\nuse defs::Play;\n/* 中😀 */ fn main(value: (bool, [[replace:start]]Pl[[cursor]][[replace:end]])) {}\n",
@@ -38,7 +38,7 @@
         {
           "name": "Planet",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "Planet"
           },
           "docs": "Planet type docs 中😀."
@@ -46,7 +46,7 @@
         {
           "name": "host::Astro",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Astro"
           },
           "docs": "Qualified host type docs."

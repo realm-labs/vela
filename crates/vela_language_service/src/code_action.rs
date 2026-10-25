@@ -55,7 +55,7 @@ impl LanguageServiceDatabases {
             return Vec::new();
         };
         let diagnostics = self.diagnostics_for_document(document_id);
-        let mut actions = diagnostics
+        diagnostics
             .diagnostics()
             .iter()
             .filter(|diagnostic| diagnostic_overlaps_request(diagnostic, request_range))
@@ -81,9 +81,7 @@ impl LanguageServiceDatabases {
                 ));
                 actions
             })
-            .collect::<Vec<_>>();
-        actions.extend(self.scoped_release_actions(document_id, source.text(), request_range));
-        actions
+            .collect::<Vec<_>>()
     }
 
     fn import_actions(
@@ -128,98 +126,6 @@ impl LanguageServiceDatabases {
         .into_iter()
         .collect()
     }
-
-    fn scoped_release_actions(
-        &self,
-        document_id: &DocumentId,
-        text: &str,
-        request_range: DiagnosticRange,
-    ) -> Vec<CodeAction> {
-        let line_index = LineIndex::new(text);
-        let request_start = line_index.offset(request_range.start());
-        let request_end = line_index.offset(request_range.end());
-        let source_id = self
-            .source_db()
-            .records()
-            .get(document_id)
-            .map(|source| source.source_id());
-        let Some(source_id) = source_id else {
-            return Vec::new();
-        };
-        let facts = self.schema_analysis_facts();
-        let mut actions = Vec::new();
-        for body in self
-            .hir_db()
-            .graph()
-            .bodies()
-            .filter(|body| body.origin.source == source_id)
-        {
-            for statement in body.statements.values() {
-                let vela_hir::body::HirStmtKind::Let {
-                    pattern: Some(pattern),
-                    initializer: Some(initializer),
-                    ..
-                } = statement.kind
-                else {
-                    continue;
-                };
-                let Some(local) = body
-                    .patterns
-                    .get(&pattern)
-                    .and_then(|pattern| pattern.local())
-                else {
-                    continue;
-                };
-                let Some(binding) = self.hir_db().graph().local_binding(local) else {
-                    continue;
-                };
-                let Some(call_expression) =
-                    crate::inlay::transparent_call_expression(body, initializer)
-                else {
-                    continue;
-                };
-                let Some(call_record) = body.expression(call_expression) else {
-                    continue;
-                };
-                let call_start = call_record.origin.span.start as usize;
-                let call_end = call_record.origin.span.end as usize;
-                if request_end < call_start || call_end < request_start {
-                    continue;
-                }
-                let Some(call) = body.call(call_expression) else {
-                    continue;
-                };
-                let Some(callable) =
-                    crate::inlay::hir_callable_for_call(self, body, call, text, facts)
-                else {
-                    continue;
-                };
-                if callable.scoped_resource().is_none() {
-                    continue;
-                }
-                let insertion_offset = statement.origin.span.end as usize;
-                let insertion = line_index.position(insertion_offset);
-                let range = DiagnosticRange::new(insertion, insertion);
-                let indent = line_indent_at(text, statement.origin.span.start as usize);
-                for operation in ["release", "try_release"] {
-                    if text[call_end.min(text.len())..]
-                        .contains(&format!("host::{operation}({})", binding.name))
-                    {
-                        continue;
-                    }
-                    if let Some(action) = quick_fix(
-                        format!("Insert `host::{operation}({})`", binding.name),
-                        document_id.clone(),
-                        range,
-                        format!("\n{indent}host::{operation}({});", binding.name),
-                    ) {
-                        actions.push(action);
-                    }
-                }
-            }
-        }
-        actions
-    }
 }
 
 #[cfg(test)]
@@ -239,14 +145,6 @@ mod member_constructor_tests;
 
 #[cfg(test)]
 mod control_flow_tests;
-
-fn line_indent_at(text: &str, offset: usize) -> &str {
-    let start = text[..offset.min(text.len())]
-        .rfind('\n')
-        .map_or(0, |index| index + 1);
-    let line = &text[start..offset.min(text.len())];
-    &line[..line.len() - line.trim_start().len()]
-}
 
 fn repair_hint_actions(
     document_id: &DocumentId,
@@ -684,12 +582,7 @@ fn narrowed_token_range(
 
 #[cfg(test)]
 mod tests {
-    use vela_analysis::{
-        registry::{
-            RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
-        },
-        type_fact::TypeFact,
-    };
+    use vela_analysis::{registry::RegistryFacts, type_fact::TypeFact};
 
     use super::*;
     use crate::{
@@ -706,7 +599,7 @@ mod tests {
         let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_type("Player", TypeFact::record("Player"));
         schema.insert_field("Player", "level", TypeFact::I64);
         databases.set_schema_facts(schema);
         databases.update(&project);
@@ -764,51 +657,8 @@ mod tests {
     }
 
     #[test]
-    fn code_actions_offer_both_explicit_release_operations() {
-        let document = DocumentId::from("/workspace/scripts/game/main.vela");
-        let text = "pub fn main(player: Player) { let item = player.item_mut(); return item; }";
-        let files = vec![SourceFileSnapshot::new(document.clone(), text)];
-        let config = WorkspaceConfig::workspace([WorkspaceRoot::from("/workspace/scripts")]);
-        let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
-        let mut databases = LanguageServiceDatabases::new();
-        let mut schema = RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
-        schema.insert_type("Item", TypeFact::host("Item"));
-        schema.insert_method(
-            "Player",
-            "item_mut",
-            TypeFact::function(Vec::new(), TypeFact::host("Item")),
-        );
-        schema.insert_method_scoped_resource(
-            "Player",
-            "item_mut",
-            ScopedResourceReturnDef {
-                kind: ScopedResourceKindDef::MutView,
-                parent: ScopedResourceParentDef::Receiver,
-            },
-        );
-        databases.set_schema_facts(schema);
-        databases.update(&project);
-        let call = text.find("item_mut").expect("scoped call");
-
-        let actions = databases.code_actions(
-            &document,
-            DiagnosticRange::new(
-                Position::new(0, call),
-                Position::new(0, call + "item_mut".len()),
-            ),
-        );
-
-        assert!(
-            actions
-                .iter()
-                .any(|action| action.title() == "Insert `host::release(item)`")
-        );
-        assert!(
-            actions
-                .iter()
-                .any(|action| action.title() == "Insert `host::try_release(item)`")
-        );
+    fn code_actions_never_offer_removed_release_operations() {
+        crate::removed_boundary_tests::assert_removed_resource_surface();
     }
 
     #[test]
@@ -1094,7 +944,7 @@ pub fn main() {
         let project = assemble_project_sources(&config, &files, &workspace.snapshot());
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_type("Player", TypeFact::record("Player"));
         schema.insert_field("Player", "level", TypeFact::I64);
         databases.set_schema_facts(schema);
         databases.update(&project);

@@ -133,9 +133,6 @@ fn validate_contract_at(
                 ));
             }
         }
-        MirTypeContract::Host(target) => {
-            validator.require_host_type(*target, origin, context)?;
-        }
     }
     Ok(())
 }

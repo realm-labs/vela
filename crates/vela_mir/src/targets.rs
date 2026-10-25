@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, btree_map::Entry};
 
-use vela_common::{HostMethodId, HostTypeId, ShapeId};
+use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::{CompileSignature, MethodExecutableTarget, MirTypeContract};
@@ -135,9 +135,7 @@ pub enum CompileMethodClass {
         owner_name: String,
         code_symbol: String,
     },
-    Host {
-        runtime: HostMethodId,
-    },
+
     Value,
     Registry,
 }
@@ -160,14 +158,10 @@ pub enum CompileTypeClass {
     ScriptEnum,
     /// A stable external dispatch owner known by source identity only.
     ///
-    /// Unlike `Registry`, this type has no authoritative registry definition,
-    /// and unlike `Host`, it has no generation-local runtime type handle.
+    /// Unlike `Registry`, this type has no authoritative registry definition.
     OpaqueExternal,
     Registry,
     Standard,
-    Host {
-        runtime: HostTypeId,
-    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -204,13 +198,11 @@ pub struct CompileFieldDescriptor {
     pub contract: Option<MirTypeContract>,
     pub declaration_order: u32,
     pub access: CompileFieldAccess,
-    pub host_runtime: Option<FieldId>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum CompileStateStorage {
     Vm,
-    Extern,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

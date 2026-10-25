@@ -12,9 +12,8 @@ use crate::{
 };
 
 use super::{
-    CompileCallTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileHostPathTarget,
-    CompileTargetSnapshot, CompileTargetSnapshotBuilder, CompileTryTarget, HostFieldTarget,
-    HostMethodTarget, MethodExecutableTarget, MirBuildError,
+    CompileCallTarget, CompileFunctionIdentity, CompileFunctionTarget, CompileTargetSnapshot,
+    CompileTargetSnapshotBuilder, CompileTryTarget, MethodExecutableTarget, MirBuildError,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -37,8 +36,6 @@ pub enum CompileFieldTarget {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CompileMemberTarget {
     ScriptField(CompileFieldTarget),
-    HostField(HostFieldTarget),
-    HostProperty(HostMethodTarget),
     ScriptMethod {
         target: MethodExecutableTarget,
         debug_name: String,
@@ -157,7 +154,6 @@ pub enum CompileTargetKind {
     Call,
     Member,
     Constructor,
-    HostPath,
     Try,
 }
 
@@ -167,7 +163,7 @@ impl fmt::Display for CompileTargetKind {
             Self::Call => "call",
             Self::Member => "member",
             Self::Constructor => "constructor",
-            Self::HostPath => "host path",
+
             Self::Try => "try",
         })
     }
@@ -223,11 +219,6 @@ impl<'a> CompileFunctionTargets<'a> {
         pattern: HirPatternId,
     ) -> Option<&'a CompilePatternConstructorTarget> {
         self.snapshot.pattern_constructor(self.function(), pattern)
-    }
-
-    #[must_use]
-    pub fn host_path(self, expression: HirExprId) -> Option<&'a CompileHostPathTarget> {
-        self.snapshot.host_path(self.function(), expression)
     }
 
     #[must_use]
@@ -375,15 +366,6 @@ impl CompileTargetSnapshot {
     }
 
     #[must_use]
-    pub fn host_path(
-        &self,
-        function: FunctionId,
-        expression: HirExprId,
-    ) -> Option<&CompileHostPathTarget> {
-        self.host_paths.get(&(function, expression))
-    }
-
-    #[must_use]
     pub fn guard(&self, key: CompileGuardKey) -> Option<&CompileGuardTarget> {
         self.guards.get(&key)
     }
@@ -487,28 +469,6 @@ impl CompileTargetSnapshotBuilder {
                 origin,
             }),
         }
-    }
-
-    pub fn insert_host_path(
-        &mut self,
-        function: FunctionId,
-        expression: HirExprId,
-        target: CompileHostPathTarget,
-        origin: MirSourceOrigin,
-    ) -> Result<(), MirBuildError> {
-        insert_expression_target(
-            &mut self.snapshot.host_paths,
-            function,
-            expression,
-            target,
-            CompileTargetKind::HostPath,
-            origin,
-        )?;
-        self.snapshot
-            .origins
-            .host_paths
-            .insert((function, expression), origin);
-        Ok(())
     }
 
     pub fn insert_guard(

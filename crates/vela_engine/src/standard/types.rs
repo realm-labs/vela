@@ -223,7 +223,7 @@ fn iterator_type_desc() -> TypeDesc {
     let mut desc = builtin_type(
         "iterator",
         required_std_type_id("Iterator"),
-        TypeKind::Host,
+        TypeKind::ScriptStruct,
         "One-shot iterator value type.",
     );
     for method in iterator_method_descs() {
@@ -333,7 +333,7 @@ fn required_std_field_id(owner: &str, name: &str) -> FieldId {
 mod tests {
     use std::collections::BTreeMap;
 
-    use vela_common::HostMethodId;
+    use vela_def::MethodId;
 
     use super::*;
 
@@ -348,7 +348,7 @@ mod tests {
 
         assert_eq!(descs.len(), vela_stdlib::STD_METHODS.len());
         for spec in vela_stdlib::STD_METHODS {
-            let id = HostMethodId::new(spec.id().get());
+            let id = MethodId::new(spec.id().get());
             let desc = descs
                 .get(&id)
                 .unwrap_or_else(|| panic!("missing standard method desc for {id:?}"));

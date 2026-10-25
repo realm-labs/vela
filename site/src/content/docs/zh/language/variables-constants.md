@@ -3,7 +3,7 @@ title: "变量和常量"
 description: "Vela 变量和常量文档。"
 ---
 
-Vela 有局部变量、模块常量、VM 拥有的 state 和宿主拥有的 extern state。默认是动态类型；没有类型提示的局部绑定只保存当前值，有类型提示的绑定会增加运行时契约。
+Vela 有局部变量、模块常量、VM 拥有的 state。默认是动态类型；没有类型提示的局部绑定只保存当前值，有类型提示的绑定会增加运行时契约。
 
 ## 局部变量
 
@@ -32,16 +32,11 @@ fn next_level(current: i64) -> i64 {
 
 ## 持久状态
 
-`state` 必须有类型和 initializer，并为每个 Runtime 创建一个 VM 拥有的 cell。`extern state` 必须有类型、禁止 initializer，并由宿主绑定。脚本可以替换 VM state 根；extern 根不可替换，嵌套修改必须经过 HostAccess。脚本不会拿到真实的 Rust `&mut T`。
+`state` 需要类型和初始化器，为每个 Runtime 创建脚本自有状态。兼容热重载保留状态，旧闭包保留原代码代际与状态。依赖宿主路径的 `extern state` 绑定已经删除，普通 VM `state` 继续保留。
 
 ```vela
-extern state player: Player;
 state level_ups: i64 = 0;
-
-fn level_up() {
-    player.level += 1
-    level_ups += 1
-}
+fn level_up() { level_ups += 1; }
 ```
 
 ## 常见错误

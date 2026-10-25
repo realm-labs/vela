@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use syn::{FnArg, PatType, Result, ReturnType, Signature, Type, TypePath};
+use syn::{FnArg, PatType, Result, ReturnType, Signature, Type};
 
 use crate::signature::{
     param_name, reject_async_signature, type_generic_args, type_ident, wrapper_inner_type,
@@ -12,6 +12,12 @@ const BOUNDARY_WRAPPERS: &[&str] = &[
     "PathProxy",
     "HostLeaseRef",
     "HostLeaseMut",
+    "Host",
+    "View",
+    "MutView",
+    "ScopedHost",
+    "HostTargetPlan",
+    "HostCallValue",
     "HostAccess",
     "CallArgs",
     "OwnedValue",
@@ -22,8 +28,6 @@ const BOUNDARY_WRAPPERS: &[&str] = &[
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum EffectName {
     Pure,
-    HostRead,
-    HostWrite,
     EventEmit,
     Time,
     Random,
@@ -37,8 +41,6 @@ pub(crate) enum EffectName {
 impl EffectName {
     pub(crate) fn parse(ident: &syn::Ident) -> Result<Self> {
         match ident.to_string().as_str() {
-            "host_read" => Ok(Self::HostRead),
-            "host_write" => Ok(Self::HostWrite),
             "event_emit" => Ok(Self::EventEmit),
             "time" => Ok(Self::Time),
             "random" => Ok(Self::Random),
@@ -60,8 +62,6 @@ impl EffectName {
 pub(crate) enum ParameterMode {
     Value,
     ReadOnlyValueBorrow,
-    SharedHost,
-    ExclusiveHost,
     HiddenContext,
 }
 
@@ -70,7 +70,7 @@ pub(crate) struct ClassifiedParameter {
     pub(crate) name: String,
     pub(crate) ty: TypeShape,
     pub(crate) mode: ParameterMode,
-    pub(crate) rust_ty: Option<Type>,
+    pub(crate) rust_ty: Type,
 }
 
 #[derive(Clone)]
@@ -96,32 +96,6 @@ pub(crate) enum TypeShape {
     Option(Box<TypeShape>),
     Result(Box<TypeShape>, Box<TypeShape>),
     Value(Type),
-    Host(Type, HostAccess),
-    BorrowedCollection(BorrowedCollectionShape),
-    ReceiverHost,
-}
-
-#[derive(Clone)]
-pub(crate) struct BorrowedCollectionShape {
-    pub(crate) rust_ty: Type,
-    pub(crate) slice_element: Option<Box<Type>>,
-    pub(crate) host_elements: bool,
-    pub(crate) kind: BorrowedCollectionKind,
-    pub(crate) access: HostAccess,
-    pub(crate) mutation: vela_common::CollectionViewMutation,
-}
-
-#[derive(Clone)]
-pub(crate) enum BorrowedCollectionKind {
-    Array(Box<TypeShape>),
-    Map(Box<TypeShape>, Box<TypeShape>),
-    Set(Box<TypeShape>),
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum HostAccess {
-    Shared,
-    Exclusive,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -129,30 +103,12 @@ pub(crate) enum ReturnMode {
     Owned,
     Structured,
     Boundary,
-    ScopedHost {
-        origin: BorrowOrigin,
-        child: HostAccess,
-        parent: HostAccess,
-    },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum BorrowOrigin {
-    Receiver,
-    Parameter(u16),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum ErrorMode {
     Value,
     RuntimeResult,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ScopedReturnContainer {
-    Direct,
-    Option,
-    Result,
 }
 
 #[derive(Clone)]
@@ -173,152 +129,36 @@ pub(crate) fn classify_function(
     signature: &Signature,
     additional_effects: &BTreeSet<EffectName>,
 ) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, false, false)
-}
-
-pub(crate) fn classify_method(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, false)
-}
-
-pub(crate) fn classify_method_with_host_collection_returns(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-) -> Result<ClassifiedSignature> {
-    classify_signature(signature, additional_effects, true, true)
-}
-
-fn classify_signature(
-    signature: &Signature,
-    additional_effects: &BTreeSet<EffectName>,
-    allow_receiver: bool,
-    host_collection_returns: bool,
-) -> Result<ClassifiedSignature> {
     reject_async_signature(signature)?;
-    let mut parameters: Vec<ClassifiedParameter> = Vec::new();
-    let mut host_origins = Vec::new();
-    let mut receiver_access = None;
+    let mut parameters = Vec::new();
     for input in &signature.inputs {
-        let classified = match input {
-            FnArg::Typed(parameter) => classify_parameter(parameter)?,
-            FnArg::Receiver(receiver) if allow_receiver => {
-                if !parameters.is_empty() {
-                    return Err(syn::Error::new_spanned(
-                        receiver,
-                        "exported Rust method receiver must be first",
-                    ));
-                }
-                if receiver.reference.is_none() {
-                    return Err(syn::Error::new_spanned(
-                        receiver,
-                        "exported Rust methods require `&self` or `&mut self`",
-                    ));
-                }
-                let access = if receiver.mutability.is_some() {
-                    HostAccess::Exclusive
-                } else {
-                    HostAccess::Shared
-                };
-                receiver_access = Some(access);
-                ClassifiedParameter {
-                    name: "self".to_owned(),
-                    ty: TypeShape::ReceiverHost,
-                    mode: if access == HostAccess::Exclusive {
-                        ParameterMode::ExclusiveHost
-                    } else {
-                        ParameterMode::SharedHost
-                    },
-                    rust_ty: None,
-                }
-            }
-            FnArg::Receiver(receiver) => {
-                return Err(syn::Error::new_spanned(
-                    receiver,
-                    "#[vela_macros::export] functions cannot use a self receiver",
-                ));
-            }
+        let FnArg::Typed(parameter) = input else {
+            return Err(syn::Error::new_spanned(
+                input,
+                "#[vela_macros::export] functions cannot use a self receiver",
+            ));
         };
-        if classified.mode == ParameterMode::HiddenContext
-            && parameters
-                .iter()
-                .any(|parameter| !matches!(parameter.ty, TypeShape::ReceiverHost))
-        {
+        let classified = classify_parameter(parameter)?;
+        if classified.mode == ParameterMode::HiddenContext && !parameters.is_empty() {
             return Err(syn::Error::new_spanned(
                 input,
                 "NativeCallContext must be the first exported Rust parameter",
             ));
         }
-        if matches!(
-            classified.mode,
-            ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-        ) {
-            let index = u16::try_from(parameters.len()).map_err(|_| {
-                syn::Error::new_spanned(input, "exported callable has too many parameters")
-            })?;
-            host_origins.push((index, classified.mode));
-        }
         parameters.push(classified);
     }
-
-    if receiver_access.is_none()
-        && host_origins.is_empty()
-        && return_type_contains_reference(&signature.output)
-    {
-        return Err(syn::Error::new_spanned(
-            &signature.output,
-            "borrowed host return has no receiver or host-parameter provenance",
-        ));
-    }
-    let (return_shape, error_mode) =
-        classify_return_type(&signature.output, host_collection_returns)?;
-    let host_return = host_return_access(&return_shape)?;
-    let mode = if let Some(child) = host_return {
-        let (origin, parent) = if let Some(parent) = receiver_access {
-            (BorrowOrigin::Receiver, parent)
-        } else {
-            let [(index, parent_mode)] = host_origins.as_slice() else {
-                return Err(syn::Error::new_spanned(
-                    &signature.output,
-                    "borrowed host return requires exactly one unambiguous borrowed host parameter",
-                ));
-            };
-            let parent = match parent_mode {
-                ParameterMode::SharedHost => HostAccess::Shared,
-                ParameterMode::ExclusiveHost => HostAccess::Exclusive,
-                _ => unreachable!("host origins contain only host modes"),
-            };
-            (BorrowOrigin::Parameter(*index), parent)
-        };
-        if parent == HostAccess::Shared && child == HostAccess::Exclusive {
-            return Err(syn::Error::new_spanned(
-                &signature.output,
-                "a shared host origin cannot return a mutable host borrow",
-            ));
-        }
-        ReturnMode::ScopedHost {
-            origin,
-            child,
-            parent,
-        }
-    } else if return_shape.is_structured() {
+    let (return_shape, error_mode) = classify_return_type(&signature.output)?;
+    let mode = if return_shape.is_structured() {
         ReturnMode::Structured
     } else if matches!(return_shape, TypeShape::Value(_)) {
         ReturnMode::Boundary
     } else {
         ReturnMode::Owned
     };
-
-    let mut effects = inferred_effects(&parameters);
-    effects.extend(additional_effects.iter().copied());
-    if effects.contains(&EffectName::HostWrite) {
-        effects.remove(&EffectName::HostRead);
+    let mut effects = additional_effects.clone();
+    if effects.is_empty() {
+        effects.insert(EffectName::Pure);
     }
-    if effects.len() > 1 {
-        effects.remove(&EffectName::Pure);
-    }
-
     Ok(ClassifiedSignature {
         parameters,
         returns: ClassifiedReturn {
@@ -330,31 +170,13 @@ fn classify_signature(
     })
 }
 
-fn return_type_contains_reference(output: &ReturnType) -> bool {
-    let ReturnType::Type(_, ty) = output else {
-        return false;
-    };
-    type_contains_reference(ty)
-}
-
-fn type_contains_reference(ty: &Type) -> bool {
-    match ty {
-        Type::Reference(reference) => !is_str(&reference.elem),
-        Type::Tuple(tuple) => tuple.elems.iter().any(type_contains_reference),
-        Type::Path(_) => type_generic_args(ty)
-            .into_iter()
-            .any(type_contains_reference),
-        _ => false,
-    }
-}
-
 fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
     let name = param_name(parameter);
     if type_ident(&parameter.ty).is_some_and(|ident| ident == "NativeCallContext") {
         let Type::Reference(reference) = parameter.ty.as_ref() else {
             return Err(syn::Error::new_spanned(
                 &parameter.ty,
-                "NativeCallContext must be `&mut NativeCallContext<'_, '_>`",
+                "NativeCallContext must be `&mut NativeCallContext<'_>`",
             ));
         };
         if reference.mutability.is_none() {
@@ -367,7 +189,7 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
             name,
             ty: TypeShape::Unit,
             mode: ParameterMode::HiddenContext,
-            rust_ty: Some(parameter.ty.as_ref().clone()),
+            rust_ty: parameter.ty.as_ref().clone(),
         });
     }
     if let Type::Reference(reference) = parameter.ty.as_ref() {
@@ -383,122 +205,61 @@ fn classify_parameter(parameter: &PatType) -> Result<ClassifiedParameter> {
                 name,
                 ty: TypeShape::String,
                 mode: ParameterMode::ReadOnlyValueBorrow,
-                rust_ty: Some(parameter.ty.as_ref().clone()),
+                rust_ty: parameter.ty.as_ref().clone(),
             });
         }
-        let access = if reference.mutability.is_some() {
-            HostAccess::Exclusive
-        } else {
-            HostAccess::Shared
-        };
-        if let Some(collection) = borrowed_collection_type(&reference.elem, access, false)? {
-            return Ok(ClassifiedParameter {
-                name,
-                ty: collection,
-                mode: if access == HostAccess::Exclusive {
-                    ParameterMode::ExclusiveHost
-                } else {
-                    ParameterMode::SharedHost
-                },
-                rust_ty: Some(parameter.ty.as_ref().clone()),
-            });
+        if reference.mutability.is_some() {
+            return Err(syn::Error::new_spanned(
+                &parameter.ty,
+                "mutable borrowed parameters are not supported at the Vela value boundary",
+            ));
         }
-        let host_ty = direct_host_type(&reference.elem)?;
+        if matches!(reference.elem.as_ref(), Type::Slice(_) | Type::Array(_))
+            || type_ident(&reference.elem).is_some_and(|ident| {
+                matches!(
+                    ident.as_str(),
+                    "Vec" | "BTreeMap" | "HashMap" | "BTreeSet" | "HashSet"
+                )
+            })
+        {
+            return Err(syn::Error::new_spanned(
+                &parameter.ty,
+                "borrowed collection parameters are removed; pass an owned collection value",
+            ));
+        }
         return Ok(ClassifiedParameter {
             name,
-            ty: TypeShape::Host(host_ty, access),
-            mode: if access == HostAccess::Exclusive {
-                ParameterMode::ExclusiveHost
-            } else {
-                ParameterMode::SharedHost
-            },
-            rust_ty: Some(parameter.ty.as_ref().clone()),
+            ty: classify_owned_type(&reference.elem)?,
+            mode: ParameterMode::ReadOnlyValueBorrow,
+            rust_ty: parameter.ty.as_ref().clone(),
         });
     }
     Ok(ClassifiedParameter {
         name,
         ty: classify_owned_type(&parameter.ty)?,
         mode: ParameterMode::Value,
-        rust_ty: Some(parameter.ty.as_ref().clone()),
+        rust_ty: parameter.ty.as_ref().clone(),
     })
 }
 
-fn classify_return_type(
-    output: &ReturnType,
-    host_collection_returns: bool,
-) -> Result<(TypeShape, ErrorMode)> {
+fn classify_return_type(output: &ReturnType) -> Result<(TypeShape, ErrorMode)> {
     let ReturnType::Type(_, ty) = output else {
         return Ok((TypeShape::Unit, ErrorMode::Value));
     };
     if let Some(inner) = wrapper_inner_type(ty, &["VmResult"]) {
-        return Ok((
-            classify_return_shape(inner, host_collection_returns)?,
-            ErrorMode::RuntimeResult,
-        ));
+        return Ok((classify_owned_type(inner)?, ErrorMode::RuntimeResult));
     }
-    Ok((
-        classify_return_shape(ty, host_collection_returns)?,
-        ErrorMode::Value,
-    ))
-}
-
-fn classify_return_shape(ty: &Type, host_collection_returns: bool) -> Result<TypeShape> {
-    if let Type::Reference(reference) = ty {
-        reject_explicit_lifetime(reference)?;
-        if is_str(&reference.elem) {
-            return Err(syn::Error::new_spanned(
-                ty,
-                "borrowed scalar or container views cannot leave an exported Rust invocation",
-            ));
-        }
-        let access = if reference.mutability.is_some() {
-            HostAccess::Exclusive
-        } else {
-            HostAccess::Shared
-        };
-        if let Some(collection) =
-            borrowed_collection_type(&reference.elem, access, host_collection_returns)?
-        {
-            return Ok(collection);
-        }
-        let host_ty = direct_host_type(&reference.elem)?;
-        return Ok(TypeShape::Host(host_ty, access));
-    }
-    if let Some(inner) = wrapper_inner_type(ty, &["Option"]) {
-        return Ok(TypeShape::Option(Box::new(classify_return_shape(
-            inner,
-            host_collection_returns,
-        )?)));
-    }
-    if let Type::Tuple(tuple) = ty {
-        if tuple.elems.is_empty() {
-            return Ok(TypeShape::Unit);
-        }
-        return tuple
-            .elems
-            .iter()
-            .map(|element| classify_return_shape(element, host_collection_returns))
-            .collect::<Result<Vec<_>>>()
-            .map(TypeShape::Tuple);
-    }
-    if type_ident(ty).is_some_and(|ident| ident == "Result") {
-        let args = type_generic_args(ty);
-        let [ok, err] = args.as_slice() else {
-            return Err(syn::Error::new_spanned(
-                ty,
-                "Result boundary type requires exactly two type arguments",
-            ));
-        };
-        return Ok(TypeShape::Result(
-            Box::new(classify_return_shape(ok, host_collection_returns)?),
-            Box::new(classify_owned_type(err)?),
-        ));
-    }
-    classify_owned_type(ty)
+    Ok((classify_owned_type(ty)?, ErrorMode::Value))
 }
 
 fn classify_owned_type(ty: &Type) -> Result<TypeShape> {
     reject_boundary_wrapper(ty)?;
+    if matches!(ty, Type::Reference(_)) {
+        return Err(syn::Error::new_spanned(
+            ty,
+            "borrowed returns and nested references are removed; use owned values",
+        ));
+    }
     if let Type::Tuple(tuple) = ty {
         if tuple.elems.is_empty() {
             return Ok(TypeShape::Unit);
@@ -575,8 +336,12 @@ fn classify_owned_type(ty: &Type) -> Result<TypeShape> {
                 Box::new(classify_owned_type(err)?),
             ))
         }
-        _ if args.is_empty() => Ok(TypeShape::Value(ty.clone())),
-        _ => Ok(TypeShape::Value(ty.clone())),
+        _ => {
+            for arg in args {
+                classify_owned_type(arg)?;
+            }
+            Ok(TypeShape::Value(ty.clone()))
+        }
     }
 }
 
@@ -592,138 +357,6 @@ fn unary_shape(
         ));
     };
     Ok(constructor(Box::new(classify_owned_type(inner)?)))
-}
-
-fn direct_host_type(ty: &Type) -> Result<Type> {
-    reject_boundary_wrapper(ty)?;
-    let Type::Path(TypePath { qself: None, path }) = ty else {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "host reference must name one exact concrete Rust type",
-        ));
-    };
-    let ident = path
-        .segments
-        .last()
-        .map(|segment| segment.ident.to_string())
-        .unwrap_or_default();
-    if matches!(
-        ident.as_str(),
-        "bool"
-            | "char"
-            | "i8"
-            | "i16"
-            | "i32"
-            | "i64"
-            | "u8"
-            | "u16"
-            | "u32"
-            | "u64"
-            | "f32"
-            | "f64"
-            | "String"
-    ) {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "only registered direct host objects may use shared or mutable host parameters",
-        ));
-    }
-    Ok(ty.clone())
-}
-
-fn borrowed_collection_type(
-    ty: &Type,
-    access: HostAccess,
-    host_elements: bool,
-) -> Result<Option<TypeShape>> {
-    if let Type::Slice(slice) = ty {
-        let element_shape = if host_elements {
-            TypeShape::Host(direct_host_type(&slice.elem)?, HostAccess::Shared)
-        } else {
-            classify_owned_type(&slice.elem)?
-        };
-        return Ok(Some(TypeShape::BorrowedCollection(
-            BorrowedCollectionShape {
-                rust_ty: ty.clone(),
-                slice_element: Some(Box::new((*slice.elem).clone())),
-                host_elements,
-                kind: BorrowedCollectionKind::Array(Box::new(element_shape)),
-                access,
-                mutation: vela_common::CollectionViewMutation::Fixed,
-            },
-        )));
-    }
-    if let Type::Array(array) = ty {
-        if host_elements {
-            return Err(syn::Error::new_spanned(
-                ty,
-                "host_collection currently supports borrowed slices only",
-            ));
-        }
-        return Ok(Some(TypeShape::BorrowedCollection(
-            BorrowedCollectionShape {
-                rust_ty: ty.clone(),
-                slice_element: None,
-                host_elements: false,
-                kind: BorrowedCollectionKind::Array(Box::new(classify_owned_type(&array.elem)?)),
-                access,
-                mutation: vela_common::CollectionViewMutation::Fixed,
-            },
-        )));
-    }
-    if host_elements {
-        return Err(syn::Error::new_spanned(
-            ty,
-            "host_collection currently supports borrowed slices only",
-        ));
-    }
-    let Some(ident) = type_ident(ty) else {
-        return Ok(None);
-    };
-    let args = type_generic_args(ty);
-    let kind = match ident.as_str() {
-        "Vec" => {
-            let [element] = args.as_slice() else {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "borrowed Vec boundary type requires exactly one type argument",
-                ));
-            };
-            BorrowedCollectionKind::Array(Box::new(classify_owned_type(element)?))
-        }
-        "BTreeMap" | "HashMap" => {
-            let [key, value] = args.as_slice() else {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "borrowed map boundary type requires exactly two type arguments",
-                ));
-            };
-            BorrowedCollectionKind::Map(
-                Box::new(classify_owned_type(key)?),
-                Box::new(classify_owned_type(value)?),
-            )
-        }
-        "BTreeSet" | "HashSet" => {
-            let [element] = args.as_slice() else {
-                return Err(syn::Error::new_spanned(
-                    ty,
-                    "borrowed set boundary type requires exactly one type argument",
-                ));
-            };
-            BorrowedCollectionKind::Set(Box::new(classify_owned_type(element)?))
-        }
-        _ => return Ok(None),
-    };
-    Ok(Some(TypeShape::BorrowedCollection(
-        BorrowedCollectionShape {
-            rust_ty: ty.clone(),
-            slice_element: None,
-            host_elements: false,
-            kind,
-            access,
-            mutation: vela_common::CollectionViewMutation::Growable,
-        },
-    )))
 }
 
 fn reject_boundary_wrapper(ty: &Type) -> Result<()> {
@@ -750,98 +383,7 @@ fn reject_explicit_lifetime(reference: &syn::TypeReference) -> Result<()> {
     Ok(())
 }
 
-fn inferred_effects(parameters: &[ClassifiedParameter]) -> BTreeSet<EffectName> {
-    let mut effects = BTreeSet::new();
-    if parameters
-        .iter()
-        .any(|parameter| parameter.mode == ParameterMode::ExclusiveHost)
-    {
-        effects.insert(EffectName::HostWrite);
-    } else if parameters
-        .iter()
-        .any(|parameter| parameter.mode == ParameterMode::SharedHost)
-    {
-        effects.insert(EffectName::HostRead);
-    } else {
-        effects.insert(EffectName::Pure);
-    }
-    effects
-}
-
-fn host_return_access(shape: &TypeShape) -> Result<Option<HostAccess>> {
-    match shape {
-        TypeShape::Host(_, access) => Ok(Some(*access)),
-        TypeShape::BorrowedCollection(collection) => Ok(Some(collection.access)),
-        TypeShape::Option(inner) => host_return_access(inner),
-        TypeShape::Result(ok, _) => host_return_access(ok),
-        TypeShape::Tuple(elements) => {
-            let mut access = None;
-            for element in elements {
-                let Some((_, element_access)) = element.host_boundary() else {
-                    if host_return_access(element)?.is_some() || access.is_some() {
-                        return Err(syn::Error::new(
-                            proc_macro2::Span::call_site(),
-                            "borrowed host tuples must contain only direct host references",
-                        ));
-                    }
-                    continue;
-                };
-                if access.is_some_and(|access| access != element_access) {
-                    return Err(syn::Error::new(
-                        proc_macro2::Span::call_site(),
-                        "borrowed host tuples must use one shared or exclusive access mode",
-                    ));
-                }
-                access = Some(element_access);
-            }
-            if access.is_some() && elements.iter().any(|item| item.host_boundary().is_none()) {
-                return Err(syn::Error::new(
-                    proc_macro2::Span::call_site(),
-                    "borrowed host tuples cannot mix owned values and host references",
-                ));
-            }
-            Ok(access)
-        }
-        TypeShape::Unit
-        | TypeShape::Bool
-        | TypeShape::Char
-        | TypeShape::I8
-        | TypeShape::I16
-        | TypeShape::I32
-        | TypeShape::I64
-        | TypeShape::U8
-        | TypeShape::U16
-        | TypeShape::U32
-        | TypeShape::U64
-        | TypeShape::F32
-        | TypeShape::F64
-        | TypeShape::String
-        | TypeShape::Array(_)
-        | TypeShape::Map(_, _)
-        | TypeShape::Set(_)
-        | TypeShape::Value(_)
-        | TypeShape::ReceiverHost => Ok(None),
-    }
-}
-
 impl TypeShape {
-    pub(super) fn host_boundary(&self) -> Option<(&Type, HostAccess)> {
-        match self {
-            Self::Host(ty, access) => Some((ty, *access)),
-            Self::BorrowedCollection(collection) => Some((&collection.rust_ty, collection.access)),
-            _ => None,
-        }
-    }
-
-    pub(super) fn borrowed_slice_element(&self) -> Option<&Type> {
-        match self {
-            Self::BorrowedCollection(collection) => {
-                collection.slice_element.as_ref().map(Box::as_ref)
-            }
-            _ => None,
-        }
-    }
-
     fn is_structured(&self) -> bool {
         matches!(
             self,
@@ -856,113 +398,10 @@ impl TypeShape {
 }
 
 impl ClassifiedSignature {
-    pub(crate) fn supports_value_adapter(&self) -> bool {
-        self.parameters.iter().all(|parameter| {
-            matches!(
-                parameter.mode,
-                ParameterMode::Value | ParameterMode::HiddenContext
-            )
-        })
-    }
-
     pub(crate) fn has_hidden_context(&self) -> bool {
         self.parameters
             .iter()
             .any(|parameter| parameter.mode == ParameterMode::HiddenContext)
-    }
-
-    pub(crate) fn supports_sync_host_adapter(&self) -> bool {
-        matches!(
-            self.returns.mode,
-            ReturnMode::Owned | ReturnMode::Structured | ReturnMode::Boundary
-        ) && self.parameters.iter().all(|parameter| {
-            matches!(
-                parameter.mode,
-                ParameterMode::Value
-                    | ParameterMode::ReadOnlyValueBorrow
-                    | ParameterMode::SharedHost
-                    | ParameterMode::ExclusiveHost
-                    | ParameterMode::HiddenContext
-            )
-        }) && self.parameters.iter().any(|parameter| {
-            matches!(
-                parameter.mode,
-                ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-            )
-        })
-    }
-
-    pub(crate) fn supports_sync_scoped_host_adapter(&self) -> bool {
-        !self.has_hidden_context()
-            && matches!(
-                self.returns.mode,
-                ReturnMode::ScopedHost {
-                    origin: BorrowOrigin::Parameter(_),
-                    ..
-                }
-            )
-            && self.scoped_return_container().is_some()
-            && self.parameters.iter().all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value | ParameterMode::SharedHost | ParameterMode::ExclusiveHost
-                )
-            })
-    }
-
-    pub(crate) fn scoped_return_container(&self) -> Option<ScopedReturnContainer> {
-        match &self.returns.ty {
-            shape if shape.host_boundary().is_some() => Some(ScopedReturnContainer::Direct),
-            TypeShape::Option(inner) if inner.host_boundary().is_some() => {
-                Some(ScopedReturnContainer::Option)
-            }
-            TypeShape::Result(ok, _) if ok.host_boundary().is_some() => {
-                Some(ScopedReturnContainer::Result)
-            }
-            TypeShape::Tuple(elements)
-                if elements.iter().all(|item| item.host_boundary().is_some()) =>
-            {
-                Some(ScopedReturnContainer::Direct)
-            }
-            TypeShape::Option(inner) if matches!(&**inner, TypeShape::Tuple(elements) if elements.iter().all(|item| item.host_boundary().is_some())) => {
-                Some(ScopedReturnContainer::Option)
-            }
-            TypeShape::Result(ok, _) if matches!(&**ok, TypeShape::Tuple(elements) if elements.iter().all(|item| item.host_boundary().is_some())) => {
-                Some(ScopedReturnContainer::Result)
-            }
-            _ => None,
-        }
-    }
-
-    pub(crate) fn supports_sync_scoped_method_adapter(&self) -> bool {
-        !self.has_hidden_context()
-            && matches!(
-                self.returns.mode,
-                ReturnMode::ScopedHost {
-                    origin: BorrowOrigin::Receiver,
-                    ..
-                }
-            )
-            && self.scoped_return_container().is_some()
-            && self
-                .parameters
-                .first()
-                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
-            && self.parameters.iter().skip(1).all(|parameter| {
-                matches!(
-                    parameter.mode,
-                    ParameterMode::Value | ParameterMode::ReadOnlyValueBorrow
-                )
-            })
-    }
-
-    pub(crate) fn supports_sync_method_adapter(&self) -> bool {
-        self.supports_sync_host_adapter()
-            && !self.has_hidden_context()
-            && self
-                .parameters
-                .first()
-                .is_some_and(|parameter| matches!(parameter.ty, TypeShape::ReceiverHost))
     }
 }
 

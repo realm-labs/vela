@@ -212,9 +212,7 @@ pub(super) fn checked_u32(
 pub(super) fn type_owner_name_for_fact(fact: &TypeFact) -> Option<&str> {
     match fact {
         TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
-        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Host { name } => {
-            Some(name)
-        }
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } => Some(name),
         fact => type_owner_name_standard(fact),
     }
 }
@@ -236,12 +234,10 @@ pub(super) fn type_owner_name_standard(fact: &TypeFact) -> Option<&'static str> 
         TypeFact::Primitive(PrimitiveTag::Char) => Some("char"),
         TypeFact::Primitive(PrimitiveTag::String) => Some("String"),
         TypeFact::Primitive(PrimitiveTag::Bytes) => Some("Bytes"),
-        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
-            Some("Array")
-        }
-        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => Some("Map"),
-        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => Some("Set"),
-        TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. } => Some("Iterator"),
+        TypeFact::Array { .. } => Some("Array"),
+        TypeFact::Map { .. } => Some("Map"),
+        TypeFact::Set { .. } => Some("Set"),
+        TypeFact::Iterator { .. } => Some("Iterator"),
         TypeFact::Range => Some("Range"),
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             Some("Option")
@@ -257,11 +253,6 @@ pub(super) fn type_owner_name_standard(fact: &TypeFact) -> Option<&'static str> 
 
 pub(super) fn type_owner_name(fact: Option<&TypeFact>) -> Option<&str> {
     type_owner_name_for_fact(fact?)
-}
-
-pub(super) enum ConstantHostIndex {
-    Index(u32),
-    Key(String),
 }
 
 pub(super) struct ConstructorSpec {

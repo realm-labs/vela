@@ -22,7 +22,7 @@ test("workspace symbol ownership corpus pins complete source and static schema p
       assert.equal(row.ownership, "Schema"); assert.equal(row.file, undefined); assert.equal(row.range, undefined);
     }
   }
-  assert.deepEqual(counts, { Struct: 6, Function: 9, Module: 8, File: 8, Class: 3, Field: 5, Method: 4, Enum: 3, EnumMember: 3, Interface: 3, Object: 5, Constant: 1, Variable: 2 });
+  assert.deepEqual(counts, { Struct: 9, Function: 9, Module: 8, File: 8, Field: 5, Method: 4, Enum: 3, EnumMember: 3, Interface: 3, Object: 5, Constant: 1, Variable: 2 });
   assert.deepEqual(Object.fromEntries(Object.entries(schema).map(([key, rows]) => [key, rows.length])),
     { types: 4, traits: 1, functions: 2, fields: 5, methods: 3, traitMethods: 1, variants: 3 });
   assert.equal(Object.values(schema).flat().filter(row => row.sourceSpan).length, 10);
@@ -33,7 +33,7 @@ test("workspace symbol ownership queries pin collisions, member kinds, imports a
   assert.deepEqual(ids("all"), symbols.map(row => row.id)); assert.deepEqual(ids("trim-empty"), ids("all"));
   assert.equal(ids("source-root").length, 14);
   assert(!ids("source-root").includes("source-module"), "source has no trailing :: in its module name");
-  assert.deepEqual(ids("same-type"), ["schema-source-widget", "source-widget", "schema-source-widget-read", "schema-source-widget-value"]);
+  assert.deepEqual(ids("same-type"), ["source-widget", "schema-source-widget", "schema-source-widget-read", "schema-source-widget-value"]);
   assert.deepEqual(ids("same-function"), ["source-make", "schema-source-make"]);
   assert.equal(ids("all-widget").length, 9);
   assert(!ids("all-widget").includes("main-imported-impl"), "Row keeps its declared name, not its imported target's name");

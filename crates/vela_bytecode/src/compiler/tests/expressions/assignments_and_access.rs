@@ -120,12 +120,6 @@ fn main() {
             UnlinkedInstructionKind::GetIndex { .. }
         ))
     );
-    assert!(
-        !code.instructions.iter().any(|instruction| matches!(
-            instruction.kind,
-            UnlinkedInstructionKind::HostRead { .. }
-        ))
-    );
 }
 #[test]
 fn compiler_lowers_index_writes() {

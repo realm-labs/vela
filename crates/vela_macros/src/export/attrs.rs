@@ -54,7 +54,7 @@ impl ExportAttrs {
                     let effect_name = EffectName::parse(ident)?;
                     if effect_name == EffectName::Pure {
                         return Err(effect.error(
-                            "effects(...) only adds effects; `pure` cannot remove an inferred host effect",
+                            "effects(...) only adds effects; `pure` cannot remove declared effects",
                         ));
                     }
                     if !effects.insert(effect_name) {

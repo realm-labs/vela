@@ -49,10 +49,17 @@ pub(super) fn validate(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnos
                 path = expanded;
             }
             removed_path(&path).then(|| {
-                Diagnostic::error(
-                    "script task operations and task error contracts are no longer supported",
-                )
-                .with_code("syntax::removed_task")
+                let borrowed = removed_host_path(&path);
+                Diagnostic::error(if borrowed {
+                    "borrowed host operations and view contracts are no longer supported"
+                } else {
+                    "script task operations and task error contracts are no longer supported"
+                })
+                .with_code(if borrowed {
+                    "syntax::removed_host_borrow"
+                } else {
+                    "syntax::removed_task"
+                })
                 .with_span(span_for(source, node.text_range()))
             })
         })
@@ -60,6 +67,12 @@ pub(super) fn validate(source: SourceId, tree: &SyntaxSourceFile) -> Vec<Diagnos
 }
 
 fn removed_path(path: &[String]) -> bool {
-    matches!(path, [root, operation, ..]
+    removed_host_path(path)
+        || matches!(path, [root, operation, ..]
         if root == "task" && matches!(operation.as_str(), "spawn_scoped" | "spawn_scoped_then" | "Error"))
+}
+
+fn removed_host_path(path: &[String]) -> bool {
+    matches!(path, [root, operation, ..]
+        if root == "host" && matches!(operation.as_str(), "release" | "try_release"))
 }

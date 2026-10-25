@@ -6,8 +6,8 @@ use vela_hir::module_graph::ModuleGraph;
 
 use crate::literals::{LiteralFacts, LiteralPrimitiveContext, LiteralResult};
 use crate::semantic_facts::{
-    CallTargetFact, ConstructorTargetFact, ControlFlowFact, HirSemanticFacts, HostPathTargetFact,
-    MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
+    CallTargetFact, ConstructorTargetFact, ControlFlowFact, HirSemanticFacts, MemberTargetFact,
+    OperatorTargetFact, ScriptTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
 
@@ -180,11 +180,6 @@ impl AnalysisFacts {
     }
 
     #[must_use]
-    pub fn host_path_target(&self, expression: HirExprId) -> Option<&HostPathTargetFact> {
-        self.semantic.host_path_target(expression)
-    }
-
-    #[must_use]
     pub fn effect(&self, expression: HirExprId) -> Option<&crate::registry::RegistryEffectFact> {
         self.semantic.effect(expression)
     }
@@ -222,7 +217,7 @@ mod implicit_receiver_tests;
 mod tests {
     use super::*;
     use crate::registry::RegistryFacts;
-    use vela_common::{HostTypeId, SourceId};
+    use vela_common::SourceId;
     use vela_def::{FieldId, TypeId};
     use vela_hir::binding::LocalBindingKind;
     use vela_hir::module_graph::ModuleSource;
@@ -375,7 +370,7 @@ mod tests {
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
         let mut schema = RegistryFacts::default();
-        schema.insert_type("Enemy", TypeFact::host("Enemy"));
+        schema.insert_type("Enemy", TypeFact::record("Enemy"));
 
         let main = graph
             .declarations()
@@ -387,12 +382,12 @@ mod tests {
             panic!("expected enemy parameter");
         };
 
-        assert_eq!(facts.local(*enemy), Some(&TypeFact::host("Enemy")));
+        assert_eq!(facts.local(*enemy), Some(&TypeFact::record("Enemy")));
         assert!(bindings.resolutions().any(|(expression, resolution)| {
             if resolution != &BindingResolution::Local(*enemy) {
                 return false;
             }
-            facts.expression(expression) == Some(&TypeFact::host("Enemy"))
+            facts.expression(expression) == Some(&TypeFact::record("Enemy"))
         }));
     }
 
@@ -500,7 +495,7 @@ mod tests {
             ModulePath::from_qualified("game"),
             r#"
             struct Player { level: i64 }
-            extern state active: Player
+            state active: Player = Player { level: 1 };
             fn current() {
                 return active;
             }
@@ -546,8 +541,7 @@ mod tests {
     fn analysis_facts_evaluate_complete_hir_body_and_resolve_targets() {
         use crate::registry::RegistryEffectFact;
         use crate::semantic_facts::{
-            CallTargetFact, ConstructorTargetFact, HostPathSegmentFact, MemberTargetFact,
-            OperatorTargetFact,
+            CallTargetFact, ConstructorTargetFact, MemberTargetFact, OperatorTargetFact,
         };
         use vela_hir::body::{HirBodyRoot, HirExprKind};
 
@@ -575,11 +569,10 @@ mod tests {
         assert_eq!(graph.diagnostics(), &[]);
 
         let mut schema = RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_type("Player", TypeFact::record("Player"));
         schema.insert_type_target(crate::registry::RegistryTypeTargetFact::new(
             "Player",
             TypeId::new(1),
-            Some(HostTypeId::new(1)),
         ));
         schema.insert_field("Player", "level", TypeFact::I64);
         let level_access = crate::registry::RegistryFieldAccessFact {
@@ -597,7 +590,6 @@ mod tests {
             "Player",
             "level",
             FieldId::new(2),
-            Some(FieldId::new(2)),
             false,
             level_access,
         ));
@@ -656,20 +648,9 @@ mod tests {
             matches!(&expression.kind, HirExprKind::Field(field) if field.name == "level")
         }).expect("level field");
         assert_eq!(facts.expression(level.id), Some(&TypeFact::I64));
-        assert!(matches!(
-            facts.member_target(level.id),
-            Some(MemberTargetFact::HostField(target))
-                if target.owner_name == "Player" && target.name == "level"
-                    && target.semantic == FieldId::new(2)
-        ));
-        assert!(matches!(
-            facts.host_path_target(level.id),
-            Some(path)
-                if path.root_type.semantic == TypeId::new(1)
-                    && matches!(path.segments.as_slice(),
-                        [HostPathSegmentFact::Field(target)]
-                            if target.semantic == FieldId::new(2))
-        ));
+        assert!(
+            matches!(facts.member_target(level.id), Some(MemberTargetFact::RegistryField { owner, name }) if owner == "Player" && name == "level")
+        );
 
         let save_call = body
             .expressions
@@ -682,7 +663,7 @@ mod tests {
         assert_eq!(facts.expression(save_call.id), Some(&TypeFact::BOOL));
         assert!(matches!(
             facts.call_target(save_call.id),
-            Some(CallTargetFact::HostMethod { owner, name })
+            Some(CallTargetFact::RegistryMethod { owner, name })
                 if owner == "Player" && name == "save"
         ));
         assert_eq!(
@@ -884,117 +865,5 @@ mod tests {
             facts.call_target(call.id),
             Some(&CallTargetFact::Lambda(lambda.id))
         );
-    }
-
-    #[test]
-    fn semantic_host_paths_preserve_stable_targets_and_index_capabilities() {
-        use crate::semantic_facts::{HostPathIndexKindFact, HostPathSegmentFact};
-        use vela_hir::body::HirExprKind;
-        use vela_reflect::registry::{
-            FieldDesc, HostIndexCapability, TypeDesc, TypeKey, TypeRegistry,
-        };
-
-        let player_id = TypeId::new(101);
-        let inventory_id = TypeId::new(102);
-        let entry_id = TypeId::new(103);
-        let inventory_field = FieldId::new(201);
-        let amount_field = FieldId::new(202);
-        let mut registry = TypeRegistry::new();
-        registry.register(
-            TypeDesc::new(TypeKey::new(player_id, "Player"))
-                .host_type(HostTypeId::new(11))
-                .field(
-                    FieldDesc::new(inventory_field, "inventory")
-                        .type_hint("Inventory")
-                        .writable(true),
-                ),
-        );
-        registry.register(
-            TypeDesc::new(TypeKey::new(inventory_id, "Inventory"))
-                .host_type(HostTypeId::new(12))
-                .index_capability(
-                    HostIndexCapability::new()
-                        .readable(true)
-                        .writable(true)
-                        .addable(true)
-                        .removable(true)
-                        .key_type("i64")
-                        .value_type("Entry"),
-                ),
-        );
-        registry.register(
-            TypeDesc::new(TypeKey::new(entry_id, "Entry"))
-                .host_type(HostTypeId::new(13))
-                .field(
-                    FieldDesc::new(amount_field, "amount")
-                        .type_hint("i64")
-                        .writable(true),
-                ),
-        );
-        let schema = RegistryFacts::from_registry(&registry);
-
-        let mut graph = ModuleGraph::new();
-        graph.add_source(ModuleSource::new(
-            SourceId::new(18),
-            vela_package::PackageId::anonymous(),
-            ModulePath::from_qualified("game"),
-            r#"
-            fn main(player: Player, slot: i64) -> i64 {
-                return player.inventory[slot].amount;
-            }
-            "#,
-        ));
-        graph.resolve_imports();
-        assert_eq!(graph.diagnostics(), &[]);
-        let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
-        let body = graph
-            .bodies()
-            .find(|body| matches!(body.owner, vela_hir::body::HirBodyOwner::Declaration(_)))
-            .expect("main body");
-        let amount = body
-            .expressions
-            .values()
-            .find(|expression| {
-                matches!(&expression.kind, HirExprKind::Field(field) if field.name == "amount")
-            })
-            .expect("amount field");
-        let path = facts
-            .host_path_target(amount.id)
-            .expect("resolved host path");
-
-        assert_eq!(path.root_type.semantic, player_id);
-        assert_eq!(path.root_type.host_runtime, Some(HostTypeId::new(11)));
-        let [
-            HostPathSegmentFact::Field(inventory),
-            HostPathSegmentFact::Index {
-                owner,
-                kind,
-                capability,
-                ..
-            },
-            HostPathSegmentFact::Field(amount),
-        ] = path.segments.as_slice()
-        else {
-            panic!("unexpected host path: {path:?}");
-        };
-        assert_eq!(inventory.owner, player_id);
-        assert_eq!(inventory.semantic, inventory_field);
-        assert_eq!(inventory.host_runtime, Some(inventory_field));
-        assert!(inventory.access.writable);
-        assert!(!inventory.variant_field);
-        assert_eq!(owner.semantic, inventory_id);
-        assert_eq!(owner.host_runtime, Some(HostTypeId::new(12)));
-        assert_eq!(*kind, HostPathIndexKindFact::Index);
-        assert!(
-            capability.readable
-                && capability.writable
-                && capability.addable
-                && capability.removable
-        );
-        assert_eq!(capability.key, TypeFact::I64);
-        assert_eq!(capability.value, TypeFact::host("Entry"));
-        assert_eq!(amount.owner, entry_id);
-        assert_eq!(amount.semantic, amount_field);
-        assert_eq!(amount.host_runtime, Some(amount_field));
     }
 }

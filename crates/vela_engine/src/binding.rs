@@ -5,8 +5,6 @@ use std::fmt;
 use vela_bytecode::{RustBindingCallableIdentity, RustBindingSchema};
 use vela_common::{Capability, CapabilitySet, SourceId, Span};
 use vela_def::{FunctionId, MethodId, TypeId};
-use vela_host::lease::HostLeaseKind;
-use vela_host::object::ScriptHostObject;
 
 use crate::args::{FromScriptArg, IntoScriptArg};
 use crate::context::NativeCallContext;
@@ -318,13 +316,13 @@ impl<'runtime> RootBinding<'runtime> {
     }
 }
 
-pub struct ActiveBinding<'binding, 'context, 'host> {
-    context: &'binding mut NativeCallContext<'context, 'host>,
+pub struct ActiveBinding<'binding, 'context> {
+    context: &'binding mut NativeCallContext<'context>,
 }
 
-impl<'binding, 'context, 'host> ActiveBinding<'binding, 'context, 'host> {
+impl<'binding, 'context> ActiveBinding<'binding, 'context> {
     pub fn bind(
-        context: &'binding mut NativeCallContext<'context, 'host>,
+        context: &'binding mut NativeCallContext<'context>,
         expected: &'static BindingSchemaSpec,
     ) -> BindingResult<Self> {
         let actual = context.binding_schema().ok_or(BindingError {
@@ -343,31 +341,9 @@ pub trait BindingAuthority {
         R: FromScriptArg,
         A: IntoBindingArgs;
 
-    fn call_prepared<'args, R>(
-        &mut self,
-        callable: &BindingCallable,
-        args: CallArgs<'args>,
-    ) -> VmResult<R>
+    fn call_prepared<R>(&mut self, callable: &BindingCallable, args: CallArgs) -> VmResult<R>
     where
         R: FromScriptArg;
-
-    fn push_host_ref<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Sync + 'args;
-
-    fn push_host_mut<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args mut T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Send + 'args;
 }
 
 impl BindingAuthority for RootBinding<'_> {
@@ -386,11 +362,7 @@ impl BindingAuthority for RootBinding<'_> {
         R::from_script_arg(&owned)
     }
 
-    fn call_prepared<'args, R>(
-        &mut self,
-        callable: &BindingCallable,
-        args: CallArgs<'args>,
-    ) -> VmResult<R>
+    fn call_prepared<R>(&mut self, callable: &BindingCallable, args: CallArgs) -> VmResult<R>
     where
         R: FromScriptArg,
     {
@@ -401,35 +373,9 @@ impl BindingAuthority for RootBinding<'_> {
         let owned = self.runtime.value_to_owned(&result)?;
         R::from_script_arg(&owned)
     }
-
-    fn push_host_ref<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Sync + 'args,
-    {
-        args.push_host_ref(name, value);
-        Ok(())
-    }
-
-    fn push_host_mut<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args mut T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Send + 'args,
-    {
-        args.push_host_mut(name, value);
-        Ok(())
-    }
 }
 
-impl BindingAuthority for ActiveBinding<'_, '_, '_> {
+impl BindingAuthority for ActiveBinding<'_, '_> {
     fn call<R, A>(&mut self, callable: &BindingCallable, args: A) -> VmResult<R>
     where
         R: FromScriptArg,
@@ -447,11 +393,7 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         R::from_script_arg(&owned)
     }
 
-    fn call_prepared<'args, R>(
-        &mut self,
-        callable: &BindingCallable,
-        args: CallArgs<'args>,
-    ) -> VmResult<R>
+    fn call_prepared<R>(&mut self, callable: &BindingCallable, args: CallArgs) -> VmResult<R>
     where
         R: FromScriptArg,
     {
@@ -464,51 +406,14 @@ impl BindingAuthority for ActiveBinding<'_, '_, '_> {
         let owned = self.context.value_to_owned(&result)?;
         R::from_script_arg(&owned)
     }
-
-    fn push_host_ref<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Sync + 'args,
-    {
-        let root = self
-            .context
-            .resolve_host_reborrow(value, HostLeaseKind::Shared)?;
-        args.push_reborrowed_host_ref(name, root, value);
-        Ok(())
-    }
-
-    fn push_host_mut<'args, T>(
-        &mut self,
-        args: &mut CallArgs<'args>,
-        name: &'static str,
-        value: &'args mut T,
-    ) -> VmResult<()>
-    where
-        T: ScriptHostObject + Send + 'args,
-    {
-        let root = self
-            .context
-            .resolve_host_reborrow(value, HostLeaseKind::Exclusive)?;
-        args.push_reborrowed_host_mut(name, root, value);
-        Ok(())
-    }
 }
 
 pub trait IntoBindingArgs {
-    fn into_call_args<'args>(self) -> CallArgs<'args>
-    where
-        Self: 'args;
+    fn into_call_args(self) -> CallArgs;
 }
 
 impl IntoBindingArgs for () {
-    fn into_call_args<'args>(self) -> CallArgs<'args>
-    where
-        Self: 'args,
-    {
+    fn into_call_args(self) -> CallArgs {
         CallArgs::new()
     }
 }
@@ -521,9 +426,7 @@ macro_rules! binding_tuple_args {
                 $($type: IntoScriptArg,)+
             {
                 #[allow(non_snake_case)]
-                fn into_call_args<'args>(self) -> CallArgs<'args>
-                where
-                    Self: 'args,
+                fn into_call_args(self) -> CallArgs
                 {
                     let ($($type,)+) = self;
                     CallArgs::from_positional([$($type.into_script_arg(),)+])
@@ -554,16 +457,16 @@ fn stable_target(spec: &'static BindingCallableSpec) -> StableVelaFunction {
 fn binding_required_capabilities(effect_bits: u32) -> CapabilitySet {
     let mut required = CapabilitySet::new();
     for (bit, capability) in [
-        (6, Capability::HostRead),
-        (7, Capability::HostWrite),
-        (12, Capability::EventEmit),
-        (13, Capability::Time),
-        (14, Capability::Random),
-        (15, Capability::IoRead),
-        (16, Capability::IoWrite),
-        (9, Capability::ReflectionRead),
-        (10, Capability::ReflectionWrite),
-        (11, Capability::ReflectionCall),
+        (6, Capability::ReflectionRead),
+        (7, Capability::ReflectionWrite),
+        (8, Capability::ReflectionCall),
+        (9, Capability::EventEmit),
+        (10, Capability::Time),
+        (11, Capability::Random),
+        (12, Capability::IoRead),
+        (13, Capability::IoWrite),
+        (14, Capability::HostRead),
+        (15, Capability::HostWrite),
     ] {
         if effect_bits & (1 << bit) != 0 {
             required.insert(capability);
@@ -642,6 +545,35 @@ mod tests {
     use crate::args::IntoScriptArg;
     use crate::engine::Engine;
     use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, TypeHint};
+
+    #[test]
+    fn binding_effect_bits_match_the_current_value_only_schema() {
+        for bits in 0_u32..(1 << 16) {
+            let present = |index: u32| bits & (1_u32 << index) != 0_u32;
+            let effects = vela_bytecode::RustBindingEffectSet {
+                may_trap: present(0),
+                may_allocate: present(1),
+                script_call: present(2),
+                dynamic_call: present(3),
+                state_read: present(4),
+                state_write: present(5),
+                reflection_read: present(6),
+                reflection_write: present(7),
+                reflection_call: present(8),
+                emits_event: present(9),
+                reads_time: present(10),
+                uses_random: present(11),
+                reads_io: present(12),
+                writes_io: present(13),
+                host_read: present(14),
+                host_write: present(15),
+            };
+            assert_eq!(
+                binding_required_capabilities(effects.bits()),
+                effects.required_capabilities()
+            );
+        }
+    }
 
     fn function_spec(
         schema: &RustBindingSchema,
@@ -793,6 +725,107 @@ mod tests {
             error.kind,
             BindingErrorKind::IncompatibleType { .. }
         ));
+    }
+
+    fn assert_active_binding_native_effect_ceiling(effects: EffectSet, capability: Capability) {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+
+        const SOURCE: &str = "pub fn guarded() -> i64 { return test::value(); } fn main() -> i64 { return test::reenter(); }";
+        for ceiling in [
+            EffectSet::pure(),
+            EffectSet::host_read(),
+            EffectSet::host_write(),
+        ] {
+            for prepared in [false, true] {
+                let calls = Arc::new(AtomicUsize::new(0));
+                let builder = || {
+                    let calls = Arc::clone(&calls);
+                    Engine::builder()
+                        .capability(Capability::HostRead)
+                        .capability(Capability::HostWrite)
+                        .register_native_fn(
+                            NativeFunctionDesc::new("test::value", FunctionId::new(0xDCA1))
+                                .returns(TypeHint::i64())
+                                .effects(effects),
+                            move |_| {
+                                calls.fetch_add(1, Ordering::SeqCst);
+                                Ok(OwnedValue::i64(42))
+                            },
+                        )
+                };
+                let descriptor = || {
+                    NativeFunctionDesc::new("test::reenter", FunctionId::new(0xDCA2))
+                        .returns(TypeHint::i64())
+                        .effects(ceiling)
+                };
+                let preview_engine = builder()
+                    .register_context_host_native_fn(descriptor(), |_, _| Ok(OwnedValue::i64(0)))
+                    .build()
+                    .expect("preview engine");
+                let preview = preview_engine
+                    .compile_source(SOURCE)
+                    .expect("preview program");
+                let guarded = preview
+                    .binding_schema()
+                    .callables()
+                    .find(|callable| callable.public_path == "guarded")
+                    .expect("guarded binding");
+                assert_eq!(
+                    guarded.effects.required_capabilities(),
+                    CapabilitySet::new().with(capability)
+                );
+                let expected = function_spec(preview.binding_schema(), "guarded", 0, 0);
+                let engine = builder()
+                    .register_context_host_native_fn(descriptor(), move |_, context| {
+                        let callable = BindingCallable::new(expected, 0);
+                        let mut binding = ActiveBinding::bind(context, expected)?;
+                        let value: i64 = if prepared {
+                            binding.call_prepared(&callable, CallArgs::new())?
+                        } else {
+                            binding.call(&callable, ())?
+                        };
+                        Ok(OwnedValue::i64(value))
+                    })
+                    .build()
+                    .expect("engine");
+                let program = engine.compile_source(SOURCE).expect("program");
+                let mut runtime = Runtime::new(engine, program).expect("runtime");
+                let result = runtime.call(
+                    "main",
+                    CallArgs::new(),
+                    CallOptions::new(10_000, 1 << 20, 32),
+                );
+                let allowed = ceiling.writes_host()
+                    || (ceiling.reads_host() && capability == Capability::HostRead);
+                if allowed {
+                    assert_eq!(
+                        runtime.value_to_owned(&result.expect("declared effect ceiling")),
+                        Ok(OwnedValue::i64(42))
+                    );
+                    assert_eq!(calls.load(Ordering::SeqCst), 1);
+                } else {
+                    assert!(
+                        matches!(result.expect_err("engine grant cannot expand a native effect ceiling").kind(),
+                        VmErrorKind::PermissionDenied { native, capability: denied }
+                            if native == "guarded" && denied == capability.as_str())
+                    );
+                    assert_eq!(calls.load(Ordering::SeqCst), 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn active_binding_enforces_value_native_host_write_effect_ceiling() {
+        assert_active_binding_native_effect_ceiling(EffectSet::host_write(), Capability::HostWrite);
+    }
+
+    #[test]
+    fn active_binding_enforces_value_native_host_read_effect_ceiling() {
+        assert_active_binding_native_effect_ceiling(EffectSet::host_read(), Capability::HostRead);
     }
 
     #[test]

@@ -40,77 +40,42 @@ fn main() {
 
 #[test]
 fn linked_callback_methods_forward_inline_caches_to_callback_body() {
-    let host_ref = player_ref(3);
-    let mut registry = vela_stdlib::standard_registry().expect("standard registry should build");
-    let player = registry
-        .register_type(
-            vela_registry::TypeDef::new(vela_def::DefPath::ty(
-                "host",
-                std::iter::empty::<&str>(),
-                "Player",
-            ))
-            .host_runtime_id(host_ref.type_id.get().into()),
-        )
-        .expect("test host type should register");
-    registry
-        .register_field(
-            vela_registry::FieldDef::new(
-                vela_def::DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
-                player,
-            )
-            .host_runtime_id(level_field().get())
-            .type_hint(Some("i64".to_owned())),
-        )
-        .expect("test host field should register");
-    let program = compile_test_program_with_registry(
+    let program = compile_standard_program_source_with_native_functions(
         SourceId::new(1),
-        r#"
-fn main(player: Player) {
-    let mapped = [1, 2, 3].map(|value| value + player.level);
-    return mapped[0];
-}
-"#,
-        registry.compile_view(),
+        "fn main() { return [1, 2, 3].map(|value| probe::add(value))[0]; }",
+        &["probe::add"],
     )
-    .expect("standard callback method source should compile");
-    let linked = link_test_program(&program);
-    let caches = RecordingHostAccessCaches::new(
-        linked
-            .functions()
-            .map(|(_, code)| code.cache_sites.len())
-            .max()
-            .unwrap_or(0),
-    );
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(40)),
-    );
-    let mut access = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut access,
-        state_values: None,
-    };
+    .expect("compile callback with native body");
+    let mut vm = Vm::new();
+    vm.register_native("probe::add", |args| {
+        let OwnedValue::Scalar(vela_common::ScalarValue::I64(value)) = args[0] else {
+            panic!("callback must pass its integer argument");
+        };
+        Ok(OwnedValue::i64(value + 40))
+    });
+    let mut linker = Linker::new();
+    vm.native_implementation_ids()
+        .for_each(|id| linker.add_native_implementation(id));
+    let linked = linker
+        .link_test_program(&program)
+        .expect("link callback native");
+    let caches = RecordingNativeCallCaches::new(max_cache_site_len(&linked));
+    let mut host = HostExecution { state_values: None };
     let mut budget = ExecutionBudget::unbounded();
-
-    let result = Vm::new()
-        .run_linked_program_with_host_budget_and_caches(
+    assert_eq!(
+        vm.run_linked_program_with_host_budget_and_caches(
             &linked,
             "main",
-            &[OwnedValue::HostRef(host_ref)],
+            &[],
             &mut host,
             &mut budget,
             Some(&caches),
-        )
-        .expect("linked callback should run");
-
-    assert_eq!(
-        result,
-        OwnedValue::Scalar(vela_common::ScalarValue::I64(41))
+        ),
+        Ok(OwnedValue::i64(41))
     );
     assert!(
-        caches.recorded_entry().is_some(),
-        "callback host read should populate the shared inline cache provider"
+        caches.entry.borrow().is_some(),
+        "callback body populates its native cache"
     );
 }
 
@@ -933,21 +898,17 @@ fn main() {
     );
 }
 
-struct RecordingHostAccessCaches {
+struct RecordingNativeCallCaches {
     len: usize,
-    entry: RefCell<Option<HostInlineCacheEntry>>,
+    entry: RefCell<Option<NativeInlineCacheEntry>>,
 }
 
-impl RecordingHostAccessCaches {
+impl RecordingNativeCallCaches {
     fn new(len: usize) -> Self {
         Self {
             len,
             entry: RefCell::new(None),
         }
-    }
-
-    fn recorded_entry(&self) -> Option<HostInlineCacheEntry> {
-        *self.entry.borrow()
     }
 }
 
@@ -1083,16 +1044,16 @@ fn link_standard_native_test_program(program: &UnlinkedProgram) -> Arc<LinkedArt
         .expect("standard native test program should link")
 }
 
-impl VmInlineCaches for RecordingHostAccessCaches {
+impl VmInlineCaches for RecordingNativeCallCaches {
     fn len(&self) -> usize {
         self.len
     }
 
-    fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        *self.entry.borrow()
+    fn native_call(&self, _site: CacheSiteId) -> Option<NativeInlineCacheEntry> {
+        self.entry.borrow().clone()
     }
 
-    fn set_host_access(&self, _site: CacheSiteId, entry: HostInlineCacheEntry) {
+    fn set_native_call(&self, _site: CacheSiteId, entry: NativeInlineCacheEntry) {
         *self.entry.borrow_mut() = Some(entry);
     }
 }

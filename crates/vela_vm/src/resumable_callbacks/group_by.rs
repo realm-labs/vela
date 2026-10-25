@@ -79,15 +79,11 @@ pub(super) fn finish_entries(
 
 pub(super) fn protect_values(
     values: &[Value],
-    host_sequence: Option<&crate::iteration::IteratorState>,
     groups: &BTreeMap<ValueKey, GroupValues>,
     awaiting: Option<&Value>,
     heap: &mut HeapExecution<'_>,
 ) {
     heap.protect_values(values);
-    if let Some(iterator) = host_sequence {
-        heap.protect_values(&iterator.protected_values());
-    }
     for group in groups.values() {
         heap.protect_values(&[group.key]);
         heap.protect_values(&group.values);
@@ -99,14 +95,10 @@ pub(super) fn protect_values(
 
 pub(super) fn protect_entries(
     entries: &[(Value, Value)],
-    host_sequence: Option<&crate::iteration::IteratorState>,
     groups: &BTreeMap<ValueKey, GroupEntries>,
     awaiting: Option<&(Value, Value)>,
     heap: &mut HeapExecution<'_>,
 ) {
-    if let Some(iterator) = host_sequence {
-        heap.protect_values(&iterator.protected_values());
-    }
     for (key, value) in entries {
         heap.protect_values(&[*key, *value]);
     }

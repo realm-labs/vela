@@ -53,136 +53,10 @@ fn engine_builder_registers_module_reflection_metadata() {
 }
 
 #[test]
-fn engine_registers_native_method_source_span_metadata() {
-    let source_span = Span::new(SourceId::new(8), 30, 42);
-    let owner = TypeKey::new(TypeId::new(1), "Player");
-    let engine = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_native_method_fn(
-            NativeMethodDesc::new(owner, HostMethodId::new(51), "grant_exp")
-                .param("amount", TypeHint::i64())
-                .returns(TypeHint::i64())
-                .effects(EffectSet::host_write())
-                .source_span(source_span),
-            |_, _, _| Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(0))),
-        )
-        .build()
-        .expect("engine should build");
-    let registry = engine.registry();
-    let method = registry
-        .type_by_name("Player")
-        .and_then(|desc| {
-            desc.methods
-                .iter()
-                .find(|method| method.name == "grant_exp")
-        })
-        .expect("native method metadata");
-
-    assert_eq!(method.source_span, Some(source_span));
-
-    let method_abi = MethodAbi::from_method("Player", method);
-    assert_eq!(method_abi.source_span, Some(source_span));
-}
-
-#[test]
-fn engine_installs_permissioned_reflection_natives() {
-    let engine = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .reflection_permissions(
-            ReflectPermissionSet::read_only().with(ReflectPermission::InspectHostPath),
-        )
-        .build()
-        .expect("engine should build");
-    let program = engine
-        .compile_source_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player) {
-    if reflect::name(player) == "Player" && reflect::get(player, "level") == 7 {
-        reflect::set(player, "level", 8);
-    }
-    return 0;
-}
-"#,
-        )
-        .expect("program should compile");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
-    );
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    assert!(matches!(
-        run_linked_program_with_host(
-            &engine,
-            &program,
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        ),
-        Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::PermissionDenied {
-            permission: ReflectPermission::WriteValueFields
-        })
-    ));
-}
-
-#[test]
-fn engine_compiler_keeps_reflect_module_calls_off_host_method_lowering() {
-    let engine = Engine::builder()
-        .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "set")),
-        )
-        .reflection_policy(vela_reflect::permissions::ReflectPolicy::all())
-        .build()
-        .expect("engine should build");
-    let program = engine
-        .compile_source_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player: Player) {
-    reflect::set(player, "level", 12);
-    return reflect::get(player, "level");
-}
-"#,
-        )
-        .expect("reflect::set should compile as a native module call");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Scalar(vela_common::ScalarValue::I64(7)),
-    );
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    assert_eq!(
-        run_linked_program_with_host(
-            &engine,
-            &program,
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
-    );
-}
-
-#[test]
 fn public_reflection_metadata_lists_do_not_need_engine_permissions() {
     let engine = Engine::builder()
         .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "secret_level")),
         )
         .register_native_fn(
@@ -211,13 +85,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
@@ -229,12 +98,10 @@ fn main() {
 fn engine_missing_permissions_hide_reflection_metadata_lists() {
     let engine = Engine::builder()
         .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
-                .field(
-                    FieldDesc::new(FieldId::new(1), "secret_level")
-                        .access(FieldAccess::new().require_permission("player.inspect")),
-                ),
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).field(
+                FieldDesc::new(FieldId::new(1), "secret_level")
+                    .access(FieldAccess::new().require_permission("player.inspect")),
+            ),
         )
         .register_native_fn(
             NativeFunctionDesc::new("game::secret_bonus", NativeFunctionId::new(77))
@@ -260,13 +127,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),

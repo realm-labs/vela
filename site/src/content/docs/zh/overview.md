@@ -1,39 +1,14 @@
 ---
-title: "概览"
-description: "Vela 概览文档。"
+title: "Overview"
+description: "Vela 同步语言与删除边界。"
 ---
 
-Vela 是一个给 Rust 宿主使用的脚本语言，适合把业务规则放进可更新的脚本里，同时让持久状态、权限和运行时副作用仍然由 Rust 控制。
+Vela 是同步、解释执行、Hot Reload First 的动态脚本语言。保留普通函数、结构体、枚举、trait、模块与包、脚本集合及迭代器、受控反射、非移动 GC 和有限执行预算。
 
-游戏服务器脚本是主要验证场景，但语言核心保持领域无关。玩家、任务、奖励、订单、账户、工作流这类对象来自宿主注册和示例，不是语言内建特殊对象。
+现有独立同步 native/value API 与 serde 快照转换继续可用，脚本修改不会隐式写回 Rust。普通 VM `state` 在兼容热重载时保留；活动调用与旧闭包保留精确的旧代码代际、嵌套调用和状态。
 
-## Vela 重点解决什么
+已删除 Service/Provider、脚本 async/tasks、借用的 Rust 根/参数/返回值/view、租约/释放、透明宿主路径、依赖的 `extern state` 绑定和 Host 构造器/方法。普通脚本状态和 LSP 工作线程不是删除对象。没有新增 opaque 对象、codec、转换或重入 API；这些设计问题单独延期。
 
-Vela 首先是 Hot Reload First。源码会编译成带版本的字节码，更新时在安全边界替换函数或模块 CodeObject。已经在运行的调用帧继续执行旧代码，新调用在更新接受后进入新代码。
+继续使用 `native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例。工具元数据使用严格格式 4；旧格式与已删除字段被拒绝。修改后的夹具不代表新的原生编辑器采集，也不代表完整仓库验收通过。
 
-Vela 也把 HostAccess 当成核心边界。脚本可以写成普通字段访问：
-
-```vela
-fn level_up(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-```
-
-这不会把 Rust 的 `&mut Player` 暴露给脚本。VM 会把读改写操作路由到 `HostRef`、`HostPath`、`PathProxy` 和 `HostAccess`，由宿主 adapter 校验权限并执行写入。
-
-## Vela 不是什么
-
-Vela 不是动态 Rust，也不是 Lua table/metatable 模型的复刻，更不是无限制插件沙箱。MVP 明确不包含脚本泛型、JIT、脚本可见的 task/coroutine handle、monkey patching、运行时修改类型结构，也不会把真实 Rust 引用暴露给脚本。脚本同步执行，不支持 async 声明、await 表达式和分离任务。编辑器 worker 和协议取消属于独立的工具基础设施。
-
-语言是动态的，但嵌入边界是显式的。宿主决定哪些类型、字段、方法、native 函数、extern state、能力和预算对某个 Runtime 可用。
-
-## 系统形态
-
-常规执行链路是：
-
-```text
-source -> parser -> HIR -> bytecode -> VM -> HostAccess -> Rust host state
-```
-
-宿主创建 `Engine`，编译单个源码或目录为 program，再创建 `Runtime`，通过 `CallArgs` 和 `CallOptions` 调用脚本入口。反射和诊断可以查询元数据、报告错误和执行受控读写调用，但不能在运行时修改注册 schema。
+参见 [English reference](/overview/) 和仓库中的权威目标、架构、进度与删除计划文档。

@@ -54,4 +54,4 @@ fn total(rewards) -> i64 {
 
 ## 宿主边界
 
-对宿主路径使用索引可能表示 HostAccess 操作，而不是脚本 map 修改。能力、只读字段、generation 和 schema epoch 仍由宿主 adapter 检查。
+透明宿主路径索引已经删除。Map 操作只修改脚本自有值，不隐式写回 Rust。

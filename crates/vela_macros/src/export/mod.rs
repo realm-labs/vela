@@ -52,11 +52,11 @@ mod tests {
     use super::expand_result;
 
     #[test]
-    fn export_accepts_ordinary_value_and_host_parameters() {
+    fn export_accepts_owned_values_and_invocation_local_shared_values() {
         let expanded = expand_result(
             quote! { path = "game::grant_exp" },
             quote! {
-                pub fn grant_exp(player: &mut Player, amount: i64) -> VmResult<()> {
+                pub fn grant_exp(player: &Player, amount: i64) -> VmResult<()> {
                     Ok(())
                 }
             },
@@ -65,8 +65,33 @@ mod tests {
         let output = expanded.to_string();
 
         assert!(output.contains("vela_callable_contract_grant_exp"));
-        assert!(output.contains("ExclusiveHost"));
-        assert!(output.contains("host_write"));
+        assert!(output.contains("ReadOnlyValueBorrow"));
+        assert!(output.contains("FromScriptArg"));
+        assert!(output.contains("catch_export_panic"));
+        assert!(!output.contains("lease"));
+        assert!(!output.contains("VelaHostBoundary"));
+    }
+
+    #[test]
+    fn shared_value_adapter_decodes_owned_backing_without_a_host_fallback() {
+        let expanded = expand_result(
+            quote! { path = "data::inspect" },
+            quote! {
+                pub fn inspect(record: &Record, name: &str, label: &String) -> String {
+                    todo!()
+                }
+            },
+        )
+        .expect("shared values use invocation-local decoding")
+        .to_string();
+        assert!(expanded.contains("as :: vela_engine :: args :: FromScriptArg"));
+        assert!(expanded.contains("__vela_arg_1 . as_str ()"));
+        assert!(expanded.contains("& __vela_arg_0"));
+        assert!(expanded.contains("& __vela_arg_2"));
+        assert!(expanded.contains("register_native_fn"));
+        for removed in ["vela_host", "lease", "HostBoundary", "with_host"] {
+            assert!(!expanded.contains(removed), "unexpected adapter: {removed}");
+        }
     }
 
     #[test]

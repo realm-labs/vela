@@ -2,15 +2,15 @@ use super::*;
 
 use std::collections::BTreeSet;
 
-use vela_common::{HostTypeId, ShapeId};
+use vela_common::ShapeId;
 use vela_def::{FieldId, MethodId};
 use vela_hir::ids::{HirLocalId, HirParamId};
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileMethodAccess,
     CompileMethodClass, CompileMethodDescriptor, CompileTypeClass, CompileTypeDescriptor,
-    HostFieldTarget, MirAggregate, MirCall, MirGuard, MirGuardAssumption, MirGuardContext,
-    MirGuardLocation, MirHostPathSegment, MirTypeContract,
+    MirAggregate, MirCall, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardLocation,
+    MirTypeContract,
 };
 
 #[test]
@@ -221,7 +221,6 @@ fn mir_verifier_accepts_registry_native_value_method_and_reflection_targets() {
             debug_name: "dispatch".to_owned(),
             signature: registry_signature.clone(),
             arguments: Vec::new(),
-            scoped_borrow_return: false,
         }),
         MirStatementKind::Call(MirCall::ValueMethod {
             owner,
@@ -288,7 +287,6 @@ fn mir_verifier_rejects_incomplete_duplicate_and_mistyped_aggregates() {
             contract: None,
             declaration_order: order as u32,
             access: CompileFieldAccess::script(),
-            host_runtime: None,
         }));
     }
     let mut record_function = function();
@@ -573,69 +571,6 @@ fn mir_verifier_rejects_enum_family_field_writes() {
 }
 
 #[test]
-fn mir_verifier_rejects_host_write_permission_bypass() {
-    let semantic = TypeId::new(7_400);
-    let runtime = HostTypeId::new(7_401);
-    let field = FieldId::new(7_402);
-    let access = CompileFieldAccess::new(true, false, true, false, Vec::new());
-    let host_type = HostTypeTarget { semantic, runtime };
-    let mut table = target_table();
-    assert!(table.insert_type(CompileTypeDescriptor {
-        id: semantic,
-        canonical_name: "host::Readonly".to_owned(),
-        runtime_name: "host::Readonly".to_owned(),
-        class: CompileTypeClass::Host { runtime },
-        shape: None,
-        fields: vec![field],
-        variants: Vec::new(),
-    }));
-    assert!(table.insert_field(CompileFieldDescriptor {
-        id: field,
-        owner: semantic,
-        variant: None,
-        name: "value".to_owned(),
-        contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-        declaration_order: 0,
-        access: access.clone(),
-        host_runtime: Some(field),
-    }));
-
-    let mut function = function();
-    let root = function.add_synthetic_local(MirValueType::Host(host_type), origin());
-    function
-        .append_statement(
-            function.entry_block(),
-            MirStatement::new(
-                origin(),
-                None,
-                MirStatementKind::Host(MirHostOperation::Write {
-                    root: MirOperand::Local(root),
-                    path: MirHostPath {
-                        root_type: host_type,
-                        segments: vec![MirHostPathSegment::Field(HostFieldTarget {
-                            owner: host_type,
-                            semantic: field,
-                            runtime: field,
-                            access,
-                        })],
-                    },
-                    value: scalar(1),
-                }),
-                MirEffect::host_write(),
-                None,
-            ),
-        )
-        .expect("host write");
-    finish(&mut function);
-    let mut program = crate::MirProgram::new(table);
-    program.add_function(function).expect("MIR function");
-    assert!(matches!(
-        verify_error(&program).into_kind(),
-        MirVerifyErrorKind::InvalidHostContract(_)
-    ));
-}
-
-#[test]
 fn mir_verifier_rechecks_call_argument_placement_after_construction() {
     let native = FunctionId::new(7_500);
     let parameter = CompileParameter {
@@ -672,7 +607,6 @@ fn mir_verifier_rechecks_call_argument_placement_after_construction() {
                 debug_name: "one".to_owned(),
                 signature: native_signature,
                 arguments: Vec::new(),
-                scoped_borrow_return: false,
             }),
             MirEffect::external_call(),
             Some(safepoint),

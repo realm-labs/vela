@@ -29,11 +29,6 @@ pub(super) fn item_keyword_completions(prefix: &str) -> Vec<CompletionItem> {
             "per-Runtime VM state declaration",
             "state ${1:name}: ${2:Type} = ${3:expression};",
         ),
-        (
-            "extern state",
-            "host-owned extern state declaration",
-            "extern state ${1:name}: ${2:Type};",
-        ),
         ("pub", "public visibility", "pub $0"),
     ]
     .into_iter()

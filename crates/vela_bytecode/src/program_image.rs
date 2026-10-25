@@ -303,9 +303,8 @@ fn rewrite_instruction_cache_sites(
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{HostTypeId, StateSlot};
-    use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId};
-    use vela_host::target::HostTargetPlan;
+    use vela_common::StateSlot;
+    use vela_def::{FunctionId, MethodId, StateId, TypeId};
 
     use crate::{
         CacheSiteId, CacheSiteKind, Constant, InstructionOffset, Register, UnlinkedCodeObject,
@@ -341,8 +340,8 @@ mod tests {
     fn image_preserves_state_layout_and_script_methods() {
         let mut program = UnlinkedProgram::new();
         program.set_states([
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::first"),
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(2), "main::second"),
+            crate::StateDescriptor::test_vm(vela_def::StateId::new(1), "main::first"),
+            crate::StateDescriptor::test_vm(vela_def::StateId::new(2), "main::second"),
         ]);
         program.insert_function(UnlinkedCodeObject::new("main", 0));
         let owner = TypeId::new(11);
@@ -380,8 +379,8 @@ mod tests {
         let second = StateId::new(2);
         let descriptors = || {
             [
-                crate::StateDescriptor::test_extern(first, "main::first"),
-                crate::StateDescriptor::test_extern(second, "main::second"),
+                crate::StateDescriptor::test_vm(first, "main::first"),
+                crate::StateDescriptor::test_vm(second, "main::second"),
             ]
         };
 
@@ -465,10 +464,9 @@ mod tests {
     #[test]
     fn image_rewrites_cache_site_ids_to_image_state_indexes() {
         let mut first = UnlinkedCodeObject::new("read_first", 1);
-        let first_local =
-            first.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
+        let first_local = first.push_cache_site(CacheSiteKind::StateRead, InstructionOffset(0));
         first.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadExternState {
+            UnlinkedInstructionKind::LoadState {
                 dst: Register(0),
                 state: "main::first".to_owned(),
                 slot: None,
@@ -476,10 +474,9 @@ mod tests {
             },
         ));
         let mut second = UnlinkedCodeObject::new("read_second", 1);
-        let second_local =
-            second.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
+        let second_local = second.push_cache_site(CacheSiteKind::StateRead, InstructionOffset(0));
         second.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::LoadExternState {
+            UnlinkedInstructionKind::LoadState {
                 dst: Register(0),
                 state: "main::second".to_owned(),
                 slot: None,
@@ -513,86 +510,14 @@ mod tests {
         );
     }
 
-    #[test]
-    fn image_rewrites_host_cache_site_ids_to_image_state_indexes() {
-        let mut first = UnlinkedCodeObject::new("read_first_host", 2);
-        let first_target = first
-            .intern_host_target(HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(1)));
-        let first_local = first.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-        first.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::HostRead {
-                dst: Register(1),
-                root: Register(0),
-                target: first_target,
-                dynamic_args: Vec::new(),
-                cache_site: first_local,
-            },
-        ));
-
-        let mut second = UnlinkedCodeObject::new("read_second_host", 2);
-        let second_target = second
-            .intern_host_target(HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(1)));
-        let second_local =
-            second.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-        second.push_instruction(UnlinkedInstruction::new(
-            UnlinkedInstructionKind::HostRead {
-                dst: Register(1),
-                root: Register(0),
-                target: second_target,
-                dynamic_args: Vec::new(),
-                cache_site: second_local,
-            },
-        ));
-        assert_eq!(first_local, second_local);
-
-        let mut program = UnlinkedProgram::new();
-        program.insert_function(first);
-        program.insert_function(second);
-        let image = ProgramImage::from_program(&program);
-        let first = image
-            .function_by_name("read_first_host")
-            .expect("first host function");
-        let second = image
-            .function_by_name("read_second_host")
-            .expect("second host function");
-        let first_site = host_read_cache_site(first);
-        let second_site = host_read_cache_site(second);
-
-        assert_eq!(image.cache_site_count(), 2);
-        assert_ne!(first_site, second_site);
-        assert_eq!(
-            image.cache_site(first_site).expect("first host site").id,
-            first_site
-        );
-        assert_eq!(
-            image.cache_site(second_site).expect("second host site").id,
-            second_site
-        );
-        assert_eq!(image.verify(), Ok(()));
-    }
-
     fn load_state_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
         function
             .instructions
             .iter()
             .find_map(|instruction| match &instruction.kind {
-                UnlinkedInstructionKind::LoadExternState {
-                    cache_site: Some(site),
-                    ..
-                } => Some(*site),
+                UnlinkedInstructionKind::LoadState { cache_site, .. } => *cache_site,
                 _ => None,
             })
             .expect("function should have state read cache site")
-    }
-
-    fn host_read_cache_site(function: &UnlinkedCodeObject) -> CacheSiteId {
-        function
-            .instructions
-            .iter()
-            .find_map(|instruction| match &instruction.kind {
-                UnlinkedInstructionKind::HostRead { cache_site, .. } => Some(*cache_site),
-                _ => None,
-            })
-            .expect("function should have host read cache site")
     }
 }

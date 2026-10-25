@@ -84,7 +84,7 @@ pub use rename::{
 };
 pub use schema::{
     SCHEMA_ARTIFACT_FORMAT_VERSION, SchemaArtifact, SchemaArtifactError, SchemaArtifactFacts,
-    SchemaCollectionViewFact, SchemaSourceLocations, SchemaTypeBindingFact,
+    SchemaSourceLocations, SchemaTypeBindingFact,
 };
 pub use selection::SelectionRange;
 pub use semantic_tokens::{
@@ -112,6 +112,9 @@ mod boundary_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod removed_boundary_tests;
 
 #[cfg(test)]
 mod folding_body_tests;

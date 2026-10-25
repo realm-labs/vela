@@ -444,9 +444,6 @@ pub(crate) fn identity_equal(
 ) -> VmResult<bool> {
     match (identity_key(lhs, heap)?, identity_key(rhs, heap)?) {
         (IdentityKey::Heap(lhs), IdentityKey::Heap(rhs)) => Ok(lhs == rhs),
-        (IdentityKey::Host(lhs), IdentityKey::Host(rhs)) => Ok(lhs == rhs),
-        (IdentityKey::Heap(_), IdentityKey::Host(_))
-        | (IdentityKey::Host(_), IdentityKey::Heap(_)) => Ok(false),
     }
 }
 
@@ -609,15 +606,10 @@ impl OrderingOp {
 fn receiver_type_identity<'a>(
     receiver: &Value,
     heap: Option<&'a HeapExecution<'_>>,
-    host: Option<&HostExecution<'_>>,
-    registry: Option<&'a TypeRegistry>,
+    _host: Option<&HostExecution<'_>>,
+    _registry: Option<&'a TypeRegistry>,
 ) -> Option<(TypeId, &'a str)> {
     match receiver {
-        Value::HostRef(reference) => {
-            let reference = host?.resolve_host_ref(*reference).ok()?;
-            let desc = registry?.type_of_host(reference)?;
-            Some((desc.key.id, desc.key.name.as_str()))
-        }
         Value::HeapRef(reference) => match heap?.heap.get(*reference)? {
             HeapValue::Record {
                 fields,
@@ -788,7 +780,7 @@ fn heap_leaf<'a>(
         HeapValue::String(value) => Ok(Some(HeapLeaf::String(value))),
         HeapValue::Bytes(value) => Ok(Some(HeapLeaf::Bytes(value))),
         HeapValue::Range(value) => Ok(Some(HeapLeaf::Range(*value))),
-        HeapValue::PathProxy(_) => non_comparable("equal"),
+
         HeapValue::Tuple(_)
         | HeapValue::Array(_)
         | HeapValue::Map(_)
@@ -803,7 +795,6 @@ fn heap_leaf<'a>(
 fn identity_key(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<IdentityKey> {
     match value {
         Value::HeapRef(reference) => heap_identity_key(*reference, heap),
-        Value::HostRef(reference) => Ok(IdentityKey::Host(*reference)),
         Value::Missing => non_comparable("identity equal"),
         Value::Unit
         | Value::Bool(_)
@@ -833,11 +824,9 @@ fn heap_identity_key(reference: GcRef, heap: Option<&HeapExecution<'_>>) -> VmRe
         | HeapValue::Enum { .. }
         | HeapValue::Closure(_)
         | HeapValue::Iterator(_) => Ok(IdentityKey::Heap(reference)),
-        HeapValue::String(_)
-        | HeapValue::Bytes(_)
-        | HeapValue::Range(_)
-        | HeapValue::Tuple(_)
-        | HeapValue::PathProxy(_) => non_comparable("identity equal"),
+        HeapValue::String(_) | HeapValue::Bytes(_) | HeapValue::Range(_) | HeapValue::Tuple(_) => {
+            non_comparable("identity equal")
+        }
     }
 }
 
@@ -857,18 +846,14 @@ enum HeapLeaf<'a> {
 
 enum IdentityKey {
     Heap(GcRef),
-    Host(vela_host::path::HostSlotRef),
 }
 
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
-    use vela_common::{HostObjectId, HostTypeId, ShapeId};
+    use vela_common::ShapeId;
     use vela_def::TypeId;
-    use vela_host::path::{HostRef, HostSlotRef};
-    use vela_host::proxy::PathProxy;
-    use vela_host::target::HostTargetPlan;
 
     use crate::heap::{RecordIdentity, ScriptHeap};
     use crate::ranges::RangeValue;
@@ -936,17 +921,14 @@ mod tests {
     }
 
     #[test]
-    fn semantic_equality_rejects_missing_and_path_proxy() {
+    fn semantic_equality_rejects_missing_and_tuple() {
+        let mut heap = ScriptHeap::new();
         assert_type_mismatch(
             values_equal(&Value::Missing, &Value::Missing, None),
             "equal",
         );
 
-        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-        let plan = HostTargetPlan::new(host_ref.type_id);
-        let mut heap = ScriptHeap::new();
-        let proxy =
-            Value::HeapRef(heap.allocate(HeapValue::PathProxy(PathProxy::new(host_ref, plan))));
+        let proxy = Value::HeapRef(heap.allocate(HeapValue::Tuple(vec![])));
         let heap = HeapExecution::new(&mut heap);
 
         assert_type_mismatch(values_equal(&proxy, &proxy, Some(&heap)), "equal");
@@ -969,22 +951,6 @@ mod tests {
         assert_type_mismatch(
             identity_equal(&Value::I64(1), &Value::I64(1), Some(&heap)),
             "identity equal",
-        );
-    }
-
-    #[test]
-    fn identity_equality_compares_host_refs_without_host_reads() {
-        let first = HostSlotRef::new(7, 1);
-        let same = HostSlotRef::new(7, 1);
-        let stale = HostSlotRef::new(7, 2);
-
-        assert_eq!(
-            identity_equal(&Value::HostRef(first), &Value::HostRef(same), None),
-            Ok(true)
-        );
-        assert_eq!(
-            identity_equal(&Value::HostRef(first), &Value::HostRef(stale), None),
-            Ok(false)
         );
     }
 

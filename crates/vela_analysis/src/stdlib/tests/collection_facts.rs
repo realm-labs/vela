@@ -1,108 +1,10 @@
 use super::*;
 use crate::logical_records::map_entry;
-use vela_common::CollectionViewMutation;
 
 #[test]
-fn borrowed_collection_methods_follow_view_mutation_capabilities() {
-    let array_view = TypeFact::array_view(TypeFact::I64);
-    let array_fixed = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed);
-    let array_growable = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable);
-
-    for receiver in [&array_view, &array_fixed] {
-        assert!(stdlib_method_fact(receiver, "push", None).is_none());
-        assert!(stdlib_method_fact(receiver, "remove_at", None).is_none());
-        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
-        let filter = stdlib_method_fact(receiver, "filter", None).expect("read method fact");
-        assert_eq!(filter.receiver, receiver.clone());
-        assert_eq!(filter.returns, TypeFact::array(TypeFact::I64));
-        let get = stdlib_method_fact(receiver, "get", None).expect("indexed lookup fact");
-        assert_eq!(get.receiver, receiver.clone());
-        assert_eq!(get.params, vec![TypeFact::I64]);
-        assert_eq!(get.returns, TypeFact::option(TypeFact::I64));
-    }
-    let push = stdlib_method_fact(&array_growable, "push", None).expect("growable push");
-    assert_eq!(push.receiver, array_growable);
-    assert_eq!(push.params, vec![TypeFact::I64]);
-    assert!(stdlib_method_fact(&array_growable, "retain", None).is_some());
-
-    let map_view = TypeFact::map_view(TypeFact::STRING, TypeFact::I64);
-    let map_fixed = TypeFact::map_mut(
-        TypeFact::STRING,
-        TypeFact::I64,
-        CollectionViewMutation::Fixed,
-    );
-    let map_growable = TypeFact::map_mut(
-        TypeFact::STRING,
-        TypeFact::I64,
-        CollectionViewMutation::Growable,
-    );
-    for receiver in [&map_view, &map_fixed] {
-        assert!(stdlib_method_fact(receiver, "get_or_insert", None).is_none());
-        assert!(stdlib_method_fact(receiver, "set", None).is_none());
-        assert!(stdlib_method_fact(receiver, "insert", None).is_none());
-        assert!(stdlib_method_fact(receiver, "remove", None).is_none());
-        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
-        let group_by =
-            stdlib_method_fact(receiver, "group_by", None).expect("read-only grouping method fact");
-        assert_eq!(group_by.receiver, receiver.clone());
-        assert_eq!(
-            group_by.returns,
-            TypeFact::map(
-                TypeFact::Any,
-                TypeFact::map(TypeFact::STRING, TypeFact::I64)
-            )
-        );
-        let contains_key =
-            stdlib_method_fact(receiver, "contains_key", None).expect("membership method fact");
-        assert_eq!(contains_key.receiver, receiver.clone());
-        assert_eq!(contains_key.params, vec![TypeFact::STRING]);
-        assert_eq!(contains_key.returns, TypeFact::BOOL);
-        let values = stdlib_method_fact(receiver, "values", None).expect("read method fact");
-        assert_eq!(values.receiver, receiver.clone());
-    }
-    let get_or_insert =
-        stdlib_method_fact(&map_growable, "get_or_insert", None).expect("growable entry insert");
-    assert_eq!(get_or_insert.params, vec![TypeFact::STRING, TypeFact::I64]);
-    assert_eq!(get_or_insert.returns, TypeFact::I64);
-    assert!(stdlib_method_fact(&map_growable, "set", None).is_some());
-    let insert = stdlib_method_fact(&map_growable, "insert", None).expect("growable insert");
-    assert_eq!(insert.params, vec![TypeFact::STRING, TypeFact::I64]);
-    assert_eq!(insert.returns, TypeFact::option(TypeFact::I64));
-    assert!(stdlib_method_fact(&map_growable, "retain", None).is_some());
-
-    let set_view = TypeFact::set_view(TypeFact::STRING);
-    let set_fixed = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Fixed);
-    let set_growable = TypeFact::set_mut(TypeFact::STRING, CollectionViewMutation::Growable);
-    for receiver in [&set_view, &set_fixed] {
-        assert!(stdlib_method_fact(receiver, "add", None).is_none());
-        assert!(stdlib_method_fact(receiver, "insert", None).is_none());
-        assert!(stdlib_method_fact(receiver, "clear", None).is_none());
-        assert!(stdlib_method_fact(receiver, "retain", None).is_none());
-        assert!(stdlib_method_fact(receiver, "filter", None).is_some());
-        assert!(stdlib_method_fact(receiver, "group_by", None).is_none());
-        let contains =
-            stdlib_method_fact(receiver, "contains", None).expect("membership method fact");
-        assert_eq!(contains.receiver, receiver.clone());
-        assert_eq!(contains.params, vec![TypeFact::STRING]);
-        assert_eq!(contains.returns, TypeFact::BOOL);
-    }
-    assert!(stdlib_method_fact(&set_growable, "add", None).is_some());
-    assert!(stdlib_method_fact(&set_growable, "insert", None).is_some());
-    assert!(stdlib_method_fact(&set_growable, "retain", None).is_some());
-
-    let completion_methods = stdlib_method_facts(&array_view, None)
-        .into_iter()
-        .map(|fact| fact.method)
-        .collect::<Vec<_>>();
-    assert!(completion_methods.contains(&"group_by"));
-    assert!(completion_methods.contains(&"get"));
-    assert!(!completion_methods.contains(&"push"));
-}
-
-#[test]
-fn collection_extend_accepts_matching_borrowed_sources() {
-    let array_receiver = TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable);
-    let array_source = TypeFact::array_view(TypeFact::I64);
+fn collection_extend_accepts_matching_owned_sources() {
+    let array_receiver = TypeFact::array(TypeFact::I64);
+    let array_source = TypeFact::array(TypeFact::I64);
     let array = stdlib_method_fact_for_call(
         &array_receiver,
         "extend",
@@ -113,12 +15,8 @@ fn collection_extend_accepts_matching_borrowed_sources() {
     .expect("Array extend fact");
     assert_eq!(array.params, vec![array_source]);
 
-    let map_receiver = TypeFact::map_mut(
-        TypeFact::I32,
-        TypeFact::I64,
-        CollectionViewMutation::Growable,
-    );
-    let map_source = TypeFact::map_view(TypeFact::I32, TypeFact::I64);
+    let map_receiver = TypeFact::map(TypeFact::I32, TypeFact::I64);
+    let map_source = TypeFact::map(TypeFact::I32, TypeFact::I64);
     let map = stdlib_method_fact_for_call(
         &map_receiver,
         "extend",
@@ -129,8 +27,8 @@ fn collection_extend_accepts_matching_borrowed_sources() {
     .expect("Map extend fact");
     assert_eq!(map.params, vec![map_source]);
 
-    let set_receiver = TypeFact::set_mut(TypeFact::I32, CollectionViewMutation::Growable);
-    let set_source = TypeFact::set_view(TypeFact::I32);
+    let set_receiver = TypeFact::set(TypeFact::I32);
+    let set_source = TypeFact::set(TypeFact::I32);
     let set = stdlib_method_fact_for_call(
         &set_receiver,
         "extend",
@@ -734,48 +632,4 @@ fn bytes_methods_expose_binary_api_facts() {
     let values = stdlib_method_fact(&TypeFact::BYTES, "values", None).expect("bytes values fact");
     assert_eq!(values.params, Vec::<TypeFact>::new());
     assert_eq!(values.returns, TypeFact::iterator(TypeFact::U8));
-}
-
-#[test]
-fn host_collection_views_classify_lazy_iterators_as_scoped_resources() {
-    let view = TypeFact::array_view(TypeFact::host("Item"));
-    let resource = scoped_iterator_resource(&view, "iter")
-        .expect("Host collection view iterator should retain scoped authority");
-    assert_eq!(
-        resource.kind,
-        vela_registry::ScopedResourceKindDef::Iterator
-    );
-    assert_eq!(
-        resource.parent,
-        vela_registry::ScopedResourceParentDef::Receiver
-    );
-
-    assert!(scoped_iterator_resource(&TypeFact::array(TypeFact::I64), "iter").is_none());
-    assert!(scoped_iterator_resource(&view, "len").is_none());
-
-    for (receiver, methods) in [
-        (view, &["iter", "values"][..]),
-        (
-            TypeFact::map_view(TypeFact::I32, TypeFact::I64),
-            &["iter", "entries", "values"][..],
-        ),
-        (TypeFact::set_view(TypeFact::I32), &["iter", "values"][..]),
-    ] {
-        for method in methods {
-            assert!(
-                scoped_iterator_resource(&receiver, method).is_some(),
-                "{method} must retain Host authority for {}",
-                receiver.display_name()
-            );
-        }
-    }
-
-    let scoped = TypeFact::scoped_iterator(TypeFact::I64);
-    for method in ["map", "filter", "take", "skip"] {
-        assert!(
-            scoped_iterator_resource(&scoped, method).is_some(),
-            "{method} must transfer scoped iterator authority"
-        );
-    }
-    assert!(scoped_iterator_resource(&scoped, "count").is_none());
 }

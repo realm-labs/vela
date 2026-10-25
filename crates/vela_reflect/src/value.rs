@@ -1,9 +1,5 @@
 use std::collections::BTreeMap;
 
-use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
-use vela_host::path::HostRef;
-use vela_host::target::{HostTargetInstance, HostTargetPlan};
 use vela_host::value::HostValue;
 
 use crate::{
@@ -13,8 +9,7 @@ use crate::{
     permissions::ReflectPolicy,
     registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry},
     value_access::{
-        FieldCandidateAccess, get_record_field, record_unknown_field,
-        schema_unknown_field_with_policy, schema_unknown_method_with_policy, script_enum_field,
+        FieldCandidateAccess, get_record_field, record_unknown_field, script_enum_field,
         script_enum_unknown_field, script_enum_unknown_field_with_policy, script_record_field,
         script_record_unknown_field, script_record_unknown_field_with_policy, set_record_field,
     },
@@ -23,7 +18,6 @@ use crate::{
 #[derive(Clone, Debug, PartialEq)]
 pub enum ReflectValue {
     Host(HostValue),
-    HostRef(HostRef),
     Closure,
     Range,
     Array(Vec<ReflectValue>),
@@ -68,13 +62,10 @@ impl PartialEq<ReflectValue> for HostValue {
 
 pub struct ReflectContext<'a> {
     pub registry: &'a TypeRegistry,
-    pub adapter: &'a mut dyn ScriptStateAdapter,
-    pub access: &'a mut HostAccess,
 }
 
 pub fn type_of<'a>(registry: &'a TypeRegistry, value: &ReflectValue) -> Option<&'a TypeDesc> {
     match value {
-        ReflectValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
         ReflectValue::Closure => registry.type_by_name("closure"),
         ReflectValue::Range => registry.type_by_name("range"),
         ReflectValue::ScriptRecord { type_name, .. } => registry.type_by_name(type_name),
@@ -105,7 +96,6 @@ fn type_of_host_value<'a>(registry: &'a TypeRegistry, value: &HostValue) -> Opti
             }
             _ => None,
         },
-        HostValue::HostRef(host_ref) => registry.type_of_host(*host_ref),
     }
 }
 
@@ -137,40 +127,6 @@ fn get_impl(
     policy: Option<&ReflectPolicy>,
 ) -> ReflectResult<ReflectValue> {
     match target {
-        ReflectValue::HostRef(host_ref) => {
-            let (field_desc, type_name) = if let Some(policy) = policy {
-                let desc = host_type(ctx.registry, *host_ref)?;
-                (
-                    find_field_with_policy(desc, field, policy, FieldCandidateAccess::Read)?,
-                    desc.key.name.clone(),
-                )
-            } else {
-                let field_desc = ctx.registry.host_field(*host_ref, field)?;
-                let type_name = ctx
-                    .registry
-                    .type_of_host(*host_ref)
-                    .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
-                (field_desc, type_name)
-            };
-            if let Some(policy) = policy {
-                policy.require_field_read_access(&type_name, field_desc)?;
-            } else if !field_desc.access.reflect_readable {
-                return Err(ReflectError::new(
-                    ReflectErrorKind::FieldNotReflectReadable {
-                        type_name,
-                        field: field.to_owned(),
-                        source_span: field_desc.source_span,
-                    },
-                ));
-            }
-            let plan = HostTargetPlan::new(host_ref.type_id).field(field_desc.id);
-            let target = HostTargetInstance::new(*host_ref, &plan, &[]);
-            let value = ctx
-                .access
-                .read(ctx.adapter, target, None)
-                .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-            Ok(ReflectValue::Host(value))
-        }
         ReflectValue::Record(record) => {
             get_record_field(field, record, || record_unknown_field(field, record))
         }
@@ -258,49 +214,6 @@ fn set_impl(
     policy: Option<&ReflectPolicy>,
 ) -> ReflectResult<ReflectValue> {
     match target {
-        ReflectValue::HostRef(host_ref) => {
-            let (field_desc, type_name) = if let Some(policy) = policy {
-                let desc = host_type(ctx.registry, *host_ref)?;
-                (
-                    find_field_with_policy(desc, field, policy, FieldCandidateAccess::HostWrite)?,
-                    desc.key.name.clone(),
-                )
-            } else {
-                let field_desc = ctx.registry.host_field(*host_ref, field)?;
-                let type_name = ctx
-                    .registry
-                    .type_of_host(*host_ref)
-                    .map_or_else(|| "<unknown>".to_owned(), |desc| desc.key.name.clone());
-                (field_desc, type_name)
-            };
-            if !field_desc.writable {
-                return Err(ReflectError::new(ReflectErrorKind::FieldNotWritable {
-                    type_name,
-                    field: field.to_owned(),
-                    source_span: field_desc.source_span,
-                }));
-            }
-            if let Some(policy) = policy {
-                policy.require_field_write_access(&type_name, field_desc)?;
-            } else if !field_desc.access.reflect_writable {
-                return Err(ReflectError::new(
-                    ReflectErrorKind::FieldNotReflectWritable {
-                        type_name,
-                        field: field.to_owned(),
-                        source_span: field_desc.source_span,
-                    },
-                ));
-            }
-            let ReflectValue::Host(value) = value else {
-                return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
-            };
-            let plan = HostTargetPlan::new(host_ref.type_id).field(field_desc.id);
-            let target = HostTargetInstance::new(*host_ref, &plan, &[]);
-            ctx.access
-                .write(ctx.adapter, target, value, None)
-                .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-            Ok(ReflectValue::Host(HostValue::Unit))
-        }
         ReflectValue::Record(fields) => Ok(ReflectValue::Record(set_record_field(
             field,
             fields,
@@ -374,68 +287,6 @@ fn set_impl(
     }
 }
 
-pub fn call(
-    ctx: &mut ReflectContext<'_>,
-    target: &ReflectValue,
-    method: &str,
-    args: Vec<ReflectValue>,
-) -> ReflectResult<ReflectValue> {
-    call_impl(ctx, target, method, args, None)
-}
-
-pub fn call_with_policy(
-    ctx: &mut ReflectContext<'_>,
-    target: &ReflectValue,
-    method: &str,
-    args: Vec<ReflectValue>,
-    policy: &ReflectPolicy,
-) -> ReflectResult<ReflectValue> {
-    call_impl(ctx, target, method, args, Some(policy))
-}
-
-pub fn resolve_host_method_with_policy<'a>(
-    registry: &'a TypeRegistry,
-    target: &ReflectValue,
-    method: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<&'a crate::registry::MethodDesc> {
-    let ReflectValue::HostRef(host_ref) = target else {
-        return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
-    };
-    let desc = host_type(registry, *host_ref)?;
-    let method_desc = find_method_with_policy(desc, method, policy)?;
-    policy.require_method_call_access(&desc.key.name, method_desc)?;
-    Ok(method_desc)
-}
-
-fn call_impl(
-    ctx: &mut ReflectContext<'_>,
-    target: &ReflectValue,
-    method: &str,
-    args: Vec<ReflectValue>,
-    policy: Option<&ReflectPolicy>,
-) -> ReflectResult<ReflectValue> {
-    let ReflectValue::HostRef(host_ref) = target else {
-        return Err(ReflectError::new(ReflectErrorKind::InvalidTarget));
-    };
-    let method_desc = if let Some(policy) = policy {
-        resolve_host_method_with_policy(ctx.registry, target, method, policy)?
-    } else {
-        ctx.registry.host_method(*host_ref, method)?
-    };
-    let args = args
-        .into_iter()
-        .map(host_arg)
-        .collect::<ReflectResult<Vec<_>>>()?;
-    let plan = HostTargetPlan::new(host_ref.type_id);
-    let target = HostTargetInstance::new(*host_ref, &plan, &[]);
-    let result = ctx
-        .access
-        .call(ctx.adapter, target, method_desc.id, &args, None)
-        .map_err(|error| ReflectError::new(ReflectErrorKind::Host(error.to_string())))?;
-    Ok(ReflectValue::Host(result))
-}
-
 pub fn implements(
     registry: &TypeRegistry,
     target: &ReflectValue,
@@ -463,14 +314,6 @@ pub fn implements(
     }
 
     match target {
-        ReflectValue::HostRef(host_ref) => {
-            let desc = registry.type_of_host(*host_ref).ok_or_else(|| {
-                ReflectError::new(ReflectErrorKind::UnknownType {
-                    host_type_id: host_ref.type_id,
-                })
-            })?;
-            Ok(type_implements(desc, trait_name))
-        }
         ReflectValue::ScriptRecord { type_name, .. }
         | ReflectValue::ScriptEnum {
             enum_name: type_name,
@@ -491,63 +334,10 @@ pub fn implements(
     }
 }
 
-fn host_type(registry: &TypeRegistry, host_ref: HostRef) -> ReflectResult<&TypeDesc> {
-    registry.type_of_host(host_ref).ok_or_else(|| {
-        ReflectError::new(ReflectErrorKind::UnknownType {
-            host_type_id: host_ref.type_id,
-        })
-    })
-}
-
-fn find_field_with_policy<'a>(
-    desc: &'a TypeDesc,
-    field: &str,
-    policy: &ReflectPolicy,
-    access: FieldCandidateAccess,
-) -> ReflectResult<&'a FieldDesc> {
-    desc.fields
-        .iter()
-        .find(|candidate| candidate.name == field)
-        .ok_or_else(|| {
-            ReflectError::new(schema_unknown_field_with_policy(
-                &desc.key.name,
-                field,
-                &desc.fields,
-                policy,
-                access,
-            ))
-        })
-}
-
-fn find_method_with_policy<'a>(
-    desc: &'a TypeDesc,
-    method: &str,
-    policy: &ReflectPolicy,
-) -> ReflectResult<&'a crate::registry::MethodDesc> {
-    desc.methods
-        .iter()
-        .find(|candidate| candidate.name == method)
-        .ok_or_else(|| {
-            ReflectError::new(schema_unknown_method_with_policy(
-                &desc.key.name,
-                method,
-                &desc.methods,
-                policy,
-            ))
-        })
-}
-
 fn type_implements(desc: &TypeDesc, trait_name: &str) -> bool {
     desc.traits
         .iter()
         .any(|trait_desc| trait_desc.name == trait_name)
-}
-
-fn host_arg(value: ReflectValue) -> ReflectResult<HostValue> {
-    let ReflectValue::Host(value) = value else {
-        return Err(ReflectError::new(ReflectErrorKind::InvalidValue));
-    };
-    Ok(value)
 }
 
 fn get_map_string_key(field: &str, entries: &[ReflectMapEntry]) -> ReflectResult<ReflectValue> {

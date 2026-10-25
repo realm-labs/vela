@@ -346,3 +346,24 @@ pub(crate) fn apply_edits(text: &str, edits: &[Edit<'_>]) -> Result<String, Stri
 
 #[cfg(test)]
 mod tests;
+
+/// Removed-feature fixture rows prove rejection, not a supported query surface.
+pub(crate) fn assert_removed_borrowed_source(source: &str) {
+    let mut graph = vela_hir::module_graph::ModuleGraph::new();
+    graph.add_source(vela_hir::module_graph::ModuleSource::new(
+        vela_common::SourceId::new(1),
+        vela_package::PackageId::anonymous(),
+        vela_package::ModulePath::from_qualified("main"),
+        source,
+    ));
+    graph.resolve_imports();
+    assert!(
+        graph.diagnostics().iter().any(|diagnostic| {
+            matches!(
+                diagnostic.code.as_deref(),
+                Some("hir::removed_host_type_hint" | "syntax::removed_host_borrow")
+            )
+        }),
+        "removed borrowed surface must reject: {source}"
+    );
+}

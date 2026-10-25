@@ -125,7 +125,7 @@ fn reference_query_reports_schema_owned_resolution() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) -> i64 { return player.level }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     let databases = databases_for_with_schema(
         vec![SourceFileSnapshot::new(document.clone(), text)],

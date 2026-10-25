@@ -22,10 +22,6 @@ impl StableHasher {
         }
     }
 
-    pub(crate) fn write_bool(&mut self, value: bool) {
-        self.write_byte(u8::from(value));
-    }
-
     fn write_usize(&mut self, value: usize) {
         for byte in value.to_le_bytes() {
             self.write_byte(byte);

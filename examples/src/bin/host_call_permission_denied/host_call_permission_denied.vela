@@ -1,4 +1,0 @@
-fn main(ctx: Context) {
-    ctx.emit("demo.denied", 12);
-    return 1;
-}

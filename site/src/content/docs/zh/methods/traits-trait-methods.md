@@ -39,4 +39,4 @@ Trait 方法调用仍然是 receiver-dispatched。已知 receiver 调用可以�
 
 ## 边界
 
-Trait 不允许 monkey patching，也不允许运行时修改类型结构。宿主类型实现必须由宿主注册，并且保留 HostAccess 安全、能力检查和热更新兼容性。
+Trait 不允许 monkey patching，也不允许运行时修改类型结构。普通脚本 trait 保留权限检查与精确代际热更新兼容性。

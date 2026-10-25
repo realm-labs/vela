@@ -1,10 +1,5 @@
 use std::mem;
 
-use vela_common::{HostObjectId, HostTypeId};
-use vela_def::FieldId;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::proxy::PathProxy;
-
 use crate::budget::CollectionLimits;
 use crate::heap::{HeapValue, ScriptHeap};
 use crate::script_set::ScriptSet;
@@ -472,14 +467,6 @@ fn set_add_duplicate_skips_length_limit_and_preserves_element() {
 fn transient_values() -> [fn(&mut ScriptHeap) -> Value; 2] {
     [
         |_| Value::Missing,
-        |heap| {
-            let proxy =
-                PathProxy::from_diagnostic_path(HostPath::new(host_ref()).field(FieldId::new(2)));
-            Value::HeapRef(heap.allocate(HeapValue::PathProxy(proxy)))
-        },
+        |heap| Value::HeapRef(heap.allocate(HeapValue::Tuple(vec![]))),
     ]
-}
-
-fn host_ref() -> HostRef {
-    HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
 }

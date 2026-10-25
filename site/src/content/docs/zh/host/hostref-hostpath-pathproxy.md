@@ -1,54 +1,14 @@
 ---
-title: "HostRef、HostPath、PathProxy"
-description: "Vela 用来替代 Rust 引用的 handles 和 path objects。"
+title: "已移除的透明宿主路径"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-`HostRef`、`HostPath` 和 `PathProxy` 是宿主状态 handle 的核心。它们让脚本
-可以定位 Rust 拥有的状态，但不会借用它。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## HostRef
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-`HostRef` 用 type、object ID 和 generation 标识一个宿主对象。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```rust
-pub struct HostRef {
-    pub type_id: HostTypeId,
-    pub object_id: HostObjectId,
-    pub generation: u32,
-}
-```
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-Generation 防止对象 ID 复用后，旧 handle 写到另一个对象上。
-
-## HostPath
-
-`HostPath` 是 materialized readable path，用于 diagnostics、reflection、
-fixtures 和 embedding APIs。
-
-```rust
-let path = HostPath::new(player_ref).field(FieldId::new(1));
-```
-
-热路径 bytecode 通常存储 interned `HostTargetPlan`，而不是每次访问都构造
-`HostPath`。
-
-## PathProxy
-
-`PathProxy` 保存 root `HostRef`、target plan 和动态 index/key 参数。当 host
-method 或 native function 需要携带嵌套 host target 时，可以使用它，而不是
-暴露 Rust 引用。
-
-```rust
-let proxy = PathProxy::new(player_ref, plan)
-    .key("gold")
-    .field(FieldId::new(2));
-proxy.add(
-    adapter,
-    &mut access,
-    HostValue::Scalar(vela_common::ScalarValue::I64(1)),
-    None,
-)?;
-```
-
-Proxy 仍然通过 `HostAccess` 路由，所以 schema、capability、generation 和
-adapter checks 仍然生效。
+详情与现有调用示例见 [English reference](/host/hostref-hostpath-pathproxy/)。

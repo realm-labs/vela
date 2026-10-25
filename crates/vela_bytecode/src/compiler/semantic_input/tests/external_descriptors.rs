@@ -12,6 +12,54 @@ use super::{FixtureRoots, prepare_source, prepare_source_with_registry};
 use crate::compiler::error::CompileErrorKind;
 
 #[test]
+fn borrowed_native_signature_hints_do_not_degrade_to_any() {
+    use vela_registry::TypeHintDef;
+
+    for hint in [
+        TypeHintDef::named("ArrayView").with_args([TypeHintDef::named("i64")]),
+        TypeHintDef::named("ArrayMut").with_args([TypeHintDef::named("i64")]),
+        TypeHintDef::named("MapView")
+            .with_args([TypeHintDef::named("String"), TypeHintDef::named("i64")]),
+        TypeHintDef::named("MapMut")
+            .with_args([TypeHintDef::named("String"), TypeHintDef::named("i64")]),
+        TypeHintDef::named("SetView").with_args([TypeHintDef::named("i64")]),
+        TypeHintDef::named("SetMut").with_args([TypeHintDef::named("i64")]),
+        TypeHintDef::named("HostRef"),
+        TypeHintDef::named("host_ref"),
+        TypeHintDef::named("PathProxy"),
+        TypeHintDef::named("path_proxy"),
+        TypeHintDef::named("arrayview"),
+        TypeHintDef::named("mapmut"),
+        TypeHintDef::named("View"),
+        TypeHintDef::named("MutView"),
+        TypeHintDef::named("Array")
+            .with_args([TypeHintDef::named("ArrayView").with_args([TypeHintDef::named("i64")])]),
+    ] {
+        let mut registry = DefinitionRegistry::new();
+        registry
+            .register_function(FunctionDef::new(
+                DefPath::function("host", std::iter::empty::<&str>(), "borrowed"),
+                FunctionSignature::new(
+                    [ParamDef::new("value", Some(hint))],
+                    None::<vela_registry::TypeHintDef>,
+                ),
+            ))
+            .expect("signature fixture");
+        let error = prepare_source_with_registry(
+            "fn main(value) { return borrowed(value); }",
+            FixtureRoots::Program,
+            registry.compile_view(),
+        )
+        .expect_err("borrowed native hints cannot become unguarded value parameters");
+        assert!(
+            matches!(error.kind, CompileErrorKind::RegistrySnapshot(ref message)
+            if message.contains("borrowed-host type hint") && message.contains("was removed")),
+            "{error:?}"
+        );
+    }
+}
+
+#[test]
 fn provided_registry_does_not_enable_runtime_only_reflection_natives() {
     let registry = DefinitionRegistry::new();
     let error = prepare_source_with_registry(
@@ -222,30 +270,6 @@ fn external_any_is_erased_but_unknown_hint_is_rejected() {
         error.kind,
         CompileErrorKind::RegistrySnapshot(message)
             if message.contains("MisspelledType")
-    ));
-}
-
-#[test]
-fn oversized_host_runtime_type_id_is_rejected_up_front() {
-    let mut registry = DefinitionRegistry::new();
-    registry
-        .register_type(
-            TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Oversized"))
-                .kind(TypeKindDef::Host)
-                .host_runtime_id(u128::from(u64::MAX) + 1),
-        )
-        .expect("oversized external type fixture");
-
-    let error = prepare_source_with_registry(
-        "struct SchemaOnly { value: i64 }",
-        FixtureRoots::Program,
-        registry.compile_view(),
-    )
-    .expect_err("oversized HostTypeId must fail even when not referenced");
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::RegistrySnapshot(message)
-            if message.contains("outside the u64 HostTypeId range")
     ));
 }
 

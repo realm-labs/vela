@@ -9,21 +9,10 @@ use std::fmt;
 use std::hash::Hash;
 use std::sync::Arc;
 
-use vela_common::{
-    CapabilitySet, HostTypeId, InteropBindingContract, Span, StoragePolicy, stable_id,
-};
+use vela_common::{CapabilitySet, InteropBindingContract, Span, stable_id};
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 
-use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, TypeHint};
-use crate::schema::ScriptHostSchema;
-
-mod host_lease_plan;
-
-pub use host_lease_plan::{
-    HostLeaseArgumentSource, HostLeaseParameterPlan, HostLeaseSource, HostParamLeaseRequest,
-    PreparedHostLeasePlan, preflight_host_parameter_leases,
-};
 
 type ExportInstaller =
     dyn Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder + Send + Sync + 'static;
@@ -33,7 +22,6 @@ type ExportInstaller =
 /// process-global discovery.
 pub(crate) struct CallableRegistration {
     contracts: Vec<CallableContract>,
-    protocols: Vec<VelaProtocolContract>,
     installer: Arc<ExportInstaller>,
 }
 
@@ -48,23 +36,6 @@ impl CallableRegistration {
     ) -> Self {
         Self {
             contracts,
-            protocols: Vec::new(),
-            installer: Arc::new(installer),
-        }
-    }
-
-    #[must_use]
-    pub(crate) fn with_protocols(
-        contracts: Vec<CallableContract>,
-        protocols: Vec<VelaProtocolContract>,
-        installer: impl Fn(crate::builder::EngineBuilder) -> crate::builder::EngineBuilder
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        Self {
-            contracts,
-            protocols,
             installer: Arc::new(installer),
         }
     }
@@ -72,11 +43,6 @@ impl CallableRegistration {
     #[must_use]
     pub fn contracts(&self) -> &[CallableContract] {
         &self.contracts
-    }
-
-    #[must_use]
-    pub fn protocols(&self) -> &[VelaProtocolContract] {
-        &self.protocols
     }
 
     pub(crate) fn install(
@@ -105,39 +71,6 @@ pub trait VelaValueBoundary {
 /// accepting every structurally convertible value. User-defined stable value
 /// keys opt in explicitly; ordinary `Value` derivation does not imply it.
 pub trait VelaValueKeyBoundary: VelaValueBoundary {}
-
-/// Deterministic metadata proof for an exact registered host type.
-pub trait VelaHostBoundary: ScriptHostSchema {
-    fn vela_host_type_hint() -> TypeHint {
-        TypeHint::Host(Self::script_host_type_desc().key)
-    }
-
-    fn vela_host_type_id() -> HostTypeId {
-        Self::script_host_type_desc()
-            .host_type_id
-            .expect("ScriptHostSchema must describe a concrete host type")
-    }
-}
-
-impl<T: ScriptHostSchema> VelaHostBoundary for T {}
-
-/// Type-hint metadata for a shared Rust parameter.
-pub trait VelaSharedBoundary: Sized + 'static {
-    const STORAGE: StoragePolicy;
-
-    fn vela_shared_type_hint() -> TypeHint;
-}
-
-impl<T> VelaSharedBoundary for T
-where
-    T: ScriptHostSchema + vela_host::object::ScriptHostObject + Sync + 'static,
-{
-    const STORAGE: StoragePolicy = StoragePolicy::Host;
-
-    fn vela_shared_type_hint() -> TypeHint {
-        TypeHint::Host(Self::script_host_type_desc().key)
-    }
-}
 
 /// Applies the engine's generated-export panic policy without exposing the
 /// panic payload across the language boundary.
@@ -354,9 +287,6 @@ impl CallableIdentity {
 pub enum BoundaryMode {
     Value,
     ReadOnlyValueBorrow,
-    StorageDirectedShared,
-    SharedHost,
-    ExclusiveHost,
     HiddenContext,
 }
 
@@ -365,47 +295,16 @@ impl BoundaryMode {
         match self {
             Self::Value => "value",
             Self::ReadOnlyValueBorrow => "readonly_value_borrow",
-            Self::StorageDirectedShared => "storage_directed_shared",
-            Self::SharedHost => "shared_host",
-            Self::ExclusiveHost => "exclusive_host",
             Self::HiddenContext => "hidden_context",
         }
     }
 }
 
-/// Parent parameter retaining authority for a scoped borrowed host return.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum BorrowedReturnOrigin {
-    Receiver,
-    Parameter(u16),
-}
-
-/// Access retained by a call-tree-scoped host return.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ScopedHostAccess {
-    Shared,
-    Exclusive,
-}
-
-impl ScopedHostAccess {
-    const fn abi_name(self) -> &'static str {
-        match self {
-            Self::Shared => "shared",
-            Self::Exclusive => "exclusive",
-        }
-    }
-}
-
-/// Stable return representation at the language boundary.
+/// Shape of the script-owned return value.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum ReturnMode {
     OwnedValue,
     StructuredValue,
-    ScopedHost {
-        origin: BorrowedReturnOrigin,
-        child_access: ScopedHostAccess,
-        parent_freeze: ScopedHostAccess,
-    },
 }
 
 /// Whether a Rust return reports invocation failure or yields an ordinary
@@ -617,53 +516,6 @@ impl CallableContract {
         desc.callable_contract(self.clone())
     }
 
-    #[must_use]
-    pub fn native_method_desc(&self, owner: vela_reflect::registry::TypeKey) -> NativeMethodDesc {
-        let receiver = match self.parameters.first().map(|parameter| parameter.mode) {
-            Some(BoundaryMode::Value) => vela_common::ReceiverCapability::Owned,
-            Some(
-                BoundaryMode::ReadOnlyValueBorrow
-                | BoundaryMode::StorageDirectedShared
-                | BoundaryMode::SharedHost,
-            ) => vela_common::ReceiverCapability::Shared,
-            Some(BoundaryMode::ExclusiveHost) => vela_common::ReceiverCapability::Exclusive,
-            Some(BoundaryMode::HiddenContext) | None => vela_common::ReceiverCapability::Shared,
-        };
-        let mut desc = NativeMethodDesc::new(
-            owner,
-            vela_common::HostMethodId::new(self.identity.stable),
-            self.public_path
-                .rsplit("::")
-                .next()
-                .unwrap_or(&self.public_path),
-        )
-        .returns(self.returns.ty.clone())
-        .effects(self.effects)
-        .receiver(receiver)
-        .access(crate::native::FunctionAccess {
-            public: self.access.public,
-            reflect_visible: self.access.reflect_visible,
-            reflect_callable: self.access.reflect_callable,
-        })
-        .callable_contract(self.clone());
-        for (index, parameter) in self.parameters.iter().enumerate() {
-            if index == 0 || parameter.mode == BoundaryMode::HiddenContext {
-                continue;
-            }
-            desc = desc.param(parameter.name.clone(), parameter.ty.clone());
-        }
-        if let Some(docs) = &self.docs {
-            desc = desc.docs(docs.clone());
-        }
-        for (name, value) in &self.attrs {
-            desc = desc.attr(name.clone(), value.clone());
-        }
-        if let Some(source_span) = self.origin.source_span {
-            desc = desc.source_span(source_span);
-        }
-        desc
-    }
-
     /// Computes a deterministic fingerprint from semantic ABI only.
     #[must_use]
     pub fn abi_fingerprint(&self) -> CallableAbiFingerprint {
@@ -756,8 +608,6 @@ fn encode_binding(binding: Option<InteropBindingContract>, output: &mut String) 
     output.push_str(":binding:");
     output.push_str(&format!("{:032x}", binding.type_id.get()));
     output.push(':');
-    output.push_str(binding.representation.abi_name());
-    output.push(':');
     output.push_str(&format!("{:016x}", binding.abi_fingerprint.get()));
 }
 
@@ -797,23 +647,6 @@ fn encode_return_mode(mode: ReturnMode, output: &mut String) {
     match mode {
         ReturnMode::OwnedValue => output.push_str("owned"),
         ReturnMode::StructuredValue => output.push_str("structured"),
-        ReturnMode::ScopedHost {
-            origin,
-            child_access,
-            parent_freeze,
-        } => {
-            output.push_str("scoped_host:");
-            match origin {
-                BorrowedReturnOrigin::Receiver => output.push_str("receiver"),
-                BorrowedReturnOrigin::Parameter(index) => {
-                    output.push_str(&format!("parameter_{index}"));
-                }
-            }
-            output.push(':');
-            output.push_str(child_access.abi_name());
-            output.push(':');
-            output.push_str(parent_freeze.abi_name());
-        }
     }
 }
 
@@ -823,10 +656,6 @@ fn encode_hint(hint: &TypeHint, output: &mut String) {
         TypeHint::Primitive(tag) => output.push_str(tag.name()),
         TypeHint::Array => output.push_str("array"),
         TypeHint::ArrayOf(element) => encode_unary_hint("array", element, output),
-        TypeHint::ArrayViewOf(element) => encode_unary_hint("array_view", element, output),
-        TypeHint::ArrayMutOf { element, mutation } => {
-            encode_mutable_collection_hint("array_mut", element, *mutation, output);
-        }
         TypeHint::Map => output.push_str("map"),
         TypeHint::MapOf { key, value } => {
             output.push_str("map<");
@@ -835,26 +664,8 @@ fn encode_hint(hint: &TypeHint, output: &mut String) {
             encode_hint(value, output);
             output.push('>');
         }
-        TypeHint::MapViewOf { key, value } => encode_binary_hint("map_view", key, value, output),
-        TypeHint::MapMutOf {
-            key,
-            value,
-            mutation,
-        } => {
-            output.push_str("map_mut:");
-            output.push_str(mutation.as_str());
-            output.push('<');
-            encode_hint(key, output);
-            output.push(',');
-            encode_hint(value, output);
-            output.push('>');
-        }
         TypeHint::Set => output.push_str("set"),
         TypeHint::SetOf(element) => encode_unary_hint("set", element, output),
-        TypeHint::SetViewOf(element) => encode_unary_hint("set_view", element, output),
-        TypeHint::SetMutOf { element, mutation } => {
-            encode_mutable_collection_hint("set_mut", element, *mutation, output);
-        }
         TypeHint::TupleOf(elements) => {
             output.push_str("tuple<");
             for (index, element) in elements.iter().enumerate() {
@@ -875,39 +686,14 @@ fn encode_hint(hint: &TypeHint, output: &mut String) {
             encode_hint(err, output);
             output.push('>');
         }
-        TypeHint::PathProxy => output.push_str("path_proxy"),
         TypeHint::Record(key) => encode_type_key("record", key, output),
         TypeHint::Enum(key) => encode_type_key("enum", key, output),
-        TypeHint::Host(key) => encode_type_key("host", key, output),
         TypeHint::Trait(name) => {
             output.push_str("trait:");
             output.push_str(name);
         }
         TypeHint::Function => output.push_str("function"),
     }
-}
-
-fn encode_mutable_collection_hint(
-    name: &str,
-    element: &TypeHint,
-    mutation: vela_common::CollectionViewMutation,
-    output: &mut String,
-) {
-    output.push_str(name);
-    output.push(':');
-    output.push_str(mutation.as_str());
-    output.push('<');
-    encode_hint(element, output);
-    output.push('>');
-}
-
-fn encode_binary_hint(name: &str, left: &TypeHint, right: &TypeHint, output: &mut String) {
-    output.push_str(name);
-    output.push('<');
-    encode_hint(left, output);
-    output.push(',');
-    encode_hint(right, output);
-    output.push('>');
 }
 
 fn encode_unary_hint(name: &str, element: &TypeHint, output: &mut String) {

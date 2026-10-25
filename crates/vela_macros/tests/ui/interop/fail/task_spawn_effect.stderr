@@ -10,8 +10,16 @@ error: unsupported Vela callable effect
 8 |     #[vela(effects(task_spawn))]
   |                    ^^^^^^^^^^
 
-error: unsupported Vela callable effect
-  --> tests/ui/interop/fail/task_spawn_effect.rs:16:20
+error[E0432]: unresolved import `vela_macros::methods`
+ --> tests/ui/interop/fail/task_spawn_effect.rs:1:42
+  |
+1 | use vela_macros::{export, export_module, methods};
+  |                                          ^^^^^^^ no `methods` in the root
+
+error: cannot find attribute `vela` in this scope
+  --> tests/ui/interop/fail/task_spawn_effect.rs:16:7
    |
 16 |     #[vela(effects(task_spawn))]
-   |                    ^^^^^^^^^^
+   |       ^^^^
+   |
+   = note: `vela` is an attribute that can be used by the derive macro `Value`, you might be missing a `derive` attribute

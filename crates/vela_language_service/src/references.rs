@@ -305,14 +305,23 @@ impl LanguageServiceDatabases {
                 .member_receiver_range()
                 .or_else(|| query.call_member_receiver_range())
                 .and_then(|receiver| query.type_fact_for_range(self, receiver));
-            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+            let source_receiver = member_receiver.as_ref().filter(|receiver| {
+                query
+                    .member_receiver_range()
+                    .or_else(|| query.call_member_receiver_range())
+                    .and_then(|range| query.source_type_for_range(self, range))
+                    .is_some()
+                    || !matches!(receiver, vela_analysis::type_fact::TypeFact::Record { name }
+                        if self.schema_db().facts().type_fact(name).is_some())
+            });
+            if let Some(target) = source_receiver.and_then(|receiver| {
                 token_text(source.text(), token.range).and_then(|field| {
                     fields::script_field_target_for_receiver_fact(graph, receiver, field)
                 })
             }) {
                 return fields::script_field_references(self, &target, include_declaration);
             }
-            if let Some(target) = member_receiver.as_ref().and_then(|receiver| {
+            if let Some(target) = source_receiver.and_then(|receiver| {
                 token_text(source.text(), token.range)
                     .filter(|_| is_call_callee(source.text(), token.range))
                     .and_then(|method| {

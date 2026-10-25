@@ -29,12 +29,12 @@ pub fn preview() { return 1 }";
     let grant_start = schema_text.find("grant").expect("grant marker");
     let preview_start = schema_text.find("preview").expect("preview marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "traits": [
@@ -172,12 +172,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -270,12 +270,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "methods": [
@@ -370,12 +370,12 @@ pub fn main() -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "functions": [
@@ -384,7 +384,7 @@ pub fn main() -> i64 {
                     "fact": {
                         "kind": "function",
                         "params": [],
-                        "returns": { "kind": "host", "name": "Player" }
+                        "returns": { "kind": "record", "name": "Player" }
                     }
                 }
             ],
@@ -468,7 +468,7 @@ pub fn main() -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "preview".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "traits": [
                 {
@@ -568,12 +568,12 @@ pub fn main() -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "functions": [
@@ -582,7 +582,7 @@ pub fn main() -> i64 {
                     "fact": {
                         "kind": "function",
                         "params": [],
-                        "returns": { "kind": "host", "name": "Player" }
+                        "returns": { "kind": "record", "name": "Player" }
                     }
                 }
             ],
@@ -653,7 +653,7 @@ pub fn main() -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "preview".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "traits": [
                 {
@@ -746,7 +746,7 @@ pub fn main(state: QuestState) -> i64 {
         .find("Done")
         .expect("schema Done marker should exist");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -858,7 +858,7 @@ pub fn main(player: Rewardable) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "traits": [
                 {

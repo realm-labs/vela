@@ -14,8 +14,8 @@ use vela_engine::engine::Engine;
 use vela_engine::runtime::{Runtime, SharedImage, SharedRuntime};
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::{
-    DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
-    NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
+    DynamicMethodInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
+    RecordFieldInlineCacheEntry,
 };
 
 #[global_allocator]
@@ -223,9 +223,8 @@ fn memory_suite(sampling: Sampling) -> Result<(), Box<dyn Error>> {
 
 fn print_entry_sizes() {
     println!(
-        "entry_sizes state_read_bytes={} host_access_bytes={} record_field_bytes={} method_dispatch_bytes={} dynamic_method_bytes={} native_call_bytes={} profile_counter_bytes={}",
+        "entry_sizes state_read_bytes={} record_field_bytes={} method_dispatch_bytes={} dynamic_method_bytes={} native_call_bytes={} profile_counter_bytes={}",
         std::mem::size_of::<Option<StateSlot>>(),
-        std::mem::size_of::<Option<HostInlineCacheEntry>>(),
         std::mem::size_of::<Option<RecordFieldInlineCacheEntry>>(),
         std::mem::size_of::<Option<MethodInlineCacheEntry>>(),
         std::mem::size_of::<Option<DynamicMethodInlineCacheEntry>>(),

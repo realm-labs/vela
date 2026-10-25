@@ -70,29 +70,12 @@ pub struct FunctionDesc {
     pub source_span: Option<Span>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StateStorage {
-    Vm,
-    Extern,
-}
-
-impl StateStorage {
-    #[must_use]
-    pub(crate) const fn as_str(self) -> &'static str {
-        match self {
-            Self::Vm => "vm",
-            Self::Extern => "extern",
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct StateDesc {
     pub id: StateId,
     pub name: String,
     pub module: Option<String>,
     pub public: bool,
-    pub storage: StateStorage,
     pub type_contract: String,
     pub has_initializer: bool,
     pub origin: DeclOrigin,
@@ -107,7 +90,6 @@ impl StateDesc {
             name: name.into(),
             module: None,
             public: false,
-            storage: StateStorage::Vm,
             type_contract: String::new(),
             has_initializer: false,
             origin: DeclOrigin::Host,
@@ -124,12 +106,6 @@ impl StateDesc {
     #[must_use]
     pub const fn public(mut self, public: bool) -> Self {
         self.public = public;
-        self
-    }
-
-    #[must_use]
-    pub const fn storage(mut self, storage: StateStorage) -> Self {
-        self.storage = storage;
         self
     }
 

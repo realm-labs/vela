@@ -176,48 +176,30 @@ pub enum Damage { Physical { amount: i64 } }
 }
 
 #[test]
-fn compiler_lowers_imported_state_roots_to_qualified_host_states() {
-    let mut registry = vela_registry::DefinitionRegistry::new();
-    let player = registry
-        .register_type(
-            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
-                .host_runtime_id(77),
-        )
-        .expect("Player type should register");
-    registry
-        .register_field(
-            vela_registry::FieldDef::new(
-                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
-                player,
-            )
-            .host_runtime_id(1),
-        )
-        .expect("Player::level should register");
-    let program = compile_test_modules_with_registry(
-        &[
-            ModuleSource::new(
-                SourceId::new(1),
-                vela_package::PackageId::anonymous(),
-                ModulePath::from_qualified("game::main"),
-                r#"
+fn compiler_lowers_imported_state_roots_to_qualified_script_states() {
+    let program = compile_test_modules(&[
+        ModuleSource::new(
+            SourceId::new(1),
+            vela_package::PackageId::anonymous(),
+            ModulePath::from_qualified("game::main"),
+            r#"
 use game::state::state
 fn main() {
     state.level += 2;
     return state.level;
 }
 "#,
-            ),
-            ModuleSource::new(
-                SourceId::new(2),
-                vela_package::PackageId::anonymous(),
-                ModulePath::from_qualified("game::state"),
-                r#"
-pub extern state state: Player;
+        ),
+        ModuleSource::new(
+            SourceId::new(2),
+            vela_package::PackageId::anonymous(),
+            ModulePath::from_qualified("game::state"),
+            r#"
+pub struct Player { level: i64 }
+pub state state: Player = Player { level: 1 };
 "#,
-            ),
-        ],
-        registry.compile_view(),
-    )
+        ),
+    ])
     .expect("imported state root should compile");
     let main = program
         .function("game::main::main")
@@ -227,7 +209,7 @@ pub extern state state: Player;
         .expect("state slot should be assigned");
     assert!(main.instructions.iter().any(|instruction| matches!(
         &instruction.kind,
-        UnlinkedInstructionKind::LoadExternState { state, slot: Some(actual), .. }
+        UnlinkedInstructionKind::LoadState { state, slot: Some(actual), .. }
             if state == "game::state::state" && *actual == slot
     )));
 }

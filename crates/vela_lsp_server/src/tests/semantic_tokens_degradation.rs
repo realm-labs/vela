@@ -83,7 +83,6 @@ fn lsp_semantic_tokens_degrade_schema_type_hints_when_schema_is_missing() {
         .expect("semantic token legend should list token modifiers");
     let type_token = token_type_index(token_types, "type");
     let builtin_type = token_type_index(token_types, "builtinType");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
     let default_library = token_modifier_bit(token_modifiers, "defaultLibrary");
 
@@ -138,7 +137,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         tokens.iter().all(|token| {
             token.line != 0
                 || token.character != line(text, 0).find("Player").expect("Player") as u64
-                || token.modifiers & (host | schema) == 0
+                || token.modifiers & schema == 0
         }),
         "{tokens:?}"
     );

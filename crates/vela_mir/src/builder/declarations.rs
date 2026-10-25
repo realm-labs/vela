@@ -64,9 +64,6 @@ impl FunctionBuilder<'_> {
                 })?;
                 let operation = match state.storage {
                     CompileStateStorage::Vm => MirStateOperation::ReadVmState { state: state.id },
-                    CompileStateStorage::Extern => {
-                        MirStateOperation::ReadExternState { state: state.id }
-                    }
                 };
                 let destination = self.function.add_temp(result_type, origin);
                 self.function.append_statement(

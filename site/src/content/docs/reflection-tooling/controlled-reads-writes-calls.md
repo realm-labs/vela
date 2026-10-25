@@ -1,45 +1,19 @@
 ---
-title: "Controlled Reads, Writes, And Calls"
-description: "Dynamic reflection operations and their safety boundaries."
+title: "Controlled Reads, Writes And Calls"
+description: "The synchronous, script-owned Vela boundary."
 ---
 
-Reflection can dynamically read fields, write fields, and call functions or
-methods. These operations are intentionally controlled and policy-gated.
-
-## Reads
-
-`reflect::get(target, field)` reads a field when the target shape and active
-policy allow it.
+Reflection can inspect script metadata and perform permitted operations on script-owned values. The registry is structurally read-only: reflection cannot add fields, mutate type structure or monkey patch methods.
 
 ```vela
-let level = reflect::get(player, "level");
+struct Player { level: i64 }
+fn main() {
+    let player = Player { level: 1 };
+    reflect::set(player, "level", 12);
+    return reflect::get(player, "level");
+}
 ```
 
-For host objects, the read is routed through host access machinery. For script
-records and enums, reflection uses registered script metadata when available so
-diagnostics can name the script type.
+Register the existing standard natives and grant the required reflection capabilities in Rust. Permission, argument, unknown-field and budget errors remain normal runtime failures.
 
-## Writes
-
-`reflect::set(target, field, value)` writes only when the field is writable and
-the active reflection and host policies allow the mutation.
-
-```vela
-reflect::set(player, "level", 12);
-```
-
-This still does not expose Rust `&mut T` to the script. Host mutation flows
-through `HostRef`, `HostPath`, `PathProxy`, `HostAccess`, and the host adapter.
-
-## Calls
-
-`reflect::call(target, args...)` invokes a reflected function or method only
-when it is marked callable through reflection. Effects, capabilities, budgets,
-and argument conversion still apply.
-
-## Failure Modes
-
-Controlled operations can fail with unknown field, read-only field, permission
-denied, stale host reference, argument mismatch, effect denial, or budget
-exhaustion diagnostics. These failures should be handled as normal runtime
-errors, not as reflection metadata corruption.
+Reflection cannot recover borrowed children, transparent Rust paths, opaque layout or removed Host constructors/methods. `reflect_schema_mutation_denied` and `reflect_unknown_field_denied` retain independent rejection coverage over script values.

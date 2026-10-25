@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
-use vela_common::HostTypeId;
-use vela_def::{DefPath, FieldId, TypeId, VariantId};
+use vela_def::{DefPath, TypeId, VariantId};
 use vela_reflect::modules::DeclOrigin;
 use vela_registry::{
     Def, EffectSet, FunctionSignature, RegistryCompileView, RegistryDeclarationSlotError,
@@ -11,8 +10,8 @@ use vela_registry::{
 use super::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
-    RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
-    RegistryTypeBindingFact, RegistryTypeTargetFact,
+    RegistryFunctionAccessFact, RegistryMethodAccessFact, RegistryTypeBindingFact,
+    RegistryTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
 
@@ -40,7 +39,7 @@ struct CompileViewFacts<'registry> {
     registry: RegistryCompileView<'registry>,
     type_names: BTreeMap<TypeId, String>,
     type_facts: BTreeMap<String, TypeFact>,
-    type_targets: BTreeMap<String, (TypeId, Option<u128>)>,
+    type_targets: BTreeMap<String, TypeId>,
     variant_names: BTreeMap<VariantId, String>,
     declaration_slots: RegistryDeclarationSlots,
 }
@@ -76,12 +75,8 @@ impl<'registry> CompileViewFacts<'registry> {
         for (name, fact) in &self.type_facts {
             facts.insert_type(name, fact.clone());
         }
-        for (name, (semantic, host_runtime)) in &self.type_targets {
-            facts.insert_type_target(RegistryTypeTargetFact::new(
-                name,
-                *semantic,
-                host_runtime.map(host_type_id),
-            ));
+        for (name, semantic) in &self.type_targets {
+            facts.insert_type_target(RegistryTypeTargetFact::new(name, *semantic));
         }
         for definition in self.registry.definitions() {
             let Def::Type(definition) = definition else {
@@ -97,47 +92,10 @@ impl<'registry> CompileViewFacts<'registry> {
                 name,
                 RegistryTypeBindingFact {
                     id: binding.id,
-                    storage: binding.storage,
-                    capabilities: binding.capabilities,
-                    collection_views: binding.collection_views,
-                    constructor_ids: binding.constructor_ids.clone(),
-                    host_constructors: binding.host_constructors.clone(),
                     abi_fingerprint: binding.abi_fingerprint,
                 },
             );
         }
-        for definition in self.registry.definitions() {
-            let Def::Type(definition) = definition else {
-                continue;
-            };
-            let Some(capability) = &definition.index_capability else {
-                continue;
-            };
-            let key = capability
-                .key_type
-                .as_ref()
-                .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
-            let value = capability
-                .value_type
-                .as_ref()
-                .map_or(TypeFact::Unknown, |hint| self.type_hint_fact(hint));
-            for owner in self
-                .type_targets
-                .iter()
-                .filter_map(|(name, target)| (target.0 == definition.id).then_some(name))
-            {
-                facts.insert_index_capability(RegistryIndexCapabilityFact {
-                    owner: owner.clone(),
-                    readable: capability.readable,
-                    writable: capability.writable,
-                    addable: capability.addable,
-                    removable: capability.removable,
-                    key: key.clone(),
-                    value: value.clone(),
-                });
-            }
-        }
-
         for definition in self.registry.definitions() {
             match definition {
                 Def::Field(field) => self.insert_field(&mut facts, field)?,
@@ -155,9 +113,6 @@ impl<'registry> CompileViewFacts<'registry> {
                         &method.path.name,
                         self.callable_signature_fact(&method.signature),
                     );
-                    if let Some(resource) = method.scoped_resource_return {
-                        facts.insert_method_scoped_resource(owner, &method.path.name, resource);
-                    }
                     facts.insert_method_effect(
                         owner,
                         &method.path.name,
@@ -166,7 +121,6 @@ impl<'registry> CompileViewFacts<'registry> {
                     facts.insert_method_access(RegistryMethodAccessFact {
                         owner: owner.clone(),
                         name: method.path.name.clone(),
-                        receiver: method.receiver,
                         public: method.access.public,
                         reflect_callable: method.access.reflect_callable,
                         required_permissions: method.access.required_permissions().to_vec(),
@@ -179,9 +133,6 @@ impl<'registry> CompileViewFacts<'registry> {
                         &name,
                         self.callable_signature_fact(&function.signature),
                     );
-                    if let Some(resource) = function.scoped_resource_return {
-                        facts.insert_function_scoped_resource(&name, resource);
-                    }
                     facts.insert_function_effect(&name, definition_effect_fact(function.effects));
                     facts.insert_function_access(RegistryFunctionAccessFact {
                         name: name.clone(),
@@ -236,15 +187,12 @@ impl<'registry> CompileViewFacts<'registry> {
         for definition in &types {
             let name = source_name(&definition.path);
             self.type_names.insert(definition.id, name.clone());
-            self.type_targets
-                .insert(name.clone(), (definition.id, definition.host_runtime_id));
+            self.type_targets.insert(name.clone(), definition.id);
             if name != definition.path.name
                 && short_name_counts.get(&definition.path.name) == Some(&1)
             {
-                self.type_targets.insert(
-                    definition.path.name.clone(),
-                    (definition.id, definition.host_runtime_id),
-                );
+                self.type_targets
+                    .insert(definition.path.name.clone(), definition.id);
             }
         }
         for definition in types
@@ -322,7 +270,6 @@ impl<'registry> CompileViewFacts<'registry> {
                 owner,
                 &field.path.name,
                 field.id,
-                field.host_runtime_id.map(FieldId::new),
                 field.variant.is_some(),
                 access,
             )
@@ -421,7 +368,6 @@ fn registered_type_fact(definition: &TypeDef, name: &str) -> TypeFact {
         TypeKindDef::Range => TypeFact::Range,
         TypeKindDef::Function => TypeFact::function(Vec::new(), TypeFact::Any),
         TypeKindDef::Closure => TypeFact::Closure,
-        TypeKindDef::Host => TypeFact::host(name),
         TypeKindDef::ScriptStruct => TypeFact::record(name),
         TypeKindDef::ScriptEnum => TypeFact::enum_type(name, None::<String>),
     }
@@ -440,8 +386,4 @@ fn definition_effect_fact(effects: EffectSet) -> RegistryEffectFact {
         writes_reflection: effects.reflection_write,
         calls_reflection: effects.reflection_call,
     }
-}
-
-fn host_type_id(value: u128) -> HostTypeId {
-    HostTypeId::new(u64::try_from(value).expect("host type runtime id exceeds u64::MAX"))
 }

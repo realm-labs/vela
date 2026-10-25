@@ -390,21 +390,16 @@ fn observed_capabilities(
             }
         }
         let capabilities = observed.entry(package.clone()).or_default();
-        for (present, capability) in [
-            (effect.host_read, Capability::HostRead),
-            (effect.host_write, Capability::HostWrite),
-            (effect.emits_event, Capability::EventEmit),
-            (effect.reads_time, Capability::Time),
-            (effect.uses_random, Capability::Random),
-            (effect.reads_io, Capability::IoRead),
-            (effect.writes_io, Capability::IoWrite),
-            (effect.reflection_read, Capability::ReflectionRead),
-            (effect.reflection_write, Capability::ReflectionWrite),
-            (effect.reflection_call, Capability::ReflectionCall),
-        ] {
-            if present {
-                capabilities.insert(capability);
-            }
+        for capability in crate::RustBindingEffectSet::from(effect)
+            .required_capabilities()
+            .iter()
+        {
+            capabilities.insert(capability);
+        }
+    }
+    for capabilities in observed.values_mut() {
+        if capabilities.contains(Capability::HostWrite) {
+            *capabilities = capabilities.without(Capability::HostRead);
         }
     }
     Ok(observed)
@@ -516,10 +511,6 @@ fn reject_initializer_effect(
     let reason = [
         (effect.dynamic_call, "dynamic dispatch"),
         (effect.state_read || effect.state_write, "state access"),
-        (
-            effect.host_read || effect.host_write || effect.host_call,
-            "host access",
-        ),
         (
             effect.reflection_read || effect.reflection_write || effect.reflection_call,
             "reflection",
@@ -827,9 +818,7 @@ fn mir_backend_compile_error(
         mir_backend::MirBackendError::MissingTarget(target) => {
             error::MirBackendFailureKind::MissingTarget(target)
         }
-        mir_backend::MirBackendError::DynamicHostArgumentOverflow => {
-            error::MirBackendFailureKind::DynamicHostArgumentOverflow
-        }
+
         mir_backend::MirBackendError::RegisterOverflow => unreachable!("handled above"),
     };
     CompileError::new(CompileErrorKind::MirBackend(Box::new(
@@ -869,7 +858,6 @@ fn state_descriptors(
                 },
                 storage: match target.storage {
                     CompileStateStorage::Vm => StateStorage::Vm,
-                    CompileStateStorage::Extern => StateStorage::Extern,
                 },
                 type_contract: target.contract.clone(),
                 initializer: target.initializer,

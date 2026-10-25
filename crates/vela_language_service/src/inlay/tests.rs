@@ -3,10 +3,7 @@ use crate::{
     DisplayPartKind, SourceFileSnapshot, Workspace, WorkspaceConfig, WorkspaceRoot,
     assemble_project_sources,
 };
-use vela_analysis::registry::{
-    RegistryFacts, RegistryIndexCapabilityFact, ScopedResourceKindDef, ScopedResourceParentDef,
-    ScopedResourceReturnDef,
-};
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
 
 fn databases_for(files: Vec<SourceFileSnapshot>) -> LanguageServiceDatabases {
@@ -106,7 +103,7 @@ pub fn main() {
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(
             config,
-            "pub const BONUS: i64 = 10\npub extern state reward_scale: i64;",
+            "pub const BONUS: i64 = 10\npub state reward_scale: i64 = 1;",
         ),
     ]);
 
@@ -421,7 +418,7 @@ pub fn main() {
 }
 
 #[test]
-fn inlay_hints_show_host_path_typefacts() {
+fn inlay_hints_show_registered_value_local_typefacts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"pub fn main(player: Player) {
     let next = player.level + 1;
@@ -431,7 +428,7 @@ fn inlay_hints_show_host_path_typefacts() {
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_field("Player", "mystery", TypeFact::Any);
     schema.insert_method(
@@ -450,8 +447,6 @@ fn inlay_hints_show_host_path_typefacts() {
         hint_labels(&hints),
         vec![
             (Position::new(1, 12), ": i64".to_owned()),
-            (Position::new(1, 27), ": i64".to_owned()),
-            (Position::new(2, 16), ": i64".to_owned()),
             (Position::new(4, 17), "arg0:".to_owned())
         ]
     );
@@ -463,15 +458,13 @@ fn inlay_hints_show_host_path_typefacts() {
                 document.clone(),
                 TextRange::new(38, 42)
             )),
-            Some(SymbolRef::Schema("Player.level".to_owned())),
-            Some(SymbolRef::Schema("Player.level".to_owned())),
             Some(SymbolRef::Schema("Player.grant.arg0".to_owned()))
         ]
     );
 }
 
 #[test]
-fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
+fn inlay_hints_show_registered_value_return_receiver_local_typefacts() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = r#"pub fn main(player: Player) {
     let slots = player.inventory().slots + 1;
@@ -480,19 +473,16 @@ fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_type("Player", TypeFact::record("Player"));
+    schema.insert_type("Inventory", TypeFact::record("Inventory"));
     schema.insert_method(
         "Player",
         "inventory",
-        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+        TypeFact::function(Vec::new(), TypeFact::record("Inventory")),
     );
     schema.insert_field("Inventory", "slots", TypeFact::I64);
     schema.insert_field("Inventory", "mystery", TypeFact::Any);
     databases.set_schema_facts(schema);
-    let first_line = text.lines().nth(1).expect("first slots line");
-    let second_line = text.lines().nth(2).expect("second slots line");
-
     let hints = databases.inlay_hints(
         &document,
         DiagnosticRange::new(Position::new(0, 0), Position::new(5, 0)),
@@ -500,93 +490,34 @@ fn inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
 
     assert_eq!(
         hint_labels(&hints),
-        vec![
-            (Position::new(1, "    let slots".len()), ": i64".to_owned()),
-            (
-                Position::new(
-                    1,
-                    first_line.find("slots +").expect("first slots field") + "slots".len()
-                ),
-                ": i64".to_owned()
-            ),
-            (
-                Position::new(
-                    2,
-                    second_line.find("slots +=").expect("second slots field") + "slots".len()
-                ),
-                ": i64".to_owned()
-            )
-        ]
+        vec![(Position::new(1, "    let slots".len()), ": i64".to_owned())]
     );
     assert_eq!(
         hint_symbols(&hints),
-        vec![
-            Some(SymbolRef::local_at(
-                "slots",
-                document.clone(),
-                TextRange::new(38, 43)
-            )),
-            Some(SymbolRef::Schema("Inventory.slots".to_owned())),
-            Some(SymbolRef::Schema("Inventory.slots".to_owned()))
-        ]
+        vec![Some(SymbolRef::local_at(
+            "slots",
+            document.clone(),
+            TextRange::new(38, 43)
+        )),]
     );
 }
 
 #[test]
-fn inlay_hints_distinguish_scoped_resource_locals() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "pub fn main(player: Player) { let item = player.item_mut(); host::release(item); }";
-    let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
-    let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_type("Item", TypeFact::host("Item"));
-    schema.insert_method(
-        "Player",
-        "item_mut",
-        TypeFact::function(Vec::new(), TypeFact::host("Item")),
-    );
-    schema.insert_method_scoped_resource(
-        "Player",
-        "item_mut",
-        ScopedResourceReturnDef {
-            kind: ScopedResourceKindDef::MutView,
-            parent: ScopedResourceParentDef::Receiver,
-        },
-    );
-    databases.set_schema_facts(schema);
-
-    let hints = databases.inlay_hints(
-        &document,
-        DiagnosticRange::new(Position::new(0, 0), Position::new(0, text.len())),
-    );
-
-    assert!(
-        hint_labels(&hints)
-            .iter()
-            .any(|(_, label)| label == ": MutView<Item>")
-    );
+fn inlay_hints_reject_scoped_resource_locals() {
+    crate::removed_boundary_tests::assert_removed_resource_surface();
 }
 
 #[test]
-fn inlay_hints_use_hir_index_operands_for_host_field_receivers() {
+fn inlay_hints_use_hir_index_operands_for_registered_value_receivers() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = r#"pub fn main(players: PlayerList) {
+    let text = r#"pub fn main(players: Array<Player>) {
     let level = players[0].level + 1;
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = RegistryFacts::default();
-    schema.insert_type("PlayerList", TypeFact::host("PlayerList"));
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("PlayerList", TypeFact::record("PlayerList"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
-    schema.insert_index_capability(RegistryIndexCapabilityFact {
-        owner: "PlayerList".to_owned(),
-        readable: true,
-        writable: false,
-        addable: false,
-        removable: false,
-        key: TypeFact::I64,
-        value: TypeFact::host("Player"),
-    });
     databases.set_schema_facts(schema);
 
     let hints = databases.inlay_hints(
@@ -596,17 +527,11 @@ fn inlay_hints_use_hir_index_operands_for_host_field_receivers() {
 
     assert_eq!(
         hint_labels(&hints),
-        vec![
-            (position_after_nth(text, "level", 1), ": i64".to_owned()),
-            (position_after_nth(text, "level", 2), ": i64".to_owned())
-        ]
+        vec![(position_after_nth(text, "level", 1), ": i64".to_owned())]
     );
     assert_eq!(
         hint_symbols(&hints),
-        vec![
-            Some(local_symbol_at(&document, text, "level", 1)),
-            Some(SymbolRef::Schema("Player.level".to_owned()))
-        ]
+        vec![Some(local_symbol_at(&document, text, "level", 1))]
     );
 }
 

@@ -3,7 +3,6 @@ pub enum MirJitIneligibility {
     Allocation,
     Call,
     DynamicWork,
-    HostAccess,
     Reflection,
     Iterator,
     MissingAnalyses,
@@ -63,9 +62,7 @@ pub fn restricted_jit_eligibility(
             | crate::MirStatementKind::Index(_) => {
                 reasons.insert(MirJitIneligibility::DynamicWork);
             }
-            crate::MirStatementKind::Host(_) => {
-                reasons.insert(MirJitIneligibility::HostAccess);
-            }
+
             crate::MirStatementKind::Reflect(_) => {
                 reasons.insert(MirJitIneligibility::Reflection);
             }

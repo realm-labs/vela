@@ -1,49 +1,14 @@
 ---
-title: "Context"
-description: "Vela Context 标准库文档。"
+title: "Native Call Context"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-`Context` 是标准宿主对象 schema，不是普通脚本自有状态。脚本需要确定性时间
-字段、事件发送或日志时，由宿主注册它。脚本拿到的是 call-scoped `HostRef`，
-不会持有真实 Rust mutable reference。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 字段
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-标准 context schema 暴露 `now: i64` 和 `tick: i64`。这些值来自宿主，并遵循
-确定性 time 模型。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```vela
-fn main(ctx: Context) {
-    let stamp = ctx.now + ctx.tick;
-    return stamp;
-}
-```
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-字段读取仍然经过 `HostAccess`，因此宿主读权限和 stale host reference 检查
-都会生效。
-
-## 事件和日志
-
-`ctx.emit(event, payload?)` 为宿主 safe point 记录 event emission patch。
-`ctx.log(level, message, payload?)` 记录 log patch。两者都是带 event effect
-的宿主方法。
-
-```vela
-fn main(ctx: Context, player: Player) {
-    let stamp = ctx.now + ctx.tick;
-    ctx.emit("player.level_checked", stamp);
-    ctx.log("info", "player.level_checked", stamp);
-    return stamp;
-}
-```
-
-`payload` 参数是可选的，可以是宿主 adapter 接受的任意脚本值。
-
-## Capability 边界
-
-宿主必须注册 context schema，并授予相应的 host read、host call 和 event
-capability。被拒绝的 context 调用是 runtime diagnostic，不是 `Result::Err`，
-因为 host boundary 没有接受该事件。
-
-Context 保持领域中立。游戏里的事件名、payload shape 和 host type 都由
-embedding 应用提供。
+详情与现有调用示例见 [English reference](/stdlib/context/)。

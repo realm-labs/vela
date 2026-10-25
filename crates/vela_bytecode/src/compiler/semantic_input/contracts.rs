@@ -137,27 +137,6 @@ impl GenerationBuilder<'_, '_> {
         self.boundaries.push(replacement);
     }
 
-    pub(super) fn remove_native_parameter_boundary(
-        &mut self,
-        function: FunctionId,
-        expression: HirExprId,
-        display_function: impl Into<String>,
-        name: impl Into<String>,
-        index: u32,
-    ) {
-        let site = ContractBoundary::native_parameter(
-            function,
-            expression,
-            MirTypeContract::Any,
-            display_function,
-            name,
-            index,
-        );
-        self.boundaries.retain(|boundary| {
-            !boundary.has_native_parameter_site(function, expression, &site.context)
-        });
-    }
-
     pub(super) fn reject_literal_diagnostics(&self) -> CompileResult<()> {
         let diagnostics = self.literal_diagnostics()?;
         if diagnostics.is_empty() {
@@ -549,7 +528,6 @@ impl GenerationBuilder<'_, '_> {
             MirTypeContract::Definition(type_id) | MirTypeContract::Shape { type_id, .. } => {
                 let name = self.type_name(*type_id).ok_or_else(registry_input_error)?;
                 match self.catalog.ty(*type_id).map(|definition| definition.kind) {
-                    Some(vela_registry::TypeKindDef::Host) => TypeFact::host(name),
                     Some(vela_registry::TypeKindDef::ScriptEnum) => {
                         TypeFact::enum_type(name, None::<String>)
                     }
@@ -572,10 +550,6 @@ impl GenerationBuilder<'_, '_> {
                     .ok_or_else(registry_input_error)?;
                 TypeFact::enum_type(name, Some(variant))
             }
-            MirTypeContract::Host(target) => TypeFact::host(
-                self.type_name(target.semantic)
-                    .ok_or_else(registry_input_error)?,
-            ),
         })
     }
 
@@ -596,52 +570,38 @@ pub(super) fn typed_container_mutation_arg_fact(
 ) -> Option<TypeFact> {
     let receiver = project_mutation_contract_fact(receiver?)?;
     match receiver {
-        TypeFact::Array { element }
-        | TypeFact::ArrayMut {
-            element,
-            mutation: vela_common::CollectionViewMutation::Growable,
-        } => match (method, mutation_arg_role(method, param_name, position)) {
-            ("push" | "insert", MutationArgRole::Value) => Some(*element),
-            ("extend", MutationArgRole::Values) => Some(TypeFact::Array { element }),
-            _ => None,
-        },
-        TypeFact::Map { key, value }
-        | TypeFact::MapMut {
-            key,
-            value,
-            mutation: vela_common::CollectionViewMutation::Growable,
-        } => match (method, mutation_arg_role(method, param_name, position)) {
-            ("set", MutationArgRole::Key)
-                if !matches!(key.as_ref(), TypeFact::Primitive(PrimitiveTag::String)) =>
-            {
-                Some(*key)
+        TypeFact::Array { element } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("push" | "insert", MutationArgRole::Value) => Some(*element),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Array { element }),
+                _ => None,
             }
-            ("set", MutationArgRole::Value) => Some(*value),
-            ("extend", MutationArgRole::Values) => Some(TypeFact::Map { key, value }),
-            _ => None,
-        },
-        TypeFact::Set { element }
-        | TypeFact::SetMut {
-            element,
-            mutation: vela_common::CollectionViewMutation::Growable,
-        } => match (method, mutation_arg_role(method, param_name, position)) {
-            ("add", MutationArgRole::Value) => Some(*element),
-            ("extend", MutationArgRole::Values) => Some(TypeFact::Set { element }),
-            _ => None,
-        },
+        }
+        TypeFact::Map { key, value } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("set", MutationArgRole::Key)
+                    if !matches!(key.as_ref(), TypeFact::Primitive(PrimitiveTag::String)) =>
+                {
+                    Some(*key)
+                }
+                ("set", MutationArgRole::Value) => Some(*value),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Map { key, value }),
+                _ => None,
+            }
+        }
+        TypeFact::Set { element } => {
+            match (method, mutation_arg_role(method, param_name, position)) {
+                ("add", MutationArgRole::Value) => Some(*element),
+                ("extend", MutationArgRole::Values) => Some(TypeFact::Set { element }),
+                _ => None,
+            }
+        }
         TypeFact::Unknown
         | TypeFact::Never
         | TypeFact::Any
         | TypeFact::Primitive(_)
         | TypeFact::Range
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
@@ -654,7 +614,6 @@ pub(super) fn typed_container_mutation_arg_fact(
         | TypeFact::Record { .. }
         | TypeFact::LogicalRecord(_)
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Module { .. }
         | TypeFact::Union(_) => None,
@@ -666,40 +625,16 @@ fn project_mutation_contract_fact(fact: &TypeFact) -> Option<TypeFact> {
         TypeFact::Primitive(primitive) => TypeFact::Primitive(*primitive),
         TypeFact::Range => TypeFact::Range,
         TypeFact::Array { element } => TypeFact::array(project_mutation_contract_fact(element)?),
-        TypeFact::ArrayView { element } => {
-            TypeFact::array_view(project_mutation_contract_fact(element)?)
-        }
-        TypeFact::ArrayMut { element, mutation } => {
-            TypeFact::array_mut(project_mutation_contract_fact(element)?, *mutation)
-        }
+
         TypeFact::Map { key, value } => TypeFact::map(
             project_mutation_contract_fact(key)?,
             project_mutation_contract_fact(value)?,
         ),
-        TypeFact::MapView { key, value } => TypeFact::map_view(
-            project_mutation_contract_fact(key)?,
-            project_mutation_contract_fact(value)?,
-        ),
-        TypeFact::MapMut {
-            key,
-            value,
-            mutation,
-        } => TypeFact::map_mut(
-            project_mutation_contract_fact(key)?,
-            project_mutation_contract_fact(value)?,
-            *mutation,
-        ),
+
         TypeFact::Set { element } => TypeFact::set(project_mutation_contract_fact(element)?),
-        TypeFact::SetView { element } => {
-            TypeFact::set_view(project_mutation_contract_fact(element)?)
-        }
-        TypeFact::SetMut { element, mutation } => {
-            TypeFact::set_mut(project_mutation_contract_fact(element)?, *mutation)
-        }
+
         TypeFact::Iterator { item } => TypeFact::iterator(project_mutation_contract_fact(item)?),
-        TypeFact::ScopedIterator { item } => {
-            TypeFact::scoped_iterator(project_mutation_contract_fact(item)?)
-        }
+
         TypeFact::Tuple { elements } => TypeFact::tuple(
             elements
                 .iter()
@@ -725,7 +660,6 @@ fn project_mutation_contract_fact(fact: &TypeFact) -> Option<TypeFact> {
         | TypeFact::Record { .. }
         | TypeFact::LogicalRecord(_)
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Module { .. }
         | TypeFact::Union(_) => return None,

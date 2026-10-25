@@ -78,7 +78,7 @@
       {
         "id": "state",
         "superType": "variable",
-        "description": "Vela VM or extern state declaration or reference."
+        "description": "Vela VM-owned state declaration or reference."
       },
       {
         "id": "boolean",
@@ -177,10 +177,6 @@
       }
     ],
     "semanticTokenModifiers": [
-      {
-        "id": "host",
-        "description": "Vela host-owned symbol provenance."
-      },
       {
         "id": "unresolved",
         "description": "Vela unresolved symbol marker."

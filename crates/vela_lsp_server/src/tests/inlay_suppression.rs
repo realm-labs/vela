@@ -34,12 +34,12 @@ fn lsp_inlay_hints_suppress_any_lambda_parameter_facts() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -171,12 +171,12 @@ fn lsp_inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiv
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -284,12 +284,12 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -298,7 +298,7 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_function_retu
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Player" }
+                            "returns": { "kind": "record", "name": "Player" }
                         }
                     }
                 ],
@@ -422,16 +422,16 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -441,7 +441,7 @@ fn lsp_inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     },
                     {
@@ -564,7 +564,7 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_functio
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {
@@ -708,12 +708,12 @@ fn lsp_inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [

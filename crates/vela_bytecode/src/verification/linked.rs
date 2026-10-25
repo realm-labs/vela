@@ -8,7 +8,7 @@ use crate::linked::{
 };
 use crate::{
     CacheSiteId, CacheSiteInstruction, CacheSiteKind, CacheSiteStorage, CallArgument, Constant,
-    ConstantId, FormatStringPart, HostTargetPlanId, InstructionOffset, Register,
+    ConstantId, FormatStringPart, InstructionOffset, Register,
 };
 
 use super::{VerificationError, VerificationErrorKind, constant_kind, error};
@@ -44,28 +44,6 @@ pub fn verify_linked_program(program: &LinkedProgram) -> Result<(), Verification
                 VerificationErrorKind::InvalidStateDescriptor {
                     slot,
                     detail: "qualified name is empty".to_owned(),
-                },
-            ));
-        }
-        if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
-            return Err(error(
-                "<linked state descriptor>",
-                None,
-                VerificationErrorKind::InvalidStateDescriptor {
-                    slot,
-                    detail: "extern state carries an initializer".to_owned(),
-                },
-            ));
-        }
-        if state.storage == crate::StateStorage::Extern
-            && !matches!(state.type_contract, vela_mir::MirTypeContract::Host(_))
-        {
-            return Err(error(
-                "<linked state descriptor>",
-                None,
-                VerificationErrorKind::InvalidStateDescriptor {
-                    slot,
-                    detail: "extern state requires a host type contract".to_owned(),
                 },
             ));
         }
@@ -265,8 +243,6 @@ fn verify_linked_instruction(
         | InstructionKind::Not { dst, src }
         | InstructionKind::Truthy { dst, src }
         | InstructionKind::Negate { dst, src }
-        | InstructionKind::ReleaseBorrowLease { dst, src }
-        | InstructionKind::TryReleaseBorrowLease { dst, src }
         | InstructionKind::TryPropagate { dst, src, .. } => {
             verify_linked_register(function, instruction_index, code, *dst)?;
             verify_linked_register(function, instruction_index, code, *src)
@@ -593,23 +569,7 @@ fn verify_linked_instruction(
                 crate::StateStorage::Vm,
             )
         }
-        InstructionKind::LoadExternState {
-            dst,
-            slot,
-            debug_name,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *dst)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)?;
-            verify_linked_state(
-                function,
-                instruction_index,
-                context,
-                *slot,
-                *debug_name,
-                crate::StateStorage::Extern,
-            )
-        }
+
         InstructionKind::StoreState {
             src,
             slot,
@@ -626,102 +586,7 @@ fn verify_linked_instruction(
                 crate::StateStorage::Vm,
             )
         }
-        InstructionKind::HostRead {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *dst)?;
-            verify_linked_register(function, instruction_index, code, *root)?;
-            verify_linked_registers(function, instruction_index, code, dynamic_args)?;
-            verify_linked_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        InstructionKind::HostWrite {
-            root,
-            target,
-            dynamic_args,
-            src,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *root)?;
-            verify_linked_register(function, instruction_index, code, *src)?;
-            verify_linked_registers(function, instruction_index, code, dynamic_args)?;
-            verify_linked_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        InstructionKind::HostMutate {
-            root,
-            target,
-            dynamic_args,
-            rhs,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *root)?;
-            verify_linked_register(function, instruction_index, code, *rhs)?;
-            verify_linked_registers(function, instruction_index, code, dynamic_args)?;
-            verify_linked_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        InstructionKind::HostRemove {
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => {
-            verify_linked_register(function, instruction_index, code, *root)?;
-            verify_linked_registers(function, instruction_index, code, dynamic_args)?;
-            verify_linked_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        InstructionKind::HostCall {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            method,
-            debug_name,
-            args,
-            ..
-        } => {
-            if let Some(dst) = dst {
-                verify_linked_register(function, instruction_index, code, *dst)?;
-            }
-            verify_linked_register(function, instruction_index, code, *root)?;
-            verify_linked_registers(function, instruction_index, code, dynamic_args)?;
-            verify_linked_registers(function, instruction_index, code, args)?;
-            verify_linked_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )?;
-            verify_linked_method_handle(function, instruction_index, context, *method)?;
-            verify_linked_debug_name(function, instruction_index, context, *debug_name)
-        }
+
         InstructionKind::Return { src } => {
             verify_linked_register(function, instruction_index, code, *src)
         }
@@ -744,16 +609,6 @@ fn verify_linked_instruction_cache_site(
             instruction_index,
             code,
             instruction.kind.cache_site(),
-            policy.kind,
-        ),
-        CacheSiteStorage::RequiredOperand => verify_linked_cache_site(
-            function,
-            instruction_index,
-            code,
-            instruction
-                .kind
-                .cache_site()
-                .expect("required cache policy exposes its operand"),
             policy.kind,
         ),
     }
@@ -935,9 +790,7 @@ fn verify_linked_type_guard(
             }
             Ok(())
         }
-        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType { ty: handle, .. } => {
-            verify_linked_type_handle(function, None, context, handle)
-        }
+        TypeGuardPlan::Type(handle) => verify_linked_type_handle(function, None, context, handle),
         TypeGuardPlan::Variant(handle) => {
             verify_linked_variant_handle(function, None, context, handle)
         }
@@ -1004,9 +857,7 @@ fn verify_linked_type_guard_plan(
             }
             Ok(())
         }
-        TypeGuardPlan::Type(handle) | TypeGuardPlan::HostType { ty: handle, .. } => {
-            verify_linked_type_handle(function, None, context, handle)
-        }
+        TypeGuardPlan::Type(handle) => verify_linked_type_handle(function, None, context, handle),
         TypeGuardPlan::Variant(handle) => {
             verify_linked_variant_handle(function, None, context, handle)
         }
@@ -1372,67 +1223,6 @@ fn verify_linked_state(
                 actual: descriptor.storage,
             },
         ));
-    }
-    Ok(())
-}
-
-fn verify_linked_host_target(
-    function: &str,
-    instruction: Option<usize>,
-    code: &LinkedCodeObject,
-    target: HostTargetPlanId,
-    dynamic_arg_count: usize,
-) -> Result<(), VerificationError> {
-    let Some(plan) = code.host_target(target) else {
-        return Err(error(
-            function,
-            instruction,
-            VerificationErrorKind::HostTargetOutOfBounds {
-                target,
-                target_count: code.host_targets.len(),
-            },
-        ));
-    };
-    verify_host_target_dynamic_args(function, instruction, plan, dynamic_arg_count)
-}
-
-fn verify_host_target_dynamic_args(
-    function: &str,
-    instruction: Option<usize>,
-    plan: &vela_host::target::HostTargetPlan,
-    dynamic_arg_count: usize,
-) -> Result<(), VerificationError> {
-    let expected = plan.parts.dynamic_arg_count();
-    if expected != dynamic_arg_count {
-        return Err(error(
-            function,
-            instruction,
-            VerificationErrorKind::HostTargetDynamicArgMismatch {
-                expected,
-                actual: dynamic_arg_count,
-            },
-        ));
-    }
-    for expected_index in 0..expected {
-        let expected_index =
-            u8::try_from(expected_index).expect("host target dynamic arg index exceeds u8::MAX");
-        let has_placeholder = plan.parts.as_slice().iter().any(|part| match part {
-            vela_host::target::HostPathPart::DynIndex { arg }
-            | vela_host::target::HostPathPart::DynKey { arg } => *arg == expected_index,
-            vela_host::target::HostPathPart::Field(_)
-            | vela_host::target::HostPathPart::VariantField(_)
-            | vela_host::target::HostPathPart::ConstIndex(_)
-            | vela_host::target::HostPathPart::ConstKey(_) => false,
-        });
-        if !has_placeholder {
-            return Err(error(
-                function,
-                instruction,
-                VerificationErrorKind::HostTargetDynamicArgGap {
-                    index: expected_index,
-                },
-            ));
-        }
     }
     Ok(())
 }

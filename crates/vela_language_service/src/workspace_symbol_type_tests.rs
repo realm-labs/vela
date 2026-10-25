@@ -45,10 +45,28 @@ fn workspace_symbol_type_positions_preserve_complete_hint_details_and_owner_excl
                     .parse_db()
                     .parse_diagnostics(&DocumentId::from(uri(file)))
                     .expect("parsed");
-                assert!(
-                    diagnostics.is_empty(),
-                    "valid syntax {file}: {diagnostics:?}"
-                );
+                if file == "scripts/types.vela" {
+                    assert_eq!(diagnostics.len(), 12, "unsupported view type arguments");
+                    assert!(
+                        diagnostics
+                            .iter()
+                            .all(|d| { d.code.as_deref() == Some("syntax::generic_type_hint") })
+                    );
+                    assert_eq!(
+                        db.diagnostics_for_document(&DocumentId::from(uri(file)))
+                            .diagnostics()
+                            .iter()
+                            .filter(|d| d.code() == Some("hir::removed_host_type_hint"))
+                            .count(),
+                        12,
+                        "removed view parameters and returns"
+                    );
+                } else {
+                    assert!(
+                        diagnostics.is_empty(),
+                        "valid syntax {file}: {diagnostics:?}"
+                    );
+                }
             }
             let before = db.clone();
             let mut fresh = LanguageServiceDatabases::new();

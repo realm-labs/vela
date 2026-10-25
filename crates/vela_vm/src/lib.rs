@@ -25,18 +25,7 @@ pub mod heap;
 pub mod heap_execution;
 mod heap_graph;
 mod heap_values;
-mod host_access;
-mod host_access_helpers;
 pub mod host_call_values;
-mod host_collection_callback;
-mod host_collection_edges;
-mod host_collection_lookup;
-mod host_collection_mutation;
-mod host_collection_ordering;
-mod host_collection_projection;
-mod host_map_merge;
-mod host_set_algebra;
-mod host_values;
 mod i64_ops;
 mod indexing;
 pub mod iteration;
@@ -77,6 +66,7 @@ mod serde_tests;
 mod set_methods;
 mod small_storage;
 mod standard_method_cache;
+mod state_values;
 mod std_method_ids;
 mod stdlib;
 mod string_methods;
@@ -105,12 +95,8 @@ use heap_values::{
     store_value_in_heap_if_needed, stored_runtime_value, value_from_constant, value_to_owned,
 };
 pub use heap_values::{
-    allocate_zero_field_record, owned_to_linked_persistent_value,
-    owned_to_linked_persistent_value_with_host, owned_to_linked_persistent_value_with_slots,
-    owned_to_persistent_value, owned_to_persistent_value_with_host,
-    owned_to_persistent_value_with_slots, persistent_value_to_owned,
-    persistent_value_to_owned_with_host, persistent_value_to_owned_with_slots,
-    validate_persistent_value_host_refs,
+    allocate_zero_field_record, owned_to_linked_persistent_value, owned_to_persistent_value,
+    persistent_value_to_owned,
 };
 pub use owned_contract::{canonicalize_owned_value_contract, validate_owned_value_contract};
 use owned_value::OwnedValue;
@@ -118,20 +104,18 @@ pub(crate) use reflection_values::{
     runtime_value_to_reflect, value_from_reflect, value_to_reflect,
 };
 use runtime_checks::expect_int;
-pub(crate) use runtime_checks::{expect_arity, expect_host_ref, expect_string};
+pub(crate) use runtime_checks::{expect_arity, expect_string};
 #[cfg(test)]
 pub(crate) use script_object::ScriptFields;
 use small_storage::SmallStorage;
 use vela_bytecode::{
-    CacheSiteId, DebugNameId, FieldSlot, HostTargetPlanId, InstructionOffset, LinkedArtifact,
-    LinkedProgram, MethodDispatchHandle, ScriptFunctionHandle,
+    CacheSiteId, DebugNameId, FieldSlot, InstructionOffset, LinkedArtifact, LinkedProgram,
+    MethodDispatchHandle, ScriptFunctionHandle,
 };
 #[cfg(test)]
 use vela_bytecode::{Register, UnlinkedCodeObject, UnlinkedInstructionKind, UnlinkedProgram};
-use vela_common::{HostMethodId, HostTypeId, ShapeId};
+use vela_common::ShapeId;
 use vela_def::{DefPath, FunctionId, MethodId, TypeId};
-use vela_host::adapter::ScriptStateAdapter;
-use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 #[cfg(test)]
 use vela_reflect as reflect;
 use vela_reflect::registry::TypeRegistry;
@@ -145,16 +129,7 @@ pub use linked_execution::{LinkedDriveOutcome, PreparedContextCall};
 
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
-pub type HostMethodFunction = Arc<
-    dyn for<'host> Fn(
-            &vela_host::path::HostPath,
-            &[OwnedValue],
-            &mut HostExecution<'host>,
-        ) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
->;
+/// A native invocation may borrow the VM-owned heap without exporting that borrow.
 pub type BorrowedNativeFunction = Arc<
     dyn for<'heap, 'budget> Fn(
             &[Value],
@@ -208,10 +183,24 @@ pub(crate) type BorrowedHostNativeFunction = Arc<
 /// ```compile_fail,E0432
 /// use vela_vm::DetachedValueImage;
 /// ```
+///
+/// Transparent host methods and adapter-aware conversion are unavailable.
+///
+/// ```compile_fail,E0599
+/// let mut vm = vela_vm::Vm::new();
+/// vm.register_host_method_with_id((), |_, _, _| unreachable!());
+/// ```
+///
+/// ```compile_fail,E0432
+/// use vela_vm::HostInlineCacheEntry;
+/// ```
+///
+/// ```compile_fail,E0432
+/// use vela_vm::owned_to_persistent_value_with_host;
+/// ```
 #[derive(Clone, Default)]
 pub struct Vm {
     native_ids: HashMap<FunctionId, NativeFunction>,
-    host_method_ids: HashMap<HostMethodId, HostMethodFunction>,
     borrowed_native_ids: HashMap<FunctionId, BorrowedNativeFunction>,
     host_native_ids: HashMap<FunctionId, HostNativeFunction>,
     borrowed_host_native_ids: HashMap<FunctionId, BorrowedHostNativeFunction>,
@@ -219,26 +208,13 @@ pub struct Vm {
     type_registry: Option<Arc<TypeRegistry>>,
 }
 
+/// Ordinary VM state context for synchronous execution and natives.
+///
+/// ```compile_fail,E0560
+/// let context = vela_vm::HostExecution { adapter: (), state_values: None };
+/// ```
 pub struct HostExecution<'host> {
-    pub adapter: &'host mut (dyn ScriptStateAdapter + Send),
-    pub access: &'host mut vela_host::access::HostAccess,
     pub state_values: Option<&'host mut VmStateValues>,
-}
-
-impl HostExecution<'_> {
-    pub(crate) fn intern_host_ref(
-        &mut self,
-        reference: vela_host::path::HostRef,
-    ) -> VmResult<vela_host::path::HostSlotRef> {
-        self.adapter.intern_host_ref(reference).map_err(Into::into)
-    }
-
-    pub(crate) fn resolve_host_ref(
-        &self,
-        handle: vela_host::path::HostSlotRef,
-    ) -> VmResult<vela_host::path::HostRef> {
-        self.adapter.resolve_host_ref(handle).map_err(Into::into)
-    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -288,12 +264,6 @@ pub trait VmInlineCaches {
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
-
-    fn host_access(&self, _site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        None
-    }
-
-    fn set_host_access(&self, _site: CacheSiteId, _entry: HostInlineCacheEntry) {}
 
     fn record_field(&self, _site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
         None
@@ -380,22 +350,6 @@ pub(crate) fn validate_inline_cache_layout(
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct HostInlineCacheEntry {
-    pub root_type: HostTypeId,
-    pub target: HostInlineCacheTarget,
-    pub op: HostAccessOp,
-    pub schema_epoch: HostSchemaEpoch,
-    pub resolved: ResolvedHostAccess,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum HostInlineCacheTarget {
-    TargetPlan(HostTargetPlanId),
-    RootObject,
-    CollectionKey,
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct RecordFieldInlineCacheEntry {
     pub type_id: TypeId,
     pub shape_id: ShapeId,
@@ -425,11 +379,6 @@ pub enum DynamicReceiverGuard {
         type_name: String,
         shape_id: Option<ShapeId>,
     },
-    HostType {
-        type_id: HostTypeId,
-        schema_epoch: HostSchemaEpoch,
-        lease_kind: vela_host::lease::HostLeaseKind,
-    },
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -437,9 +386,6 @@ pub enum DynamicMethodInlineCacheTarget {
     Script {
         dispatch: MethodDispatchHandle,
         function: ScriptFunctionHandle,
-    },
-    Host {
-        method_id: HostMethodId,
     },
     StandardValue {
         method_id: MethodId,
@@ -498,9 +444,6 @@ pub enum MethodInlineCacheTarget {
     CallbackValue {
         method_id: MethodId,
         callback_method: CallbackMethodInlineCacheEntry,
-    },
-    Host {
-        method_id: HostMethodId,
     },
 }
 
@@ -703,21 +646,6 @@ impl Vm {
         self.native_ids.insert(id, Arc::new(function));
     }
 
-    pub fn register_host_method_with_id(
-        &mut self,
-        id: HostMethodId,
-        function: impl for<'host> Fn(
-            &vela_host::path::HostPath,
-            &[OwnedValue],
-            &mut HostExecution<'host>,
-        ) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) {
-        self.host_method_ids.insert(id, Arc::new(function));
-    }
-
     pub fn register_borrowed_native(
         &mut self,
         name: impl Into<String>,
@@ -894,21 +822,12 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut host_slots = vela_host::slot::HostRefSlots::new();
-        let args = owned_args_to_runtime(
-            args,
-            artifact.program(),
-            &mut heap_execution,
-            Some(budget),
-            Some(&mut host_slots),
-        )?;
-        let mut access = vela_host::access::HostAccess::new();
+
+        let args =
+            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
+
         let result = {
-            let mut host = HostExecution {
-                adapter: &mut host_slots,
-                access: &mut access,
-                state_values: None,
-            };
+            let mut host = HostExecution { state_values: None };
             self.execute_linked_call(
                 linked_execution::LinkedExecutionCall {
                     owner: Arc::clone(artifact),
@@ -926,7 +845,7 @@ impl Vm {
                 Some(budget),
             )
         };
-        owned_heap_result(result, &mut heap_execution, budget, Some(&host_slots))
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_linked_program_with_heap_and_budget(
@@ -968,13 +887,8 @@ impl Vm {
         let function = linked_program_entry(artifact.program(), entry)?;
         let mut heap = ScriptHeap::new();
         let mut heap_execution = HeapExecution::new(&mut heap);
-        let args = owned_args_to_runtime(
-            args,
-            artifact.program(),
-            &mut heap_execution,
-            Some(budget),
-            Some(&mut *host.adapter),
-        )?;
+        let args =
+            owned_args_to_runtime(args, artifact.program(), &mut heap_execution, Some(budget))?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
                 owner: Arc::clone(artifact),
@@ -991,7 +905,7 @@ impl Vm {
             Some(&mut heap_execution),
             Some(budget),
         );
-        owned_heap_result(result, &mut heap_execution, budget, Some(&*host.adapter))
+        owned_heap_result(result, &mut heap_execution, budget)
     }
 
     pub fn run_linked_program_host_budget_call(
@@ -1006,7 +920,6 @@ impl Vm {
             call.artifact.program(),
             &mut heap_execution,
             Some(call.budget),
-            Some(&mut *call.host.adapter),
         )?;
         let result = self.execute_linked_call(
             linked_execution::LinkedExecutionCall {
@@ -1024,12 +937,7 @@ impl Vm {
             Some(&mut heap_execution),
             Some(call.budget),
         );
-        owned_heap_result(
-            result,
-            &mut heap_execution,
-            call.budget,
-            Some(&*call.host.adapter),
-        )
+        owned_heap_result(result, &mut heap_execution, call.budget)
     }
 
     pub fn run_linked_program_host_call(
@@ -1043,7 +951,6 @@ impl Vm {
             call.artifact.program(),
             &mut heap_execution,
             Some(call.budget),
-            Some(&mut *call.host.adapter),
         )?;
         heap_execution.protect_values(call.persistent.roots);
         let result = self.execute_linked_call(
@@ -1062,9 +969,7 @@ impl Vm {
             Some(&mut heap_execution),
             Some(call.budget),
         );
-        let result = result.and_then(|value| {
-            value_to_owned(&value, Some(&heap_execution), Some(&*call.host.adapter))
-        });
+        let result = result.and_then(|value| value_to_owned(&value, Some(&heap_execution)));
         let mut roots = Vec::new();
         call.persistent
             .roots
@@ -1117,18 +1022,16 @@ fn owned_args_to_runtime(
     program: &LinkedProgram,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
-    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<Vec<Value>> {
-    owned_values_to_linked_values(args, program, heap, budget, host)
+    owned_values_to_linked_values(args, program, heap, budget)
 }
 
 fn owned_heap_result(
     result: VmResult<Value>,
     heap: &mut HeapExecution<'_>,
     budget: &mut ExecutionBudget,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<OwnedValue> {
-    let result = result.and_then(|value| value_to_owned(&value, Some(heap), host));
+    let result = result.and_then(|value| value_to_owned(&value, Some(heap)));
     heap.heap.collect_full_with_budget(&[], Some(budget));
     result
 }

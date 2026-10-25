@@ -1,4 +1,4 @@
-use vela_common::{HostTypeId, PrimitiveTag, ShapeId, SourceId, Span};
+use vela_common::{PrimitiveTag, ShapeId, SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 
@@ -178,7 +178,6 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
                 contract: Some(record_contract.clone()),
                 declaration_order: 0,
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             schema_origin,
         )
@@ -227,7 +226,6 @@ fn schema_only_snapshot_finalization_proves_complete_descriptor_closure() {
                 contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
                 declaration_order: 0,
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             schema_origin,
         )
@@ -416,7 +414,6 @@ fn finalization_rejects_constructor_defaults_missing_from_the_snapshot() {
                 contract: None,
                 declaration_order: 0,
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             entry_origin,
         )
@@ -510,80 +507,6 @@ fn finalization_rejects_unregistered_script_method_executables() {
             .expect_err("unregistered method target must reject snapshot"),
         entry_origin,
         "method-node index",
-    );
-}
-
-#[test]
-fn finalization_rejects_host_runtime_metadata_that_disagrees_at_use_site() {
-    let descriptor_origin = origin(460);
-    let placement_origin = origin(461);
-    let function = FunctionId::new(462);
-    let host_type = HostTypeTarget {
-        semantic: TypeId::new(463),
-        runtime: HostTypeId::new(464),
-    };
-    let field = FieldId::new(465);
-    let access = CompileFieldAccess::new(true, false, true, false, Vec::new());
-    let mut builder = CompileTargetSnapshot::builder();
-    builder
-        .insert_script_function(
-            HirDeclId::new(466),
-            HirBodyId::new(467),
-            script_function(function, Vec::new()),
-            descriptor_origin,
-        )
-        .expect("host root fixture insertion");
-    builder
-        .insert_type_descriptor(
-            CompileTypeDescriptor {
-                id: host_type.semantic,
-                canonical_name: "host::Player".to_owned(),
-                runtime_name: "Player".to_owned(),
-                class: CompileTypeClass::Host {
-                    runtime: host_type.runtime,
-                },
-                shape: None,
-                fields: vec![field],
-                variants: Vec::new(),
-            },
-            descriptor_origin,
-        )
-        .expect("host type fixture insertion");
-    builder
-        .insert_field_descriptor(
-            CompileFieldDescriptor {
-                id: field,
-                owner: host_type.semantic,
-                variant: None,
-                name: "score".to_owned(),
-                contract: None,
-                declaration_order: 0,
-                access: access.clone(),
-                host_runtime: Some(FieldId::new(468)),
-            },
-            descriptor_origin,
-        )
-        .expect("host field fixture insertion");
-    builder
-        .insert_member(
-            function,
-            HirExprId::new(469),
-            CompileMemberTarget::HostField(HostFieldTarget {
-                owner: host_type,
-                semantic: field,
-                runtime: FieldId::new(470),
-                access,
-            }),
-            placement_origin,
-        )
-        .expect("host member fixture insertion");
-
-    assert_input_error(
-        builder
-            .build()
-            .expect_err("mismatched host runtime must reject snapshot"),
-        placement_origin,
-        "host field",
     );
 }
 

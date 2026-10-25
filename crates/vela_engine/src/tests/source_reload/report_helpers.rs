@@ -15,17 +15,9 @@ pub(super) fn private_helper_addition_report(
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -42,13 +34,7 @@ pub(super) fn private_helper_addition_report(
             .expect("changed-file helper addition should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -69,13 +55,7 @@ pub(super) fn private_helper_addition_report(
             .contains(&"game::reward::helper".to_owned())
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
@@ -95,17 +75,9 @@ pub(super) fn public_function_addition_report(
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -122,24 +94,12 @@ pub(super) fn public_function_addition_report(
             .expect("changed-file public function addition should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert!(
         runtime
-            .call_raw(
-                "game::reward::helper",
-                &[],
-                CallOptions::unbounded(),
-                &mut adapter,
-                &mut tx
-            )
+            .call_raw("game::reward::helper", &[], CallOptions::unbounded())
             .is_err()
     );
 
@@ -160,23 +120,11 @@ pub(super) fn public_function_addition_report(
             .contains(&"game::reward::helper".to_owned())
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::reward::helper",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::reward::helper", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
@@ -210,8 +158,6 @@ fn on_kill(player_id: i64, monster_id: i64) {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -220,9 +166,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
@@ -255,9 +199,7 @@ fn on_kill(monster_id: i64, player_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
@@ -285,9 +227,7 @@ fn on_kill(monster_id: i64, player_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
@@ -317,8 +257,6 @@ fn on_kill(player_id: i64, monster_id: i64) {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
         runtime.call_raw(
@@ -327,9 +265,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
@@ -362,9 +298,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
@@ -397,9 +331,7 @@ fn on_kill(player_id: i64, monster_id: i64) {
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(7)),
                 OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
             ],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
+            CallOptions::unbounded()
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );

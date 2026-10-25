@@ -1,17 +1,21 @@
-use vela_macros::{ScriptHost, export, export_module, methods, trait_export};
+use vela_macros::{Value, export, export_module, external_value_enum};
 use vela_vm::error::VmResult;
 
-#[derive(ScriptHost)]
-#[vela(path = "game::Player")]
-pub struct Player {
-    #[vela(get, set)]
-    level: i64,
+#[derive(Value)]
+#[vela(path = "data::Record")]
+pub struct Record {
+    count: i64,
 }
 
-#[export(path = "game::grant")]
-pub fn grant(player: &mut Player, amount: i64) -> VmResult<()> {
-    player.level += amount;
-    Ok(())
+#[export(path = "data::increase")]
+pub fn increase(mut value: Record, amount: i64) -> VmResult<Record> {
+    value.count += amount;
+    Ok(value)
+}
+
+#[export(path = "data::inspect")]
+pub fn inspect(value: &Record, name: &str) -> String {
+    format!("{}:{name}", value.count)
 }
 
 #[export_module(path = "rules")]
@@ -20,24 +24,25 @@ mod rules {
         amount.max(0)
     }
 
+    pub fn string_length(value: &str) -> i64 {
+        value.len() as i64
+    }
+
     fn helper() {}
 }
 
-#[methods(path = "game::Player")]
-impl Player {
-    pub fn level(&self) -> i64 {
-        self.level
-    }
-}
+enum Quality { Normal, Rare }
 
-#[trait_export(path = "game::Damageable")]
-pub trait Damageable {
-    fn damage(&mut self, amount: i64);
+external_value_enum! {
+    path = "data::Quality",
+    ty = Quality,
+    variants = [Normal, Rare],
 }
 
 fn main() {
-    let _ = vela_callable_contract_grant();
+    let _ = vela_callable_contract_increase();
+    let _ = vela_function_increase();
+    let _ = vela_callable_contract_inspect();
+    let _ = vela_function_inspect();
     let _ = rules::vela_module();
-    let _ = Player::vela_callable_contract_level();
-    let _ = vela_protocol_contract_Damageable();
 }

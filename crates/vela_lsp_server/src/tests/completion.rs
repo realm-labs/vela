@@ -318,12 +318,12 @@ fn lsp_completion_uses_loaded_schema_facts() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 3,
+                "formatVersion": 4,
                 "facts": {
                     "types": [
                         {
                             "name": "Player",
-                            "fact": { "kind": "host", "name": "Player" },
+                            "fact": { "kind": "record", "name": "Player" },
                             "docs": "Player host object."
                         }
                     ]
@@ -632,12 +632,12 @@ fn lsp_schema_record_field_completion_carries_schema_identity() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 3,
+                "formatVersion": 4,
                 "facts": {
                     "types": [
                         {
                             "name": "Player",
-                            "fact": { "kind": "host", "name": "Player" }
+                            "fact": { "kind": "record", "name": "Player" }
                         }
                     ],
                     "fields": [

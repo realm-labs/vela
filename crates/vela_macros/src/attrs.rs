@@ -8,10 +8,7 @@ use crate::signature::type_generic_args;
 
 #[derive(Clone, Debug, Default)]
 pub(crate) struct ScriptAttrs {
-    pub(crate) has_script_attr: bool,
     pub(crate) skip: bool,
-    pub(crate) fields: bool,
-    pub(crate) deref: bool,
     pub(crate) name: Option<String>,
     pub(crate) path: Option<String>,
     pub(crate) alias: Option<String>,
@@ -19,11 +16,7 @@ pub(crate) struct ScriptAttrs {
     pub(crate) docs: Option<String>,
     pub(crate) attrs: Vec<(String, String)>,
     pub(crate) traits: Vec<String>,
-    pub(crate) get: bool,
-    pub(crate) set: bool,
     pub(crate) type_hint: Option<String>,
-    pub(crate) host: Option<String>,
-    pub(crate) permissions: Vec<String>,
 }
 
 impl ScriptAttrs {
@@ -48,27 +41,18 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
             continue;
         }
 
-        parsed.has_script_attr = true;
         attr.parse_nested_meta(|meta| {
             if path_name(&meta.path, "skip") {
                 parsed.skip = true;
                 return Ok(());
             }
-            if path_name(&meta.path, "fields") {
-                parsed.fields = true;
-                return Ok(());
-            }
-            if path_name(&meta.path, "deref") {
-                parsed.deref = true;
-                return Ok(());
-            }
-            if path_name(&meta.path, "get") {
-                parsed.get = true;
-                return Ok(());
-            }
-            if path_name(&meta.path, "set") {
-                parsed.set = true;
-                return Ok(());
+            if ["fields", "deref", "get", "set", "host"]
+                .iter()
+                .any(|name| path_name(&meta.path, name))
+            {
+                return Err(meta.error(
+                    "host projection attributes are removed; Value only supports script-owned data",
+                ));
             }
 
             let value = meta.value()?;
@@ -99,15 +83,6 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
                 )?);
             } else if path_name(&meta.path, "hint") || path_name(&meta.path, "type") {
                 parsed.type_hint = Some(parse_type_hint(value.parse::<LitStr>()?, "vela")?);
-            } else if path_name(&meta.path, "host") {
-                parsed.host = Some(parse_qualified_name(
-                    value.parse::<LitStr>()?,
-                    "vela host type",
-                )?);
-            } else if path_name(&meta.path, "permission") {
-                parsed
-                    .permissions
-                    .push(parse_permission(value.parse::<LitStr>()?, "vela")?);
             } else {
                 return Err(meta.error("unsupported vela attribute"));
             }
@@ -115,8 +90,6 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
         })?;
     }
 
-    parsed.permissions.sort();
-    parsed.permissions.dedup();
     parsed.traits.sort();
     parsed.traits.dedup();
     reject_duplicate_attr_keys(&parsed.attrs, "vela")?;
@@ -125,17 +98,6 @@ pub(crate) fn parse_script_attrs(attrs: &[Attribute]) -> Result<ScriptAttrs> {
     }
 
     Ok(parsed)
-}
-
-pub(crate) fn parse_permission(literal: LitStr, context: &str) -> Result<String> {
-    let permission = literal.value();
-    if permission.is_empty() {
-        return Err(error(
-            literal.span(),
-            &format!("{context} permission cannot be empty"),
-        ));
-    }
-    Ok(permission)
 }
 
 pub(crate) fn parse_qualified_name(literal: LitStr, context: &str) -> Result<String> {

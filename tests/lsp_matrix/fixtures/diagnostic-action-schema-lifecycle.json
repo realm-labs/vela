@@ -17,16 +17,16 @@
       { "id": "restored", "operation": "level", "field": "level" }
     ],
     "levelSchema": {
-      "formatVersion": 3,
+      "formatVersion": 4,
       "facts": {
-        "types": [{ "name": "Player", "fact": { "kind": "host", "name": "Player" } }],
+        "types": [{ "name": "Player", "fact": { "kind": "record", "name": "Player" } }],
         "fields": [{ "owner": "Player", "name": "level", "fact": { "kind": "primitive", "name": "i64" } }]
       }
     },
     "rankSchema": {
-      "formatVersion": 3,
+      "formatVersion": 4,
       "facts": {
-        "types": [{ "name": "Player", "fact": { "kind": "host", "name": "Player" } }],
+        "types": [{ "name": "Player", "fact": { "kind": "record", "name": "Player" } }],
         "fields": [{ "owner": "Player", "name": "rank", "fact": { "kind": "primitive", "name": "i64" } }]
       }
     }

@@ -218,22 +218,22 @@ fn schema_watch_rejects_old_format_and_removed_service_set_then_recovers() {
     for (rejected, reason) in [
         (
             r#"{"formatVersion":1,"facts":{}}"#,
-            "unsupported schema artifact format version 1; expected 3",
+            "unsupported schema artifact format version 1; expected 4",
         ),
         (
             r#"{"formatVersion":2,"facts":{}}"#,
-            "unsupported schema artifact format version 2; expected 3",
+            "unsupported schema artifact format version 2; expected 4",
         ),
         (
-            r#"{"formatVersion":3,"facts":{"executionEffectCeiling":{"spawnsTasks":false}}}"#,
+            r#"{"formatVersion":4,"facts":{"executionEffectCeiling":{"spawnsTasks":false}}}"#,
             "unknown field `executionEffectCeiling`",
         ),
         (
-            r#"{"formatVersion":3,"serviceSet":null,"facts":{}}"#,
+            r#"{"formatVersion":4,"serviceSet":null,"facts":{}}"#,
             "unknown field `serviceSet`",
         ),
         (
-            r#"{"formatVersion":3,"serviceSet":{"services":[]},"facts":{}}"#,
+            r#"{"formatVersion":4,"serviceSet":{"services":[]},"facts":{}}"#,
             "unknown field `serviceSet`",
         ),
     ] {
@@ -533,12 +533,12 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_field(name: &str, kind: &str) -> String {
     serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [

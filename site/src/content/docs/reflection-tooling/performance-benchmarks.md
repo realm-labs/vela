@@ -4,7 +4,7 @@ description: "How Vela benchmark results are captured and interpreted."
 ---
 
 Vela performance work is measurement-first. Correctness, budgets, GC roots,
-HostAccess routing, reflection policy, hot reload ownership, and diagnostics
+independent native/value calls, reflection policy, hot reload ownership, and diagnostics
 take priority over raw speed.
 
 ## Benchmark Harnesses

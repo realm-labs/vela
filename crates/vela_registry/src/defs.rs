@@ -1,9 +1,6 @@
 use std::fmt;
 
-use vela_common::{
-    CollectionViewCapabilities, CollectionViewMutation, HostConstructorBinding, InteropTypeId,
-    PrimitiveTag, ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
-};
+use vela_common::{InteropTypeId, PrimitiveTag, TypeAbiFingerprint};
 use vela_def::{
     DefId, DefKind, DefPath, FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId,
 };
@@ -37,37 +34,8 @@ pub enum TypeKindDef {
     Range,
     Function,
     Closure,
-    Host,
     ScriptStruct,
     ScriptEnum,
-}
-
-/// Explicit-lifetime resource returned by a host callable.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ScopedResourceKindDef {
-    View,
-    MutView,
-    Iterator,
-}
-
-/// Host input whose lease remains frozen by a scoped return.
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum ScopedResourceParentDef {
-    Receiver,
-    Parameter(u16),
-}
-
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct ScopedResourceReturnDef {
-    pub kind: ScopedResourceKindDef,
-    pub parent: ScopedResourceParentDef,
-}
-
-impl ScopedResourceReturnDef {
-    #[must_use]
-    pub const fn new(kind: ScopedResourceKindDef, parent: ScopedResourceParentDef) -> Self {
-        Self { kind, parent }
-    }
 }
 
 impl TypeKindDef {
@@ -97,7 +65,6 @@ impl TypeKindDef {
 pub struct TypeHintDef {
     pub path: Vec<String>,
     pub args: Vec<TypeHintDef>,
-    pub collection_mutation: Option<CollectionViewMutation>,
 }
 
 impl TypeHintDef {
@@ -106,7 +73,6 @@ impl TypeHintDef {
         Self {
             path: path.into_iter().map(Into::into).collect(),
             args: Vec::new(),
-            collection_mutation: None,
         }
     }
 
@@ -128,12 +94,6 @@ impl TypeHintDef {
     #[must_use]
     pub fn with_args(mut self, args: impl IntoIterator<Item = TypeHintDef>) -> Self {
         self.args = args.into_iter().collect();
-        self
-    }
-
-    #[must_use]
-    pub const fn with_collection_mutation(mut self, mutation: CollectionViewMutation) -> Self {
-        self.collection_mutation = Some(mutation);
         self
     }
 
@@ -209,18 +169,18 @@ mod type_hint_tests {
     }
 
     #[test]
-    fn type_hint_parser_preserves_restricted_collection_view_shapes() {
-        for (source, expected) in [
-            ("ArrayView<i64>", "ArrayView<i64>"),
-            ("ArrayMut<String>", "ArrayMut<String>"),
-            ("MapView<String, i64>", "MapView<String, i64>"),
-            ("MapMut<String, i64>", "MapMut<String, i64>"),
-            ("SetView<String>", "SetView<String>"),
-            ("SetMut<String>", "SetMut<String>"),
+    fn type_hint_parser_rejects_removed_borrowed_collections() {
+        for name in [
+            "ArrayView",
+            "ArrayMut",
+            "MapView",
+            "MapMut",
+            "SetView",
+            "SetMut",
+            "ScopedIterator",
         ] {
-            let hint = TypeHintDef::parse(source).expect("collection view hint");
-            assert_eq!(hint.display(), expected);
-            assert_eq!(hint.collection_mutation, None);
+            assert!(TypeHintDef::parse(name).is_none());
+            assert!(TypeHintDef::parse(&format!("{name}<i64>")).is_none());
         }
     }
 }
@@ -237,66 +197,6 @@ impl From<String> for TypeHintDef {
     }
 }
 
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct IndexCapabilityDef {
-    pub readable: bool,
-    pub writable: bool,
-    pub addable: bool,
-    pub removable: bool,
-    pub key_type: Option<TypeHintDef>,
-    pub value_type: Option<TypeHintDef>,
-}
-
-impl IndexCapabilityDef {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            readable: false,
-            writable: false,
-            addable: false,
-            removable: false,
-            key_type: None,
-            value_type: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn readable(mut self, readable: bool) -> Self {
-        self.readable = readable;
-        self
-    }
-
-    #[must_use]
-    pub const fn writable(mut self, writable: bool) -> Self {
-        self.writable = writable;
-        self
-    }
-
-    #[must_use]
-    pub const fn addable(mut self, addable: bool) -> Self {
-        self.addable = addable;
-        self
-    }
-
-    #[must_use]
-    pub const fn removable(mut self, removable: bool) -> Self {
-        self.removable = removable;
-        self
-    }
-
-    #[must_use]
-    pub fn key_type(mut self, key_type: impl Into<TypeHintDef>) -> Self {
-        self.key_type = Some(key_type.into());
-        self
-    }
-
-    #[must_use]
-    pub fn value_type(mut self, value_type: impl Into<TypeHintDef>) -> Self {
-        self.value_type = Some(value_type.into());
-        self
-    }
-}
-
 fn canonical_type_hint_path(name: String) -> Vec<String> {
     match name.as_str() {
         "()" => vec!["()".to_owned()],
@@ -304,14 +204,8 @@ fn canonical_type_hint_path(name: String) -> Vec<String> {
         "string" => vec!["String".to_owned()],
         "bytes" => vec!["Bytes".to_owned()],
         "array" => vec!["Array".to_owned()],
-        "arrayview" => vec!["ArrayView".to_owned()],
-        "arraymut" => vec!["ArrayMut".to_owned()],
         "map" => vec!["Map".to_owned()],
-        "mapview" => vec!["MapView".to_owned()],
-        "mapmut" => vec!["MapMut".to_owned()],
         "set" => vec!["Set".to_owned()],
-        "setview" => vec!["SetView".to_owned()],
-        "setmut" => vec!["SetMut".to_owned()],
         "range" => vec!["Range".to_owned()],
         "iterator" => vec!["Iterator".to_owned()],
         "function" => vec!["Function".to_owned()],
@@ -344,6 +238,20 @@ impl<'a> TypeHintParser<'a> {
             return self.parse_parenthesized_hint();
         }
         let path = self.parse_path()?;
+        if path.len() == 1
+            && matches!(
+                path[0].as_str(),
+                "ArrayView"
+                    | "ArrayMut"
+                    | "MapView"
+                    | "MapMut"
+                    | "SetView"
+                    | "SetMut"
+                    | "ScopedIterator"
+            )
+        {
+            return None;
+        }
         let args = if self.consume('<') {
             let mut args = Vec::new();
             loop {
@@ -364,7 +272,6 @@ impl<'a> TypeHintParser<'a> {
         Some(TypeHintDef {
             path: canonical_type_hint_path(path.join("::")),
             args,
-            collection_mutation: None,
         })
     }
 
@@ -595,18 +502,6 @@ impl Def {
     }
 
     #[must_use]
-    pub const fn type_host_runtime_id(&self) -> Option<u128> {
-        match self {
-            Self::Type(def) => def.host_runtime_id,
-            Self::Function(_)
-            | Self::Method(_)
-            | Self::Field(_)
-            | Self::Variant(_)
-            | Self::Trait(_) => None,
-        }
-    }
-
-    #[must_use]
     pub const fn type_primitive_tag(&self) -> Option<PrimitiveTag> {
         match self {
             Self::Type(def) => def.primitive,
@@ -631,18 +526,6 @@ impl Def {
     }
 
     #[must_use]
-    pub const fn host_method_runtime_id(&self) -> Option<u128> {
-        match self {
-            Self::Method(def) => def.host_runtime_id,
-            Self::Function(_)
-            | Self::Type(_)
-            | Self::Field(_)
-            | Self::Variant(_)
-            | Self::Trait(_) => None,
-        }
-    }
-
-    #[must_use]
     pub const fn field_writable(&self) -> Option<bool> {
         match self {
             Self::Field(def) => Some(def.access.writable),
@@ -658,18 +541,6 @@ impl Def {
     pub fn field_type_hint(&self) -> Option<&TypeHintDef> {
         match self {
             Self::Field(def) => def.type_hint.as_ref(),
-            Self::Function(_)
-            | Self::Method(_)
-            | Self::Type(_)
-            | Self::Variant(_)
-            | Self::Trait(_) => None,
-        }
-    }
-
-    #[must_use]
-    pub const fn field_host_runtime_id(&self) -> Option<u128> {
-        match self {
-            Self::Field(def) => def.host_runtime_id,
             Self::Function(_)
             | Self::Method(_)
             | Self::Type(_)
@@ -777,7 +648,6 @@ pub struct FunctionDef {
     pub signature: FunctionSignature,
     pub effects: EffectSet,
     pub access: FunctionAccessDef,
-    pub scoped_resource_return: Option<ScopedResourceReturnDef>,
 }
 
 impl FunctionDef {
@@ -792,7 +662,6 @@ impl FunctionDef {
             signature,
             effects: EffectSet::default(),
             access: FunctionAccessDef::default(),
-            scoped_resource_return: None,
         }
     }
 
@@ -813,12 +682,6 @@ impl FunctionDef {
         self.access = access;
         self
     }
-
-    #[must_use]
-    pub const fn scoped_resource_return(mut self, resource: ScopedResourceReturnDef) -> Self {
-        self.scoped_resource_return = Some(resource);
-        self
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -830,9 +693,6 @@ pub struct MethodDef {
     pub signature: FunctionSignature,
     pub effects: EffectSet,
     pub access: MethodAccessDef,
-    pub receiver: ReceiverCapability,
-    pub host_runtime_id: Option<u128>,
-    pub scoped_resource_return: Option<ScopedResourceReturnDef>,
 }
 
 impl MethodDef {
@@ -848,21 +708,12 @@ impl MethodDef {
             signature,
             effects: EffectSet::default(),
             access: MethodAccessDef::default(),
-            receiver: ReceiverCapability::Shared,
-            host_runtime_id: None,
-            scoped_resource_return: None,
         }
     }
 
     #[must_use]
     pub fn with_id(mut self, id: MethodId) -> Self {
         self.id = id;
-        self
-    }
-
-    #[must_use]
-    pub const fn scoped_resource_return(mut self, resource: ScopedResourceReturnDef) -> Self {
-        self.scoped_resource_return = Some(resource);
         self
     }
 
@@ -877,18 +728,6 @@ impl MethodDef {
         self.access = access;
         self
     }
-
-    #[must_use]
-    pub const fn receiver(mut self, receiver: ReceiverCapability) -> Self {
-        self.receiver = receiver;
-        self
-    }
-
-    #[must_use]
-    pub const fn host_runtime_id(mut self, id: u128) -> Self {
-        self.host_runtime_id = Some(id);
-        self
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -899,40 +738,20 @@ pub struct TypeDef {
     pub kind: TypeKindDef,
     pub primitive: Option<PrimitiveTag>,
     pub tuple_elements: Vec<TypeHintDef>,
-    pub host_runtime_id: Option<u128>,
-    pub index_capability: Option<IndexCapabilityDef>,
     pub binding: Option<TypeBindingDef>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TypeBindingDef {
     pub id: InteropTypeId,
-    pub storage: StoragePolicy,
-    pub capabilities: ReceiverCapabilities,
-    pub collection_views: Option<CollectionViewCapabilities>,
-    pub constructor_ids: Vec<FunctionId>,
-    pub host_constructors: Vec<HostConstructorBinding>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 
 impl TypeBindingDef {
     #[must_use]
-    pub fn new(
-        id: InteropTypeId,
-        storage: StoragePolicy,
-        capabilities: ReceiverCapabilities,
-        collection_views: Option<CollectionViewCapabilities>,
-        constructor_ids: Vec<FunctionId>,
-        host_constructors: Vec<HostConstructorBinding>,
-        abi_fingerprint: TypeAbiFingerprint,
-    ) -> Self {
+    pub fn new(id: InteropTypeId, abi_fingerprint: TypeAbiFingerprint) -> Self {
         Self {
             id,
-            storage,
-            capabilities,
-            collection_views,
-            constructor_ids,
-            host_constructors,
             abi_fingerprint,
         }
     }
@@ -943,11 +762,7 @@ impl TypeDef {
     pub fn new(path: DefPath) -> Self {
         let id = TypeId::from_def_id(path.id());
         let semantic_key = SemanticKey::from_path(&path);
-        let kind = if path.package == "host" {
-            TypeKindDef::Host
-        } else {
-            TypeKindDef::ScriptStruct
-        };
+        let kind = TypeKindDef::ScriptStruct;
         Self {
             id,
             path,
@@ -955,8 +770,6 @@ impl TypeDef {
             kind,
             primitive: None,
             tuple_elements: Vec::new(),
-            host_runtime_id: None,
-            index_capability: None,
             binding: None,
         }
     }
@@ -985,18 +798,6 @@ impl TypeDef {
     }
 
     #[must_use]
-    pub const fn host_runtime_id(mut self, id: u128) -> Self {
-        self.host_runtime_id = Some(id);
-        self
-    }
-
-    #[must_use]
-    pub fn index_capability(mut self, capability: IndexCapabilityDef) -> Self {
-        self.index_capability = Some(capability);
-        self
-    }
-
-    #[must_use]
     pub fn binding(mut self, binding: TypeBindingDef) -> Self {
         self.binding = Some(binding);
         self
@@ -1021,7 +822,6 @@ pub struct FieldDef {
     pub has_default: bool,
     pub access: FieldAccessDef,
     pub type_hint: Option<TypeHintDef>,
-    pub host_runtime_id: Option<u128>,
 }
 
 impl FieldDef {
@@ -1043,7 +843,6 @@ impl FieldDef {
             has_default: false,
             access: FieldAccessDef::default(),
             type_hint: None,
-            host_runtime_id: None,
         }
     }
 
@@ -1091,12 +890,6 @@ impl FieldDef {
     #[must_use]
     pub fn type_hint(mut self, type_hint: Option<impl Into<TypeHintDef>>) -> Self {
         self.type_hint = type_hint.map(Into::into);
-        self
-    }
-
-    #[must_use]
-    pub const fn host_runtime_id(mut self, id: u128) -> Self {
-        self.host_runtime_id = Some(id);
         self
     }
 }

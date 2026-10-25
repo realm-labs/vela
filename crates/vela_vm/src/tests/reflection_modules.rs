@@ -66,14 +66,13 @@ fn main() {
         && reflect::has_function("game::reward::grant")
         && !reflect::has_function("game::reward::missing")
         && reflect::has_state("game::reward::counter")
-        && reflect::has_state("game::reward::player")
+        && !reflect::has_state("game::reward::player")
         && !reflect::has_state("game::reward::missing")
-        && states.len() == 2
+        && states.len() == 1
         && reflect::name(counter) == "game::reward::counter"
         && reflect::kind(counter) == "state"
         && reflect::origin(counter) == "script"
         && reflect::get(counter, "public")
-        && reflect::get(counter, "storage") == "vm"
         && reflect::get(counter, "type") == "i64"
         && reflect::get(counter, "has_initializer")
         && reflect::get(modules[0], "name") == "game::reward"
@@ -101,16 +100,11 @@ fn main() {
 "#,
     )
     .expect("compile module reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
     vm.register_standard_natives();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_module_program(&vm, &program, &mut host),
@@ -129,15 +123,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown module reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown module should report candidates");
@@ -168,15 +157,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown function reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function should report candidates");
@@ -207,18 +191,13 @@ fn main() {
 "#,
     )
     .expect("compile policy unknown function reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_module_reflection_registry()),
         reflect::permissions::ReflectPolicy::read_only(),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function should report policy-visible candidates");
@@ -270,8 +249,7 @@ fn main() {
                 .require_permission("game::write"),
         ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
@@ -280,11 +258,7 @@ fn main() {
                 .with(reflect::permissions::ReflectPermission::CallMethods),
         ),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let error = exec_reflection_module_program(&vm, &program, &mut host)
         .expect_err("unknown function call should report callable candidates only");
@@ -331,19 +305,14 @@ fn main() {
 "#,
     )
     .expect("compile policy exports reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_standard_natives();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_module_reflection_registry()),
         reflect::permissions::ReflectPolicy::read_only(),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_module_program(&vm, &program, &mut host),

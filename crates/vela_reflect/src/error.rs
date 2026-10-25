@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::candidates::ReflectCandidate;
 use crate::permissions::ReflectPermission;
-use vela_common::{HostTypeId, Span};
+use vela_common::Span;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ReflectError {
@@ -25,9 +25,6 @@ impl std::error::Error for ReflectError {}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ReflectErrorKind {
-    UnknownType {
-        host_type_id: HostTypeId,
-    },
     UnknownTypeName {
         type_name: String,
         candidates: Vec<String>,
@@ -120,11 +117,6 @@ pub enum ReflectErrorKind {
     LookupBudgetExceeded {
         limit: u64,
     },
-    FieldNotWritable {
-        type_name: String,
-        field: String,
-        source_span: Option<Span>,
-    },
     FieldNotReflectReadable {
         type_name: String,
         field: String,
@@ -136,8 +128,6 @@ pub enum ReflectErrorKind {
         source_span: Option<Span>,
     },
     InvalidTarget,
-    InvalidValue,
-    Host(String),
 }
 
 pub type ReflectResult<T> = Result<T, ReflectError>;

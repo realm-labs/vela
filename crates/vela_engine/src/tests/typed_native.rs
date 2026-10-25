@@ -1,12 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use vela_bytecode::UnlinkedProgram;
-use vela_common::{HostObjectId, HostTypeId, SourceId};
-use vela_def::{FieldId, TypeId};
+use vela_common::SourceId;
 use vela_host::error::{HostError, HostErrorKind, HostResult};
-use vela_host::path::{HostPath, HostRef};
-use vela_host::proxy::PathProxy;
-use vela_reflect::registry::TypeKey;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
@@ -269,83 +265,6 @@ fn main() {
     assert_eq!(
         run_linked_program(&engine, &program, &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11))),
-    );
-}
-
-#[test]
-fn typed_native_functions_accept_host_refs() {
-    let player_type = TypeHint::Host(TypeKey::new(TypeId::new(1), "Player"));
-    let engine = Engine::builder()
-        .register_typed_native_fn::<(HostRef,), _>(
-            NativeFunctionDesc::new("game::host_generation", NativeFunctionId::new(243))
-                .param("player", player_type.clone())
-                .returns(TypeHint::i64()),
-            |player: HostRef| i64::from(player.generation),
-        )
-        .register_typed_native_fn::<(HostRef,), _>(
-            NativeFunctionDesc::new("game::host_object_id", NativeFunctionId::new(244))
-                .param("player", player_type)
-                .returns(TypeHint::i64()),
-            |player: HostRef| {
-                i64::try_from(player.object_id.get()).expect("host object id fits i64")
-            },
-        )
-        .build()
-        .expect("engine should build");
-    let program = engine
-        .compile_source_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player) {
-    return game::host_generation(player) + game::host_object_id(player);
-}
-"#,
-        )
-        .expect("program should compile");
-    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-
-    assert_eq!(
-        run_linked_program(&engine, &program, &[OwnedValue::HostRef(player)]),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(49))),
-    );
-}
-
-#[test]
-fn typed_native_functions_accept_path_proxies() {
-    let engine = Engine::builder()
-        .register_typed_native_fn::<(PathProxy,), _>(
-            NativeFunctionDesc::new("game::path_depth", NativeFunctionId::new(247))
-                .param("path", TypeHint::PathProxy)
-                .returns(TypeHint::i64()),
-            |path: PathProxy| {
-                i64::try_from(path.to_diagnostic_path().segments.len())
-                    .expect("path depth fits i64")
-            },
-        )
-        .build()
-        .expect("engine should build");
-    let program = engine
-        .compile_source_with_id(
-            SourceId::new(1),
-            r#"
-fn main(path) {
-    return game::path_depth(path);
-}
-"#,
-        )
-        .expect("program should compile");
-    let registry = engine.registry();
-    let reflected = registry
-        .function_by_name("game::path_depth")
-        .expect("typed native should register metadata");
-    assert_eq!(reflected.params[0].type_hint.as_deref(), Some("path_proxy"));
-    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let path =
-        PathProxy::from_diagnostic_path(HostPath::new(player).field(FieldId::new(3)).index(2));
-
-    assert_eq!(
-        run_linked_program(&engine, &program, &[OwnedValue::PathProxy(path)]),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2))),
     );
 }
 
@@ -880,9 +799,6 @@ fn main(allowed) {
 
 #[test]
 fn typed_native_functions_map_host_result_errors() {
-    let player = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let denied_path = HostPath::new(player);
-    let expected_path = denied_path.clone();
     let engine = Engine::builder()
         .register_typed_native_fn::<(bool,), _>(
             NativeFunctionDesc::new("game::write_score", NativeFunctionId::new(246))
@@ -893,9 +809,8 @@ fn typed_native_functions_map_host_result_errors() {
                     Ok(21)
                 } else {
                     Err(HostError {
-                        kind: HostErrorKind::PermissionDenied {
-                            path: denied_path.clone(),
-                            action: "write",
+                        kind: HostErrorKind::InvalidArgument {
+                            expected: "write permission",
                         },
                         source_span: None,
                     })
@@ -918,9 +833,8 @@ fn main(allowed) {
     assert_eq!(
         run_linked_program(&engine, &program, &[OwnedValue::Bool(false)])
             .map_err(|error| error.kind()),
-        Err(VmErrorKind::Host(HostErrorKind::PermissionDenied {
-            path: expected_path,
-            action: "write",
+        Err(VmErrorKind::Host(HostErrorKind::InvalidArgument {
+            expected: "write permission"
         })),
     );
 }

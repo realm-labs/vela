@@ -11,8 +11,7 @@ use crate::standard::{StandardTypeBinding, standard_type_binding};
 /// Registers one complete Rust type surface with an [`EngineBuilder`].
 ///
 /// This is the single user-facing type-registration contract. Implementations
-/// install the full transitive dependency closure for structural Values or the
-/// exact Host binding for Rust-owned objects.
+/// install the full transitive dependency closure for structural Values.
 pub trait VelaType: Sized + 'static {
     /// Returns the complete registration object for this concrete Rust type.
     #[must_use]
@@ -319,7 +318,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::ReceiverCapabilities;
     use vela_def::TypeId;
     use vela_reflect::registry::{TypeDesc, TypeKey, TypeKind};
 
@@ -372,26 +370,6 @@ mod tests {
             result,
             Err(error)
                 if matches!(error.kind, EngineErrorKind::DuplicateRustTypeBinding { .. })
-        ));
-    }
-
-    #[test]
-    fn generated_value_closure_compares_the_complete_pending_abi() {
-        let conflicting =
-            standard_type_binding::<i64>().receiver_capabilities(ReceiverCapabilities::OWNED);
-        let result = Engine::builder()
-            .install_type_binding::<i64>(conflicting)
-            .install_generated_type::<i64>()
-            .build();
-
-        assert!(matches!(
-            result,
-            Err(error)
-                if matches!(
-                    error.kind,
-                    EngineErrorKind::DuplicateTypeId { .. }
-                        | EngineErrorKind::DuplicateTypeName { .. }
-                )
         ));
     }
 }

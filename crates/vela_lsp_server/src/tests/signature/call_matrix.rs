@@ -77,6 +77,11 @@ fn verify_client(name: &str, expected_count: usize, client: &capabilities::Clien
             for case in spec.oracle["queries"].as_array().expect("queries") {
                 let file = case["file"].as_str().expect("file");
                 let source = &fixture.disk[file];
+                if case["removedBoundary"] == true {
+                    total += client.contexts.len();
+                    crate::matrix_fixture::assert_removed_borrowed_source(&source.text);
+                    continue;
+                }
                 let target = uri(&root, file);
                 if opened.insert(file) {
                     let _ = sync_diagnostics::<n::DidOpenTextDocument>(

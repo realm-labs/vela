@@ -48,6 +48,32 @@ fn linked_borrowed_native_call_receives_runtime_values() {
 }
 
 #[test]
+fn borrowed_native_reads_only_vm_owned_heap_during_invocation() {
+    let program = compile_standard_program_source_with_native_functions(
+        SourceId::new(95),
+        "fn main() { return probe::len(\"script-owned\"); }",
+        &["probe::len"],
+    )
+    .expect("compile invocation-local VM heap borrow");
+    let mut vm = Vm::new();
+    vm.register_borrowed_native("probe::len", |args, heap, _budget| {
+        let [Value::HeapRef(reference)] = args else {
+            panic!("native receives the script string reference");
+        };
+        let Some(HeapValue::String(value)) = heap.heap.get(*reference) else {
+            panic!("the referenced string belongs to the VM heap");
+        };
+        Ok(OwnedValue::i64(value.len() as i64))
+    });
+    let mut budget = ExecutionBudget::new(100, 10_000, 8);
+    assert_eq!(
+        run_linked_test_program_with_budget(&vm, &program, "main", &[], &mut budget),
+        Ok(OwnedValue::i64(12))
+    );
+    assert_eq!(budget.current_call_depth(), 0);
+}
+
+#[test]
 fn linked_borrowed_native_call_inline_cache_populates_and_reuses_resolved_target() {
     let native_id = vela_def::FunctionId::new(80);
     let mut vm = Vm::new();

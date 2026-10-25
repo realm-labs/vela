@@ -5,9 +5,9 @@ use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 use crate::{
     CompileCallArguments, CompileCalleeTarget, CompileFunctionClass, CompileMethodClass,
     CompileParameterDefault, CompilePlacedCallArgument, CompilePlacedCallValue, CompileSignature,
-    MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirHostOperation, MirOperand, MirPlace,
-    MirSafepoint, MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
-    MirStatementKind, MirValueType,
+    MirBuildError, MirCall, MirDynamicArgument, MirEffect, MirOperand, MirPlace, MirSafepoint,
+    MirScriptArgument, MirScriptParameterGuardMode, MirSourceOrigin, MirStatement,
+    MirStatementKind,
 };
 
 use super::core::{FunctionBuilder, value_type};
@@ -38,69 +38,9 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| self.inconsistent(origin, "call expression has no compile target"))?;
         self.validate_source_arguments(call, &target.arguments, origin)?;
 
-        if matches!(
-            target.callee,
-            CompileCalleeTarget::HostMethod(_)
-                | CompileCalleeTarget::HostRemove { .. }
-                | CompileCalleeTarget::HostPush { .. }
-        ) {
-            return self.lower_host_call(expression, call, &target, origin);
-        }
         if matches!(target.callee, CompileCalleeTarget::Reflection { .. }) {
             return self.lower_reflection_call(expression, call, &target, origin);
         }
-        if let CompileCalleeTarget::NativeFunction { function, .. } = target.callee
-            && (function == vela_def::host_release_function_id()
-                || function == vela_def::host_try_release_function_id())
-        {
-            let try_release = function == vela_def::host_try_release_function_id();
-            let intrinsic_name = if try_release {
-                "host::try_release"
-            } else {
-                "host::release"
-            };
-            let descriptor = self
-                .input
-                .targets()
-                .function_descriptor(function)
-                .cloned()
-                .ok_or_else(|| {
-                    self.inconsistent(
-                        origin,
-                        format!("{intrinsic_name} has no function descriptor"),
-                    )
-                })?;
-            let arguments =
-                self.lower_external_arguments(&target.arguments, &descriptor.signature, origin)?;
-            let [root] = arguments.as_slice() else {
-                return Err(
-                    self.inconsistent(origin, format!("{intrinsic_name} requires one argument"))
-                );
-            };
-            let result_type = if try_release {
-                MirValueType::Primitive(vela_common::PrimitiveTag::Bool)
-            } else {
-                MirValueType::Unit
-            };
-            let operation = if try_release {
-                MirHostOperation::TryReleaseBorrowLease { root: root.clone() }
-            } else {
-                MirHostOperation::ReleaseBorrowLease { root: root.clone() }
-            };
-            let destination = self.function.add_temp(result_type, origin);
-            self.function.append_statement(
-                self.current_block,
-                MirStatement::new(
-                    origin,
-                    Some(MirPlace::temp(destination)),
-                    MirStatementKind::Host(operation),
-                    MirEffect::PURE,
-                    None,
-                ),
-            )?;
-            return Ok(MirOperand::Temp(destination));
-        }
-
         let (call, effect) = match target.callee {
             CompileCalleeTarget::ScriptFunction {
                 function,
@@ -230,7 +170,6 @@ impl FunctionBuilder<'_> {
                         debug_name,
                         signature: descriptor.signature,
                         arguments,
-                        scoped_borrow_return: target.scoped_resource.is_some(),
                     },
                     effect,
                 )
@@ -341,9 +280,7 @@ impl FunctionBuilder<'_> {
                     MirEffect::dynamic_call(),
                 )
             }
-            CompileCalleeTarget::HostMethod(_)
-            | CompileCalleeTarget::HostRemove { .. }
-            | CompileCalleeTarget::HostPush { .. } => unreachable!("host calls route above"),
+
             CompileCalleeTarget::Reflection { .. } => {
                 unreachable!("reflection calls route above")
             }

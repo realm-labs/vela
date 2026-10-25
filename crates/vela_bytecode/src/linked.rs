@@ -1,16 +1,14 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, Weak};
 
-use vela_common::{HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot};
+use vela_common::{PrimitiveTag, ShapeId, Span, StateSlot};
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::ModuleGraph;
-use vela_host::resolved::HostMutationOp;
-use vela_host::target::HostTargetPlan;
 use vela_registry::{DebugNameId, DebugNameTable};
 
 use crate::{
-    CacheSiteId, CacheSiteKind, CacheSiteLayout, CallArgument, Constant, ConstantId,
-    HostTargetPlanId, I64CompareOp, InstructionOffset, Register,
+    CacheSiteId, CacheSiteKind, CacheSiteLayout, CallArgument, Constant, ConstantId, I64CompareOp,
+    InstructionOffset, Register,
 };
 
 macro_rules! dense_handle {
@@ -376,9 +374,6 @@ pub enum LinkedMethodDispatchKind {
     Value {
         method_id: MethodId,
     },
-    Host {
-        method_id: HostMethodId,
-    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -460,10 +455,6 @@ pub enum TypeGuardPlan {
         ty: TypeHandle,
         shape_id: ShapeId,
     },
-    HostType {
-        ty: TypeHandle,
-        host_type_id: HostTypeId,
-    },
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -534,7 +525,6 @@ pub struct LinkedCodeObject {
     pub frame: LinkedFrameDebugInfo,
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
-    pub host_targets: Vec<HostTargetPlan>,
     pub type_guards: Vec<TypeGuard>,
     pub param_guards: Vec<ParameterTypeGuard>,
     pub return_guard: Option<TypeGuardPlanId>,
@@ -556,7 +546,6 @@ impl LinkedCodeObject {
             frame: LinkedFrameDebugInfo::default(),
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
-            host_targets: Vec::new(),
             type_guards: Vec::new(),
             param_guards: Vec::new(),
             return_guard: None,
@@ -589,24 +578,6 @@ impl LinkedCodeObject {
         let id = ConstantId(self.constants.len());
         self.constants.push(constant);
         id
-    }
-
-    pub fn intern_host_target(&mut self, target: HostTargetPlan) -> HostTargetPlanId {
-        if let Some(index) = self
-            .host_targets
-            .iter()
-            .position(|existing| existing == &target)
-        {
-            return HostTargetPlanId::new(index);
-        }
-        let id = HostTargetPlanId::new(self.host_targets.len());
-        self.host_targets.push(target);
-        id
-    }
-
-    #[must_use]
-    pub fn host_target(&self, id: HostTargetPlanId) -> Option<&HostTargetPlan> {
-        self.host_targets.get(id.index())
     }
 
     pub fn intern_type_guard(&mut self, guard: TypeGuard) -> TypeGuardPlanId {
@@ -1073,7 +1044,6 @@ pub enum InstructionKind {
     IterInit {
         dst: Register,
         iterable: Register,
-        host_collection: Option<vela_common::HostCollectionIteration>,
     },
     IterNext {
         iterator: Register,
@@ -1113,58 +1083,7 @@ pub enum InstructionKind {
         debug_name: DebugNameId,
         src: Register,
     },
-    LoadExternState {
-        dst: Register,
-        slot: StateSlot,
-        debug_name: DebugNameId,
-        cache_site: Option<CacheSiteId>,
-    },
-    ReleaseBorrowLease {
-        dst: Register,
-        src: Register,
-    },
-    TryReleaseBorrowLease {
-        dst: Register,
-        src: Register,
-    },
-    HostRead {
-        dst: Register,
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
-    HostWrite {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        src: Register,
-        cache_site: CacheSiteId,
-    },
-    HostMutate {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        op: HostMutationOp,
-        rhs: Register,
-        cache_site: CacheSiteId,
-    },
-    HostRemove {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
-    HostCall {
-        dst: Option<Register>,
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        method: MethodDispatchHandle,
-        debug_name: DebugNameId,
-        args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
+
     Return {
         src: Register,
     },
@@ -1181,9 +1100,7 @@ pub struct DynamicCallArgumentLinked {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{HostTypeId, StateSlot};
-    use vela_def::FieldId;
-    use vela_host::target::HostTargetPlan;
+    use vela_common::StateSlot;
 
     use super::*;
     use crate::{CacheSiteId, Constant, Register};
@@ -1288,7 +1205,7 @@ mod tests {
             enum_ty: player_type,
             variant,
         };
-        let state = InstructionKind::LoadExternState {
+        let state = InstructionKind::LoadState {
             dst: Register(3),
             slot: StateSlot::new(5),
             debug_name: state_name,
@@ -1310,36 +1227,11 @@ mod tests {
         ));
         assert!(matches!(
             state,
-            InstructionKind::LoadExternState {
+            InstructionKind::LoadState {
                 slot,
                 debug_name,
                 ..
             } if slot == StateSlot::new(5) && debug_name == state_name
-        ));
-    }
-
-    #[test]
-    fn linked_code_interns_host_targets_by_plan_handle() {
-        let mut program = LinkedProgram::new();
-        let name = program.intern_debug_name("host");
-        let mut code = LinkedCodeObject::new(name, 1);
-        let target = HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(2));
-
-        let first = code.intern_host_target(target.clone());
-        let second = code.intern_host_target(target);
-        code.push_instruction(Instruction::new(InstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(0),
-            target: first,
-            dynamic_args: Vec::new(),
-            cache_site: CacheSiteId::new(0),
-        }));
-
-        assert_eq!(first, second);
-        assert_eq!(code.host_targets.len(), 1);
-        assert!(matches!(
-            code.instructions[0].kind,
-            InstructionKind::HostRead { target, .. } if target == first
         ));
     }
 

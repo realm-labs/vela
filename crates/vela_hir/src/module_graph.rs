@@ -4,6 +4,7 @@ mod body_binding;
 mod model;
 mod names;
 mod queries;
+mod removed_type_hints;
 mod schema_diagnostics;
 mod syntax_metadata;
 mod syntax_summary;
@@ -26,7 +27,6 @@ use crate::attributes::HirAttribute;
 use crate::binding::BindingMap;
 use crate::body::HirBody;
 use crate::ids::{HirBodyId, HirDeclId, HirNodeId, ModuleId};
-#[cfg(test)]
 use crate::type_hint::HirTypeHint;
 use crate::type_hint::{
     ConstMetadata, EnumShape, FunctionSignature, ImplMetadata, StateMetadata, StructShape,
@@ -57,6 +57,7 @@ pub struct ModuleGraph {
     declaration_attrs: BTreeMap<HirDeclId, Vec<HirAttribute>>,
     const_metadata: BTreeMap<HirDeclId, ConstMetadata>,
     state_metadata: BTreeMap<HirDeclId, StateMetadata>,
+    source_type_hints: BTreeMap<ModuleId, Vec<HirTypeHint>>,
     bodies: BTreeMap<HirBodyId, HirBody>,
     body_ids_by_source: BTreeMap<SourceId, BTreeSet<HirBodyId>>,
     const_initializer_bodies: BTreeMap<HirDeclId, HirBodyId>,
@@ -499,6 +500,8 @@ impl ModuleGraph {
             self.bind_impl_method_body(&hir_module, node, source);
         }
 
+        self.source_type_hints
+            .insert(module, syntax_summary.type_hints().collect());
         self.schema_references_validated = false;
         self.modules.push(hir_module);
         module

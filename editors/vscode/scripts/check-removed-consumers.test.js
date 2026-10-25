@@ -20,6 +20,7 @@ function inspectArtifacts(value, file) {
     if (Object.hasOwn(value, "formatVersion")) {
       assert.ok(![1, 2].includes(value.formatVersion), `${file}: obsolete schema format`);
       assert.equal(Object.hasOwn(value, "serviceSet"), false, `${file}: removed schema metadata`);
+      if (value.formatVersion === 4) inspectValueSchema(value.facts, file);
     }
     for (const field of ["asyncness", "spawnsTasks", "taskTargets", "taskMetadata", "executionEffectCeiling"]) {
           assert.equal(Object.hasOwn(value, field), false, `${file}: removed ${field} metadata`);
@@ -106,5 +107,36 @@ test("removed example bins stay retired while ordinary consumer entrypoints rema
   }
   for (const name of ["modules", "package_dependency_demo", "native_function", "serde_value", "hot_reload_function_swap"]) {
     assert.ok(fs.existsSync(path.join(root, "examples/src/bin", name, "main.rs")));
+  }
+});
+
+function inspectValueSchema(value, file) {
+  if (Array.isArray(value)) {
+    for (const item of value) inspectValueSchema(item, file);
+  } else if (value && typeof value === "object") {
+    assert.ok(!["host", "arrayView", "arrayMut", "mapView", "mapMut", "setView", "setMut", "scopedIterator"].includes(value.kind), `${file}: removed type fact`);
+    for (const field of ["scoped_resource", "scopedResource", "indexCapabilities", "receiver", "storage", "capabilities", "collectionView", "constructorIds", "hostConstructors"]) {
+      assert.equal(Object.hasOwn(value, field), false, `${file}: removed ${field} fact`);
+    }
+    for (const item of Object.values(value)) inspectValueSchema(item, file);
+  }
+}
+
+test("checkpoint D retires borrowed success expectations and dependent example registrations", () => {
+  for (const name of ["completion-callable-hints", "completion-stdlib-arguments"]) {
+    const retired = load(name).oracle.queries.filter((query) => query.removedBoundary);
+    assert.ok(retired.length > 0, name);
+    for (const query of retired) {
+      assert.deepEqual(query.parameters, [], query.id);
+      assert.equal(query.signature, null, query.id);
+      assert.ok(query.expectedDiagnostic.startsWith("syntax::removed_"), query.id);
+    }
+  }
+  for (const name of ["host_type_methods", "host_iterable", "interop_round_trip", "level_up", "stale_host_ref"]) {
+    assert.equal(fs.existsSync(path.join(root, "examples/src/bin", name, "main.rs")), false, name);
+  }
+  assert.equal(fs.existsSync(path.join(root, "examples/build.rs")), false);
+  for (const name of ["native_function", "serde_value", "modules", "package_dependency_demo", "script_state", "hot_reload_function_swap"]) {
+    assert.ok(fs.existsSync(path.join(root, "examples/src/bin", name, "main.rs")), name);
   }
 });

@@ -32,8 +32,8 @@
     "scripts/query_module_alias.vela": "/* 中😀 */ use option as opt; fn main() { opt::some([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_group_import.vela": "/* 中😀 */ use option::{some, none}; fn main() { some([[replace:start]][[cursor]][[replace:end]]); }\n",
     "scripts/query_ambiguous_import.vela": "/* 中😀 */ use option::some as wrap; use result::ok as wrap; fn main() { wrap([[replace:start]][[cursor]][[replace:end]]); }\n",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{\"functions\":[{\"name\":\"host::growable\",\"fact\":{\"kind\":\"function\",\"params\":[],\"returns\":{\"kind\":\"arrayMut\",\"element\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"mutation\":\"growable\"}}}]}}",
-    "scripts/query_array_growable.vela": "/* 中😀 */ fn main() { host::growable().insert([[replace:start]][[cursor]][[replace:end]]); }\n"
+    "schema.json": "{\"formatVersion\":4,\"facts\":{}}",
+    "scripts/query_array_growable.vela": "/* 中😀 */ fn main() { host::release([[replace:start]][[cursor]][[replace:end]]); }"
   },
   "actions": [],
   "oracle": {
@@ -208,22 +208,23 @@
       {
         "id": "array_view",
         "file": "scripts/query_array_view.vela",
-        "parameters": [
-          {
-            "name": "index",
-            "detail": "i64",
-            "insert": "index = "
-          }
-        ],
-        "apply": "index",
+        "parameters": [],
+        "apply": null,
         "value": "0",
-        "expressions": "set5"
+        "expressions": null,
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "signature": null
       },
       {
         "id": "array_mut",
         "file": "scripts/query_array_mut.vela",
         "parameters": [],
-        "expressions": "set5"
+        "expressions": null,
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "signature": null,
+        "apply": null
       },
       {
         "id": "map",
@@ -355,16 +356,13 @@
       {
         "id": "array_mut_read",
         "file": "scripts/query_array_mut_read.vela",
-        "parameters": [
-          {
-            "name": "index",
-            "detail": "i64",
-            "insert": "index = "
-          }
-        ],
-        "apply": "index",
+        "parameters": [],
+        "apply": null,
         "value": "0",
-        "expressions": "set5"
+        "expressions": null,
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "signature": null
       },
       {
         "id": "import_alias",
@@ -416,21 +414,13 @@
       {
         "id": "array_growable",
         "file": "scripts/query_array_growable.vela",
-        "parameters": [
-          {
-            "name": "index",
-            "detail": "i64",
-            "insert": "index = "
-          },
-          {
-            "name": "value",
-            "detail": "i64",
-            "insert": "value = "
-          }
-        ],
-        "apply": "value",
+        "parameters": [],
+        "apply": null,
         "value": "1",
-        "expressions": "set0"
+        "expressions": null,
+        "removedBoundary": true,
+        "expectedDiagnostic": "syntax::removed_host_borrow",
+        "signature": null
       }
     ],
     "expressionSets": {
@@ -442,7 +432,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -585,7 +574,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -729,7 +717,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -874,7 +861,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -1017,7 +1003,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -1161,7 +1146,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -1305,7 +1289,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -1449,7 +1432,6 @@
         "false",
         "fs::read_to_string",
         "fs::write_string",
-        "host::growable",
         "i16::try_from_i64",
         "i32::from_i16",
         "i32::try_from_i64",
@@ -1585,6 +1567,11 @@
         "u8::wrapping_add",
         "values"
       ]
-    }
+    },
+    "retiredBorrowedQueries": [
+      "array_view",
+      "array_mut",
+      "array_mut_read"
+    ]
   }
 }

@@ -51,4 +51,4 @@ fn active_codes(items) {
 
 ## 宿主 Iterable
 
-宿主可以返回 snapshot iterable，但宿主拥有的状态不会被放到脚本 GC 下。后续宿主修改仍然需要 HostAccess 或显式 native function 边界。
+现有值转换可返回脚本自有集合快照。借用宿主迭代器与保留 view 已删除；Rust 宿主状态不进入脚本 GC，脚本修改不隐式写回 Rust。

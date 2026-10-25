@@ -3,7 +3,7 @@ title: "Iterators And Sequences"
 description: "Iterators And Sequences documentation for Vela."
 ---
 
-Vela uses one iteration model across arrays, maps, sets, ranges, strings, and host-returned iterables. The model separates repeatable sources from one-shot cursors.
+Vela uses one iteration model across arrays, maps, sets, ranges, strings, and script-owned value collections. The model separates repeatable sources from one-shot cursors.
 
 ## Iterable, Sequence, Iterator
 
@@ -52,7 +52,7 @@ fn active_codes(items) {
 
 ## Host Iterables
 
-Hosts may return snapshot iterables, but host-owned state is not placed under the script GC. Any later host mutation still uses HostAccess or an explicit native function boundary.
+Existing value conversions may return script-owned collection snapshots. Borrowed host iterators and retained views are removed. Rust host state remains outside script GC, and script mutations never imply write-back.
 
 ## Type Hints
 

@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use vela_bytecode::{
-    FunctionIndex, ProgramImage, StateDescriptor, StateStorage, StateVisibility,
-    UnlinkedCodeObject, UnlinkedInstructionKind,
+    FunctionIndex, ProgramImage, StateDescriptor, StateVisibility, UnlinkedCodeObject,
+    UnlinkedInstructionKind,
 };
 use vela_def::{FunctionId, StateId};
 use vela_mir::MirTypeContract;
@@ -22,7 +22,6 @@ pub struct StateAbi {
     pub id: StateId,
     pub qualified_name: String,
     pub visibility: StateVisibility,
-    pub storage: StateStorage,
     pub type_contract: MirTypeContract,
 }
 
@@ -32,7 +31,6 @@ impl From<&StateDescriptor> for StateAbi {
             id: state.id,
             qualified_name: state.qualified_name.clone(),
             visibility: state.visibility,
-            storage: state.storage,
             type_contract: state.type_contract.clone(),
         }
     }
@@ -59,16 +57,6 @@ pub(crate) fn compare_state_abi(
             changes.removed.push(old_state.qualified_name.clone());
             continue;
         };
-        if old_state.storage != new_state.storage {
-            return Err(HotReloadError::new(
-                HotReloadErrorKind::ChangedStateStorage {
-                    state: new_state.qualified_name.clone(),
-                    old: old_state.storage,
-                    new: new_state.storage,
-                    source_span: new_state.source_span.map(Box::new),
-                },
-            ));
-        }
         if old_state.type_contract != new_state.type_contract {
             return Err(HotReloadError::new(HotReloadErrorKind::ChangedStateType {
                 state: new_state.qualified_name.clone(),
@@ -225,7 +213,6 @@ fn same_executable_body(old: &UnlinkedCodeObject, new: &UnlinkedCodeObject) -> b
         && old.register_count == new.register_count
         && old.cache_sites == new.cache_sites
         && old.constants == new.constants
-        && old.host_targets == new.host_targets
         && old.param_guards == new.param_guards
         && old.return_guard == new.return_guard
         && old.nested_functions.len() == new.nested_functions.len()

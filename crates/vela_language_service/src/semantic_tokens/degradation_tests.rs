@@ -43,8 +43,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
         tokens.tokens().iter().all(|token| {
             token.start().line != 0
                 || token.start().character != line(text, 0).find("Player").expect("Player")
-                || token.modifiers()
-                    != SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA)
+                || token.modifiers() != SemanticTokenModifiers::SCHEMA
         }),
         "missing schema should not produce schema-backed token modifiers: {:?}",
         tokens.tokens()

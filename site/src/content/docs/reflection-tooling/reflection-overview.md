@@ -28,7 +28,7 @@ Reflection can perform controlled reads, writes, and calls when the active
 policy permits them. Those operations still go through the same runtime and host
 access boundaries as normal script code.
 
-Reflection is not a bypass around `HostAccess`, execution budgets, capability
+Reflection is not a bypass around value permissions, execution budgets, capability
 checks, read-only fields, or stale host reference validation.
 
 ## What Reflection Cannot Do

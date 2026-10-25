@@ -641,7 +641,6 @@ fn hover_kind(kind: HoverKind) -> &'static str {
         HoverKind::Local => "local",
         HoverKind::Parameter => "parameter",
         HoverKind::VmState => "state",
-        HoverKind::ExternState => "extern state",
         HoverKind::Const => "const",
         HoverKind::Function => "function",
         HoverKind::Type => "type",

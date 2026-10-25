@@ -1,41 +1,14 @@
 ---
-title: "受控读写调用"
-description: "动态反射操作及其安全边界。"
+title: "Controlled Reads, Writes And Calls"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-反射可以动态读取字段、写入字段、调用函数或方法。这些操作是受控且受策
-略约束的。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 读取
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-`reflect::get(target, field)` 在目标 shape 和当前策略允许时读取字段。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```vela
-let level = reflect::get(player, "level");
-```
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-对于宿主对象，读取会走 host access 机制。对于脚本 record 和 enum，反射
-会尽量使用已注册脚本 metadata，让诊断能命名脚本类型。
-
-## 写入
-
-`reflect::set(target, field, value)` 只在字段可写且当前反射/宿主策略允许
-时写入。
-
-```vela
-reflect::set(player, "level", 12);
-```
-
-这仍然不会向脚本暴露 Rust `&mut T`。宿主修改通过 `HostRef`、`HostPath`、
-`PathProxy`、`HostAccess` 和宿主 adapter 完成。
-
-## 调用
-
-`reflect::call(target, args...)` 只会调用被标记为 reflection-callable 的函
-数或方法。effects、capabilities、budgets 和参数转换仍然生效。
-
-## 失败模式
-
-受控操作可能因为 unknown field、read-only field、permission denied、
-stale host reference、argument mismatch、effect denial 或 budget exhaustion
-失败。这些都是普通 runtime error，不代表 reflection metadata 被破坏。
+详情与现有调用示例见 [English reference](/reflection-tooling/controlled-reads-writes-calls/)。

@@ -3,16 +3,16 @@ use std::collections::BTreeMap;
 use vela_analysis::callable::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
 };
-use vela_analysis::registry::{RegistryFacts, RegistryIndexCapabilityFact};
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{Diagnostic, HostMethodId, HostTypeId};
+use vela_common::Diagnostic;
 use vela_def::{DefPath, FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_mir::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
     CompileFunctionDescriptor, CompileMethodAccess, CompileMethodClass, CompileMethodDescriptor,
     CompileParameter, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
-    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget, MirEffect,
-    MirSourceOrigin, MirTypeContract,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MirEffect, MirSourceOrigin,
+    MirTypeContract,
 };
 use vela_registry::{
     Def, DefinitionRegistry, FieldDef, FunctionDef, MethodDef, RegistryCompileView,
@@ -22,7 +22,6 @@ use vela_registry::{
 
 use super::{GenerationBuilder, input_error, registry_input_error};
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
-use crate::compiler::options::CompilerOptions;
 
 pub(super) fn combined_registry(
     provided: Option<RegistryCompileView<'_>>,
@@ -46,23 +45,6 @@ pub(super) fn combined_registry(
             CompileError::new(CompileErrorKind::RegistrySnapshot(error.to_string()))
         })?;
     }
-    for definition in combined.compile_view().definitions() {
-        let Def::Type(definition) = definition else {
-            continue;
-        };
-        if definition.kind == TypeKindDef::Host
-            && definition
-                .host_runtime_id
-                .is_some_and(|runtime| u64::try_from(runtime).is_err())
-        {
-            return Err(CompileError::new(CompileErrorKind::RegistrySnapshot(
-                format!(
-                    "host type `{}` has runtime ID outside the u64 HostTypeId range",
-                    source_name(&definition.path)
-                ),
-            )));
-        }
-    }
     Ok(combined)
 }
 
@@ -81,32 +63,6 @@ pub(super) fn include_policy_neutral_reflection_signatures(facts: &mut RegistryF
                 TypeFact::Unknown,
             ),
         );
-    }
-}
-
-pub(super) fn apply_option_index_capabilities(
-    facts: &mut RegistryFacts,
-    options: &CompilerOptions,
-    catalog: &ExternalCatalog,
-) {
-    for (owner, capability) in &options.host_index_capabilities {
-        let key = capability
-            .key_type
-            .as_deref()
-            .map_or(TypeFact::Unknown, |value| catalog.type_fact_text(value));
-        let value = capability
-            .value_type
-            .as_deref()
-            .map_or(TypeFact::Unknown, |value| catalog.type_fact_text(value));
-        facts.insert_index_capability(RegistryIndexCapabilityFact {
-            owner: owner.clone(),
-            readable: capability.readable,
-            writable: capability.writable,
-            addable: capability.addable,
-            removable: capability.removable,
-            key,
-            value,
-        });
     }
 }
 
@@ -242,16 +198,6 @@ impl ExternalCatalog {
             .collect()
     }
 
-    pub(super) fn type_fact_text(&self, text: &str) -> TypeFact {
-        TypeHintDef::parse(text)
-            .as_ref()
-            .map_or(TypeFact::Unknown, |hint| self.type_fact(hint))
-    }
-
-    pub(super) fn type_fact(&self, hint: &TypeHintDef) -> TypeFact {
-        super::schema::registry_hint_fact(hint, self)
-    }
-
     pub(super) fn type_by_source(&self, name: &str) -> Option<&TypeDef> {
         self.types_by_source
             .get(name)
@@ -279,7 +225,6 @@ impl GenerationBuilder<'_, '_> {
             &definition.signature,
             definition.effects,
             &self.catalog,
-            self.request.options,
             origin,
         )?;
         self.remember_signature_contracts(&signature, origin);
@@ -365,11 +310,6 @@ impl GenerationBuilder<'_, '_> {
         });
         let class = if definition.path.package == "std" {
             CompileTypeClass::Standard
-        } else if definition.kind == TypeKindDef::Host {
-            match definition.host_runtime_id.and_then(host_type_id) {
-                Some(runtime) => CompileTypeClass::Host { runtime },
-                None => CompileTypeClass::Registry,
-            }
         } else {
             CompileTypeClass::Registry
         };
@@ -505,7 +445,7 @@ impl GenerationBuilder<'_, '_> {
         let contract = definition
             .type_hint
             .as_ref()
-            .map(|hint| external_hint_contract(hint, &self.catalog, self.request.options, origin))
+            .map(|hint| external_hint_contract(hint, &self.catalog, origin))
             .transpose()?
             .flatten();
         if let Some(contract) = &contract {
@@ -521,7 +461,6 @@ impl GenerationBuilder<'_, '_> {
                     contract,
                     declaration_order: definition.declaration_order,
                     access: field_access(&definition),
-                    host_runtime: definition.host_runtime_id.map(FieldId::new),
                 },
                 origin,
             )
@@ -545,11 +484,7 @@ impl GenerationBuilder<'_, '_> {
             return Ok(());
         }
         self.ensure_external_type(definition.owner, origin)?;
-        let class = if let Some(runtime) = definition.host_runtime_id {
-            CompileMethodClass::Host {
-                runtime: HostMethodId::new(runtime),
-            }
-        } else if definition.path.package == "std" {
+        let class = if definition.path.package == "std" {
             CompileMethodClass::Value
         } else {
             CompileMethodClass::Registry
@@ -558,7 +493,6 @@ impl GenerationBuilder<'_, '_> {
             &definition.signature,
             definition.effects,
             &self.catalog,
-            self.request.options,
             origin,
         )?;
         self.remember_signature_contracts(&signature, origin);
@@ -587,14 +521,6 @@ impl GenerationBuilder<'_, '_> {
                 origin,
             )
             .map_err(input_error)
-    }
-
-    pub(super) fn host_type_target(&self, type_id: TypeId) -> Option<HostTypeTarget> {
-        let definition = self.catalog.ty(type_id)?;
-        Some(HostTypeTarget {
-            semantic: type_id,
-            runtime: host_type_id(definition.host_runtime_id?)?,
-        })
     }
 }
 
@@ -674,7 +600,6 @@ pub(super) fn external_signature(
     signature: &vela_registry::FunctionSignature,
     effects: vela_registry::EffectSet,
     catalog: &ExternalCatalog,
-    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<CompileSignature> {
     Ok(CompileSignature {
@@ -687,7 +612,7 @@ pub(super) fn external_signature(
                     contract: parameter
                         .type_hint
                         .as_ref()
-                        .map(|hint| external_hint_contract(hint, catalog, options, origin))
+                        .map(|hint| external_hint_contract(hint, catalog, origin))
                         .transpose()?
                         .flatten(),
                     default: if parameter.has_default {
@@ -705,7 +630,7 @@ pub(super) fn external_signature(
         return_contract: signature
             .return_type
             .as_ref()
-            .map(|hint| external_hint_contract(hint, catalog, options, origin))
+            .map(|hint| external_hint_contract(hint, catalog, origin))
             .transpose()?
             .flatten(),
         effect: effect(effects),
@@ -715,30 +640,14 @@ pub(super) fn external_signature(
 fn external_hint_contract(
     hint: &TypeHintDef,
     catalog: &ExternalCatalog,
-    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<Option<MirTypeContract>> {
     if hint.path.as_slice() == ["Any"] && hint.args.is_empty() {
         return Ok(None);
     }
-    if hint.path.len() == 1
-        && matches!(
-            hint.path[0].as_str(),
-            "ArrayView" | "ArrayMut" | "MapView" | "MapMut" | "SetView" | "SetMut"
-        )
-    {
-        // Collection views are HostRef-backed capabilities. Static facts prove
-        // known calls, while generated host preflight validates dynamic calls;
-        // they do not have a script-value structural guard to lower into MIR.
-        for argument in &hint.args {
-            validate_external_hint_names(argument, catalog, options, origin)?;
-        }
-        return Ok(None);
-    }
-    validate_external_hint_names(hint, catalog, options, origin)?;
-    if options.allows_opaque_external_type_hint(&hint.path.join("::")) {
-        return Ok(None);
-    }
+
+    validate_external_hint_names(hint, catalog, origin)?;
+
     super::schema::registry_hint_contract(hint, catalog)
         .and_then(super::schema::meaningful_contract)
         .map(Some)
@@ -753,15 +662,29 @@ fn external_hint_contract(
 fn validate_external_hint_names(
     hint: &TypeHintDef,
     catalog: &ExternalCatalog,
-    options: &CompilerOptions,
     origin: MirSourceOrigin,
 ) -> CompileResult<()> {
     for argument in &hint.args {
         if argument.path.as_slice() != ["Any"] || !argument.args.is_empty() {
-            validate_external_hint_names(argument, catalog, options, origin)?;
+            validate_external_hint_names(argument, catalog, origin)?;
         }
     }
     let name = hint.path.join("::");
+    if catalog.type_by_source(&name).is_some() {
+        return Ok(());
+    }
+    if hint
+        .path
+        .last()
+        .is_some_and(|name| vela_hir::type_hint::is_removed_host_type_hint_name(name))
+    {
+        return Err(
+            CompileError::new(CompileErrorKind::RegistrySnapshot(format!(
+                "borrowed-host type hint `{hint}` was removed"
+            )))
+            .with_span(origin.span),
+        );
+    }
     let builtin = matches!(
         name.as_str(),
         "()" | "Any"
@@ -789,10 +712,7 @@ fn validate_external_hint_names(
             | "Function"
             | "Closure"
     );
-    if builtin
-        || catalog.type_by_source(&name).is_some()
-        || options.allows_opaque_external_type_hint(&name)
-    {
+    if builtin {
         return Ok(());
     }
     Err(
@@ -814,8 +734,4 @@ fn insert_unambiguous<K: Ord, V: Copy + Eq>(map: &mut BTreeMap<K, Option<V>>, ke
             }
         }
     }
-}
-
-fn host_type_id(value: u128) -> Option<HostTypeId> {
-    u64::try_from(value).ok().map(HostTypeId::new)
 }

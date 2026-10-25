@@ -97,13 +97,7 @@ fn run_iterations(
     let value = match caches {
         None => vm.run_linked_program(program, "main", &args)?,
         Some(caches) => {
-            let mut adapter = vela_host::mock::MockStateAdapter::default();
-            let mut access = vela_host::access::HostAccess;
-            let mut host = vela_vm::HostExecution {
-                adapter: &mut adapter,
-                access: &mut access,
-                state_values: None,
-            };
+            let mut host = vela_vm::HostExecution { state_values: None };
             let mut budget = vela_vm::budget::ExecutionBudget::unbounded();
             vm.run_linked_program_host_budget_call(vela_vm::LinkedProgramHostBudgetCall {
                 artifact: program,

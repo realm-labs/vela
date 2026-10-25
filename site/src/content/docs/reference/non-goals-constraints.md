@@ -1,33 +1,12 @@
 ---
 title: "Non-Goals And Constraints"
-description: "Design constraints that keep Vela embeddable and hot-reload safe."
+description: "The retained synchronous Vela language and removal boundary."
 ---
 
-Vela is a dynamic scripting language for host-owned business logic. It is not
-dynamic Rust and it is not a Lua clone. Some features are intentionally outside
-the first release.
+Vela has no general script-language generics, overload sets, arbitrary `eval`, monkey patching, runtime type-structure mutation, moving GC, structural state migration, JIT, script async/await or detached tasks.
 
-## Language Non-Goals
+Caller-borrowed Rust roots, arguments, returns, iterators, retained views/leases and transparent host paths are removed, including wrappers around call-scoped borrows. Dependent extern state, Host constructors and Host methods are removed rather than replaced. Rust host state remains outside script GC.
 
-The MVP does not include script-language generics, function overloading by type,
-a Rust-style borrow checker, arbitrary `eval`, macros, monkey patching, classes,
-script threads, script-visible task or coroutine handles, manual resume, hot
-migration of suspended async frames, or JIT compilation.
+Existing independent synchronous native calls and script-owned value conversion remain. Serialized values never imply Rust write-back. Ordinary VM-owned state, collections, traits, reflection and exact-generation reload remain.
 
-## Host Boundary Constraints
-
-Scripts never receive real Rust `&mut T`. Host mutation must flow through
-`HostRef`, `HostPath`, `PathProxy`, `HostAccess`, and the host adapter. Host
-state is not placed under the script GC.
-
-## Reflection Constraints
-
-Reflection may query metadata and perform controlled reads, writes, and calls.
-It may not mutate type structure, replace methods, add fields, or create a
-monkey-patching system.
-
-## Runtime Constraints
-
-Execution must be budgeted. Optimizations must preserve source diagnostics, GC
-roots, hot reload versioning, reflection permissions, and host access checks.
-JIT is a post-MVP backend goal, not a requirement for the first interpreter.
+Object storage, identity, invalidation, re-entry and opaque schemas are separate deferred design work, not features introduced by this pass. LSP workers and protocol cancellation are tooling, not script asynchronous execution.

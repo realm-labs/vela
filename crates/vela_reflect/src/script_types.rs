@@ -1,4 +1,4 @@
-use vela_common::{HostMethodId, Span};
+use vela_common::Span;
 use vela_def::{
     script_field_id, script_inherent_method_id, script_trait_method_id, script_type_id,
     script_variant_id,
@@ -220,7 +220,7 @@ fn inherent_methods_for_type(
             metadata.methods.iter().map(|method| {
                 apply_method_signature(
                     MethodDesc::new(
-                        script_inherent_host_method_id(package, &type_name, &method.name),
+                        script_inherent_method_id(package, &type_name, &method.name),
                         method.name.clone(),
                     )
                     .origin(DeclOrigin::Script)
@@ -496,14 +496,6 @@ fn hash_bytes(hash: &mut u64, bytes: &[u8]) {
         *hash ^= u64::from(*byte);
         *hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
     }
-}
-
-fn script_inherent_host_method_id(
-    package: &str,
-    type_name: &str,
-    method_name: &str,
-) -> HostMethodId {
-    HostMethodId::new(script_inherent_method_id(package, type_name, method_name).get())
 }
 
 fn explicit_script_id(attrs: &[HirAttribute]) -> Option<u128> {
@@ -904,7 +896,7 @@ impl Player {
         let method = &player.methods[0];
         assert_eq!(
             method.id,
-            script_inherent_host_method_id(
+            script_inherent_method_id(
                 vela_package::PackageId::anonymous().as_str(),
                 "game::combat::Player",
                 "bonus",

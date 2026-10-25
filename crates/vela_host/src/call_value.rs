@@ -1,16 +1,10 @@
-//! Detached structural values used by schema-declared Host methods and fields.
+//! Detached structural values used by existing value conversion.
 
 use vela_common::ScalarValue;
 
-use crate::path::HostRef;
 use crate::value::HostValue;
 
-/// A VM-independent, owned value crossing an erased Host boundary.
-///
-/// Method arguments and results use this vocabulary directly. A field whose
-/// schema declares an owned structural value carries it inside
-/// [`HostValue::Detached`], allowing its typed adapter to decode one complete
-/// replacement without retaining a VM heap object.
+/// A VM-independent, fully owned structural value.
 #[derive(Clone, Debug, PartialEq)]
 pub enum HostCallValue {
     Unit,
@@ -32,7 +26,6 @@ pub enum HostCallValue {
         variant: String,
         fields: Vec<HostCallField>,
     },
-    HostRef(HostRef),
 }
 
 impl HostCallValue {
@@ -93,7 +86,6 @@ impl HostCallValue {
             HostValue::String(value) => Self::String(value),
             HostValue::Bytes(value) => Self::Bytes(value),
             HostValue::Detached(value) => *value,
-            HostValue::HostRef(value) => Self::HostRef(value),
         }
     }
 
@@ -107,7 +99,6 @@ impl HostCallValue {
             Self::Scalar(value) => Some(HostValue::Scalar(*value)),
             Self::String(value) => Some(HostValue::String(value.clone())),
             Self::Bytes(value) => Some(HostValue::Bytes(value.clone())),
-            Self::HostRef(value) => Some(HostValue::HostRef(*value)),
             Self::Tuple(_)
             | Self::Array(_)
             | Self::Map(_)
@@ -144,5 +135,31 @@ impl HostCallMapEntry {
     #[must_use]
     pub const fn new(key: HostCallValue, value: HostCallValue) -> Self {
         Self { key, value }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{HostCallMapEntry, HostCallValue};
+    use vela_common::ScalarValue;
+
+    #[test]
+    fn structural_carriers_preserve_owned_data_and_exact_scalar_tags() {
+        let value = HostCallValue::record(
+            "Payload",
+            [
+                ("small", HostCallValue::Scalar(ScalarValue::U8(7))),
+                ("bytes", HostCallValue::Bytes(vec![0, 255])),
+                (
+                    "items",
+                    HostCallValue::Map(vec![HostCallMapEntry::new(
+                        HostCallValue::Char('x'),
+                        HostCallValue::Tuple(vec![HostCallValue::Bool(true)]),
+                    )]),
+                ),
+            ],
+        );
+        let carrier = value.to_host_value().expect("owned structural carrier");
+        assert_eq!(HostCallValue::from_host_value(carrier), value);
     }
 }

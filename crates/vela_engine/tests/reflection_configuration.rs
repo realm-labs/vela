@@ -1,9 +1,6 @@
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::adapter::ScriptStateAdapter;
-use vela_host::lease::HostLeaseKind;
-use vela_host::path::HostRef;
-use vela_host::slot::HostRefSlots;
+
 use vela_reflect::error::ReflectErrorKind;
 use vela_reflect::permissions::{ReflectPermissionSet, ReflectPolicy};
 use vela_vm::error::VmErrorKind;
@@ -56,15 +53,4 @@ fn explicit_reflection_preserves_budget_in_either_setter_order() {
             VmErrorKind::Reflect(ReflectErrorKind::LookupBudgetExceeded { limit: 1 })
         );
     }
-}
-
-#[test]
-fn custom_adapter_default_does_not_grant_exclusive_receiver_access() {
-    let slots = HostRefSlots::default();
-    let root = HostRef::new(
-        vela_common::HostTypeId::new(1),
-        vela_common::HostObjectId::new(1),
-        0,
-    );
-    assert_eq!(slots.host_receiver_access(root), HostLeaseKind::Shared);
 }

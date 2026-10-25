@@ -570,7 +570,7 @@
       },
       {
         "id": "extern-state",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]extern state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]] = helper::Known {};[[item:end]]\n[[eof]][[file:end]]",
         "queries": [
           {
             "position": "name-cursor",
@@ -593,7 +593,7 @@
       },
       {
         "id": "public-extern-state",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]pub extern state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub state [[name:start]]ro[[name-cursor]]ot[[name:end]]: [[type:start]]helper::[[known:start]]Kn[[known-cursor]]own[[known:end]][[type:end]] = helper::Known {};[[item:end]]\n[[eof]][[file:end]]",
         "queries": [
           {
             "position": "name-cursor",
@@ -1305,7 +1305,7 @@
       },
       {
         "id": "all-declaration-neighbors",
-        "source": "[[file:start]]/*中😀*/ [[constant:start]]const [[constant-name:start]]LI[[constant-name-cursor]]MIT[[constant-name:end]] = 1;[[constant:end]]\n[[state:start]]extern state [[state-name:start]]ro[[state-name-cursor]]ot[[state-name:end]]: Int;[[state:end]]\n[[structure:start]]struct [[struct-name:start]]R[[struct-name-cursor]]ow[[struct-name:end]] {}[[structure:end]]\n[[enumeration:start]]enum [[enum-name:start]]Cho[[enum-name-cursor]]ice[[enum-name:end]] { Unit }[[enumeration:end]]\n[[trait:start]]trait [[trait-name:start]]Ru[[trait-name-cursor]]le[[trait-name:end]] {}[[trait:end]]\n[[implementation:start]]impl [[impl-name:start]]R[[impl-name-cursor]]ow[[impl-name:end]] {}[[implementation:end]]\n[[function:start]]fn [[fn-name:start]]r[[fn-name-cursor]]un[[fn-name:end]]() {}[[function:end]]\n[[eof]][[file:end]]",
+        "source": "[[file:start]]/*中😀*/ [[constant:start]]const [[constant-name:start]]LI[[constant-name-cursor]]MIT[[constant-name:end]] = 1;[[constant:end]]\n[[state:start]]state [[state-name:start]]ro[[state-name-cursor]]ot[[state-name:end]]: Int = Int {};[[state:end]]\n[[structure:start]]struct [[struct-name:start]]R[[struct-name-cursor]]ow[[struct-name:end]] {}[[structure:end]]\n[[enumeration:start]]enum [[enum-name:start]]Cho[[enum-name-cursor]]ice[[enum-name:end]] { Unit }[[enumeration:end]]\n[[trait:start]]trait [[trait-name:start]]Ru[[trait-name-cursor]]le[[trait-name:end]] {}[[trait:end]]\n[[implementation:start]]impl [[impl-name:start]]R[[impl-name-cursor]]ow[[impl-name:end]] {}[[implementation:end]]\n[[function:start]]fn [[fn-name:start]]r[[fn-name-cursor]]un[[fn-name:end]]() {}[[function:end]]\n[[eof]][[file:end]]",
         "queries": [
           {
             "position": "fn-name-cursor",

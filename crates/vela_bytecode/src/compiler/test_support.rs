@@ -177,13 +177,6 @@ pub(crate) fn compile_test_modules(
     compile_test_modules_with_options(sources, &CompilerOptions::default())
 }
 
-pub(crate) fn compile_test_modules_with_registry(
-    sources: &[ModuleSource],
-    registry: RegistryCompileView<'_>,
-) -> Result<CompiledProgram, TestCompileError> {
-    compile_test_modules_inner(sources, &CompilerOptions::default(), Some(registry))
-}
-
 pub(crate) fn compile_test_modules_with_options(
     sources: &[ModuleSource],
     options: &CompilerOptions,

@@ -1,0 +1,5 @@
+error: mutable borrowed parameters are not supported at the Vela value boundary
+ --> tests/ui/interop/fail/host_mutable_parameter.rs:6:22
+  |
+6 | pub fn mutate(_host: &mut Host) {}
+  |                      ^^^^^^^^^

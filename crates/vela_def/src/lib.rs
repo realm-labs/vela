@@ -15,16 +15,6 @@ pub use script::{
 };
 pub use stable::stable_id;
 
-#[must_use]
-pub const fn host_release_function_id() -> FunctionId {
-    FunctionId::new(stable_id("host_intrinsic", "host", "release") as u128)
-}
-
-#[must_use]
-pub const fn host_try_release_function_id() -> FunctionId {
-    FunctionId::new(stable_id("host_intrinsic", "host", "try_release") as u128)
-}
-
 const HASH_VERSION_PREFIX: &str = "vela-def-v1";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]

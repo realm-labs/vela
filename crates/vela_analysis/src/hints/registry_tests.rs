@@ -1,5 +1,5 @@
 use crate::{facts::AnalysisFacts, registry::RegistryFacts, type_fact::TypeFact};
-use vela_common::{CollectionViewMutation, SourceId};
+use vela_common::SourceId;
 use vela_hir::{
     body::HirExprKind,
     module_graph::{ModuleGraph, ModuleSource},
@@ -9,7 +9,7 @@ use vela_package::{ModulePath, PackageId};
 
 #[test]
 fn nested_registered_hints_preserve_structural_facts_through_calls_fields_and_globals() {
-    let row = TypeFact::Host {
+    let row = TypeFact::Record {
         name: "host::Row".into(),
     };
     for (hint, expected) in [
@@ -17,33 +17,11 @@ fn nested_registered_hints_preserve_structural_facts_through_calls_fields_and_gl
         ("Array<Range>", TypeFact::array(TypeFact::Range)),
         ("Alias", row.clone()),
         ("Array<Alias>", TypeFact::array(row.clone())),
-        ("ArrayView<Alias>", TypeFact::array_view(row.clone())),
-        (
-            "ArrayMut<Alias>",
-            TypeFact::array_mut(row.clone(), CollectionViewMutation::Fixed),
-        ),
         (
             "Map<String, Alias>",
             TypeFact::map(TypeFact::STRING, row.clone()),
         ),
-        (
-            "MapView<String, Alias>",
-            TypeFact::map_view(TypeFact::STRING, row.clone()),
-        ),
-        (
-            "MapMut<String, Alias>",
-            TypeFact::map_mut(
-                TypeFact::STRING,
-                row.clone(),
-                CollectionViewMutation::Growable,
-            ),
-        ),
         ("Set<Alias>", TypeFact::set(row.clone())),
-        ("SetView<Alias>", TypeFact::set_view(row.clone())),
-        (
-            "SetMut<Alias>",
-            TypeFact::set_mut(row.clone(), CollectionViewMutation::Growable),
-        ),
         ("Iterator<Alias>", TypeFact::iterator(row.clone())),
         ("Option<Alias>", TypeFact::option(row.clone())),
         (
@@ -80,7 +58,7 @@ fn check(imports: &str, hint: &str, expected: TypeFact) {
         impl Echo for Worker {{}}
         struct Holder {{ value: {hint} }}
         const CONSTANT: {hint} = [];
-        extern state STATE: {hint};
+        state STATE: {hint} = [];
         fn inspect(input: {hint}, worker: Worker, holder: Holder) {{ accept(input); worker.echo(input); holder.value; CONSTANT; STATE; }}");
     let module = graph.add_source(ModuleSource::new(
         SourceId::new(71),
@@ -114,7 +92,7 @@ fn check(imports: &str, hint: &str, expected: TypeFact) {
         "Alias",
         "Row",
     ] {
-        schema.insert_type(name, TypeFact::Host { name: name.into() });
+        schema.insert_type(name, TypeFact::Record { name: name.into() });
     }
     let facts = AnalysisFacts::from_module_graph_and_schema(&graph, &schema);
     let declarations = graph.module(module).expect("module");

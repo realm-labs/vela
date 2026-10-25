@@ -3,9 +3,8 @@ use vela_common::{Diagnostic, SourceId, Span};
 use vela_syntax::ast::{
     AstChildren, AstNode, SyntaxAttribute, SyntaxAttributeValue, SyntaxConstItem, SyntaxEnumItem,
     SyntaxEnumVariant, SyntaxExpression, SyntaxFunctionItem, SyntaxImplItem, SyntaxImplMethod,
-    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStateItem,
-    SyntaxStateStorage, SyntaxStructField, SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod,
-    SyntaxTypeHint, SyntaxUseItem,
+    SyntaxItem, SyntaxParam, SyntaxParamList, SyntaxSourceFile, SyntaxStateItem, SyntaxStructField,
+    SyntaxStructItem, SyntaxTraitItem, SyntaxTraitMethod, SyntaxTypeHint, SyntaxUseItem,
 };
 use vela_syntax::{Parse as SyntaxParse, SyntaxKind, SyntaxToken, TextRange};
 
@@ -100,6 +99,14 @@ impl SyntaxModuleSummary {
             .iter()
             .enumerate()
             .map(|(index, item)| (index, item.syntax().kind()))
+    }
+
+    pub(super) fn type_hints(&self) -> impl Iterator<Item = crate::type_hint::HirTypeHint> + '_ {
+        self.items
+            .iter()
+            .flat_map(|item| item.syntax().descendants())
+            .filter_map(SyntaxTypeHint::cast)
+            .map(|hint| lower_syntax_type_hint(self.source, &hint))
     }
 
     pub(super) fn import(&self, index: usize) -> Option<SyntaxImportHeader> {
@@ -529,10 +536,7 @@ fn const_metadata(source: SourceId, item: &SyntaxConstItem) -> ConstMetadata {
 
 fn state_metadata(source: SourceId, item: &SyntaxStateItem) -> Option<StateMetadata> {
     Some(StateMetadata {
-        storage: match item.storage() {
-            SyntaxStateStorage::Vm => StateStorage::Vm,
-            SyntaxStateStorage::Extern => StateStorage::Extern,
-        },
+        storage: StateStorage::Vm,
         type_hint: lower_syntax_type_hint(source, &item.type_hint()?),
         initializer_span: item
             .initializer()

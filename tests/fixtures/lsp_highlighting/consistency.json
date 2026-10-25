@@ -44,7 +44,7 @@
   {
     "concept": "schema type hint",
     "semanticTokenType": "type",
-    "semanticTokenModifiers": ["host", "schema"],
+    "semanticTokenModifiers": ["schema"],
     "zedCapture": "@type",
     "vscodeScope": "entity.name.type.vela"
   },

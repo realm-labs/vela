@@ -9,7 +9,7 @@
     "scripts/method_result.vela": "/* 中😀 */\nfn run(handle: host::Handle) { (handle.work_make(1)).[[replace:start]]zz_[[cursor]][[replace:end]]; }\n",
     "scripts/function_signature.vela": "/* 中😀 */\nfn run() { native::work_make([[cursor]]1); }\n",
     "scripts/method_signature.vela": "/* 中😀 */\nfn run(handle: host::Handle) { handle.work_make([[cursor]]1); }\n",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"host\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}"
+    "schema.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"host::Handle\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Handle\"}},{\"name\":\"host::Row\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Row\"}},{\"name\":\"host::Other\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Other\"}}],\"functions\":[{\"name\":\"native::work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"record\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"record\",\"name\":\"host::Row\"}},\"docs\":\"Function v1 中😀.\"}],\"methods\":[{\"owner\":\"host::Handle\",\"name\":\"work_make\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"record\",\"name\":\"host::Row\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_first\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"record\",\"name\":\"host::Row\"}},\"docs\":\"Method v1 中😀.\"}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"zz_count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Field v1 中😀.\"},{\"owner\":\"host::Other\",\"name\":\"zz_wrong\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"docs\":\"Wrong return owner 中😀.\"}]}}"
   },
   "actions": [],
   "oracle": {
@@ -18,27 +18,27 @@
       {
         "id": "v1",
         "schema": {
-          "formatVersion": 3,
+          "formatVersion": 4,
           "facts": {
             "types": [
               {
                 "name": "host::Handle",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Handle"
                 }
               },
               {
                 "name": "host::Row",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Row"
                 }
               },
               {
                 "name": "host::Other",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Other"
                 }
               }
@@ -55,7 +55,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -71,7 +71,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -91,7 +91,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -107,7 +107,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -297,27 +297,27 @@
       {
         "id": "v2",
         "schema": {
-          "formatVersion": 3,
+          "formatVersion": 4,
           "facts": {
             "types": [
               {
                 "name": "host::Handle",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Handle"
                 }
               },
               {
                 "name": "host::Row",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Row"
                 }
               },
               {
                 "name": "host::Other",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Other"
                 }
               }
@@ -334,7 +334,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Other"
                   }
                 },
@@ -350,7 +350,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Other"
                   }
                 },
@@ -370,7 +370,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Other"
                   }
                 },
@@ -386,7 +386,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Other"
                   }
                 },
@@ -576,27 +576,27 @@
       {
         "id": "v3",
         "schema": {
-          "formatVersion": 3,
+          "formatVersion": 4,
           "facts": {
             "types": [
               {
                 "name": "host::Handle",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Handle"
                 }
               },
               {
                 "name": "host::Row",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Row"
                 }
               },
               {
                 "name": "host::Other",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Other"
                 }
               }
@@ -613,7 +613,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -629,7 +629,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -649,7 +649,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -665,7 +665,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -855,27 +855,27 @@
       {
         "id": "removed",
         "schema": {
-          "formatVersion": 3,
+          "formatVersion": 4,
           "facts": {
             "types": [
               {
                 "name": "host::Handle",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Handle"
                 }
               },
               {
                 "name": "host::Row",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Row"
                 }
               },
               {
                 "name": "host::Other",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Other"
                 }
               }
@@ -954,27 +954,27 @@
       {
         "id": "restored",
         "schema": {
-          "formatVersion": 3,
+          "formatVersion": 4,
           "facts": {
             "types": [
               {
                 "name": "host::Handle",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Handle"
                 }
               },
               {
                 "name": "host::Row",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Row"
                 }
               },
               {
                 "name": "host::Other",
                 "fact": {
-                  "kind": "host",
+                  "kind": "record",
                   "name": "host::Other"
                 }
               }
@@ -991,7 +991,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -1007,7 +1007,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -1027,7 +1027,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },
@@ -1043,7 +1043,7 @@
                     }
                   ],
                   "returns": {
-                    "kind": "host",
+                    "kind": "record",
                     "name": "host::Row"
                   }
                 },

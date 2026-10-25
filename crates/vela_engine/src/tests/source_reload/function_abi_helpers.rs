@@ -16,17 +16,9 @@ pub(super) fn removed_script_function_rejection_kind(
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -43,13 +35,7 @@ pub(super) fn removed_script_function_rejection_kind(
             .expect("changed-file removed function rejection should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -66,13 +52,7 @@ pub(super) fn removed_script_function_rejection_kind(
         Some("game::reward::helper")
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -107,17 +87,9 @@ pub(super) fn removed_native_descriptor_rejection_kind(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -134,13 +106,7 @@ pub(super) fn removed_native_descriptor_rejection_kind(
             .expect("changed-file removed native descriptor ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -158,13 +124,7 @@ pub(super) fn removed_native_descriptor_rejection_kind(
     );
     assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -199,17 +159,9 @@ pub(super) fn native_stable_id_churn_rejection_kind(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -226,13 +178,7 @@ pub(super) fn native_stable_id_churn_rejection_kind(
             .expect("changed-file native stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -250,13 +196,7 @@ pub(super) fn native_stable_id_churn_rejection_kind(
     );
     assert_removed_function_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -285,17 +225,9 @@ pub(super) fn dir_native_rejection_kind(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -304,13 +236,7 @@ pub(super) fn dir_native_rejection_kind(
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir native descriptor ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -335,13 +261,7 @@ pub(super) fn dir_native_rejection_kind(
         assert_function_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -361,7 +281,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(type_with_reload_method(MethodDesc::new(
-            HostMethodId::new(9),
+            MethodId::new(9),
             "grant_exp",
         )))
         .build()
@@ -371,24 +291,14 @@ pub(super) fn removed_method_descriptor_rejection_kind(
         .expect("initial hot reload dir compile");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).host_type(HostTypeId::new(1)),
-        )
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")))
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -405,13 +315,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
             .expect("changed-file removed method descriptor ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -426,13 +330,7 @@ pub(super) fn removed_method_descriptor_rejection_kind(
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     assert_removed_method_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -447,7 +345,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(type_with_reload_method(MethodDesc::new(
-            HostMethodId::new(9),
+            MethodId::new(9),
             "grant_exp",
         )))
         .build()
@@ -458,24 +356,16 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(type_with_reload_method(MethodDesc::new(
-            HostMethodId::new(10),
+            MethodId::new(10),
             "grant_exp",
         )))
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -492,13 +382,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
             .expect("changed-file method stable-ID churn ABI rejection should be staged"),
     };
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -513,13 +397,7 @@ pub(super) fn method_stable_id_churn_rejection_kind(
     assert_eq!(report.errors[0].target.as_deref(), Some("Player.grant_exp"));
     assert_removed_method_abi_repair_hint(&report);
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -548,17 +426,9 @@ pub(super) fn dir_method_rejection_kind(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -567,13 +437,7 @@ pub(super) fn dir_method_rejection_kind(
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir method ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -598,13 +462,7 @@ pub(super) fn dir_method_rejection_kind(
         assert_method_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()
@@ -633,17 +491,9 @@ pub(super) fn changed_file_method_rejection_kind(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -655,13 +505,7 @@ pub(super) fn changed_file_method_rejection_kind(
         ))
         .expect("changed-file method ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -686,13 +530,7 @@ pub(super) fn changed_file_method_rejection_kind(
         assert_method_return_repair_hint(&report);
     }
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     report.errors[0].error.kind.clone()

@@ -80,7 +80,6 @@ pub fn kind(registry: &TypeRegistry, target: &ReflectValue) -> ReflectResult<Ref
                 TypeKind::Range => "range",
                 TypeKind::Function => "function",
                 TypeKind::Closure => "closure",
-                TypeKind::Host => "host",
                 TypeKind::ScriptStruct => "script_struct",
                 TypeKind::ScriptEnum => "script_enum",
             }
@@ -187,9 +186,6 @@ pub(super) fn target_type<'a>(
         return Ok(desc);
     }
     match target {
-        ReflectValue::HostRef(host_ref) => Err(ReflectError::new(ReflectErrorKind::UnknownType {
-            host_type_id: host_ref.type_id,
-        })),
         ReflectValue::Host(_)
         | ReflectValue::Closure
         | ReflectValue::Range

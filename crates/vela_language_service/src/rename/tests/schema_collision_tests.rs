@@ -25,12 +25,12 @@ pub fn award() { return 4 }";
         .expect("schema source should be indexed");
     let source_id = schema_record.source_id().get();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [

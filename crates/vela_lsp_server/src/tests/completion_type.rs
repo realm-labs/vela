@@ -31,12 +31,12 @@ fn lsp_completion_uses_short_type_labels_with_owner_details() {
     fs::write(
         &schema_path,
         r#"{
-                "formatVersion": 3,
+                "formatVersion": 4,
                 "facts": {
                     "types": [
                         {
                             "name": "game::schema::Region",
-                            "fact": { "kind": "host", "name": "game::schema::Region" }
+                            "fact": { "kind": "record", "name": "game::schema::Region" }
                         }
                     ]
                 }

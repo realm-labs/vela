@@ -1,62 +1,19 @@
 ---
 title: "Call Arguments And Return Values"
-description: "How Rust passes values and host handles into Vela calls and reads results back."
+description: "The synchronous, script-owned Vela boundary."
 ---
 
-Calls use `CallArgs` plus `CallOptions`. Arguments may be positional, named,
-script-owned values, runtime-managed `VelaValue` handles, serde snapshots, or
-call-scoped host handles.
-
-## Passing Arguments
-
-Use `with_value` for ordinary copied values and `with_host_mut` or
-`with_host_ref` for direct host object bindings.
+Calls use `CallArgs` and `CallOptions`. Existing scalar/owned-value, named/positional, same-runtime `VelaValue`, and serde snapshot arguments remain. Borrowed Rust roots, arguments, returns, views and host handles are not accepted.
 
 ```rust
 let output = runtime.call(
     "main",
-    CallArgs::new()
-        .with_value("amount", 5_i64)
-        .with_host_mut("player", &mut player),
+    CallArgs::new().with_value("amount", 5_i64),
     CallOptions::new(10_000, 1024 * 1024, 64),
 )?;
+let result: i64 = runtime.from_value(&output)?;
 ```
 
-```vela
-fn main(player: Player, amount) {
-    player.level += amount;
-    return player.level;
-}
-```
+`Runtime::call` returns a runtime-managed script value. `value_to_owned` explicitly obtains a detached result; same-runtime values may be passed back with `with_vela_value`. Runtime affinity, argument conversion, permissions and budgets still apply.
 
-`with_host_ref` is read-only. `with_host_mut` allows writes, but the script
-still receives only a `HostRef` handle inside the VM, never Rust `&mut T`.
-
-## Return Values
-
-`Runtime::call` returns a `VelaValue`, a runtime-managed handle. Convert it
-when the host needs a detached Rust value.
-
-```rust
-let value = runtime.call("score", CallArgs::new(), CallOptions::unbounded())?;
-let score: i64 = runtime.from_value(&value)?;
-let owned = runtime.value_to_owned(&value)?;
-```
-
-Passing a `VelaValue` back into the same runtime avoids materializing an
-`OwnedValue`.
-
-```rust
-let snapshot = runtime.call("snapshot_state", CallArgs::new(), CallOptions::unbounded())?;
-let projected = runtime.call(
-    "projected_score",
-    CallArgs::new().with_vela_value(snapshot).with(4_i64),
-    CallOptions::unbounded(),
-)?;
-```
-
-## Error Boundaries
-
-Argument names must match the entry signature when using named arguments.
-Runtime-managed values belong to their runtime. Host objects must be registered
-with schemas before script code can type-check and access them.
+Serialized inputs are script-owned snapshots. Script changes do not mutate the original Rust value. See the retained `serde_value` and `script_state` examples.

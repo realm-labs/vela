@@ -4572,7 +4572,7 @@
         "id": "top-extern-state",
         "partition": "top-extern-state",
         "parse": "quiet",
-        "source": "[[file:start]][[prefix:start]]/*中[[prefix-cursor]]😀*/[[prefix:end]] [[item:start]]extern state[[header-gap:start]] [[header-gap-cursor]]\t [[header-gap:end]][[header-comment:start]]/* [[header-comment-cursor]]header 中😀 */[[header-comment:end]] [[leaf:start]]r[[leaf-cursor]]oot[[leaf:end]][[leaf-end]] : [[hint:start]]Any[[hint:end]];[[item:end]][[file-tail:start]]\n[[file-tail-cursor]][[file-tail:end]][[eof]][[file:end]]",
+        "source": "[[file:start]][[prefix:start]]/*中[[prefix-cursor]]😀*/[[prefix:end]] [[item:start]]state[[header-gap:start]] [[header-gap-cursor]]\t [[header-gap:end]][[header-comment:start]]/* [[header-comment-cursor]]header 中😀 */[[header-comment:end]] [[leaf:start]]r[[leaf-cursor]]oot[[leaf:end]][[leaf-end]] : [[hint:start]]Any[[hint:end]] = ();[[item:end]][[file-tail:start]]\n[[file-tail-cursor]][[file-tail:end]][[eof]][[file:end]]",
         "nodes": [
           {
             "marker": "hint",

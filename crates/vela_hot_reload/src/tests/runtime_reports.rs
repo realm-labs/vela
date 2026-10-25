@@ -217,7 +217,7 @@ fn program_version_owns_program_image_indexes() {
     let version = compile_initial(
         SourceId::new(1),
         r#"
-extern state state: Player;
+state state: i64 = 0;
 
 fn helper() {
     return 5;
@@ -253,7 +253,7 @@ fn program_version_preserves_state_layout() {
     let version = compile_initial(
         SourceId::new(1),
         r#"
-extern state state: Player;
+state state: i64 = 0;
 
 fn main() {
     return 1;
@@ -282,7 +282,7 @@ fn hot_reload_rebuilds_program_image_for_next_version() {
         &old,
         SourceId::new(2),
         r#"
-extern state state: Player;
+state state: i64 = 0;
 
 fn helper() {
     return 5;
@@ -355,7 +355,7 @@ fn hot_reload_rebuilds_state_layout_for_next_version() {
         &old,
         SourceId::new(2),
         r#"
-extern state state: Player;
+state state: i64 = 0;
 
 fn main() {
     return 30;

@@ -9,7 +9,7 @@ impl Vm {
         &self,
         session: &mut LinkedExecutionSession,
         result: VmResult<OwnedValue>,
-        host: Option<&mut crate::HostExecution<'_>>,
+        _host: Option<&mut crate::HostExecution<'_>>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
     ) -> VmResult<()> {
@@ -43,15 +43,8 @@ impl Vm {
                     opcode: "native resume without an active frame",
                 })
             })?;
-        let value = crate::heap_values::owned_to_linked_value(
-            value,
-            owner.program(),
-            heap,
-            budget,
-            host.map(|host| {
-                &mut *host.adapter as &mut (dyn vela_host::adapter::ScriptStateAdapter + Send)
-            }),
-        )?;
+        let value =
+            crate::heap_values::owned_to_linked_value(value, owner.program(), heap, budget)?;
         if let Some(destination) = pending.destination {
             session
                 .frames

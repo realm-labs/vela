@@ -2,7 +2,6 @@ use std::hash::{Hash, Hasher};
 
 use crate::heap::HeapValue;
 use crate::{HeapExecution, Value, VmError, VmErrorKind, VmResult};
-use vela_host::path::HostSlotRef;
 
 #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub(crate) enum ValueKey {
@@ -22,7 +21,6 @@ pub(crate) enum ValueKey {
     String(String),
     Bytes(Vec<u8>),
     HeapIdentity(crate::heap::GcRef),
-    HostIdentity(HostSlotRef),
 }
 
 impl ValueKey {
@@ -63,8 +61,7 @@ impl ValueKey {
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value.clone())),
                 Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value.clone())),
-                Some(HeapValue::Tuple(_) | HeapValue::Range(_) | HeapValue::PathProxy(_))
-                | None => type_error(operation),
+                Some(HeapValue::Tuple(_) | HeapValue::Range(_)) | None => type_error(operation),
                 Some(
                     HeapValue::Array(_)
                     | HeapValue::Map(_)
@@ -75,7 +72,6 @@ impl ValueKey {
                     | HeapValue::Iterator(_),
                 ) => Ok(Self::HeapIdentity(*reference)),
             },
-            Value::HostRef(reference) => Ok(Self::HostIdentity(*reference)),
         }
     }
 
@@ -136,10 +132,6 @@ macro_rules! hash_key_parts {
                 state.write_u8(9);
                 reference.hash(state);
             }
-            KeyParts::HostIdentity(reference) => {
-                state.write_u8(10);
-                reference.hash(state);
-            }
         }
     }};
 }
@@ -160,7 +152,6 @@ enum KeyParts<S, B> {
     String(S),
     Bytes(B),
     HeapIdentity(crate::heap::GcRef),
-    HostIdentity(HostSlotRef),
 }
 
 impl ValueKey {
@@ -182,7 +173,6 @@ impl ValueKey {
             Self::String(value) => KeyParts::String(value.as_str()),
             Self::Bytes(value) => KeyParts::Bytes(value.as_slice()),
             Self::HeapIdentity(reference) => KeyParts::HeapIdentity(*reference),
-            Self::HostIdentity(reference) => KeyParts::HostIdentity(*reference),
         }
     }
 }
@@ -218,7 +208,6 @@ pub(crate) enum KeyProbe<'a> {
     String(&'a str),
     Bytes(&'a [u8]),
     HeapIdentity(crate::heap::GcRef),
-    HostIdentity(HostSlotRef),
 }
 
 impl<'a> KeyProbe<'a> {
@@ -245,8 +234,7 @@ impl<'a> KeyProbe<'a> {
             Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                 Some(HeapValue::String(value)) => Ok(Self::String(value)),
                 Some(HeapValue::Bytes(value)) => Ok(Self::Bytes(value)),
-                Some(HeapValue::Tuple(_) | HeapValue::Range(_) | HeapValue::PathProxy(_))
-                | None => type_error(operation),
+                Some(HeapValue::Tuple(_) | HeapValue::Range(_)) | None => type_error(operation),
                 Some(
                     HeapValue::Array(_)
                     | HeapValue::Map(_)
@@ -257,7 +245,6 @@ impl<'a> KeyProbe<'a> {
                     | HeapValue::Iterator(_),
                 ) => Ok(Self::HeapIdentity(*reference)),
             },
-            Value::HostRef(reference) => Ok(Self::HostIdentity(*reference)),
         }
     }
 
@@ -281,7 +268,6 @@ impl<'a> KeyProbe<'a> {
             (Self::String(probe), ValueKey::String(key)) => *probe == key.as_str(),
             (Self::Bytes(probe), ValueKey::Bytes(key)) => *probe == key.as_slice(),
             (Self::HeapIdentity(probe), ValueKey::HeapIdentity(key)) => probe == key,
-            (Self::HostIdentity(probe), ValueKey::HostIdentity(key)) => probe == key,
             _ => false,
         }
     }
@@ -306,7 +292,6 @@ impl<'a> KeyProbe<'a> {
             Self::String(value) => ValueKey::String(value.to_owned()),
             Self::Bytes(value) => ValueKey::Bytes(value.to_vec()),
             Self::HeapIdentity(reference) => ValueKey::HeapIdentity(reference),
-            Self::HostIdentity(reference) => ValueKey::HostIdentity(reference),
         }
     }
 
@@ -328,7 +313,6 @@ impl<'a> KeyProbe<'a> {
             Self::String(value) => KeyParts::String(value),
             Self::Bytes(value) => KeyParts::Bytes(value),
             Self::HeapIdentity(reference) => KeyParts::HeapIdentity(*reference),
-            Self::HostIdentity(reference) => KeyParts::HostIdentity(*reference),
         }
     }
 }
@@ -369,11 +353,8 @@ fn type_error<T>(operation: &'static str) -> VmResult<T> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use vela_common::{HostObjectId, HostTypeId, ShapeId};
+    use vela_common::ShapeId;
     use vela_def::TypeId;
-    use vela_host::path::{HostRef, HostSlotRef};
-    use vela_host::proxy::PathProxy;
-    use vela_host::target::HostTargetPlan;
 
     use crate::heap::{HeapValue, RecordIdentity, ScriptHeap};
     use crate::script_object::ScriptFields;
@@ -454,22 +435,11 @@ mod tests {
     }
 
     #[test]
-    fn value_key_uses_host_ref_identity() {
-        let first = HostSlotRef::new(7, 1);
-        let second = HostSlotRef::new(7, 2);
-
-        assert_eq!(key(&Value::HostRef(first)), ValueKey::HostIdentity(first));
-        assert_ne!(key(&Value::HostRef(first)), key(&Value::HostRef(second)));
-    }
-
-    #[test]
     fn value_key_rejects_transient_values() {
         assert_type_mismatch(&Value::Missing);
 
-        let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-        let plan = HostTargetPlan::new(host_ref.type_id);
         let mut heap = ScriptHeap::new();
-        let path_proxy = heap.allocate(HeapValue::PathProxy(PathProxy::new(host_ref, plan)));
+        let path_proxy = heap.allocate(HeapValue::Tuple(vec![]));
         let range = heap.allocate(HeapValue::Range(crate::ranges::RangeValue::new(
             0, 1, false,
         )));

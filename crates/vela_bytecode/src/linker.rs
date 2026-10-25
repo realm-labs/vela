@@ -3,7 +3,6 @@ use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
 
-use vela_common::HostMethodId;
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 use vela_registry::DefinitionRegistry;
 
@@ -13,7 +12,7 @@ use crate::linked::{
     LinkedNativeFunction, LinkedProgram, LinkedType, LinkedVariant, TypeGuard, TypeGuardPlan,
 };
 use crate::{
-    CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, HostTargetPlanId, InstructionOffset,
+    CacheSiteInstruction, Constant, FieldSlot, FunctionIndex, InstructionOffset,
     MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject,
     UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram, VariantHandle,
 };
@@ -231,10 +230,7 @@ pub enum LinkError {
         function: String,
         state: String,
     },
-    InvalidHostTarget {
-        function: String,
-        target: HostTargetPlanId,
-    },
+
     UnresolvedType {
         name: String,
     },
@@ -379,12 +375,7 @@ impl fmt::Display for LinkError {
                     "function {function} references missing state {state}"
                 )
             }
-            Self::InvalidHostTarget { function, target } => {
-                write!(
-                    formatter,
-                    "function {function} references missing host target {target:?}"
-                )
-            }
+
             Self::UnresolvedType { name } => {
                 write!(formatter, "unresolved type {name}")
             }
@@ -542,19 +533,12 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
             let linked_guard = self.link_type_guard(guard, &mut linked)?;
             linked.set_return_guard(linked_guard);
         }
-        let host_target_map = code
-            .host_targets
-            .iter()
-            .cloned()
-            .map(|target| linked.intern_host_target(target))
-            .collect::<Vec<_>>();
 
         for (offset, instruction) in code.instructions.iter().enumerate() {
             let instruction = self.link_instruction(
                 LinkInstructionContext {
                     program,
                     code,
-                    host_target_map: &host_target_map,
                     linked_code: &mut linked,
                     instruction_offset: InstructionOffset(offset),
                 },
@@ -585,7 +569,6 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
     ) -> Result<Instruction, LinkError> {
         let program = context.program;
         let code = context.code;
-        let host_target_map = context.host_target_map;
         let linked_code = context.linked_code;
         let instruction_offset = context.instruction_offset;
         let mut kind = match &instruction.kind {
@@ -1084,14 +1067,9 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     src: *src,
                 }
             }
-            UnlinkedInstructionKind::IterInit {
-                dst,
-                iterable,
-                host_collection,
-            } => InstructionKind::IterInit {
+            UnlinkedInstructionKind::IterInit { dst, iterable } => InstructionKind::IterInit {
                 dst: *dst,
                 iterable: *iterable,
-                host_collection: *host_collection,
             },
             UnlinkedInstructionKind::IterNext {
                 iterator,
@@ -1183,126 +1161,7 @@ impl<'linker, 'registry> LinkContext<'linker, 'registry> {
                     src: *src,
                 }
             }
-            UnlinkedInstructionKind::LoadExternState {
-                dst,
-                state,
-                slot,
-                cache_site,
-            } => {
-                let slot = slot.or_else(|| program.state_slot(state)).ok_or_else(|| {
-                    LinkError::MissingState {
-                        function: code.name.clone(),
-                        state: state.clone(),
-                    }
-                })?;
-                let debug_name = self.linked.intern_debug_name(state.clone());
-                InstructionKind::LoadExternState {
-                    dst: *dst,
-                    slot,
-                    debug_name,
-                    cache_site: *cache_site,
-                }
-            }
-            UnlinkedInstructionKind::ReleaseBorrowLease { dst, src } => {
-                InstructionKind::ReleaseBorrowLease {
-                    dst: *dst,
-                    src: *src,
-                }
-            }
-            UnlinkedInstructionKind::TryReleaseBorrowLease { dst, src } => {
-                InstructionKind::TryReleaseBorrowLease {
-                    dst: *dst,
-                    src: *src,
-                }
-            }
-            UnlinkedInstructionKind::HostRead {
-                dst,
-                root,
-                target,
-                dynamic_args,
-                cache_site,
-            } => {
-                let target = self.link_host_target(code, host_target_map, *target)?;
-                InstructionKind::HostRead {
-                    dst: *dst,
-                    root: *root,
-                    target,
-                    dynamic_args: dynamic_args.clone(),
-                    cache_site: *cache_site,
-                }
-            }
-            UnlinkedInstructionKind::HostWrite {
-                root,
-                target,
-                dynamic_args,
-                src,
-                cache_site,
-            } => {
-                let target = self.link_host_target(code, host_target_map, *target)?;
-                InstructionKind::HostWrite {
-                    root: *root,
-                    target,
-                    dynamic_args: dynamic_args.clone(),
-                    src: *src,
-                    cache_site: *cache_site,
-                }
-            }
-            UnlinkedInstructionKind::HostMutate {
-                root,
-                target,
-                dynamic_args,
-                op,
-                rhs,
-                cache_site,
-            } => {
-                let target = self.link_host_target(code, host_target_map, *target)?;
-                InstructionKind::HostMutate {
-                    root: *root,
-                    target,
-                    dynamic_args: dynamic_args.clone(),
-                    op: *op,
-                    rhs: *rhs,
-                    cache_site: *cache_site,
-                }
-            }
-            UnlinkedInstructionKind::HostRemove {
-                root,
-                target,
-                dynamic_args,
-                cache_site,
-            } => {
-                let target = self.link_host_target(code, host_target_map, *target)?;
-                InstructionKind::HostRemove {
-                    root: *root,
-                    target,
-                    dynamic_args: dynamic_args.clone(),
-                    cache_site: *cache_site,
-                }
-            }
-            UnlinkedInstructionKind::HostCall {
-                dst,
-                root,
-                target,
-                dynamic_args,
-                method,
-                args,
-                cache_site,
-            } => {
-                let target = self.link_host_target(code, host_target_map, *target)?;
-                let dispatch = self.link_host_method(*method);
-                let debug_text = format!("host_method::{}", method.get());
-                let debug_name = self.linked.intern_debug_name(debug_text);
-                InstructionKind::HostCall {
-                    dst: *dst,
-                    root: *root,
-                    target,
-                    dynamic_args: dynamic_args.clone(),
-                    method: dispatch,
-                    debug_name,
-                    args: args.clone(),
-                    cache_site: *cache_site,
-                }
-            }
+
             UnlinkedInstructionKind::GuardType { src, guard } => {
                 let guard = self.link_type_guard(guard.clone(), linked_code)?;
                 InstructionKind::GuardType { src: *src, guard }

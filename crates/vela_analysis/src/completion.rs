@@ -40,9 +40,7 @@ impl CompletionItem {
 
 pub fn member_completions(facts: &RegistryFacts, receiver: &TypeFact) -> Vec<CompletionItem> {
     let mut completions = match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } => {
-            owner_member_completions(facts, name)
-        }
+        TypeFact::Record { name } => owner_member_completions(facts, name),
         TypeFact::Enum {
             name,
             variant: Some(variant),

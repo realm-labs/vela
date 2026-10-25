@@ -27,17 +27,9 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -49,13 +41,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
         ))
         .expect("changed-file native effect ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -84,13 +70,7 @@ fn runtime_stages_changed_file_native_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -122,17 +102,9 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -144,13 +116,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
         ))
         .expect("changed-file native access ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -177,13 +143,7 @@ fn runtime_stages_changed_file_native_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -215,17 +175,9 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -237,13 +189,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
         ))
         .expect("changed-file native parameter ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -277,113 +223,7 @@ fn runtime_stages_changed_file_native_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-}
-
-#[test]
-fn runtime_stages_changed_file_native_path_proxy_parameter_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_changed_file_native_path_proxy_parameter");
-    let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(
-            NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
-                .param("path", TypeHint::PathProxy),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build()
-        .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_dir(&root)
-        .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(
-            NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
-                .param("path", TypeHint::i64()),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build()
-        .expect("new engine should build");
-    let mut runtime =
-        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-
-    write_reward_module(&reward_file, 6);
-    runtime
-        .stage_reload(crate::runtime::ReloadSource::changed_file(
-            &root,
-            &reward_file,
-        ))
-        .expect("changed-file native path proxy ABI rejection should be staged");
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-
-    let report = runtime
-        .activate_reload()
-        .expect("check reload at safe point")
-        .expect("staged changed-file native path proxy ABI rejection report");
-
-    assert!(!report.accepted);
-    assert_eq!(report.to_version, None);
-    assert_eq!(
-        report.errors[0].code,
-        "reload.function.parameter_abi_changed"
-    );
-    assert_parameter_abi_repair_hint(&report);
-    let HotReloadErrorKind::ChangedFunctionParameterAbi {
-        function,
-        old,
-        new,
-        source_span,
-    } = &report.errors[0].error.kind
-    else {
-        panic!("expected changed native function parameter ABI");
-    };
-    assert_eq!(function, "game::native::inspect_path");
-    assert_eq!(old.len(), 1);
-    assert_eq!(old[0].name, "path");
-    assert_eq!(old[0].type_hint.as_deref(), Some("path_proxy"));
-    assert_eq!(new.len(), 1);
-    assert_eq!(new[0].name, "path");
-    assert_eq!(new[0].type_hint.as_deref(), Some("i64"));
-    assert!(source_span.is_none());
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -415,17 +255,9 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -437,13 +269,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
         ))
         .expect("changed-file native return ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -470,106 +296,7 @@ fn runtime_stages_changed_file_native_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-}
-
-#[test]
-fn runtime_stages_changed_file_native_path_proxy_return_rejection_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_changed_file_native_path_proxy_return");
-    let reward_file = write_reward_modules(&root, "return grant();", 2);
-    let old_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(
-            NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
-                .returns(TypeHint::PathProxy),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build()
-        .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_dir(&root)
-        .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_native_fn(
-            NativeFunctionDesc::new("game::native::inspect_path", NativeFunctionId::new(23))
-                .returns(TypeHint::i64()),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build()
-        .expect("new engine should build");
-    let mut runtime =
-        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-
-    write_reward_module(&reward_file, 6);
-    runtime
-        .stage_reload(crate::runtime::ReloadSource::changed_file(
-            &root,
-            &reward_file,
-        ))
-        .expect("changed-file native path proxy return ABI rejection should be staged");
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-
-    let report = runtime
-        .activate_reload()
-        .expect("check reload at safe point")
-        .expect("staged changed-file native path proxy return ABI rejection report");
-
-    assert!(!report.accepted);
-    assert_eq!(report.to_version, None);
-    assert_eq!(report.errors[0].code, "reload.function.return_abi_changed");
-    assert_function_return_repair_hint(&report);
-    let HotReloadErrorKind::ChangedFunctionReturnAbi {
-        function,
-        old,
-        new,
-        source_span,
-    } = &report.errors[0].error.kind
-    else {
-        panic!("expected changed native function return ABI");
-    };
-    assert_eq!(function, "game::native::inspect_path");
-    assert_eq!(old.as_deref(), Some("path_proxy"));
-    assert_eq!(new.as_deref(), Some("i64"));
-    assert!(source_span.is_none());
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -640,17 +367,9 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -663,13 +382,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
         .expect("changed-file native stable-ID rename should be staged");
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -681,13 +394,7 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
@@ -696,8 +403,8 @@ fn runtime_stages_changed_file_native_stable_id_rename_until_safe_point() {
 fn runtime_stages_changed_file_method_effect_rejection_until_safe_point() {
     let kind = changed_file_method_rejection_kind(
         "runtime_stage_changed_file_method_effect",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
+        MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
+        MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
         "reload.method.effects_changed",
     );
 
@@ -724,9 +431,9 @@ fn runtime_stages_changed_file_method_effect_rejection_until_safe_point() {
 fn runtime_stages_changed_file_method_access_rejection_until_safe_point() {
     let kind = changed_file_method_rejection_kind(
         "runtime_stage_changed_file_method_access",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .access(MethodAccess::new().reflect_callable(true)),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .access(MethodAccess::new().reflect_callable(false)),
         "reload.method.access_changed",
     );
@@ -752,9 +459,9 @@ fn runtime_stages_changed_file_method_access_rejection_until_safe_point() {
 fn runtime_stages_changed_file_method_parameter_rejection_until_safe_point() {
     let kind = changed_file_method_rejection_kind(
         "runtime_stage_changed_file_method_parameter",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .param(MethodParamDesc::new("amount").type_hint("i64")),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .param(MethodParamDesc::new("amount").type_hint("f64")),
         "reload.method.parameter_abi_changed",
     );
@@ -784,8 +491,8 @@ fn runtime_stages_changed_file_method_parameter_rejection_until_safe_point() {
 fn runtime_stages_changed_file_method_return_rejection_until_safe_point() {
     let kind = changed_file_method_rejection_kind(
         "runtime_stage_changed_file_method_return",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64"),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()"),
+        MethodDesc::new(MethodId::new(9), "grant_exp").return_type("i64"),
+        MethodDesc::new(MethodId::new(9), "grant_exp").return_type("()"),
         "reload.method.return_abi_changed",
     );
 
@@ -844,88 +551,4 @@ fn runtime_stages_changed_file_method_stable_id_churn_rejection_until_safe_point
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
     assert!(source_span.is_none());
-}
-
-#[test]
-fn runtime_stages_changed_file_method_stable_id_rename_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_changed_file_method_stable_id_rename");
-    let method = HostMethodId::new(9);
-    let reward_file = write_host_method_reward_modules(&root, "grant_exp", 1);
-    let old_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(type_with_reload_method(MethodDesc::new(
-            method,
-            "grant_exp",
-        )))
-        .build()
-        .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_dir(&root)
-        .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(type_with_reload_method(MethodDesc::new(
-            method,
-            "award_exp",
-        )))
-        .build()
-        .expect("new engine should build");
-    let mut runtime =
-        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-    assert_host_method_access(&tx, method, 7);
-
-    write_host_method_reward_module(&reward_file, "award_exp", 2);
-    runtime
-        .stage_reload(crate::runtime::ReloadSource::changed_file(
-            &root,
-            &reward_file,
-        ))
-        .expect("changed-file method stable-ID rename should be staged");
-
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-    assert_host_method_access(&tx, method, 7);
-
-    let report = runtime
-        .activate_reload()
-        .expect("check reload at safe point")
-        .expect("staged changed-file method stable-ID rename report");
-
-    assert!(report.accepted);
-    assert!(report.errors.is_empty());
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-    assert_host_method_access(&tx, method, 7);
 }

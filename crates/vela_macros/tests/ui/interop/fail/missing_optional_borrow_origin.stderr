@@ -1,5 +1,5 @@
-error: borrowed host return has no receiver or host-parameter provenance
- --> tests/ui/interop/fail/missing_optional_borrow_origin.rs:6:18
+error: borrowed returns and nested references are removed; use owned values
+ --> tests/ui/interop/fail/missing_optional_borrow_origin.rs:6:28
   |
 6 | pub fn current() -> Option<&'static Row> {
-  |                  ^^^^^^^^^^^^^^^^^^^^^^^
+  |                            ^^^^^^^^^^^^

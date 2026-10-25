@@ -3,12 +3,11 @@ use vela_common::ShapeId;
 use vela_def::{FieldId, FunctionId, MethodId, StateId, TypeId, VariantId};
 
 use crate::input::{
-    CompileHostIndexCapability, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
-    DynamicMethodTarget, HostFieldTarget, HostMethodTarget,
+    CompileParameterDefault, CompilePositionalPolicy, CompileSignature, DynamicMethodTarget,
 };
 use crate::{
-    HostTypeTarget, MirEffect, MirEvaluatedConstant, MirFunctionId, MirGuardId, MirOperand,
-    MirPlace, MirRvalue, MirSafepointId, MirSourceOrigin,
+    MirEffect, MirEvaluatedConstant, MirFunctionId, MirGuardId, MirOperand, MirPlace, MirRvalue,
+    MirSafepointId, MirSourceOrigin,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -229,7 +228,6 @@ pub enum MirCall {
         debug_name: String,
         signature: CompileSignature,
         arguments: Vec<MirOperand>,
-        scoped_borrow_return: bool,
     },
     StdlibFunction {
         function: FunctionId,
@@ -253,83 +251,9 @@ pub enum MirCall {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum MirHostPathSegment {
-    Field(HostFieldTarget),
-    ConstantIndex {
-        value: u32,
-        capability: CompileHostIndexCapability,
-    },
-    ConstantKey {
-        value: String,
-        capability: CompileHostIndexCapability,
-    },
-    Index {
-        value: MirOperand,
-        capability: CompileHostIndexCapability,
-    },
-    Key {
-        value: MirOperand,
-        capability: CompileHostIndexCapability,
-    },
-    VariantField(HostFieldTarget),
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct MirHostPath {
-    pub root_type: HostTypeTarget,
-    pub segments: Vec<MirHostPathSegment>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum MirHostMutation {
-    Add,
-    Subtract,
-    Multiply,
-    Divide,
-    Remainder,
-    Push,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum MirHostOperation {
-    ReleaseBorrowLease {
-        root: MirOperand,
-    },
-    TryReleaseBorrowLease {
-        root: MirOperand,
-    },
-    Read {
-        root: MirOperand,
-        path: MirHostPath,
-    },
-    Write {
-        root: MirOperand,
-        path: MirHostPath,
-        value: MirOperand,
-    },
-    Mutate {
-        root: MirOperand,
-        path: MirHostPath,
-        operation: MirHostMutation,
-        value: MirOperand,
-    },
-    Remove {
-        root: MirOperand,
-        path: MirHostPath,
-    },
-    Call {
-        root: MirOperand,
-        path: MirHostPath,
-        target: Box<HostMethodTarget>,
-        arguments: Vec<MirOperand>,
-    },
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub enum MirStateOperation {
     ReadVmState { state: StateId },
     WriteVmState { state: StateId, value: MirOperand },
-    ReadExternState { state: StateId },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -376,10 +300,7 @@ pub enum MirIndexKey {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirIteratorOperation {
-    Create {
-        iterable: MirOperand,
-        host_collection: Option<vela_common::HostCollectionIteration>,
-    },
+    Create { iterable: MirOperand },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -446,7 +367,6 @@ pub enum MirStatementKind {
         inclusive: bool,
     },
     Call(MirCall),
-    Host(MirHostOperation),
     Reflect(MirReflectionOperation),
     GuardTrap {
         value: MirOperand,
@@ -459,9 +379,7 @@ impl MirStatementKind {
     pub(crate) fn has_valid_call_contract(&self) -> bool {
         match self {
             Self::Call(call) => call.has_valid_contract(),
-            Self::Host(MirHostOperation::Call {
-                target, arguments, ..
-            }) => external_arguments_match(&target.signature, arguments.len()),
+
             _ => true,
         }
     }
@@ -491,9 +409,7 @@ impl MirStatementKind {
             Self::DynamicBinary { .. } => MirEffect::may_trap(),
             Self::Index(MirIndexOperation::Write { .. }) => MirEffect::allocation(),
             Self::Index(MirIndexOperation::Read { .. }) => MirEffect::may_trap(),
-            Self::State(
-                MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
-            ) => MirEffect::state_read(),
+            Self::State(MirStateOperation::ReadVmState { .. }) => MirEffect::state_read(),
             Self::State(MirStateOperation::WriteVmState { .. }) => MirEffect::state_write(),
             Self::Allocate(_) | Self::FormatString { .. } | Self::Iterator(_) => {
                 MirEffect::allocation()
@@ -507,17 +423,7 @@ impl MirStatementKind {
             }
             Self::MakeRange { .. } => MirEffect::may_trap(),
             Self::Call(call) => call.minimum_effect(),
-            Self::Host(operation) => match operation {
-                MirHostOperation::ReleaseBorrowLease { .. }
-                | MirHostOperation::TryReleaseBorrowLease { .. } => MirEffect::PURE,
-                MirHostOperation::Read { .. } => MirEffect::host_read(),
-                MirHostOperation::Write { .. }
-                | MirHostOperation::Mutate { .. }
-                | MirHostOperation::Remove { .. } => MirEffect::host_write(),
-                MirHostOperation::Call { target, .. } => {
-                    MirEffect::host_call().union(target.signature.effect)
-                }
-            },
+
             Self::Reflect(operation) => match operation {
                 MirReflectionOperation::Read { .. } => MirEffect::reflection_read(),
                 MirReflectionOperation::Write { .. } => MirEffect::reflection_write(),
@@ -538,20 +444,12 @@ impl MirStatementKind {
             | Self::TupleField { .. }
             | Self::ReadField { .. }
             | Self::Index(MirIndexOperation::Read { .. })
-            | Self::State(
-                MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
-            )
+            | Self::State(MirStateOperation::ReadVmState { .. })
             | Self::Allocate(_)
             | Self::FormatString { .. }
             | Self::MaterializeConstant(_)
             | Self::MakeRange { .. }
             | Self::Call(_)
-            | Self::Host(
-                MirHostOperation::ReleaseBorrowLease { .. }
-                | MirHostOperation::TryReleaseBorrowLease { .. }
-                | MirHostOperation::Read { .. }
-                | MirHostOperation::Call { .. },
-            )
             | Self::Reflect(
                 MirReflectionOperation::Read { .. }
                 | MirReflectionOperation::Write { .. }
@@ -561,11 +459,6 @@ impl MirStatementKind {
             Self::WriteField { .. }
             | Self::State(MirStateOperation::WriteVmState { .. })
             | Self::Index(MirIndexOperation::Write { .. })
-            | Self::Host(
-                MirHostOperation::Write { .. }
-                | MirHostOperation::Mutate { .. }
-                | MirHostOperation::Remove { .. },
-            )
             | Self::GuardTrap { .. } => MirDestinationRequirement::Forbidden,
         }
     }
@@ -573,10 +466,7 @@ impl MirStatementKind {
     pub(crate) const fn requires_safepoint(&self) -> bool {
         matches!(
             self,
-            Self::Allocate(_)
-                | Self::Call(_)
-                | Self::Host(MirHostOperation::Call { .. })
-                | Self::Reflect(MirReflectionOperation::Call { .. })
+            Self::Allocate(_) | Self::Call(_) | Self::Reflect(MirReflectionOperation::Call { .. })
         )
     }
 }

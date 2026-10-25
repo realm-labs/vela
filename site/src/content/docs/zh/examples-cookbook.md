@@ -1,72 +1,14 @@
 ---
-title: "示例和 Cookbook"
-description: "Vela 任务导向示例和 Cookbook。"
+title: "Examples Cookbook"
+description: "Vela 同步语言与删除边界。"
 ---
 
-仓库在 `examples/src/bin` 下提供了一组独立示例。它们是理解完整宿主设置的最好入口，因为这些示例会编译真实 Rust、注册 host 类型，并实际触发 Runtime capability。
+Vela 是同步、解释执行、Hot Reload First 的动态脚本语言。保留普通函数、结构体、枚举、trait、模块与包、脚本集合及迭代器、受控反射、非移动 GC 和有限执行预算。
 
-## 从 Rust 运行脚本
+现有独立同步 native/value API 与 serde 快照转换继续可用，脚本修改不会隐式写回 Rust。普通 VM `state` 在兼容热重载时保留；活动调用与旧闭包保留精确的旧代码代际、嵌套调用和状态。
 
-`level_up` 示例展示了最小的 host 写穿形态：
+已删除 Service/Provider、脚本 async/tasks、借用的 Rust 根/参数/返回值/view、租约/释放、透明宿主路径、依赖的 `extern state` 绑定和 Host 构造器/方法。普通脚本状态和 LSP 工作线程不是删除对象。没有新增 opaque 对象、codec、转换或重入 API；这些设计问题单独延期。
 
-```vela
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-```
+继续使用 `native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例。工具元数据使用严格格式 4；旧格式与已删除字段被拒绝。修改后的夹具不代表新的原生编辑器采集，也不代表完整仓库验收通过。
 
-运行方式：
-
-```bash
-cargo run -p vela_examples --bin level_up
-```
-
-宿主会注册 `Player`，授予 host read/write capability，把 `player` 作为可变 host binding 传入，并读取脚本返回值。
-
-## 注册 Native 函数
-
-`native_function` 示例覆盖手写注册和宏生成的 native 函数：
-
-```vela
-fn main(player: Player) {
-    let manual = game::bonus_manual(3, 4);
-    let generated = game::bonus_macro(10, 7);
-    let collection = game::collection_bonus(
-        { "quest": 5, "raid": 8 },
-        ["vip", "daily"],
-    );
-    let level = game::grant_level(player, collection);
-
-    return manual + generated + level;
-}
-```
-
-如果需要让脚本调用 Rust 函数，或者需要通过 `NativeCallContext` 路由写入，可以从这个示例开始。
-
-## 使用模块和 Global
-
-`modules` 示例会编译一个目录，并调用完整限定名入口：
-
-```vela
-use game::reward::grant
-
-fn main() {
-    return grant(4) + game::config::BASE_REWARD;
-}
-```
-
-`script_state` 示例展示了 Vela 初始化的 per-Runtime VM state，以及 Rust 的 state 专用更新 API。
-
-## 验证边界
-
-一些示例会故意失败，用来展示诊断和策略约束：
-
-- `host_permission_denied`
-- `host_read_only_denied`
-- `host_write_permission_denied`
-- `host_call_permission_denied`
-- `generic_type_hint_denied`
-- `reflect_schema_mutation_denied`
-
-需要检查 capability profile、只读 schema、不支持的 type hint 或反射限制时，可以参考这些示例。
+参见 [English reference](/examples-cookbook/) 和仓库中的权威目标、架构、进度与删除计划文档。

@@ -697,7 +697,6 @@ fn schema_member_symbol_ref(member: &RegistryMemberFact, kind: DocumentSymbolKin
 
 fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
     match fact {
-        TypeFact::Host { .. } => DocumentSymbolKind::Class,
         TypeFact::Record { .. } | TypeFact::LogicalRecord(_) => DocumentSymbolKind::Struct,
         TypeFact::Enum { variant: None, .. } => DocumentSymbolKind::Enum,
         TypeFact::Enum {
@@ -712,16 +711,9 @@ fn schema_type_symbol_kind(fact: &TypeFact) -> DocumentSymbolKind {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -753,7 +745,7 @@ mod tests {
         let document = DocumentId::from("/workspace/scripts/game/main.vela");
         let text = "\
 const BASE: i64 = 1
-extern state player: Player;
+state player: Player = Player { level: 1, name: \"sample\" };
 pub struct Player {
     level: i64
     name: String
@@ -951,7 +943,10 @@ pub fn main(amount: i64) -> i64 { return amount }";
     fn workspace_symbols_include_schema_items() {
         let mut databases = databases_for(Vec::new());
         let mut facts = vela_analysis::registry::RegistryFacts::default();
-        facts.insert_type("Player", vela_analysis::type_fact::TypeFact::host("Player"));
+        facts.insert_type(
+            "Player",
+            vela_analysis::type_fact::TypeFact::record("Player"),
+        );
         facts.insert_type(
             "Inventory",
             vela_analysis::type_fact::TypeFact::record("Inventory"),
@@ -986,7 +981,7 @@ pub fn main(amount: i64) -> i64 { return amount }";
 
         assert!(
             symbols.iter().any(|symbol| symbol.name() == "Player"
-                && symbol.kind() == DocumentSymbolKind::Class
+                && symbol.kind() == DocumentSymbolKind::Struct
                 && symbol.symbol() == &SymbolRef::Schema("Player".to_owned())
                 && matches!(symbol.location(), WorkspaceSymbolLocation::Schema)),
             "{symbols:?}"

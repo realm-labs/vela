@@ -92,7 +92,7 @@ pub(super) fn value_type_for_contract(contract: &MirTypeContract) -> MirValueTyp
             shape: *shape,
         },
         MirTypeContract::Variant { type_id, .. } => MirValueType::Enum(*type_id),
-        MirTypeContract::Host(target) => MirValueType::Host(*target),
+
         MirTypeContract::Any
         | MirTypeContract::Array(_)
         | MirTypeContract::Map { .. }

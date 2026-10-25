@@ -8,12 +8,11 @@ use vela_package::ModulePath;
 use crate::{
     CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
     CompileFunctionIdentity, CompileParameter, CompileParameterDefault, CompilePositionalPolicy,
-    CompileSignature, CompileTargetSnapshot, HostTypeTarget, MirAggregate, MirCall, MirEffect,
-    MirFunction, MirFunctionOwner, MirGuardId, MirHostOperation, MirHostPath, MirImmediate,
-    MirLocalId, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirReflectionOperation,
-    MirRvalue, MirSafepoint, MirSafepointId, MirSourceOrigin, MirStateOperation, MirStatement,
-    MirStatementKind, MirSwitchCase, MirSwitchValue, MirTargetTable, MirTerminator,
-    MirTerminatorKind, MirValueType,
+    CompileSignature, CompileTargetSnapshot, MirAggregate, MirCall, MirEffect, MirFunction,
+    MirFunctionOwner, MirGuardId, MirImmediate, MirLocalId, MirLoweringConfig, MirLoweringInput,
+    MirOperand, MirPlace, MirReflectionOperation, MirRvalue, MirSafepoint, MirSafepointId,
+    MirSourceOrigin, MirStateOperation, MirStatement, MirStatementKind, MirSwitchCase,
+    MirSwitchValue, MirTargetTable, MirTerminator, MirTerminatorKind, MirValueType,
 };
 
 use super::{MirVerifyErrorKind, MirVerifyTarget, verify_mir};
@@ -305,7 +304,6 @@ fn mir_verifier_accepts_a_synchronous_native_call() {
                     debug_name: "work".to_owned(),
                     signature: native_signature,
                     arguments: Vec::new(),
-                    scoped_borrow_return: false,
                 }),
                 MirEffect::external_call(),
                 Some(safepoint),
@@ -917,7 +915,7 @@ fn mir_verifier_checks_branch_switch_iterator_and_range_contracts() {
 }
 
 #[test]
-fn mir_verifier_checks_call_host_and_reflection_descriptors() {
+fn mir_verifier_checks_call_and_reflection_descriptors() {
     let missing_function = FunctionId::new(99_001);
     let mut call = function();
     let local = call.add_synthetic_local(MirValueType::Dynamic, origin());
@@ -937,7 +935,6 @@ fn mir_verifier_checks_call_host_and_reflection_descriptors() {
                     effect: MirEffect::PURE,
                 },
                 arguments: Vec::new(),
-                scoped_borrow_return: false,
             }),
             MirEffect::external_call(),
             Some(safepoint),
@@ -957,45 +954,6 @@ fn mir_verifier_checks_call_host_and_reflection_descriptors() {
     assert_eq!(
         verify_error(&program(call)).into_kind(),
         MirVerifyErrorKind::MissingTarget(MirVerifyTarget::Function(missing_function))
-    );
-
-    let host_type = HostTypeTarget {
-        semantic: TypeId::new(81),
-        runtime: vela_common::HostTypeId::new(82),
-    };
-    let mut host = function();
-    let local = host.add_synthetic_local(MirValueType::Dynamic, origin());
-    let safepoint = host.add_safepoint(MirSafepoint::new(origin()));
-    host.append_statement(
-        host.entry_block(),
-        MirStatement::new(
-            origin(),
-            Some(MirPlace::local(local)),
-            MirStatementKind::Host(MirHostOperation::Read {
-                root: scalar(1),
-                path: MirHostPath {
-                    root_type: host_type,
-                    segments: Vec::new(),
-                },
-            }),
-            MirEffect::host_read(),
-            Some(safepoint),
-        ),
-    )
-    .expect("host read");
-    host.set_terminator(
-        host.entry_block(),
-        MirTerminator::new(
-            origin(),
-            MirTerminatorKind::Return(None),
-            MirEffect::PURE,
-            None,
-        ),
-    )
-    .expect("return");
-    assert_eq!(
-        verify_error(&program(host)).into_kind(),
-        MirVerifyErrorKind::MissingTarget(MirVerifyTarget::Type(host_type.semantic))
     );
 
     let mut reflection = function();

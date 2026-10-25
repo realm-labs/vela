@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use vela_common::{CollectionViewMutation, PrimitiveTag, Span};
+use vela_common::{PrimitiveTag, Span};
 use vela_def::FunctionId;
 use vela_reflect::registry::{AttrMap, TypeKey};
-use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -334,32 +333,13 @@ pub enum TypeHint {
     Primitive(PrimitiveTag),
     Array,
     ArrayOf(Box<TypeHint>),
-    ArrayViewOf(Box<TypeHint>),
-    ArrayMutOf {
-        element: Box<TypeHint>,
-        mutation: CollectionViewMutation,
-    },
     Map,
     MapOf {
         key: Box<TypeHint>,
         value: Box<TypeHint>,
     },
-    MapViewOf {
-        key: Box<TypeHint>,
-        value: Box<TypeHint>,
-    },
-    MapMutOf {
-        key: Box<TypeHint>,
-        value: Box<TypeHint>,
-        mutation: CollectionViewMutation,
-    },
     Set,
     SetOf(Box<TypeHint>),
-    SetViewOf(Box<TypeHint>),
-    SetMutOf {
-        element: Box<TypeHint>,
-        mutation: CollectionViewMutation,
-    },
     TupleOf(Vec<TypeHint>),
     Iterator,
     IteratorOf(Box<TypeHint>),
@@ -368,10 +348,8 @@ pub enum TypeHint {
         ok: Box<TypeHint>,
         err: Box<TypeHint>,
     },
-    PathProxy,
     Record(TypeKey),
     Enum(TypeKey),
-    Host(TypeKey),
     Trait(String),
     Function,
 }
@@ -473,19 +451,6 @@ impl TypeHint {
     }
 
     #[must_use]
-    pub fn array_view_of(element: TypeHint) -> Self {
-        Self::ArrayViewOf(Box::new(element))
-    }
-
-    #[must_use]
-    pub fn array_mut_of(element: TypeHint, mutation: CollectionViewMutation) -> Self {
-        Self::ArrayMutOf {
-            element: Box::new(element),
-            mutation,
-        }
-    }
-
-    #[must_use]
     pub fn map_of(key: TypeHint, value: TypeHint) -> Self {
         Self::MapOf {
             key: Box::new(key),
@@ -494,38 +459,8 @@ impl TypeHint {
     }
 
     #[must_use]
-    pub fn map_view_of(key: TypeHint, value: TypeHint) -> Self {
-        Self::MapViewOf {
-            key: Box::new(key),
-            value: Box::new(value),
-        }
-    }
-
-    #[must_use]
-    pub fn map_mut_of(key: TypeHint, value: TypeHint, mutation: CollectionViewMutation) -> Self {
-        Self::MapMutOf {
-            key: Box::new(key),
-            value: Box::new(value),
-            mutation,
-        }
-    }
-
-    #[must_use]
     pub fn set_of(element: TypeHint) -> Self {
         Self::SetOf(Box::new(element))
-    }
-
-    #[must_use]
-    pub fn set_view_of(element: TypeHint) -> Self {
-        Self::SetViewOf(Box::new(element))
-    }
-
-    #[must_use]
-    pub fn set_mut_of(element: TypeHint, mutation: CollectionViewMutation) -> Self {
-        Self::SetMutOf {
-            element: Box::new(element),
-            mutation,
-        }
     }
 
     #[must_use]
@@ -555,17 +490,8 @@ impl TypeHint {
 pub type NativeFunction =
     Arc<dyn Fn(&[OwnedValue]) -> VmResult<OwnedValue> + Send + Sync + 'static>;
 
-pub type HostNativeFunction = Arc<
-    dyn for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
->;
 pub type ContextHostNativeFunction = Arc<
-    dyn for<'ctx, 'host> Fn(
-            &[OwnedValue],
-            &mut NativeCallContext<'ctx, 'host>,
-        ) -> VmResult<OwnedValue>
+    dyn for<'ctx> Fn(&[OwnedValue], &mut NativeCallContext<'ctx>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -590,86 +516,6 @@ impl NativeFunctionEntry {
     }
 }
 
-pub type HostLeaseRequestFactory = Arc<
-    dyn Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
-        + Send
-        + Sync
-        + 'static,
->;
-
-#[derive(Clone)]
-pub struct ScopedHostNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub requests: HostLeaseRequestFactory,
-    pub function: ScopedHostNativeFunction,
-}
-
-pub type ScopedHostNativeFunction = Arc<
-    dyn for<'host> Fn(
-            &mut [vela_host::lease::ErasedHostLease<'host>],
-            Vec<OwnedValue>,
-        ) -> VmResult<ScopedHostNativeOutcome<'host>>
-        + Send
-        + Sync
-        + 'static,
->;
-
-pub enum ScopedHostNativeOutcome<'host> {
-    Direct(vela_host::adapter::ScopedHostReturn<'host>),
-    OptionSome(vela_host::adapter::ScopedHostReturn<'host>),
-    ResultOk(vela_host::adapter::ScopedHostReturn<'host>),
-    Tuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
-    OptionSomeTuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
-    ResultOkTuple(vela_host::adapter::ScopedHostReturnGroup<'host>),
-    Value(OwnedValue),
-}
-
-impl ScopedHostNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        desc: NativeFunctionDesc,
-        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
-        + Send
-        + Sync
-        + 'static,
-        function: impl for<'host> Fn(
-            &mut [vela_host::lease::ErasedHostLease<'host>],
-            Vec<OwnedValue>,
-        ) -> VmResult<ScopedHostNativeOutcome<'host>>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        Self {
-            desc,
-            requests: Arc::new(requests),
-            function: Arc::new(function),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct HostNativeFunctionEntry {
-    pub desc: NativeFunctionDesc,
-    pub function: HostNativeFunction,
-}
-
-impl HostNativeFunctionEntry {
-    #[must_use]
-    pub fn new(
-        desc: NativeFunctionDesc,
-        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        Self {
-            desc,
-            function: Arc::new(function),
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct ContextHostNativeFunctionEntry {
     pub desc: NativeFunctionDesc,
@@ -680,10 +526,7 @@ impl ContextHostNativeFunctionEntry {
     #[must_use]
     pub fn new(
         desc: NativeFunctionDesc,
-        function: impl for<'ctx, 'host> Fn(
-            &[OwnedValue],
-            &mut NativeCallContext<'ctx, 'host>,
-        ) -> VmResult<OwnedValue>
+        function: impl for<'ctx> Fn(&[OwnedValue], &mut NativeCallContext<'ctx>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,

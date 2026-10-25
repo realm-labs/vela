@@ -28,7 +28,6 @@ pub(super) fn type_detail(kind: TypeKind) -> String {
         TypeKind::Range => "kind: Range".to_owned(),
         TypeKind::Function => "kind: Function".to_owned(),
         TypeKind::Closure => "kind: Closure".to_owned(),
-        TypeKind::Host => "kind: host".to_owned(),
         TypeKind::ScriptStruct => "kind: script struct".to_owned(),
         TypeKind::ScriptEnum => "kind: script enum".to_owned(),
     }

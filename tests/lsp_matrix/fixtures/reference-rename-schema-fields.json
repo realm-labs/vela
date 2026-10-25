@@ -230,21 +230,21 @@
         {
           "name": "host::Record",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Record"
           }
         },
         {
           "name": "third::Record",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "third::Record"
           }
         },
         {
           "name": "other::Record",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "other::Record"
           }
         }

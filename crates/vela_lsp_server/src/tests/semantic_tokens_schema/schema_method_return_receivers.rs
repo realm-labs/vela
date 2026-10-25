@@ -33,16 +33,16 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_method_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -52,7 +52,7 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_method_return() {
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     },
                     {
@@ -95,9 +95,8 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_method_return() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main(player: Player) -> i64 {

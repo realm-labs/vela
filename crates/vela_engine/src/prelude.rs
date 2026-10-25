@@ -1,6 +1,7 @@
 //! Common imports for embedding Vela in a Rust host.
 
-pub use crate::args::{FromScriptArg, IntoHostArg, IntoScriptArg, ScriptArgsExt, host};
+pub use crate::args;
+pub use crate::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt, ToScriptValueRef};
 pub use crate::builder::EngineBuilder;
 pub use crate::context::NativeCallContext;
 pub use crate::engine::Engine;
@@ -9,19 +10,15 @@ pub use crate::native::{
     EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint,
 };
 pub use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
-pub use crate::registration::{
-    MethodRegistration, MethodsRegistration, ModuleRegistration, RegisteredType, TypeRegistration,
-    VelaBindings,
-};
+pub use crate::registration::{ModuleRegistration, TypeRegistration, VelaBindings};
 pub use crate::runtime::{
     CallArgs, CallControl, CallOptions, CallSnapshot, CallStatus, ReloadSource, Runtime,
     RuntimeBuildError, RuntimeBuilder, RuntimeInitializationLimits, RuntimeReloadError,
     VelaFunction, VelaMethod, VelaMethodTarget, VelaValue,
 };
-pub use crate::schema::{ScriptHostSchema, ScriptReflectSchema, ScriptValueSchema};
+pub use crate::schema::{ScriptReflectSchema, ScriptValueSchema};
 pub use crate::source::{EngineSourceError, EngineSourceErrorKind};
 pub use crate::type_registration::VelaType;
-pub use crate::{args, host};
 pub use vela_hot_reload::report::{HotReloadDiagnostic, HotReloadReport};
 pub use vela_vm::owned_value::OwnedValue;
 #[cfg(feature = "serde")]

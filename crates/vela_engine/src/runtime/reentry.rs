@@ -1,7 +1,4 @@
 use vela_bytecode::ProgramImage;
-use vela_host::access::HostAccess;
-use vela_host::adapter::ScriptStateAdapter;
-use vela_host::path::HostRef;
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap_execution::HeapExecution;
@@ -12,11 +9,10 @@ use vela_vm::{
     PreparedContextCall, VmStateValues,
 };
 
-use crate::context::{NativeCallContext, NativeContextLeaseInvoker, NativeReentry};
+use crate::context::{NativeCallContext, NativeReentry};
 use crate::engine::Engine;
 
 use super::call_args::{CallArgRuntime, CallArgs, call_args_type_error};
-use super::execution_host::{ExecutionHostBoundary, ReentryExecutionHost};
 use super::handles::{
     self, RuntimeCallTargetKind, RuntimeMethodResolveContext, RuntimeMethodSelectorKind,
 };
@@ -31,8 +27,6 @@ pub(super) struct ActiveNativeReentry<'execution, 'heap> {
     pub(super) artifact: &'execution std::sync::Arc<vela_bytecode::LinkedArtifact>,
     pub(super) vm: &'execution vela_vm::Vm,
     pub(super) session: &'execution mut LinkedExecutionSession,
-    pub(super) host: &'execution mut dyn ExecutionHostBoundary,
-    pub(super) access: &'execution mut HostAccess,
     pub(super) heap: &'execution mut HeapExecution<'heap>,
     pub(super) budget: &'execution mut ExecutionBudget,
     pub(super) vm_state_values: &'execution mut VmStateValues,
@@ -59,8 +53,6 @@ impl ActiveNativeReentry<'_, '_> {
                     linked_program: self.artifact.program(),
                     version_id: None,
                     script_heap: self.heap.heap,
-                    engine: self.engine,
-                    host: handles::RuntimeHostResolver::Adapter(self.host),
                 },
             ),
         }
@@ -70,13 +62,8 @@ impl ActiveNativeReentry<'_, '_> {
         if receiver.runtime_id != self.runtime_id {
             return Err(call_args_type_error("VelaValue belongs to another Runtime"));
         }
-        let receiver_type = value_type_id(
-            &receiver.value,
-            self.heap.heap,
-            self.engine.registry().as_ref(),
-            |handle| self.host.resolve_host_ref(handle).ok(),
-        )
-        .ok_or_else(|| unknown_method(name.clone()))?;
+        let receiver_type = value_type_id(&receiver.value, self.heap.heap)
+            .ok_or_else(|| unknown_method(name.clone()))?;
         let method_id = self
             .registry_image
             .script_methods()
@@ -111,19 +98,14 @@ impl ActiveNativeReentry<'_, '_> {
         })
     }
 
-    fn drive_sync<'args>(
-        &mut self,
-        target: handles::EntryRequest,
-        args: CallArgs<'args>,
-    ) -> VmResult<VelaValue> {
+    fn drive_sync(&mut self, target: handles::EntryRequest, args: CallArgs) -> VmResult<VelaValue> {
         let runtime_id = self.runtime_id;
         let retained_values = std::sync::Arc::clone(&self.retained_values);
-        let mut child_host = ReentryExecutionHost::new(args, self.host)?;
-        let resolved = child_host.resolve_values(
+        let resolved = args.resolve_values(
             &target.name,
             &target.params,
             &target.param_defaults,
-            CallArgRuntime::new(
+            &mut CallArgRuntime::new(
                 self.runtime_id,
                 self.artifact.program(),
                 self.heap.heap,
@@ -132,8 +114,6 @@ impl ActiveNativeReentry<'_, '_> {
         )?;
         let entry_args = reentry_entry_args(&target, &resolved);
         let initial_host = HostExecution {
-            adapter: &mut child_host,
-            access: self.access,
             state_values: Some(&mut *self.vm_state_values),
         };
         self.vm.push_linked_reentry(
@@ -152,8 +132,6 @@ impl ActiveNativeReentry<'_, '_> {
         loop {
             let outcome = {
                 let mut host = HostExecution {
-                    adapter: &mut child_host,
-                    access: self.access,
                     state_values: Some(&mut *self.vm_state_values),
                 };
                 match self.vm.drive_linked_execution(
@@ -191,8 +169,6 @@ impl ActiveNativeReentry<'_, '_> {
                             artifact: self.artifact,
                             vm: self.vm,
                             session: self.session,
-                            host: &mut child_host,
-                            access: self.access,
                             heap: self.heap,
                             budget: self.budget,
                             vm_state_values: &mut *self.vm_state_values,
@@ -202,8 +178,6 @@ impl ActiveNativeReentry<'_, '_> {
                         invoke_prepared_context(&prepared, &mut nested)
                     };
                     let mut host = HostExecution {
-                        adapter: &mut child_host,
-                        access: self.access,
                         state_values: Some(&mut *self.vm_state_values),
                     };
                     if let Err(error) = self.vm.resume_linked_context_call(
@@ -237,23 +211,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         if value.runtime_id() != self.runtime_id {
             return Err(call_args_type_error("VelaValue belongs to another Runtime"));
         }
-        vela_vm::persistent_value_to_owned_with_host(&value.value(), self.heap.heap, self.host)
-    }
-
-    fn adapter(&mut self) -> &mut dyn ScriptStateAdapter {
-        self.host
-    }
-
-    fn access(&mut self) -> &mut HostAccess {
-        self.access
-    }
-
-    fn host_execution(&mut self) -> HostExecution<'_> {
-        HostExecution {
-            adapter: self.host,
-            access: self.access,
-            state_values: Some(&mut *self.vm_state_values),
-        }
+        vela_vm::persistent_value_to_owned(&value.value(), self.heap.heap)
     }
 
     fn budget(&self) -> Option<&ExecutionBudget> {
@@ -264,53 +222,7 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
         Some(self.budget)
     }
 
-    fn with_host_leases(
-        &mut self,
-        requests: &[(HostRef, vela_host::lease::HostLeaseKind)],
-        effect_ceiling: vela_common::CapabilitySet,
-        invoke: &mut NativeContextLeaseInvoker<'_>,
-    ) -> VmResult<()> {
-        let runtime_id = self.runtime_id;
-        let engine = self.engine;
-        let registry_image = self.registry_image;
-        let artifact = self.artifact;
-        let vm = self.vm;
-        let retained_values = std::sync::Arc::clone(&self.retained_values);
-        let session = &mut *self.session;
-        let access = &mut *self.access;
-        let heap = &mut *self.heap;
-        let budget = &mut *self.budget;
-        let vm_state_values = &mut *self.vm_state_values;
-        let generations = &mut *self.generations;
-        self.host
-            .with_execution_host_leases(requests, &mut |leases, leased_host| {
-                let mut nested_reentry = ActiveNativeReentry {
-                    runtime_id,
-                    engine,
-                    registry_image,
-                    artifact,
-                    vm,
-                    session: &mut *session,
-                    host: leased_host,
-                    access: &mut *access,
-                    heap: &mut *heap,
-                    budget: &mut *budget,
-                    vm_state_values: &mut *vm_state_values,
-                    retained_values: std::sync::Arc::clone(&retained_values),
-                    generations: &mut *generations,
-                };
-                let mut context =
-                    NativeCallContext::new_reentry(engine, &mut nested_reentry, effect_ceiling);
-                context.set_host_provenance(requests, leases);
-                invoke(leases, &mut context)
-            })
-    }
-
-    fn call<'args>(
-        &mut self,
-        target: RuntimeCallTargetKind,
-        args: CallArgs<'args>,
-    ) -> VmResult<VelaValue> {
+    fn call(&mut self, target: RuntimeCallTargetKind, args: CallArgs) -> VmResult<VelaValue> {
         let target = self.resolve_target(target)?;
         self.drive_sync(target, args)
     }
@@ -337,8 +249,6 @@ impl NativeReentry for ActiveNativeReentry<'_, '_> {
                 linked_program: self.artifact.program(),
                 version_id: None,
                 script_heap: self.heap.heap,
-                engine: self.engine,
-                host: handles::RuntimeHostResolver::Adapter(self.host),
             },
         )?;
         Ok(target)

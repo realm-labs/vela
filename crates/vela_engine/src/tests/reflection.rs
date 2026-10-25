@@ -1,46 +1,26 @@
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_common::{SourceId, Span};
 use vela_def::{FieldId, TypeId};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::value::HostValue;
-use vela_hot_reload::abi::{AccessAbi, FunctionAbi, MethodAbi};
+use vela_hot_reload::abi::{AccessAbi, FunctionAbi};
 use vela_reflect::access::FieldAccess;
 use vela_reflect::error::ReflectErrorKind;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
-use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey};
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 use vela_vm::HostExecution;
 use vela_vm::error::VmErrorKind;
 
 use crate::engine::Engine;
-use crate::method::NativeMethodDesc;
 use crate::native::{EffectSet, FunctionAccess, NativeFunctionDesc, NativeFunctionId, TypeHint};
-use crate::permission::Capability;
 use crate::schema::ScriptReflectSchema;
-
-use super::player_type;
 
 struct ReflectOnlyPlayer;
 
 impl ScriptReflectSchema for ReflectOnlyPlayer {
     fn script_reflect_type_desc() -> TypeDesc {
         TypeDesc::new(TypeKey::new(TypeId::new(9901), "ReflectOnlyPlayer"))
-            .kind(vela_reflect::registry::TypeKind::Host)
-            .host_type(HostTypeId::new(9901))
+            .kind(vela_reflect::registry::TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(1), "level"))
     }
-}
-
-fn metadata_only_player_method() -> NativeMethodDesc {
-    NativeMethodDesc::new(
-        TypeKey::new(TypeId::new(1), "Player"),
-        HostMethodId::new(44),
-        "metadata_bonus",
-    )
-    .param("amount", TypeHint::i64())
-    .returns(TypeHint::i64())
-    .effects(EffectSet::host_read())
 }
 
 mod metadata;

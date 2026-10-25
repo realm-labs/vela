@@ -11,7 +11,6 @@ artifact-codec = [
   "vela_common/serde",
   "vela_def/serde",
   "vela_hir/serde",
-  "vela_host/serde",
   "vela_mir/serde",
   "vela_package/serde",
 ]
@@ -24,7 +23,6 @@ serde = { workspace = true, optional = true }
 vela_analysis = { workspace = true }
 vela_common = { workspace = true }
 vela_def = { workspace = true }
-vela_host = { workspace = true }
 vela_hir = { workspace = true }
 vela_package = { workspace = true }
 vela_mir = { workspace = true }

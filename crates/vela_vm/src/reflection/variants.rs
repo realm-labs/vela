@@ -6,7 +6,7 @@ use vela_reflect::{self as reflect};
 use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
-use super::common::{check_host_ref_inspection, check_reflect_policy};
+use super::common::check_reflect_policy;
 
 pub(super) fn register(
     vm: &mut Vm,
@@ -31,7 +31,7 @@ pub(super) fn register(
         }
         expect_arity("reflect::variants", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::variants")?;
-        check_host_ref_inspection(&variants_policy, &target)?;
+
         value_from_reflect(reflect::members::variants_with_policy(
             &variants_registry,
             &target,
@@ -50,7 +50,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::variant_info", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::variant_info")?;
-        check_host_ref_inspection(&variant_info_policy, &target)?;
+
         let variant_name = expect_string(&args[1], "reflect::variant_info")?;
         value_from_reflect(reflect::members::variant_info_with_policy(
             &variant_info_registry,
@@ -71,7 +71,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::has_variant", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::has_variant")?;
-        check_host_ref_inspection(&has_variant_policy, &target)?;
+
         let variant_name = expect_string(&args[1], "reflect::has_variant")?;
         Ok(OwnedValue::Bool(reflect::members::has_variant(
             &has_variant_registry,
@@ -90,7 +90,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::variant", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::variant")?;
-        check_host_ref_inspection(&variant_policy, &target)?;
+
         value_from_reflect(reflect::members::variant(&target)?)
     });
 
@@ -105,7 +105,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::variant_is", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::variant_is")?;
-        check_host_ref_inspection(&variant_is_policy, &target)?;
+
         let variant_name = expect_string(&args[1], "reflect::variant_is")?;
         Ok(OwnedValue::Bool(reflect::members::variant_is(
             &variant_is_registry,

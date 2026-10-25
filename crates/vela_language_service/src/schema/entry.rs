@@ -1,9 +1,7 @@
-use super::{SchemaScopedResourceReturn, SchemaTypeFact, signature::SchemaCallableSignature};
+use super::{SchemaTypeFact, signature::SchemaCallableSignature};
 use serde::{Deserialize, Serialize};
 use vela_analysis::{
-    registry::{
-        RegistryFunctionFact, RegistryMemberFact, RegistryModuleFact, ScopedResourceReturnDef,
-    },
+    registry::{RegistryFunctionFact, RegistryMemberFact, RegistryModuleFact},
     type_fact::TypeFact,
 };
 use vela_common::{SourceId, Span};
@@ -77,8 +75,6 @@ pub(super) struct SchemaMemberFact {
     pub(super) signature: Option<SchemaCallableSignature>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) docs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) scoped_resource: Option<SchemaScopedResourceReturn>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -97,18 +93,13 @@ impl SchemaMemberFact {
         self
     }
 
-    pub(super) fn from_registry_member(
-        value: RegistryMemberFact,
-        docs: Option<&str>,
-        scoped_resource: Option<ScopedResourceReturnDef>,
-    ) -> Self {
+    pub(super) fn from_registry_member(value: RegistryMemberFact, docs: Option<&str>) -> Self {
         Self {
             owner: value.owner,
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
             signature: None,
             docs: docs.map(str::to_owned),
-            scoped_resource: scoped_resource.map(Into::into),
             source_span: None,
         }
     }
@@ -123,8 +114,6 @@ pub(super) struct SchemaFunctionFact {
     pub(super) signature: Option<SchemaCallableSignature>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(super) docs: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(super) scoped_resource: Option<SchemaScopedResourceReturn>,
     #[serde(
         default,
         rename = "sourceSpan",
@@ -143,17 +132,12 @@ impl SchemaFunctionFact {
         self
     }
 
-    pub(super) fn from_registry_function(
-        value: RegistryFunctionFact,
-        docs: Option<&str>,
-        scoped_resource: Option<ScopedResourceReturnDef>,
-    ) -> Self {
+    pub(super) fn from_registry_function(value: RegistryFunctionFact, docs: Option<&str>) -> Self {
         Self {
             name: value.name,
             fact: SchemaTypeFact::from_type_fact(&value.fact),
             signature: None,
             docs: docs.map(str::to_owned),
-            scoped_resource: scoped_resource.map(Into::into),
             source_span: None,
         }
     }

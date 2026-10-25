@@ -12,10 +12,7 @@ pub(crate) use mutation::{clear, extend, insert, pop, push, remove_at};
 pub(crate) use ordering::{
     ResumableArrayOrdering, ResumableArrayOrderingKind, ResumableArrayOrderingStep,
 };
-pub(crate) use transform::{
-    distinct_by_key, distinct_projected, join, join_projected, reverse, reverse_projected, slice,
-    slice_projected,
-};
+pub(crate) use transform::{distinct_by_key, join, reverse, slice};
 
 use crate::collection_mutation::check_collection_len;
 use crate::heap::HeapValue;
@@ -92,7 +89,7 @@ pub(super) fn index_value(value: &Value, operation: &'static str) -> VmResult<us
 }
 
 pub(super) fn call_unary_callback(
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
     callback: &Value,
     value: Value,

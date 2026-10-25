@@ -806,9 +806,7 @@ fn owner_names(receiver: &TypeFact) -> Vec<String> {
 
 fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
-            Some(name.clone())
-        }
+        TypeFact::Record { name } | TypeFact::Trait { name } => Some(name.clone()),
         TypeFact::Enum {
             name,
             variant: Some(variant),

@@ -777,7 +777,7 @@ fn contract_fact(contract: &MirTypeContract) -> Option<(MirValueType, Option<Mir
             None,
         ),
         MirTypeContract::Variant { type_id, .. } => (MirValueType::Enum(*type_id), None),
-        MirTypeContract::Host(target) => (MirValueType::Host(*target), None),
+
         MirTypeContract::Option(_) => (MirValueType::Dynamic, Some(MirFamilyFact::Option)),
         MirTypeContract::Result { .. } => (MirValueType::Dynamic, Some(MirFamilyFact::Result)),
         MirTypeContract::Any | MirTypeContract::Definition(_) => {

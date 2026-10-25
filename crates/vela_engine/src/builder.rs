@@ -6,7 +6,6 @@ use vela_hot_reload::policy::HotReloadPolicy;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::permissions::{ReflectPermissionSet, ReflectPolicy};
 use vela_reflect::registry::{TypeDesc, TypeKey, TypeRegistry};
-use vela_vm::HostExecution;
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
@@ -14,18 +13,10 @@ use crate::compiler_registry::{EngineFunctionEntries, definition_registry_from_e
 use crate::context::NativeCallContext;
 use crate::engine::{Engine, EngineParts};
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::host_type::HostTypeSpec;
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
-use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry, ScopedHostNativeFunctionEntry,
-};
+use crate::native::{ContextHostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry};
 use crate::permission::{Capability, CapabilitySet, ExecutionProfile};
 use crate::type_binding::{TypeBinding, TypeBindingRegistration, TypeBindingRegistry};
-use crate::typed::{
-    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction,
-};
+use crate::typed::{TypedContextHostNativeFunction, TypedNativeFunction};
 use crate::{metadata, validation};
 
 #[derive(Clone, Default)]
@@ -36,11 +27,7 @@ pub struct EngineBuilder {
     type_dependency_closure: HashSet<RustTypeId>,
     modules: Vec<ModuleDesc>,
     native_functions: Vec<NativeFunctionEntry>,
-    scoped_host_native_functions: Vec<ScopedHostNativeFunctionEntry>,
-    host_native_functions: Vec<HostNativeFunctionEntry>,
     context_host_native_functions: Vec<ContextHostNativeFunctionEntry>,
-    host_method_metadata: Vec<NativeMethodDesc>,
-    native_methods: Vec<NativeMethodEntry>,
     capabilities: CapabilitySet,
     reflection_policy: Option<ReflectPolicy>,
     reflection_lookup_limit: Option<u64>,
@@ -98,50 +85,6 @@ impl EngineBuilder {
         registration.install_into(self)
     }
 
-    /// Registers a stable Host contract without binding it to one `'static`
-    /// Rust implementation type.
-    ///
-    /// Call-scoped objects passed through `CallArgs` satisfy the contract by
-    /// reporting the same `HostTypeId`. Their concrete Rust type and lifetime
-    /// are not stored in the Engine.
-    #[must_use]
-    pub fn register_host_type(mut self, spec: HostTypeSpec) -> Self {
-        let (type_desc, method_metadata, native_methods) = spec.into_parts();
-        self.type_bindings
-            .push(TypeBindingRegistration::host_contract(
-                type_desc.key.clone(),
-            ));
-        self.types.push(type_desc);
-        self.host_method_metadata.extend(method_metadata);
-        self.native_methods.extend(native_methods);
-        self
-    }
-
-    /// Registers one concrete borrowed slice view and its element dependency.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_rust_slice<T>(self) -> Self
-    where
-        T: crate::type_registration::RustValueType,
-    {
-        let builder = T::register_value_type_closure(self);
-        builder.register_generated_type_binding::<crate::standard::SliceBinding<T>>(
-            crate::standard::standard_slice_type_binding::<T>(),
-        )
-    }
-
-    /// Registers one concrete borrowed slice view whose elements are host objects.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_rust_host_slice<T>(self) -> Self
-    where
-        T: crate::interop::VelaHostBoundary + 'static,
-    {
-        self.register_generated_type_binding::<crate::standard::HostSliceBinding<T>>(
-            crate::standard::host_slice_type_binding::<T>(),
-        )
-    }
-
     /// Installs one generated member of a recursive Value type closure.
     ///
     /// This remains public only because derive macros expand in
@@ -176,39 +119,18 @@ impl EngineBuilder {
 
     fn push_rust_type<T: 'static>(mut self, binding: TypeBinding<T>) -> Self {
         let binding_identity = (binding.type_desc().key.clone(), binding.abi_fingerprint());
-        let (mut registration, type_desc, method_metadata, native_methods, constructors) =
-            binding.into_parts();
+        let (mut registration, type_desc) = binding.into_parts();
         registration.bind_rust_type::<T>();
         self.rust_type_bindings
             .insert(RustTypeId::of::<T>(), binding_identity);
         self.type_bindings.push(registration);
         self.types.push(type_desc);
-        self.host_method_metadata.extend(method_metadata);
-        self.native_methods.extend(native_methods);
-        self.host_native_functions.extend(constructors);
         self
     }
 
     #[must_use]
     pub fn register_module(mut self, desc: ModuleDesc) -> Self {
         self.modules.push(desc);
-        self
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_type_spec(mut self, spec: impl Into<HostTypeSpec>) -> Self {
-        let (type_desc, method_metadata, native_methods) = spec.into().into_parts();
-        self.types.push(type_desc);
-        self.host_method_metadata.extend(method_metadata);
-        self.native_methods.extend(native_methods);
-        self
-    }
-
-    #[must_use]
-    #[doc(hidden)]
-    pub fn register_host_method_desc(mut self, desc: NativeMethodDesc) -> Self {
-        self.host_method_metadata.push(desc);
         self
     }
 
@@ -294,11 +216,6 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn with_context_host_schema(self) -> Self {
-        self.register_type_desc(crate::context_schema::context_host_type_desc())
-    }
-
-    #[must_use]
     pub const fn with_standard_natives(mut self) -> Self {
         self.standard_natives = true;
         self
@@ -324,62 +241,10 @@ impl EngineBuilder {
     }
 
     #[must_use]
-    pub fn register_host_native_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        function: impl for<'host> Fn(&[OwnedValue], &mut HostExecution<'host>) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.host_native_functions
-            .push(HostNativeFunctionEntry::new(desc, function));
-        self
-    }
-
-    /// Registers a synchronous native that returns an owner-frozen host child.
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_scoped_host_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        requests: impl Fn(&[OwnedValue]) -> VmResult<vela_host::lease::HostLeaseRequestSet>
-        + Send
-        + Sync
-        + 'static,
-        function: impl for<'host> Fn(
-            &mut [vela_host::lease::ErasedHostLease<'host>],
-            Vec<OwnedValue>,
-        ) -> VmResult<crate::native::ScopedHostNativeOutcome<'host>>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.scoped_host_native_functions
-            .push(ScopedHostNativeFunctionEntry::new(desc, requests, function));
-        self
-    }
-
-    #[must_use]
-    pub fn register_typed_host_native_fn<Args, F>(
-        self,
-        desc: NativeFunctionDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedHostNativeFunction<Args>,
-    {
-        self.register_host_native_fn(desc, move |args, host| function.call_host(args, host))
-    }
-
-    #[must_use]
     pub fn register_context_host_native_fn(
         mut self,
         desc: NativeFunctionDesc,
-        function: impl for<'ctx, 'host> Fn(
-            &[OwnedValue],
-            &mut NativeCallContext<'ctx, 'host>,
-        ) -> VmResult<OwnedValue>
+        function: impl for<'ctx> Fn(&[OwnedValue], &mut NativeCallContext<'ctx>) -> VmResult<OwnedValue>
         + Send
         + Sync
         + 'static,
@@ -403,101 +268,16 @@ impl EngineBuilder {
         })
     }
 
-    #[must_use]
-    pub fn register_native_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        function: impl for<'host> Fn(
-            &vela_host::path::HostPath,
-            &[OwnedValue],
-            &mut HostExecution<'host>,
-        ) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.native_methods
-            .push(NativeMethodEntry::new(desc, function));
-        self
-    }
-
-    #[must_use]
-    pub fn register_typed_native_method_fn<Args, F>(
-        self,
-        desc: NativeMethodDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedNativeMethodFunction<Args>,
-    {
-        self.register_native_method_fn(desc, move |receiver, args, host| {
-            function.call_method(receiver, args, host)
-        })
-    }
-
     pub fn build(mut self) -> EngineResult<Engine> {
         if let Some(limit) = self.reflection_lookup_limit {
             self.reflection_policy = self
                 .reflection_policy
                 .map(|policy| policy.with_lookup_limit(limit));
         }
-        let release_id = vela_def::host_release_function_id();
-        self.host_native_functions
-            .push(HostNativeFunctionEntry::new(
-                NativeFunctionDesc::new("host::release", release_id)
-                    .param("value", crate::native::TypeHint::Any)
-                    .returns(crate::native::TypeHint::unit())
-                    .effects(crate::native::EffectSet::pure())
-                    .access(crate::native::FunctionAccess::public())
-                    .docs("Releases one call-scoped host value."),
-                |args, host| {
-                    let [OwnedValue::HostRef(root)] = args else {
-                        return Err(vela_vm::error::VmError::new(
-                            vela_vm::error::VmErrorKind::TypeMismatch {
-                                operation: "host::release scoped host value",
-                            },
-                        ));
-                    };
-                    host.adapter.release_scoped_host(*root)?;
-                    Ok(OwnedValue::Unit)
-                },
-            ));
-        let try_release_id = vela_def::host_try_release_function_id();
-        self.host_native_functions
-            .push(HostNativeFunctionEntry::new(
-                NativeFunctionDesc::new("host::try_release", try_release_id)
-                    .param("value", crate::native::TypeHint::Any)
-                    .returns(crate::native::TypeHint::boolean())
-                    .effects(crate::native::EffectSet::pure())
-                    .access(crate::native::FunctionAccess::public())
-                    .docs("Idempotently releases one call-scoped host value."),
-                |args, host| {
-                    let [OwnedValue::HostRef(root)] = args else {
-                        return Err(vela_vm::error::VmError::new(
-                            vela_vm::error::VmErrorKind::TypeMismatch {
-                                operation: "host::try_release scoped host value",
-                            },
-                        ));
-                    };
-                    let released = host.adapter.try_release_scoped_host(*root)?;
-                    Ok(OwnedValue::Bool(released))
-                },
-            ));
         let mut types = self.types;
         if self.stdio || self.fs_io {
             types.push(crate::io::io_error_type_desc());
         }
-        metadata::inject_host_method_metadata(
-            &mut types,
-            &self.host_method_metadata,
-            &self.native_methods,
-        )?;
-        validation::validate_native_method_type_hints(
-            &self.host_method_metadata,
-            &self.native_methods,
-            &types,
-            self.standard_natives,
-        )?;
         validation::validate_types(&types, self.standard_natives)?;
         let type_bindings = TypeBindingRegistry::seal(self.type_bindings, &types)?;
         let module_options = validation::ModuleValidationOptions::default()
@@ -510,8 +290,6 @@ impl EngineBuilder {
         validation::validate_native_functions(
             EngineFunctionEntries {
                 native: &self.native_functions,
-                scoped_host: &self.scoped_host_native_functions,
-                host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
             },
             &types,
@@ -524,8 +302,6 @@ impl EngineBuilder {
             &type_bindings,
             EngineFunctionEntries {
                 native: &self.native_functions,
-                scoped_host: &self.scoped_host_native_functions,
-                host: &self.host_native_functions,
                 context_host: &self.context_host_native_functions,
             },
             self.reflection_policy.is_some(),
@@ -551,8 +327,6 @@ impl EngineBuilder {
         metadata::inject_native_function_metadata(
             &mut registry,
             &self.native_functions,
-            &self.scoped_host_native_functions,
-            &self.host_native_functions,
             &self.context_host_native_functions,
         );
 
@@ -561,10 +335,7 @@ impl EngineBuilder {
             type_bindings,
             definition_registry,
             native_functions: self.native_functions,
-            scoped_host_native_functions: self.scoped_host_native_functions,
-            host_native_functions: self.host_native_functions,
             context_host_native_functions: self.context_host_native_functions,
-            native_methods: self.native_methods,
             capabilities: self.capabilities,
             reflection_policy: self.reflection_policy,
             hot_reload_policy: self.hot_reload_policy,

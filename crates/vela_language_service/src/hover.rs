@@ -41,7 +41,6 @@ pub enum HoverKind {
     Local,
     Parameter,
     VmState,
-    ExternState,
     Const,
     Function,
     Type,
@@ -780,13 +779,7 @@ fn hover_from_declaration(
     let label = qualified_declaration_label(graph, declaration);
     let kind = match declaration.kind {
         DeclarationKind::Const => HoverKind::Const,
-        DeclarationKind::State => match graph
-            .state_metadata(declaration.id)
-            .map(|state| state.storage)
-        {
-            Some(vela_hir::type_hint::StateStorage::Extern) => HoverKind::ExternState,
-            _ => HoverKind::VmState,
-        },
+        DeclarationKind::State => HoverKind::VmState,
         DeclarationKind::Function => HoverKind::Function,
         DeclarationKind::Struct | DeclarationKind::Enum => HoverKind::Type,
         DeclarationKind::Trait => HoverKind::Trait,
@@ -814,14 +807,7 @@ fn declaration_hover_detail_parts(
                 .map(|hint| DisplayParts::type_name(hint.display()))
         }),
         DeclarationKind::State => graph.state_metadata(declaration.id).map(|metadata| {
-            let ownership = match metadata.storage {
-                vela_hir::type_hint::StateStorage::Vm => {
-                    "VM state; owned per Runtime; initialized once; preserved on exact-compatible reload"
-                }
-                vela_hir::type_hint::StateStorage::Extern => {
-                    "extern state; host-owned; binding required; root immutable in Vela"
-                }
-            };
+            let ownership = "VM state; owned per Runtime; initialized once; preserved on exact-compatible reload";
             DisplayParts::plain(format!("{} ({ownership})", metadata.type_hint.display()))
         }),
         DeclarationKind::Function => graph
@@ -902,16 +888,9 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -920,7 +899,6 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
         | TypeFact::Closure
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -948,16 +926,9 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -967,7 +938,6 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Record { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)

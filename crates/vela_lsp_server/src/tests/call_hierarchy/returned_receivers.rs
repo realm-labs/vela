@@ -33,12 +33,12 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -47,7 +47,7 @@ fn lsp_call_hierarchy_uses_schema_method_calls_on_schema_function_return_receive
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Player" }
+                            "returns": { "kind": "record", "name": "Player" }
                         }
                     }
                 ],
@@ -257,7 +257,7 @@ fn lsp_call_hierarchy_uses_schema_trait_method_calls_on_schema_function_return_r
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {

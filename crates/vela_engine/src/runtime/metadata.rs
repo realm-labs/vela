@@ -28,12 +28,7 @@ where
     }
 
     pub(super) fn value_type_id(&self, value: &VelaValue) -> Option<vela_def::TypeId> {
-        value_type_id(
-            &value.value,
-            &self.state.vm_states.heap,
-            self.image.engine().registry().as_ref(),
-            |handle| self.state.host_slots.resolve(handle),
-        )
+        value_type_id(&value.value, &self.state.vm_states.heap)
     }
 
     pub(super) fn rebind_image_from_reload_report(&mut self, report: Option<&HotReloadReport>) {

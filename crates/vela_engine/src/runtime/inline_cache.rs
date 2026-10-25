@@ -2,8 +2,8 @@ use std::sync::RwLock;
 
 use vela_bytecode::{CacheSiteDesc, CacheSiteId, CacheSiteKind};
 use vela_vm::{
-    DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
-    NativeInlineCacheEntry, RecordFieldInlineCacheEntry,
+    DynamicMethodInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
+    RecordFieldInlineCacheEntry,
 };
 
 /// Generation-qualified cache storage shared by every Runtime using one exact
@@ -14,7 +14,6 @@ pub(super) struct GenerationInlineCaches {
 
 enum GenerationCacheSlot {
     Empty,
-    HostAccess(RwLock<Option<HostInlineCacheEntry>>),
     RecordField(RwLock<Option<RecordFieldInlineCacheEntry>>),
     Method {
         linked: RwLock<Option<MethodInlineCacheEntry>>,
@@ -35,9 +34,9 @@ impl GenerationInlineCaches {
                     "linked cache layout must be dense and site-indexed"
                 );
                 match site.kind {
-                    CacheSiteKind::StateRead
-                    | CacheSiteKind::ExternStateRead
-                    | CacheSiteKind::StateWrite => GenerationCacheSlot::Empty,
+                    CacheSiteKind::StateRead | CacheSiteKind::StateWrite => {
+                        GenerationCacheSlot::Empty
+                    }
                     CacheSiteKind::RecordFieldRead | CacheSiteKind::RecordFieldWrite => {
                         GenerationCacheSlot::RecordField(RwLock::new(None))
                     }
@@ -45,13 +44,7 @@ impl GenerationInlineCaches {
                         linked: RwLock::new(None),
                         dynamic: RwLock::new(None),
                     },
-                    CacheSiteKind::HostPathRead
-                    | CacheSiteKind::HostPathWrite
-                    | CacheSiteKind::HostPathMutate
-                    | CacheSiteKind::HostPathRemove
-                    | CacheSiteKind::HostPathCall => {
-                        GenerationCacheSlot::HostAccess(RwLock::new(None))
-                    }
+
                     CacheSiteKind::NativeCall => GenerationCacheSlot::NativeCall(RwLock::new(None)),
                 }
             })
@@ -66,22 +59,6 @@ impl GenerationInlineCaches {
     #[cfg(test)]
     pub(super) fn is_empty(&self) -> bool {
         self.slots.is_empty()
-    }
-
-    pub(super) fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        let GenerationCacheSlot::HostAccess(slot) = self.slots.get(site.index())? else {
-            return None;
-        };
-        *slot.read().unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-
-    pub(super) fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        let Some(GenerationCacheSlot::HostAccess(slot)) = self.slots.get(site.index()) else {
-            return;
-        };
-        *slot
-            .write()
-            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(entry);
     }
 
     pub(super) fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
@@ -168,14 +145,6 @@ impl vela_vm::VmInlineCaches for GenerationInlineCaches {
         self.len()
     }
 
-    fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        self.host_access(site)
-    }
-
-    fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        self.set_host_access(site, entry);
-    }
-
     fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {
         self.record_field(site)
     }
@@ -213,17 +182,12 @@ impl vela_vm::VmInlineCaches for GenerationInlineCaches {
 #[path = "inline_cache_core_tests.rs"]
 mod core_tests;
 #[cfg(test)]
-#[path = "inline_cache_host_access_tests.rs"]
-mod host_access_tests;
-#[cfg(test)]
-#[path = "inline_cache_host_tests.rs"]
-mod host_tests;
-#[cfg(test)]
 #[path = "inline_cache_hot_reload_tests.rs"]
 mod hot_reload_tests;
 #[cfg(test)]
-#[path = "inline_cache_method_tests.rs"]
-mod method_tests;
-#[cfg(test)]
 #[path = "inline_cache_native_tests.rs"]
 mod native_tests;
+
+#[cfg(test)]
+#[path = "inline_cache_method_tests.rs"]
+mod method_tests;

@@ -42,10 +42,10 @@ fn expression_completion_uses_schema_facts() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function(
         "spawn_player",
-        TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
+        TypeFact::function(vec![TypeFact::STRING], TypeFact::record("Player")),
     );
     databases.set_schema_facts(schema);
     databases.update(&project);
@@ -99,7 +99,7 @@ fn expression_completion_carries_schema_function_metadata() {
     let mut schema = RegistryFacts::default();
     schema.insert_function(
         "spawn_player",
-        TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
+        TypeFact::function(vec![TypeFact::STRING], TypeFact::record("Player")),
     );
     schema.insert_function_docs("spawn_player", "Spawn a player host object.");
     databases.set_schema_facts(schema);
@@ -144,7 +144,7 @@ fn item_boundary_completion_ranks_fn_snippet_before_callables() {
     let mut schema = RegistryFacts::default();
     schema.insert_function(
         "fetch_player",
-        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        TypeFact::function(Vec::new(), TypeFact::record("Player")),
     );
     databases.set_schema_facts(schema);
     databases.update(&project);
@@ -300,7 +300,7 @@ fn member_completion_uses_host_schema_facts() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_field_docs("Player", "level", "Current player level.");
     schema.insert_method(
@@ -378,7 +378,7 @@ fn member_completion_triggers_after_dot_with_empty_prefix() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_method(
         "Player",
@@ -387,7 +387,7 @@ fn member_completion_triggers_after_dot_with_empty_prefix() {
     );
     schema.insert_function(
         "spawn_player",
-        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        TypeFact::function(Vec::new(), TypeFact::record("Player")),
     );
     databases.set_schema_facts(schema);
     databases.update(&project);
@@ -639,7 +639,7 @@ pub fn main(player: Player) { grant(player = player, ) }
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     databases.set_schema_facts(schema);
     databases.update(&project);
 
@@ -689,7 +689,7 @@ pub fn main(player: Player) { grant(player = player, am) }
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     databases.set_schema_facts(schema);
     databases.update(&project);
 
@@ -723,7 +723,7 @@ fn named_argument_completion_uses_hir_callee_path() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     databases.set_schema_facts(schema);
     databases.update(&project);
 
@@ -961,7 +961,7 @@ fn type_hint_completion_carries_lazy_schema_docs_and_symbol_identity() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_type_docs("Player", "Player host object.");
     databases.set_schema_facts(schema);
     databases.update(&project);
@@ -1076,7 +1076,7 @@ pub fn main(player: Player) {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     databases.set_schema_facts(schema);
 

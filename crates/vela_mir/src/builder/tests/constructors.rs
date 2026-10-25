@@ -175,7 +175,6 @@ fn insert_record_layout(
                 contract: contract.clone(),
                 declaration_order: u32::try_from(index).expect("field index"),
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             origin,
         )?;
@@ -534,7 +533,6 @@ fn constructor_builder_lowers_tuple_variants_with_enum_result_type() {
                         contract: None,
                         declaration_order: u32::try_from(index).expect("field index"),
                         access: CompileFieldAccess::script(),
-                        host_runtime: None,
                     },
                     origin,
                 )?;

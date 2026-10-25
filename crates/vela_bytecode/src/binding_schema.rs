@@ -17,7 +17,20 @@ use vela_hir::type_hint::{EnumVariantFieldsHint, FunctionSignature, HirTypeHint,
 use vela_mir::{MirCall, MirEffect, MirStatementKind};
 use vela_package::{ModulePath, PackageId};
 
-pub const RUST_BINDING_SCHEMA_VERSION: u32 = 6;
+pub const RUST_BINDING_SCHEMA_VERSION: u32 = 7;
+
+#[cfg(feature = "artifact-codec")]
+fn deserialize_schema_version<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<u32, D::Error> {
+    let version = <u32 as serde::Deserialize>::deserialize(deserializer)?;
+    if version != RUST_BINDING_SCHEMA_VERSION {
+        return Err(serde::de::Error::custom(format!(
+            "unsupported Rust binding schema {version}; expected {RUST_BINDING_SCHEMA_VERSION}"
+        )));
+    }
+    Ok(version)
+}
 
 #[cfg_attr(
     feature = "artifact-codec",
@@ -25,6 +38,10 @@ pub const RUST_BINDING_SCHEMA_VERSION: u32 = 6;
 )]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RustBindingSchema {
+    #[cfg_attr(
+        feature = "artifact-codec",
+        serde(deserialize_with = "deserialize_schema_version")
+    )]
     version: u32,
     checksum: u64,
     packages: Box<[RustBindingPackage]>,
@@ -203,8 +220,6 @@ pub struct RustBindingMethodOwner {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingBoundaryMode {
     Value,
-    SharedHost,
-    ExclusiveHost,
 }
 
 #[cfg_attr(
@@ -238,11 +253,7 @@ pub enum RustBindingParameterDefault {
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum RustBindingType {
     Any,
-    Host {
-        semantic_type_id: TypeId,
-        runtime_type_id: vela_common::HostTypeId,
-        public_path: String,
-    },
+
     Definition {
         type_id: TypeId,
         public_path: String,
@@ -290,15 +301,7 @@ impl RustBindingType {
     fn encode(&self, output: &mut String) {
         match self {
             Self::Any => output.push_str("any"),
-            Self::Host {
-                semantic_type_id,
-                runtime_type_id,
-                public_path,
-            } => output.push_str(&format!(
-                "host:{:032x}:{:016x}:{public_path}",
-                semantic_type_id.get(),
-                runtime_type_id.get()
-            )),
+
             Self::Definition {
                 type_id,
                 public_path,
@@ -327,11 +330,6 @@ impl RustBindingType {
 pub enum RustBindingReturnMode {
     OwnedValue,
     StructuredValue,
-    ScopedHost {
-        origin: RustBindingBorrowedReturnOrigin,
-        child_access: RustBindingScopedHostAccess,
-        parent_freeze: RustBindingScopedHostAccess,
-    },
 }
 
 #[cfg_attr(
@@ -342,26 +340,6 @@ pub enum RustBindingReturnMode {
 pub enum RustBindingErrorMode {
     Value,
     RuntimeResult,
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum RustBindingBorrowedReturnOrigin {
-    Receiver,
-    Parameter(u16),
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub enum RustBindingScopedHostAccess {
-    Shared,
-    Exclusive,
 }
 
 #[cfg_attr(
@@ -387,9 +365,6 @@ pub struct RustBindingEffectSet {
     pub dynamic_call: bool,
     pub state_read: bool,
     pub state_write: bool,
-    pub host_read: bool,
-    pub host_write: bool,
-    pub host_call: bool,
     pub reflection_read: bool,
     pub reflection_write: bool,
     pub reflection_call: bool,
@@ -398,6 +373,8 @@ pub struct RustBindingEffectSet {
     pub uses_random: bool,
     pub reads_io: bool,
     pub writes_io: bool,
+    pub host_read: bool,
+    pub host_write: bool,
 }
 
 impl From<MirEffect> for RustBindingEffectSet {
@@ -409,9 +386,6 @@ impl From<MirEffect> for RustBindingEffectSet {
             dynamic_call: value.dynamic_call,
             state_read: value.state_read,
             state_write: value.state_write,
-            host_read: value.host_read,
-            host_write: value.host_write,
-            host_call: value.host_call,
             reflection_read: value.reflection_read,
             reflection_write: value.reflection_write,
             reflection_call: value.reflection_call,
@@ -420,6 +394,8 @@ impl From<MirEffect> for RustBindingEffectSet {
             uses_random: value.uses_random,
             reads_io: value.reads_io,
             writes_io: value.writes_io,
+            host_read: value.host_read,
+            host_write: value.host_write,
         }
     }
 }
@@ -444,6 +420,7 @@ impl RustBindingEffectSet {
                 capabilities.insert(capability);
             }
         }
+
         if capabilities.contains(Capability::HostWrite) {
             capabilities = capabilities.without(Capability::HostRead);
         }
@@ -459,9 +436,6 @@ impl RustBindingEffectSet {
             self.dynamic_call,
             self.state_read,
             self.state_write,
-            self.host_read,
-            self.host_write,
-            self.host_call,
             self.reflection_read,
             self.reflection_write,
             self.reflection_call,
@@ -470,6 +444,9 @@ impl RustBindingEffectSet {
             self.uses_random,
             self.reads_io,
             self.writes_io,
+            // Keep the existing value-only schema's bits 0–13 stable.
+            self.host_read,
+            self.host_write,
         ];
         flags.iter().enumerate().fold(0_u32, |bits, (index, set)| {
             bits | (u32::from(*set) << index)
@@ -538,7 +515,7 @@ impl RustBindingSchema {
     pub(crate) fn empty() -> Self {
         Self {
             version: RUST_BINDING_SCHEMA_VERSION,
-            checksum: stable_id("vela_rust_binding_schema_v6", "", ""),
+            checksum: stable_id("vela_rust_binding_schema_v7", "", ""),
             packages: Box::new([]),
         }
     }
@@ -698,7 +675,6 @@ pub(crate) fn build_rust_binding_schema(
             graph,
             metadata.module,
             type_symbols,
-            runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             docs(graph.declaration_attrs(*declaration)),
             metadata.span,
@@ -742,7 +718,6 @@ pub(crate) fn build_rust_binding_schema(
             graph,
             method.module(),
             type_symbols,
-            runtime_signature(bundle, executable),
             effects.get(&executable).copied().unwrap_or(MirEffect::PURE),
             None,
             method.origin().span,
@@ -821,7 +796,7 @@ fn schema_checksum(packages: &[RustBindingPackage]) -> u64 {
         }
     }
     let canonical = canonical_parts.join("|");
-    stable_id("vela_rust_binding_schema_v6", "", &canonical)
+    stable_id("vela_rust_binding_schema_v7", "", &canonical)
 }
 
 fn binding_field(
@@ -899,39 +874,16 @@ fn callable(
     graph: &ModuleGraph,
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
-    runtime_signature: Option<&vela_mir::CompileSignature>,
     effect: MirEffect,
     docs: Option<String>,
     source: Span,
 ) -> RustBindingCallable {
-    let runtime_offset = usize::from(
-        owner.is_some()
-            && signature
-                .params
-                .first()
-                .is_some_and(|parameter| parameter.name == "self")
-            && runtime_signature.is_some_and(|runtime| {
-                runtime.parameters.len().saturating_add(1) == signature.params.len()
-            }),
-    );
     let mut parameters = signature
         .params
         .iter()
-        .enumerate()
-        .map(|(index, parameter)| {
-            let runtime_contract = index.checked_sub(runtime_offset).and_then(|index| {
-                runtime_signature
-                    .and_then(|runtime| runtime.parameters.get(index))
-                    .and_then(|parameter| parameter.contract.as_ref())
-            });
-            let (ty, mode) = binding_parameter_type(
-                graph,
-                module,
-                type_symbols,
-                parameter.type_hint.as_ref(),
-                runtime_contract,
-                effect,
-            );
+        .map(|parameter| {
+            let (ty, mode) =
+                binding_parameter_type(graph, module, type_symbols, parameter.type_hint.as_ref());
             RustBindingParameter {
                 identity: stable_id("callable_parameter", &public_path, &parameter.name),
                 name: parameter.name.clone(),
@@ -986,42 +938,11 @@ fn binding_parameter_type(
     module: ModuleId,
     type_symbols: &BTreeMap<HirDeclId, String>,
     hint: Option<&HirTypeHint>,
-    contract: Option<&vela_mir::MirTypeContract>,
-    effect: MirEffect,
 ) -> (RustBindingType, RustBindingBoundaryMode) {
-    if let Some(vela_mir::MirTypeContract::Host(target)) = contract {
-        let public_path = hint
-            .map(|hint| hint.path.join("::"))
-            .filter(|path| !path.is_empty())
-            .unwrap_or_else(|| format!("HostType_{:016x}", target.runtime.get()));
-        let mode = if effect.host_write {
-            RustBindingBoundaryMode::ExclusiveHost
-        } else {
-            RustBindingBoundaryMode::SharedHost
-        };
-        return (
-            RustBindingType::Host {
-                semantic_type_id: target.semantic,
-                runtime_type_id: target.runtime,
-                public_path,
-            },
-            mode,
-        );
-    }
     (
         RustBindingType::from_hint(graph, module, type_symbols, hint),
         RustBindingBoundaryMode::Value,
     )
-}
-
-fn runtime_signature(
-    bundle: &vela_mir::OwnedVerifiedMirBundle,
-    executable: FunctionId,
-) -> Option<&vela_mir::CompileSignature> {
-    bundle
-        .root(executable)
-        .and_then(|root| root.program().targets().function(executable))
-        .map(|descriptor| &descriptor.signature)
 }
 
 fn contract_fingerprint(

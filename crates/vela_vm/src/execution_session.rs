@@ -37,20 +37,6 @@ impl LinkedExecutionSession {
                 .is_some_and(|return_to| matches!(return_to.target, PendingReturnTarget::Reentry))
         })
     }
-
-    pub fn validate_host_ref_lifetime(
-        &self,
-        heap: &crate::heap::ScriptHeap,
-        host: &(dyn vela_host::adapter::ScriptStateAdapter + Send),
-        boundary: vela_host::error::HostRefLifetimeBoundary,
-    ) -> VmResult<()> {
-        for frame in &self.frames {
-            for value in frame.registers.values() {
-                crate::heap_values::validate_value_host_refs(value, Some(heap), host, boundary)?;
-            }
-        }
-        Ok(())
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -175,7 +161,7 @@ impl Vm {
     pub fn start_linked_execution(
         &self,
         start: LinkedExecutionStart<'_, '_, '_>,
-        host: Option<&HostExecution<'_>>,
+        _host: Option<&HostExecution<'_>>,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<LinkedExecutionSession> {
@@ -208,7 +194,6 @@ impl Vm {
             start.inline_caches,
             start.bytecode_profiler,
             None,
-            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
             None,

@@ -34,8 +34,8 @@ use lookups::{
 use patterns::{pattern_constructor_target, pattern_local_facts};
 pub(crate) use targets::registry_callable_owner;
 pub use targets::{
-    CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
-    HostPathTargetFact, MemberTargetFact, OperatorTargetFact, ScriptTypeTargetFact,
+    CallTargetFact, ConstructorTargetFact, MemberTargetFact, OperatorTargetFact,
+    ScriptTypeTargetFact,
 };
 use targets::{direct_lambda_body, registry_field_owner, source_field_fact};
 
@@ -49,9 +49,7 @@ use vela_hir::module_graph::{DeclarationKind, ModuleGraph};
 
 use crate::facts::AnalysisFacts;
 use crate::logical_records::LogicalRecordKind;
-use crate::registry::{
-    RegistryEffectFact, RegistryFacts, RegistryIndexCapabilityFact, RegistryTypeTargetFact,
-};
+use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::stdlib::{stdlib_function_fact, stdlib_method_fact};
 use crate::type_fact::TypeFact;
 
@@ -79,7 +77,6 @@ pub struct HirSemanticFacts {
     operators: BTreeMap<HirExprId, OperatorTargetFact>,
     constructors: BTreeMap<HirExprId, ConstructorTargetFact>,
     pattern_constructors: BTreeMap<HirPatternId, ConstructorTargetFact>,
-    host_paths: BTreeMap<HirExprId, HostPathTargetFact>,
     effects: BTreeMap<HirExprId, RegistryEffectFact>,
     control_flow: BTreeMap<HirExprId, ControlFlowFact>,
     block_control_flow: BTreeMap<HirBlockId, ControlFlowFact>,
@@ -283,11 +280,6 @@ impl HirSemanticFacts {
     }
 
     #[must_use]
-    pub fn host_path_target(&self, expression: HirExprId) -> Option<&HostPathTargetFact> {
-        self.host_paths.get(&expression)
-    }
-
-    #[must_use]
     pub fn effect(&self, expression: HirExprId) -> Option<&RegistryEffectFact> {
         self.effects.get(&expression)
     }
@@ -454,10 +446,6 @@ impl HirSemanticFacts {
         self.effects
             .entry(id)
             .or_insert_with(RegistryEffectFact::pure);
-        self.host_paths.remove(&id);
-        if let Some(path) = self.host_path_for(body, id, schema) {
-            self.host_paths.insert(id, path);
-        }
         match &expression.kind {
             HirExprKind::Call(call) => {
                 let target = if let Some(lambda) = direct_lambda_body(body, call.callee) {
@@ -530,34 +518,7 @@ impl HirSemanticFacts {
                 } else if let Ok(index) = field.name.parse::<usize>() {
                     MemberTargetFact::TupleIndex(index)
                 } else if let Some(owner) = registry_field_owner(&receiver) {
-                    let host_field = matches!(receiver, TypeFact::Host { .. })
-                        .then(|| {
-                            schema.and_then(|schema| {
-                                schema.host_field_target_fact(&owner, &field.name)
-                            })
-                        })
-                        .flatten();
-                    if let Some(target) = host_field {
-                        if target.host_runtime.is_none()
-                            && schema.is_some_and(|schema| {
-                                registry_method_fact(schema, &receiver, &field.name).is_some()
-                            })
-                        {
-                            if let Some(effect) = schema.and_then(|schema| {
-                                registry_method_effect(schema, &receiver, &field.name)
-                            }) {
-                                self.effects.insert(id, effect.clone());
-                            }
-                            MemberTargetFact::HostProperty {
-                                owner,
-                                name: field.name.clone(),
-                            }
-                        } else {
-                            MemberTargetFact::HostField(target.clone())
-                        }
-                    } else if !matches!(receiver, TypeFact::Host { .. })
-                        && schema
-                            .is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
+                    if schema.is_some_and(|schema| schema.field_fact(&owner, &field.name).is_some())
                     {
                         MemberTargetFact::RegistryField {
                             owner: owner.clone(),
@@ -622,11 +583,6 @@ impl HirSemanticFacts {
                     }
                 });
                 self.operators.insert(id, operator);
-                if let Some(target) =
-                    target.and_then(|target| self.host_path_for(body, target, schema))
-                {
-                    self.host_paths.insert(id, target);
-                }
             }
             HirExprKind::Path(_) => {
                 let Some(path) = expression_path(body, id, HirPathKind::Value) else {
@@ -854,16 +810,9 @@ impl HirSemanticFacts {
                 if let Some(effect) = registry_method_effect(schema, &receiver, &field.name) {
                     self.effects.insert(call_id, effect.clone());
                 }
-                return if matches!(receiver, TypeFact::Host { .. }) {
-                    CallTargetFact::HostMethod {
-                        owner: owner.to_owned(),
-                        name: field.name.clone(),
-                    }
-                } else {
-                    CallTargetFact::RegistryMethod {
-                        owner: owner.to_owned(),
-                        name: field.name.clone(),
-                    }
+                return CallTargetFact::RegistryMethod {
+                    owner: owner.to_owned(),
+                    name: field.name.clone(),
                 };
             }
             let registry_owner_is_closed = schema.is_some_and(|schema| {
@@ -931,7 +880,7 @@ impl HirSemanticFacts {
         if let Some(field) = body.field(call.callee) {
             let receiver = self.fact(field.receiver);
             if let Some(method) = self.contextual_stdlib_method_fact(graph, body, call) {
-                return scoped_iterator_return(&receiver, &field.name, method.returns);
+                return method.returns;
             }
             if let Some(origins) = self.source_origins.get(&field.receiver)
                 && !origins.possible().is_empty()
@@ -971,7 +920,7 @@ impl HirSemanticFacts {
                 return direct;
             }
             if let Some(method) = stdlib_method_fact(&receiver, &field.name, None) {
-                return scoped_iterator_return(&receiver, &field.name, method.returns);
+                return method.returns;
             }
             if type_owner(&receiver).is_some()
                 && let Some(method) =
@@ -1033,99 +982,6 @@ impl HirSemanticFacts {
             .unwrap_or(TypeFact::Unknown)
     }
 
-    fn host_path_for(
-        &self,
-        body: &HirBody,
-        expression: HirExprId,
-        schema: Option<&RegistryFacts>,
-    ) -> Option<HostPathTargetFact> {
-        let expression = body.expressions.get(&expression)?;
-        match &expression.kind {
-            HirExprKind::Path(_) if matches!(self.fact(expression.id), TypeFact::Host { .. }) => {
-                let fact = self.fact(expression.id);
-                let owner = type_owner(&fact)?;
-                let root_type = schema?.type_target_fact(owner)?.clone();
-                Some(HostPathTargetFact {
-                    root: expression.id,
-                    root_type,
-                    segments: Vec::new(),
-                })
-            }
-            HirExprKind::Paren {
-                expression: Some(inner),
-            } => self.host_path_for(body, *inner, schema),
-            HirExprKind::Field(field) => {
-                let mut path = self
-                    .host_path_for(body, field.receiver, schema)
-                    .or_else(|| {
-                        let receiver = self.fact(field.receiver);
-                        if !matches!(receiver, TypeFact::Host { .. }) {
-                            return None;
-                        }
-                        let owner = type_owner(&receiver)?;
-                        Some(HostPathTargetFact {
-                            root: field.receiver,
-                            root_type: schema?.type_target_fact(owner)?.clone(),
-                            segments: Vec::new(),
-                        })
-                    })?;
-                let owner = registry_field_owner(&self.fact(field.receiver))?;
-                let target = schema?.host_field_target_fact(&owner, &field.name)?.clone();
-                if target.host_runtime.is_none() {
-                    let fact = self.fact(expression.id);
-                    if !matches!(fact, TypeFact::Host { .. }) {
-                        return None;
-                    }
-                    let owner = type_owner(&fact)?;
-                    return Some(HostPathTargetFact {
-                        root: expression.id,
-                        root_type: schema?.type_target_fact(owner)?.clone(),
-                        segments: Vec::new(),
-                    });
-                }
-                path.segments.push(HostPathSegmentFact::Field(target));
-                Some(path)
-            }
-            HirExprKind::Index(index) => {
-                let mut path = self.host_path_for(body, index.receiver, schema)?;
-                let receiver = self.fact(index.receiver);
-                let (owner, capability, kind) = if let Some(owner_name) = type_owner(&receiver) {
-                    let capability = schema?.index_capability_fact(owner_name)?.clone();
-                    let kind = if capability.key == TypeFact::I64 {
-                        HostPathIndexKindFact::Index
-                    } else {
-                        HostPathIndexKindFact::Key
-                    };
-                    (
-                        schema?.type_target_fact(owner_name)?.clone(),
-                        capability,
-                        kind,
-                    )
-                } else {
-                    host_collection_index_capability(&receiver, &path, schema?)?
-                };
-                path.segments.push(HostPathSegmentFact::Index {
-                    expression: index.index,
-                    owner,
-                    kind,
-                    capability,
-                });
-                Some(path)
-            }
-            _ if matches!(self.fact(expression.id), TypeFact::Host { .. }) => {
-                let fact = self.fact(expression.id);
-                let owner = type_owner(&fact)?;
-                let root_type = schema?.type_target_fact(owner)?.clone();
-                Some(HostPathTargetFact {
-                    root: expression.id,
-                    root_type,
-                    segments: Vec::new(),
-                })
-            }
-            _ => None,
-        }
-    }
-
     fn record_body_control_flow(&mut self, body: &HirBody) {
         for statement in body.statements.values() {
             self.statement_control_flow
@@ -1181,84 +1037,12 @@ fn infer_match_locals(
     }
 }
 
-fn scoped_iterator_return(receiver: &TypeFact, method: &str, returns: TypeFact) -> TypeFact {
-    if crate::stdlib::scoped_iterator_resource(receiver, method).is_some() {
-        match returns {
-            TypeFact::Iterator { item } => TypeFact::ScopedIterator { item },
-            returns => returns,
-        }
-    } else {
-        returns
-    }
-}
-
-fn host_collection_index_capability(
-    receiver: &TypeFact,
-    path: &HostPathTargetFact,
-    schema: &RegistryFacts,
-) -> Option<(
-    RegistryTypeTargetFact,
-    RegistryIndexCapabilityFact,
-    HostPathIndexKindFact,
-)> {
-    let (key, value, kind) = match receiver {
-        TypeFact::Array { element }
-        | TypeFact::ArrayView { element }
-        | TypeFact::ArrayMut { element, .. } => (
-            TypeFact::I64,
-            (**element).clone(),
-            HostPathIndexKindFact::Index,
-        ),
-        TypeFact::Map { key, value }
-        | TypeFact::MapView { key, value }
-        | TypeFact::MapMut { key, value, .. } => (
-            (**key).clone(),
-            (**value).clone(),
-            HostPathIndexKindFact::Key,
-        ),
-        _ => return None,
-    };
-    let (owner, readable, writable, removable) = match path.segments.last()? {
-        HostPathSegmentFact::Field(field) => (
-            schema.type_target_fact(&field.owner_name)?.clone(),
-            field.access.readable,
-            field.access.writable,
-            field.access.writable,
-        ),
-        HostPathSegmentFact::Index {
-            owner, capability, ..
-        } => (
-            owner.clone(),
-            capability.readable,
-            capability.writable,
-            capability.removable,
-        ),
-    };
-    let capability = RegistryIndexCapabilityFact {
-        owner: owner.name.clone(),
-        readable,
-        writable,
-        addable: writable,
-        removable,
-        key,
-        value,
-    };
-    Some((owner, capability, kind))
-}
-
 fn iterable_item_fact(fact: &TypeFact) -> TypeFact {
     match fact {
         TypeFact::Array { element }
-        | TypeFact::ArrayView { element }
-        | TypeFact::ArrayMut { element, .. }
         | TypeFact::Set { element }
-        | TypeFact::SetView { element }
-        | TypeFact::SetMut { element, .. }
-        | TypeFact::Iterator { item: element }
-        | TypeFact::ScopedIterator { item: element } => (**element).clone(),
-        TypeFact::Map { key, value }
-        | TypeFact::MapView { key, value }
-        | TypeFact::MapMut { key, value, .. } => {
+        | TypeFact::Iterator { item: element } => (**element).clone(),
+        TypeFact::Map { key, value } => {
             TypeFact::LogicalRecord(crate::logical_records::LogicalRecordFact::map_entry(
                 (**key).clone(),
                 (**value).clone(),

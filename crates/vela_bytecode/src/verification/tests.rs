@@ -1,5 +1,3 @@
-use vela_def::FieldId;
-use vela_host::target::HostTargetPlan;
 use vela_registry::DebugNameId;
 
 use crate::{
@@ -31,131 +29,9 @@ fn accepts_valid_code_object() {
 }
 
 #[test]
-fn program_verifier_rejects_state_opcodes_with_the_wrong_storage_class() {
-    for (instruction, descriptor_storage, expected_storage) in [
-        (
-            UnlinkedInstructionKind::LoadState {
-                dst: Register(0),
-                state: "main::value".to_owned(),
-                slot: Some(vela_common::StateSlot::new(0)),
-                cache_site: None,
-            },
-            crate::StateStorage::Extern,
-            crate::StateStorage::Vm,
-        ),
-        (
-            UnlinkedInstructionKind::StoreState {
-                state: "main::value".to_owned(),
-                slot: Some(vela_common::StateSlot::new(0)),
-                src: Register(0),
-            },
-            crate::StateStorage::Extern,
-            crate::StateStorage::Vm,
-        ),
-        (
-            UnlinkedInstructionKind::LoadExternState {
-                dst: Register(0),
-                state: "main::value".to_owned(),
-                slot: Some(vela_common::StateSlot::new(0)),
-                cache_site: None,
-            },
-            crate::StateStorage::Vm,
-            crate::StateStorage::Extern,
-        ),
-    ] {
-        let mut descriptor =
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
-        descriptor.storage = descriptor_storage;
-        let mut code = UnlinkedCodeObject::new("main", 1);
-        code.push_instruction(UnlinkedInstruction::new(instruction));
-        code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-            src: Register(0),
-        }));
-        let mut program = UnlinkedProgram::new();
-        program.set_states([descriptor]);
-        program.insert_function(code);
-
-        assert!(matches!(
-            program.verify().expect_err("storage mismatch").kind,
-            VerificationErrorKind::StateStorageMismatch {
-                slot: 0,
-                expected,
-                actual,
-            } if expected == expected_storage && actual == descriptor_storage
-        ));
-    }
-}
-
-#[test]
-fn program_verifier_rejects_an_extern_state_initializer() {
-    let mut descriptor =
-        crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
-    descriptor.initializer = Some(vela_def::FunctionId::new(7));
-    let mut program = UnlinkedProgram::new();
-    program.set_states([descriptor]);
-
-    assert!(matches!(
-        program.verify().expect_err("extern initializer").kind,
-        VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
-            if detail.contains("extern state")
-    ));
-}
-
-#[test]
-fn program_verifier_rejects_non_host_extern_state_contracts() {
-    let contracts = [
-        vela_mir::MirTypeContract::Any,
-        vela_mir::MirTypeContract::Primitive(vela_common::PrimitiveTag::I64),
-        vela_mir::MirTypeContract::Array(Some(Box::new(vela_mir::MirTypeContract::Primitive(
-            vela_common::PrimitiveTag::I64,
-        )))),
-        vela_mir::MirTypeContract::Callable {
-            accepted_kinds: vela_mir::MirCallableKindSet::FUNCTION,
-            positional_arity: None,
-        },
-        vela_mir::MirTypeContract::Definition(vela_def::TypeId::new(2)),
-    ];
-
-    for contract in contracts {
-        let mut descriptor =
-            crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
-        descriptor.type_contract = contract;
-        let mut program = UnlinkedProgram::new();
-        program.set_states([descriptor]);
-
-        assert!(matches!(
-            program.verify().expect_err("non-host extern contract").kind,
-            VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
-                if detail.contains("host type contract")
-        ));
-    }
-}
-
-#[test]
-fn linked_program_verifier_rejects_non_host_extern_state_contract() {
-    let mut program = LinkedProgram::new();
-    program.push_state(crate::LinkedStateDescriptor {
-        id: vela_def::StateId::new(1),
-        qualified_name: "main::value".to_owned(),
-        visibility: crate::StateVisibility::Private,
-        storage: crate::StateStorage::Extern,
-        type_contract: vela_mir::MirTypeContract::Any,
-        initializer: None,
-        source_span: None,
-    });
-
-    assert!(matches!(
-        program.verify().expect_err("non-host linked extern contract").kind,
-        VerificationErrorKind::InvalidStateDescriptor { slot: 0, detail }
-            if detail.contains("host type contract")
-    ));
-}
-
-#[test]
 fn program_verifier_rejects_a_vm_state_without_an_initializer() {
-    let mut descriptor =
-        crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::value");
-    descriptor.storage = crate::StateStorage::Vm;
+    let mut descriptor = crate::StateDescriptor::test_vm(vela_def::StateId::new(1), "main::value");
+    descriptor.initializer = None;
     let mut program = UnlinkedProgram::new();
     program.set_states([descriptor]);
 
@@ -410,7 +286,7 @@ fn linked_program_verify_rejects_invalid_method_cache_site_operand() {
         },
     ));
     let mut code = LinkedCodeObject::new(main_name, 2);
-    let cache_site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
+    let cache_site = code.push_cache_site(CacheSiteKind::StateRead, InstructionOffset(0));
     code.push_instruction(Instruction::new(InstructionKind::CallMethod {
         dst: Register(0),
         receiver: Register(1),
@@ -429,7 +305,7 @@ fn linked_program_verify_rejects_invalid_method_cache_site_operand() {
             VerificationErrorKind::CacheSiteKindMismatch {
                 site: cache_site,
                 expected: CacheSiteKind::MethodCall,
-                actual: CacheSiteKind::ExternStateRead,
+                actual: CacheSiteKind::StateRead,
             }
         ))
     );
@@ -730,32 +606,6 @@ fn linked_code_verify_preserves_local_invariant_checks() {
             }
         ))
     );
-
-    let mut host_code = LinkedCodeObject::new(DebugNameId::new(0), 3);
-    let target = host_code.intern_host_target(
-        HostTargetPlan::new(vela_common::HostTypeId::new(1))
-            .field(FieldId::new(2))
-            .dyn_key(0),
-    );
-    let cache_site = host_code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    host_code.push_instruction(Instruction::new(InstructionKind::HostRead {
-        dst: Register(0),
-        root: Register(1),
-        target,
-        dynamic_args: Vec::new(),
-        cache_site,
-    }));
-    assert_eq!(
-        verify_linked_code_object(&host_code),
-        Err(error(
-            "<linked code>",
-            Some(0),
-            VerificationErrorKind::HostTargetDynamicArgMismatch {
-                expected: 1,
-                actual: 0,
-            }
-        ))
-    );
 }
 
 #[test]
@@ -984,35 +834,6 @@ fn rejects_out_of_bounds_jumps() {
 }
 
 #[test]
-fn rejects_host_path_dynamic_registers_outside_frame() {
-    let mut code = UnlinkedCodeObject::new("main", 2);
-    let target =
-        code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target,
-            dynamic_args: vec![Register(2)],
-            cache_site,
-        },
-    ));
-
-    assert_eq!(
-        verify_code_object(&code),
-        Err(error(
-            "main",
-            Some(0),
-            VerificationErrorKind::RegisterOutOfBounds {
-                register: Register(2),
-                register_count: 2
-            }
-        ))
-    );
-}
-
-#[test]
 fn rejects_nested_closure_invalid_registers() {
     let mut closure = UnlinkedCodeObject::new("main::<lambda>", 1);
     closure.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
@@ -1037,139 +858,6 @@ fn rejects_nested_closure_invalid_registers() {
             VerificationErrorKind::RegisterOutOfBounds {
                 register: Register(1),
                 register_count: 1
-            }
-        ))
-    );
-}
-
-#[test]
-fn accepts_collapsed_host_read_with_verified_target_and_cache_site() {
-    let mut code = UnlinkedCodeObject::new("main", 3);
-    let target = code.intern_host_target(
-        HostTargetPlan::new(vela_common::HostTypeId::new(1))
-            .field(FieldId::new(2))
-            .dyn_index(0),
-    );
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target,
-            dynamic_args: vec![Register(2)],
-            cache_site,
-        },
-    ));
-
-    assert_eq!(verify_code_object(&code), Ok(()));
-}
-
-#[test]
-fn rejects_collapsed_host_target_out_of_bounds() {
-    let mut code = UnlinkedCodeObject::new("main", 2);
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target: HostTargetPlanId::new(0),
-            dynamic_args: Vec::new(),
-            cache_site,
-        },
-    ));
-
-    assert_eq!(
-        verify_code_object(&code),
-        Err(error(
-            "main",
-            Some(0),
-            VerificationErrorKind::HostTargetOutOfBounds {
-                target: HostTargetPlanId::new(0),
-                target_count: 0
-            }
-        ))
-    );
-}
-
-#[test]
-fn rejects_collapsed_host_dynamic_arg_count_mismatch() {
-    let mut code = UnlinkedCodeObject::new("main", 3);
-    let target =
-        code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(0));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site,
-        },
-    ));
-
-    assert_eq!(
-        verify_code_object(&code),
-        Err(error(
-            "main",
-            Some(0),
-            VerificationErrorKind::HostTargetDynamicArgMismatch {
-                expected: 1,
-                actual: 0
-            }
-        ))
-    );
-}
-
-#[test]
-fn rejects_collapsed_host_dynamic_arg_gaps() {
-    let mut code = UnlinkedCodeObject::new("main", 4);
-    let target =
-        code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)).dyn_key(1));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target,
-            dynamic_args: vec![Register(2), Register(3)],
-            cache_site,
-        },
-    ));
-
-    assert_eq!(
-        verify_code_object(&code),
-        Err(error(
-            "main",
-            Some(0),
-            VerificationErrorKind::HostTargetDynamicArgGap { index: 0 }
-        ))
-    );
-}
-
-#[test]
-fn rejects_collapsed_host_cache_site_kind_mismatch() {
-    let mut code = UnlinkedCodeObject::new("main", 2);
-    let target = code.intern_host_target(HostTargetPlan::new(vela_common::HostTypeId::new(1)));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathWrite, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(0),
-            root: Register(1),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site,
-        },
-    ));
-
-    assert_eq!(
-        verify_code_object(&code),
-        Err(error(
-            "main",
-            Some(0),
-            VerificationErrorKind::CacheSiteKindMismatch {
-                site: cache_site,
-                expected: CacheSiteKind::HostPathRead,
-                actual: CacheSiteKind::HostPathWrite
             }
         ))
     );
@@ -1350,7 +1038,7 @@ fn program_image_verify_rejects_out_of_bounds_closure_function_index() {
 fn program_image_verify_rejects_out_of_bounds_cache_site_index() {
     let mut code = UnlinkedCodeObject::new("main", 1);
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadExternState {
+        UnlinkedInstructionKind::LoadState {
             dst: Register(0),
             state: "main::value".to_owned(),
             slot: None,

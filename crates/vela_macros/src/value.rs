@@ -6,8 +6,7 @@ use syn::{Data, DataEnum, DataStruct, DeriveInput, Fields, Result, Type, parse2}
 
 use crate::attrs::{ScriptAttrs, error, inferred_type_hint, parse_script_attrs, spanned_error};
 use crate::hash::StableHasher;
-use crate::host_object::base_script_host_object_impl_tokens_with_path;
-use crate::script_host::{TypeIdentity, type_identity};
+use crate::type_identity::{TypeIdentity, type_identity};
 
 struct ValueField {
     rust_ident: Ident,
@@ -166,7 +165,6 @@ fn expand_struct(
             let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
         }
     });
-    let detached_host_impl = detached_host_impl_tokens(ident, &qualified_type_name);
 
     Ok(quote! {
         impl #ident {
@@ -247,15 +245,6 @@ fn expand_struct(
             }
         }
 
-        impl ::vela_engine::interop::VelaSharedBoundary for #ident {
-            const STORAGE: ::vela_common::StoragePolicy =
-                ::vela_common::StoragePolicy::Value;
-
-            fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
-                <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
-            }
-        }
-
         impl ::vela_engine::args::IntoScriptArg for #ident {
             fn into_script_arg(self) -> ::vela_vm::owned_value::OwnedValue {
                 ::vela_vm::owned_value::OwnedValue::record(
@@ -289,7 +278,6 @@ fn expand_struct(
             }
         }
 
-        #detached_host_impl
     })
 }
 
@@ -429,7 +417,6 @@ fn expand_enum(
                 let builder = <#rust_type as ::vela_engine::type_registration::RustValueType>::register_value_type_closure(builder);
             }
         });
-    let detached_host_impl = detached_host_impl_tokens(ident, &qualified_type_name);
 
     Ok(quote! {
         impl #ident {
@@ -509,15 +496,6 @@ fn expand_enum(
             }
         }
 
-        impl ::vela_engine::interop::VelaSharedBoundary for #ident {
-            const STORAGE: ::vela_common::StoragePolicy =
-                ::vela_common::StoragePolicy::Value;
-
-            fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
-                <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
-            }
-        }
-
         impl ::vela_engine::args::IntoScriptArg for #ident {
             fn into_script_arg(self) -> ::vela_vm::owned_value::OwnedValue {
                 match self {
@@ -561,96 +539,7 @@ fn expand_enum(
             }
         }
 
-        #detached_host_impl
     })
-}
-
-fn detached_host_impl_tokens(ident: &Ident, qualified_type_name: &str) -> TokenStream {
-    let self_ty: Type = syn::parse_quote!(#ident);
-    let host_object_impl = base_script_host_object_impl_tokens_with_path(
-        &self_ty,
-        quote!(::vela_engine::__private::vela_host),
-    );
-    quote! {
-        impl ::vela_engine::__private::vela_host::object::DetachedHostValue for #ident {
-            fn detached_host_type_shape() -> ::std::string::String {
-                #qualified_type_name.to_owned()
-            }
-
-            fn encode_detached_host_value(
-                &self,
-            ) -> ::vela_engine::__private::vela_host::error::HostResult<::vela_engine::__private::vela_host::call_value::HostCallValue> {
-                ::vela_engine::host_call::encode_detached_host_value(self)
-            }
-
-            fn decode_detached_host_value(
-                value: &::vela_engine::__private::vela_host::call_value::HostCallValue,
-            ) -> ::vela_engine::__private::vela_host::error::HostResult<Self> {
-                ::vela_engine::host_call::decode_detached_host_value(value)
-            }
-        }
-
-        impl ::vela_engine::__private::vela_host::object::ScriptHostFieldAccess for #ident {
-            fn script_host_type_id(&self) -> ::vela_common::HostTypeId {
-                ::vela_common::HostTypeId::new(0)
-            }
-
-            fn script_host_type_shape() -> Option<::std::string::String> {
-                Some(#qualified_type_name.to_owned())
-            }
-
-            fn from_host_collection_value(
-                value: ::vela_engine::__private::vela_host::value::HostValue,
-            ) -> ::vela_engine::__private::vela_host::error::HostResult<Self> {
-                let value = match value {
-                    ::vela_engine::__private::vela_host::value::HostValue::Detached(value) => *value,
-                    value => ::vela_engine::__private::vela_host::call_value::HostCallValue::from_host_value(value),
-                };
-                <Self as ::vela_engine::__private::vela_host::object::DetachedHostValue>::decode_detached_host_value(
-                    &value,
-                )
-            }
-
-            fn read_host_target_from(
-                &self,
-                target: ::vela_engine::__private::vela_host::target::HostTargetInstance<'_>,
-                offset: usize,
-            ) -> ::vela_engine::__private::vela_host::error::HostResult<::vela_engine::__private::vela_host::value::HostValue> {
-                if offset >= target.plan.parts.len() {
-                    let value = <Self as ::vela_engine::__private::vela_host::object::DetachedHostValue>::
-                        encode_detached_host_value(self)?;
-                    return Ok(::vela_engine::__private::vela_host::value::HostValue::Detached(Box::new(value)));
-                }
-                Err(::vela_engine::__private::vela_host::error::HostError {
-                    kind: ::vela_engine::__private::vela_host::error::HostErrorKind::MissingPath {
-                        path: target.to_diagnostic_path().to_host_path(),
-                    },
-                    source_span: None,
-                })
-            }
-
-            fn write_host_target_from(
-                &mut self,
-                target: ::vela_engine::__private::vela_host::target::HostTargetInstance<'_>,
-                offset: usize,
-                value: ::vela_engine::__private::vela_host::value::HostValue,
-            ) -> ::vela_engine::__private::vela_host::error::HostResult<()> {
-                if offset < target.plan.parts.len() {
-                    return Err(::vela_engine::__private::vela_host::error::HostError {
-                        kind: ::vela_engine::__private::vela_host::error::HostErrorKind::MissingPath {
-                            path: target.to_diagnostic_path().to_host_path(),
-                        },
-                        source_span: None,
-                    });
-                }
-                *self = <Self as ::vela_engine::__private::vela_host::object::ScriptHostFieldAccess>::
-                    from_host_collection_value(value)?;
-                Ok(())
-            }
-        }
-
-        #host_object_impl
-    }
 }
 
 fn collect_fields(fields: &syn::FieldsNamed, stable_type_path: &str) -> Result<Vec<ValueField>> {
@@ -912,7 +801,7 @@ mod tests {
     use super::expand_result;
 
     #[test]
-    fn value_codecs_keep_shared_hints_without_service_members() {
+    fn value_codecs_keep_owned_copies_without_host_or_service_members() {
         for item in [
             quote! {
                 #[vela(path = "host::Record")]
@@ -927,18 +816,50 @@ mod tests {
                 .expect("Value codec expands")
                 .to_string();
 
-            assert!(expanded.contains("VelaSharedBoundary for"));
-            assert!(expanded.contains("fn vela_shared_type_hint"));
+            assert!(expanded.contains("VelaValueBoundary for"));
+            assert!(expanded.contains("ToScriptValueRef for"));
             assert!(expanded.contains("register_value_type_closure"));
             assert!(expanded.contains("IntoScriptArg for"));
             assert!(expanded.contains("FromScriptArg for"));
             for removed in [
+                "VelaSharedBoundary",
+                "StoragePolicy",
+                "DetachedHostValue",
+                "ScriptHostObject",
+                "ScriptHostFieldAccess",
+                "HostTarget",
+                "host_id",
                 "register_shared_type_closure",
                 "push_shared_service_arg",
                 "decode_shared_temporary",
             ] {
                 assert!(!expanded.contains(removed), "unexpected member: {removed}");
             }
+        }
+    }
+
+    #[test]
+    fn rejects_host_projection_attributes_instead_of_serializing_host_wrappers() {
+        for attribute in [
+            quote! { fields },
+            quote! { deref },
+            quote! { get },
+            quote! { set },
+            quote! { host = "data::Host" },
+        ] {
+            let error = expand_result(quote! {
+                #[vela(path = "data::Record")]
+                struct Record {
+                    #[vela(#attribute)]
+                    count: i64,
+                }
+            })
+            .expect_err("host projections do not become Value codecs");
+            assert!(
+                error
+                    .to_string()
+                    .contains("host projection attributes are removed")
+            );
         }
     }
 

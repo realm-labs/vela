@@ -8,6 +8,34 @@ use crate::{
     ids::{HirBodyId, HirNodeId},
 };
 
+/// Legacy boundary names must resolve to an ordinary declared schema or reject.
+#[must_use]
+pub fn is_removed_host_type_hint_name(name: &str) -> bool {
+    matches!(
+        name,
+        "HostRef"
+            | "host_ref"
+            | "PathProxy"
+            | "path_proxy"
+            | "ArrayView"
+            | "arrayview"
+            | "ArrayMut"
+            | "arraymut"
+            | "MapView"
+            | "mapview"
+            | "MapMut"
+            | "mapmut"
+            | "SetView"
+            | "setview"
+            | "SetMut"
+            | "setmut"
+            | "View"
+            | "view"
+            | "MutView"
+            | "mutview"
+    )
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct HirTypeHint {
     pub path: Vec<String>,
@@ -82,7 +110,6 @@ pub struct StateMetadata {
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum StateStorage {
     Vm,
-    Extern,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

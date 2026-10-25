@@ -81,12 +81,12 @@ fn assert_schema_type_without_source_span_null(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ]
             }
@@ -172,12 +172,12 @@ fn assert_schema_field_source_navigation(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -275,11 +275,11 @@ fn assert_schema_field_type_source_navigation() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" },
+                        "fact": { "kind": "record", "name": "Inventory" },
                         "sourceSpan": {
                             "source": 1,
                             "start": target_start,
@@ -291,7 +291,7 @@ fn assert_schema_field_type_source_navigation() {
                     {
                         "owner": "Player",
                         "name": "inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ]
             })
@@ -309,7 +309,7 @@ fn assert_schema_field_type_definition_null() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -366,7 +366,7 @@ fn assert_schema_host_method_source_navigation(request_method: &str) {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "methods": [
@@ -402,11 +402,11 @@ fn assert_schema_method_on_schema_method_return_navigation(request_method: &str)
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -416,7 +416,7 @@ fn assert_schema_method_on_schema_method_return_navigation(request_method: &str)
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     },
                     {
@@ -449,7 +449,7 @@ fn assert_schema_host_method_type_definition_null() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "methods": [
@@ -546,7 +546,7 @@ fn assert_schema_trait_method_on_schema_method_return_navigation(request_method:
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [
@@ -666,7 +666,7 @@ fn assert_schema_variant_source_navigation(request_method: &str) {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
@@ -791,7 +791,7 @@ fn assert_schema_variant_type_definition_null() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
@@ -917,7 +917,7 @@ fn assert_schema_member_source_navigation<F>(
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": facts(target_start, target_end)
         })
         .to_string(),
@@ -1020,7 +1020,7 @@ fn assert_schema_member_source_navigation_null<F>(
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": facts(0, schema_text.len())
         })
         .to_string(),

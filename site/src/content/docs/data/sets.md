@@ -23,7 +23,7 @@ fn has_tag(tags, tag: String) -> bool {
 
 ## Mutation
 
-Set methods cover insertion, removal, and clearing. Mutating a script set changes the script heap value; mutating a host-owned set-like field goes through HostAccess.
+Set methods cover insertion, removal, and clearing. Mutating a script set changes the script heap value; transparent host set-like fields are removed and do not provide Rust write-through.
 
 ```vela
 fn mark_seen(seen, id: i64) {

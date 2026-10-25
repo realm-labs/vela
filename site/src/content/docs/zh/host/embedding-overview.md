@@ -1,55 +1,14 @@
 ---
-title: "嵌入概览"
-description: "Rust 宿主如何嵌入 Vela，同时把持久状态保留在安全的宿主边界之后。"
+title: "Embedding Overview"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-Vela 作为 Rust 拥有的脚本运行时嵌入应用。脚本描述业务逻辑，宿主
-拥有持久状态、服务、IO、调度和部署策略。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 嵌入形态
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-典型宿主会创建 `Engine`，把源码编译成 program，创建 `Runtime`，再用
-显式参数调用脚本入口。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```rust
-use vela_engine::prelude::*;
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-let engine = Engine::builder()
-    .execution_profile(ExecutionProfile::embedded())
-    .register_script_host::<Player>()
-    .build()?;
-let program = engine.compile_source(source)?;
-let mut runtime = Runtime::new(engine, program);
-
-let result = runtime.call(
-    "handle_tick",
-    CallArgs::new().with_host_mut("player", &mut player),
-    CallOptions::new(10_000, 1024 * 1024, 64),
-)?;
-```
-
-`Engine` 是共享定义面。`Runtime` 是可变执行状态：heap、VM/extern state、
-inline caches 和 hot-reload image。
-
-## 宿主边界
-
-脚本永远拿不到真实 Rust 引用。调用边界上的 `&mut Player` 在 VM 内会变成
-调用作用域内的 `HostRef`。字段读写、复合赋值、keyed path 和 host method
-调用都会经过 `HostAccess`。
-
-```vela
-fn handle_tick(player: Player, amount) {
-    player.level += amount;
-    return player.level;
-}
-```
-
-语法是普通字段访问，但运行时操作是显式的：读取当前宿主字段，计算新的
-scalar 值，然后立即写穿到 adapter。
-
-## 宿主拥有的内容
-
-宿主拥有持久状态、对象生命周期、capability profile、执行预算、native
-服务和热更新策略。脚本拥有的 records、arrays、maps、sets、strings、
-closures 和 iterators 位于 Vela heap。宿主对象保留在 `HostRef`、
-`HostTargetPlan`、`PathProxy` 和 `HostAccess` 之后。
+详情与现有调用示例见 [English reference](/host/embedding-overview/)。

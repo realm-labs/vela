@@ -1,11 +1,6 @@
-use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use vela_bytecode::Constant;
-use vela_host::adapter::ScriptStateAdapter;
-use vela_host::error::HostRefLifetimeBoundary;
-use vela_host::slot::HostRefSlots;
-use vela_host::value::HostValue;
 
 use crate::SmallStorage;
 use crate::budget::ExecutionBudget;
@@ -20,82 +15,13 @@ use crate::script_object::ScriptFields;
 use crate::script_set::ScriptSet;
 use crate::value::{ClosureValue, Value};
 
-struct HostSlotConversion<'host> {
-    storage: HostSlotStorage<'host>,
-}
-
-enum HostSlotStorage<'host> {
-    None,
-    Adapter(&'host mut (dyn ScriptStateAdapter + Send)),
-    Slots(&'host mut HostRefSlots),
-}
-
-impl HostSlotConversion<'_> {
-    fn intern(
-        &mut self,
-        reference: vela_host::path::HostRef,
-    ) -> VmResult<vela_host::path::HostSlotRef> {
-        match &mut self.storage {
-            HostSlotStorage::None => Err(type_error("host ref requires active slot resolver")),
-            HostSlotStorage::Adapter(host) => host.intern_host_ref(reference).map_err(Into::into),
-            HostSlotStorage::Slots(slots) => Ok(slots.intern(reference)),
-        }
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum HostSlotResolver<'host> {
-    Adapter(&'host (dyn ScriptStateAdapter + Send)),
-    Slots(&'host HostRefSlots),
-}
-
-impl HostSlotResolver<'_> {
-    pub(crate) fn resolve(
-        self,
-        handle: vela_host::path::HostSlotRef,
-    ) -> VmResult<vela_host::path::HostRef> {
-        match self {
-            Self::Adapter(host) => host.resolve_host_ref(handle).map_err(Into::into),
-            Self::Slots(slots) => slots
-                .resolve(handle)
-                .ok_or_else(|| type_error("invalid host slot")),
-        }
-    }
-}
-
 pub fn owned_to_persistent_value(
     value: OwnedValue,
     heap: &mut ScriptHeap,
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value(value, &mut heap_execution, budget, None)
-}
-
-pub fn owned_to_persistent_value_with_host(
-    value: OwnedValue,
-    heap: &mut ScriptHeap,
-    budget: Option<&mut ExecutionBudget>,
-    host: &mut (dyn ScriptStateAdapter + Send),
-) -> VmResult<Value> {
-    let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value(value, &mut heap_execution, budget, Some(host))
-}
-
-pub fn owned_to_persistent_value_with_slots(
-    value: OwnedValue,
-    heap: &mut ScriptHeap,
-    budget: Option<&mut ExecutionBudget>,
-    slots: &mut HostRefSlots,
-) -> VmResult<Value> {
-    let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value_with_storage(
-        value,
-        &mut heap_execution,
-        budget,
-        None,
-        HostSlotStorage::Slots(slots),
-    )
+    owned_to_value(value, &mut heap_execution, budget)
 }
 
 pub fn owned_to_linked_persistent_value(
@@ -105,41 +31,7 @@ pub fn owned_to_linked_persistent_value(
     budget: Option<&mut ExecutionBudget>,
 ) -> VmResult<Value> {
     let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value_with_program(value, &mut heap_execution, budget, Some(program), None)
-}
-
-pub fn owned_to_linked_persistent_value_with_host(
-    value: OwnedValue,
-    program: &vela_bytecode::LinkedProgram,
-    heap: &mut ScriptHeap,
-    budget: Option<&mut ExecutionBudget>,
-    host: &mut (dyn ScriptStateAdapter + Send),
-) -> VmResult<Value> {
-    let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value_with_program(
-        value,
-        &mut heap_execution,
-        budget,
-        Some(program),
-        Some(host),
-    )
-}
-
-pub fn owned_to_linked_persistent_value_with_slots(
-    value: OwnedValue,
-    program: &vela_bytecode::LinkedProgram,
-    heap: &mut ScriptHeap,
-    budget: Option<&mut ExecutionBudget>,
-    slots: &mut HostRefSlots,
-) -> VmResult<Value> {
-    let mut heap_execution = HeapExecution::new(heap);
-    owned_to_value_with_storage(
-        value,
-        &mut heap_execution,
-        budget,
-        Some(program),
-        HostSlotStorage::Slots(slots),
-    )
+    owned_to_value_inner(value, &mut heap_execution, budget, Some(program))
 }
 
 pub(crate) fn owned_to_linked_value(
@@ -147,9 +39,8 @@ pub(crate) fn owned_to_linked_value(
     program: &vela_bytecode::LinkedProgram,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
-    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<Value> {
-    owned_to_value_with_program(value, heap, budget, Some(program), host)
+    owned_to_value_inner(value, heap, budget, Some(program))
 }
 
 pub(crate) fn owned_values_to_linked_values(
@@ -157,23 +48,11 @@ pub(crate) fn owned_values_to_linked_values(
     program: &vela_bytecode::LinkedProgram,
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
-    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<Vec<Value>> {
-    let mut slots = HostSlotConversion {
-        storage: host.map_or(HostSlotStorage::None, HostSlotStorage::Adapter),
-    };
     values
         .iter()
         .cloned()
-        .map(|value| {
-            owned_to_value_inner(
-                value,
-                heap,
-                budget.as_deref_mut(),
-                Some(program),
-                &mut slots,
-            )
-        })
+        .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), Some(program)))
         .collect()
 }
 
@@ -182,153 +61,7 @@ pub(crate) fn owned_values_to_linked_values(
 /// Shared immutable shapes/artifacts are retained by `Arc`, not copied.
 pub fn persistent_value_to_owned(value: &Value, heap: &mut ScriptHeap) -> VmResult<OwnedValue> {
     let heap_execution = HeapExecution::new(heap);
-    value_to_owned(value, Some(&heap_execution), None)
-}
-
-pub fn persistent_value_to_owned_with_host(
-    value: &Value,
-    heap: &mut ScriptHeap,
-    host: &(dyn ScriptStateAdapter + Send),
-) -> VmResult<OwnedValue> {
-    let heap_execution = HeapExecution::new(heap);
-    value_to_owned(value, Some(&heap_execution), Some(host))
-}
-
-pub fn persistent_value_to_owned_with_slots(
-    value: &Value,
-    heap: &mut ScriptHeap,
-    slots: &HostRefSlots,
-) -> VmResult<OwnedValue> {
-    let heap_execution = HeapExecution::new(heap);
-    crate::owned_export::export(
-        value,
-        Some(&heap_execution),
-        Some(HostSlotResolver::Slots(slots)),
-    )
-}
-
-pub fn validate_persistent_value_host_refs(
-    value: &Value,
-    heap: &ScriptHeap,
-    host: &(dyn ScriptStateAdapter + Send),
-    boundary: HostRefLifetimeBoundary,
-) -> VmResult<()> {
-    validate_value_host_refs(value, Some(heap), host, boundary)
-}
-
-pub(crate) fn validate_value_host_refs(
-    value: &Value,
-    heap: Option<&ScriptHeap>,
-    host: &(dyn ScriptStateAdapter + Send),
-    boundary: HostRefLifetimeBoundary,
-) -> VmResult<()> {
-    let mut pending = vec![*value];
-    let mut visited = BTreeSet::new();
-    while let Some(value) = pending.pop() {
-        match value {
-            Value::HostRef(handle) => {
-                let root = host.resolve_host_ref(handle)?;
-                host.validate_host_ref_lifetime(root, boundary)?;
-            }
-            Value::HeapRef(reference) if visited.insert(reference) => {
-                let Some(value) = heap.and_then(|heap| heap.get(reference)) else {
-                    return Err(type_error("host-ref lifetime validation"));
-                };
-                match value {
-                    HeapValue::String(_) | HeapValue::Bytes(_) | HeapValue::Range(_) => {}
-                    HeapValue::Tuple(values) | HeapValue::Array(values) => {
-                        pending.extend(values.iter().copied());
-                    }
-                    HeapValue::Map(values) => {
-                        for entry in values.entries() {
-                            pending.push(entry.key);
-                            pending.push(entry.value);
-                        }
-                    }
-                    HeapValue::Set(values) => pending.extend(values.values().copied()),
-                    HeapValue::Record { fields, .. } | HeapValue::Enum { fields, .. } => {
-                        pending.extend(fields.values().copied());
-                    }
-                    HeapValue::Closure(closure) => {
-                        pending.extend(closure.captures.as_slice().iter().copied());
-                    }
-                    HeapValue::Iterator(iterator) => {
-                        pending.extend(iterator.protected_values());
-                    }
-                    HeapValue::PathProxy(proxy) => {
-                        host.validate_host_ref_lifetime(proxy.root(), boundary)?;
-                    }
-                }
-            }
-            Value::Missing
-            | Value::Unit
-            | Value::Bool(_)
-            | Value::Char(_)
-            | Value::I8(_)
-            | Value::I16(_)
-            | Value::I32(_)
-            | Value::I64(_)
-            | Value::U8(_)
-            | Value::U16(_)
-            | Value::U32(_)
-            | Value::U64(_)
-            | Value::F32(_)
-            | Value::F64(_)
-            | Value::HeapRef(_) => {}
-        }
-    }
-    Ok(())
-}
-
-pub(crate) enum BorrowedReleaseTarget {
-    Interned(vela_host::path::HostSlotRef),
-    ScopedIterator(vela_host::path::HostRef),
-}
-
-pub(crate) fn optional_borrowed_host_ref(
-    value: Value,
-    heap: Option<&ScriptHeap>,
-) -> VmResult<Option<BorrowedReleaseTarget>> {
-    match value {
-        Value::HostRef(reference) => Ok(Some(BorrowedReleaseTarget::Interned(reference))),
-        Value::HeapRef(reference) => {
-            if let Some(HeapValue::Iterator(iterator)) = heap.and_then(|heap| heap.get(reference)) {
-                return iterator
-                    .scoped_host_root()
-                    .map(BorrowedReleaseTarget::ScopedIterator)
-                    .map(Some)
-                    .ok_or_else(|| type_error("release borrowed host lease"));
-            }
-            let Some(HeapValue::Enum {
-                identity: Some(identity),
-                fields,
-                ..
-            }) = heap.and_then(|heap| heap.get(reference))
-            else {
-                return Err(type_error("release borrowed host lease"));
-            };
-            let Some((kind, variant)) = crate::option_result::std_enum_tag(*identity) else {
-                return Err(type_error("release borrowed host lease"));
-            };
-            match (kind, variant) {
-                (
-                    crate::option_result::StdEnumKind::Option,
-                    crate::option_result::StdEnumVariant::None,
-                ) => Ok(None),
-                (
-                    crate::option_result::StdEnumKind::Option,
-                    crate::option_result::StdEnumVariant::Some,
-                ) => match fields.get_slot(0, "0").map(crate::stored_runtime_value) {
-                    Some(Value::HostRef(reference)) => {
-                        Ok(Some(BorrowedReleaseTarget::Interned(reference)))
-                    }
-                    _ => Err(type_error("release borrowed host lease")),
-                },
-                _ => Err(type_error("release borrowed host lease")),
-            }
-        }
-        _ => Err(type_error("release borrowed host lease")),
-    }
+    value_to_owned(value, Some(&heap_execution))
 }
 
 pub(crate) fn value_from_constant(
@@ -498,36 +231,8 @@ pub(crate) fn owned_to_value(
     value: OwnedValue,
     heap: &mut HeapExecution<'_>,
     budget: Option<&mut ExecutionBudget>,
-    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<Value> {
-    owned_to_value_with_program(value, heap, budget, None, host)
-}
-
-fn owned_to_value_with_program(
-    value: OwnedValue,
-    heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
-    program: Option<&vela_bytecode::LinkedProgram>,
-    host: Option<&mut (dyn ScriptStateAdapter + Send)>,
-) -> VmResult<Value> {
-    owned_to_value_with_storage(
-        value,
-        heap,
-        budget,
-        program,
-        host.map_or(HostSlotStorage::None, HostSlotStorage::Adapter),
-    )
-}
-
-fn owned_to_value_with_storage(
-    value: OwnedValue,
-    heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
-    program: Option<&vela_bytecode::LinkedProgram>,
-    storage: HostSlotStorage<'_>,
-) -> VmResult<Value> {
-    let mut slots = HostSlotConversion { storage };
-    owned_to_value_inner(value, heap, budget, program, &mut slots)
+    owned_to_value_inner(value, heap, budget, None)
 }
 
 fn owned_to_value_inner(
@@ -535,7 +240,6 @@ fn owned_to_value_inner(
     heap: &mut HeapExecution<'_>,
     mut budget: Option<&mut ExecutionBudget>,
     program: Option<&vela_bytecode::LinkedProgram>,
-    slots: &mut HostSlotConversion<'_>,
 ) -> VmResult<Value> {
     match value {
         OwnedValue::Unit => Ok(Value::Unit),
@@ -545,7 +249,6 @@ fn owned_to_value_inner(
         OwnedValue::Range(value) => {
             allocate_heap_value(HeapValue::Range(value), heap, budget.as_deref_mut())
         }
-        OwnedValue::HostRef(value) => Ok(Value::HostRef(slots.intern(value)?)),
         OwnedValue::String(value) => {
             allocate_heap_value(HeapValue::String(value), heap, budget.as_deref_mut())
         }
@@ -555,27 +258,21 @@ fn owned_to_value_inner(
         OwnedValue::Tuple(values) => {
             let values = values
                 .into_iter()
-                .map(|value| {
-                    owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)
-                })
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(HeapValue::Tuple(values), heap, budget)
         }
         OwnedValue::Array(values) => {
             let values = values
                 .into_iter()
-                .map(|value| {
-                    owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)
-                })
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(HeapValue::Array(values), heap, budget)
         }
         OwnedValue::Set(values) => {
             let values = values
                 .into_iter()
-                .map(|value| {
-                    owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)
-                })
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             let values = ScriptSet::from_values(values, Some(&*heap), "owned set")?;
             allocate_heap_value(HeapValue::Set(values), heap, budget)
@@ -585,20 +282,8 @@ fn owned_to_value_inner(
                 .into_iter()
                 .map(|entry| {
                     Ok((
-                        owned_to_value_inner(
-                            entry.key,
-                            heap,
-                            budget.as_deref_mut(),
-                            program,
-                            slots,
-                        )?,
-                        owned_to_value_inner(
-                            entry.value,
-                            heap,
-                            budget.as_deref_mut(),
-                            program,
-                            slots,
-                        )?,
+                        owned_to_value_inner(entry.key, heap, budget.as_deref_mut(), program)?,
+                        owned_to_value_inner(entry.value, heap, budget.as_deref_mut(), program)?,
                     ))
                 })
                 .collect::<VmResult<Vec<_>>>()?;
@@ -620,7 +305,7 @@ fn owned_to_value_inner(
                 .map(|(key, value)| {
                     Ok((
                         key,
-                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)?,
+                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program)?,
                     ))
                 })
                 .collect::<VmResult<Vec<_>>>()?;
@@ -657,7 +342,7 @@ fn owned_to_value_inner(
                 .map(|(key, value)| {
                     Ok((
                         key,
-                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)?,
+                        owned_to_value_inner(value, heap, budget.as_deref_mut(), program)?,
                     ))
                 })
                 .collect::<VmResult<Vec<_>>>()?;
@@ -674,7 +359,7 @@ fn owned_to_value_inner(
         }
         OwnedValue::Closure(closure) => {
             let captures = SmallStorage::try_from_slice_map(&closure.captures, 4, |capture| {
-                owned_to_value_inner(capture.clone(), heap, budget.as_deref_mut(), program, slots)
+                owned_to_value_inner(capture.clone(), heap, budget.as_deref_mut(), program)
             })?;
             allocate_heap_value(
                 HeapValue::Closure(ClosureValue {
@@ -691,9 +376,7 @@ fn owned_to_value_inner(
                 .values()
                 .iter()
                 .cloned()
-                .map(|value| {
-                    owned_to_value_inner(value, heap, budget.as_deref_mut(), program, slots)
-                })
+                .map(|value| owned_to_value_inner(value, heap, budget.as_deref_mut(), program))
                 .collect::<VmResult<Vec<_>>>()?;
             allocate_heap_value(
                 HeapValue::Iterator(crate::iteration::IteratorState::from_values_at(
@@ -704,82 +387,14 @@ fn owned_to_value_inner(
                 budget,
             )
         }
-        OwnedValue::PathProxy(proxy) => {
-            allocate_heap_value(HeapValue::PathProxy(proxy), heap, budget)
-        }
     }
 }
 
 pub(crate) fn value_to_owned(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> VmResult<OwnedValue> {
-    crate::owned_export::export(value, heap, host.map(HostSlotResolver::Adapter))
-}
-
-#[allow(dead_code)]
-pub(crate) fn host_to_value(
-    value: HostValue,
-    heap: &mut HeapExecution<'_>,
-    budget: Option<&mut ExecutionBudget>,
-    host: &mut crate::HostExecution<'_>,
-) -> VmResult<Value> {
-    match value {
-        HostValue::Unit => Ok(Value::Unit),
-        HostValue::Bool(value) => Ok(Value::Bool(value)),
-        HostValue::Char(value) => Ok(Value::Char(value)),
-        HostValue::Scalar(value) => Ok(Value::from_scalar(value)),
-        HostValue::String(value) => allocate_heap_value(HeapValue::String(value), heap, budget),
-        HostValue::Bytes(value) => allocate_heap_value(HeapValue::Bytes(value), heap, budget),
-        HostValue::Detached(value) => owned_to_value(
-            crate::host_call_values::host_call_to_owned_value(*value),
-            heap,
-            budget,
-            Some(&mut *host.adapter),
-        ),
-        HostValue::HostRef(value) => Ok(Value::HostRef(host.intern_host_ref(value)?)),
-    }
-}
-
-#[allow(dead_code)]
-pub(crate) fn value_to_host(
-    value: &Value,
-    operation: &'static str,
-    heap: Option<&HeapExecution<'_>>,
-    host: Option<&crate::HostExecution<'_>>,
-) -> VmResult<HostValue> {
-    if let Some(value) = value.as_scalar() {
-        return Ok(HostValue::Scalar(value));
-    }
-    match value {
-        Value::Unit => Ok(HostValue::Unit),
-        Value::Bool(value) => Ok(HostValue::Bool(*value)),
-        Value::Char(value) => Ok(HostValue::Char(*value)),
-        Value::HostRef(value) => Ok(HostValue::HostRef(
-            host.ok_or_else(|| type_error(operation))?
-                .resolve_host_ref(*value)?,
-        )),
-        Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
-            Some(HeapValue::String(value)) => Ok(HostValue::String(value.clone())),
-            Some(HeapValue::Bytes(value)) => Ok(HostValue::Bytes(value.clone())),
-            Some(
-                HeapValue::Array(_)
-                | HeapValue::Tuple(_)
-                | HeapValue::Map(_)
-                | HeapValue::Set(_)
-                | HeapValue::Record { .. }
-                | HeapValue::Enum { .. },
-            ) => {
-                let owned = value_to_owned(value, heap, host.map(|host| &*host.adapter))?;
-                let detached = crate::host_call_values::owned_to_host_call_value(&owned)?;
-                Ok(HostValue::Detached(Box::new(detached)))
-            }
-            _ => Err(type_error(operation)),
-        },
-        Value::Missing => Err(type_error(operation)),
-        _ => unreachable!("scalar values return before host conversion match"),
-    }
+    crate::owned_export::export(value, heap)
 }
 
 pub(crate) fn store_value_in_heap_if_needed(
@@ -817,7 +432,6 @@ fn store_value_in_heap(
         | Value::U64(_)
         | Value::F32(_)
         | Value::F64(_)
-        | Value::HostRef(_)
         | Value::HeapRef(_) => Ok(value),
     }
 }
@@ -844,7 +458,6 @@ pub(crate) fn script_map_from_string_entries(
 
 #[cfg(test)]
 mod tests {
-    use vela_host::slot::HostRefSlots;
 
     use crate::heap::ScriptHeap;
 
@@ -858,7 +471,6 @@ mod tests {
             OwnedValue::Bytes(vec![0, 1, 255]),
             &mut heap_execution,
             None,
-            None,
         )
         .expect("bytes should allocate");
 
@@ -870,7 +482,7 @@ mod tests {
             Some(&HeapValue::Bytes(vec![0, 1, 255]))
         );
         assert_eq!(
-            value_to_owned(&value, Some(&heap_execution), None),
+            value_to_owned(&value, Some(&heap_execution)),
             Ok(OwnedValue::Bytes(vec![0, 1, 255]))
         );
     }
@@ -892,52 +504,6 @@ mod tests {
         assert_eq!(
             heap_execution.heap.get(reference),
             Some(&HeapValue::Bytes(vec![b'a', b'b', b'c']))
-        );
-    }
-
-    #[test]
-    fn nested_host_ref_aliases_round_trip_through_one_compact_slot() {
-        let host_ref = vela_host::path::HostRef::new(
-            vela_common::HostTypeId::new(7),
-            vela_common::HostObjectId::new(11),
-            3,
-        );
-        let owned = OwnedValue::Array(vec![
-            OwnedValue::HostRef(host_ref),
-            OwnedValue::HostRef(host_ref),
-        ]);
-        let mut heap = ScriptHeap::new();
-        let mut slots = HostRefSlots::new();
-
-        let value =
-            owned_to_persistent_value_with_slots(owned.clone(), &mut heap, None, &mut slots)
-                .expect("active slots should admit nested host aliases");
-
-        let Value::HeapRef(reference) = value else {
-            panic!("array should be heap backed");
-        };
-        let handle = {
-            let Some(HeapValue::Array(values)) = heap.get(reference) else {
-                panic!("array should remain available in the script heap");
-            };
-            let [Value::HostRef(first), Value::HostRef(second)] = values.as_slice() else {
-                panic!("nested host aliases should use compact slot handles");
-            };
-            assert_eq!(first, second);
-            *first
-        };
-        assert_eq!(slots.len(), 1);
-        assert_eq!(
-            persistent_value_to_owned_with_slots(&value, &mut heap, &slots),
-            Ok(owned)
-        );
-
-        slots
-            .release(handle)
-            .expect("releasing the canonical slot should succeed");
-        assert!(
-            persistent_value_to_owned_with_slots(&value, &mut heap, &slots).is_err(),
-            "every copied alias must fail after its generation is invalidated"
         );
     }
 }

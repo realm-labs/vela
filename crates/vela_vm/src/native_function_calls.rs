@@ -200,7 +200,7 @@ fn dispatch_resolved_native_function_call(
 
 pub(crate) fn write_native_result(
     frame: &mut CallFrame,
-    host: &mut Option<&mut HostExecution<'_>>,
+    _host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     program: &LinkedProgram,
@@ -219,9 +219,6 @@ pub(crate) fn write_native_result(
             })
         })?,
         budget.as_deref_mut(),
-        host.as_deref_mut().map(|host| {
-            &mut *host.adapter as &mut (dyn vela_host::adapter::ScriptStateAdapter + Send)
-        }),
     )?;
     frame.write(destination, result)
 }
@@ -282,14 +279,10 @@ fn native_call_args_from_registers(
     frame: &CallFrame,
     registers: &[Register],
     heap: Option<&HeapExecution<'_>>,
-    host: Option<&HostExecution<'_>>,
+    _host: Option<&HostExecution<'_>>,
 ) -> VmResult<SmallStorage<OwnedValue>> {
     SmallStorage::try_from_slice_map(registers, 4, |register| {
-        value_to_owned(
-            &frame.read(*register)?,
-            heap,
-            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
-        )
+        value_to_owned(&frame.read(*register)?, heap)
     })
 }
 

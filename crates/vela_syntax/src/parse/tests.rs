@@ -140,7 +140,12 @@ pub extern state world: World;
     let const_item = tree.consts().next().expect("const item");
     let states = tree.states().collect::<Vec<_>>();
 
-    assert!(parse.diagnostics().is_empty(), "{:?}", parse.diagnostics());
+    assert!(
+        parse
+            .diagnostics()
+            .iter()
+            .any(|d| d.message.contains("`extern state` was removed"))
+    );
     assert_eq!(tree.syntax().text().to_string(), source);
     assert_eq!(
         tree.items()
@@ -149,7 +154,6 @@ pub extern state world: World;
         vec![
             SyntaxKind::UseItem,
             SyntaxKind::ConstItem,
-            SyntaxKind::StateItem,
             SyntaxKind::StateItem,
         ]
     );
@@ -189,8 +193,45 @@ pub extern state world: World;
     );
     assert_eq!(states[0].storage(), SyntaxStateStorage::Vm);
     assert!(states[0].initializer().is_some());
-    assert_eq!(states[1].storage(), SyntaxStateStorage::Extern);
-    assert!(states[1].initializer().is_none());
+    assert_eq!(
+        states.len(),
+        1,
+        "removed extern state must not become a script state item"
+    );
+}
+
+#[test]
+fn parser_rejects_host_release_aliases() {
+    for source in [
+        "extern state root: Root;",
+        "pub extern state root: Root;",
+        "fn main(value) { host::release(value); }",
+        "fn main(value) { host::try_release(value); }",
+        "use host::release as dispose; fn main(value) { dispose(value); }",
+        "use host::try_release as dispose; fn main(value) { let alias = dispose; alias(value); }",
+        "use host as boundary; fn main(value) { boundary::release(value); }",
+        "use host as boundary; use boundary::try_release as dispose; fn main() { return dispose; }",
+        "fn main() { let alias = host::release; return alias; }",
+    ] {
+        let parsed = parse_source_with_id(SourceId::new(26), source);
+        assert_eq!(parsed.syntax_node().to_string(), source);
+        assert!(
+            parsed.diagnostics().iter().any(|diagnostic| {
+                diagnostic.message.contains("`extern state` was removed")
+                    || diagnostic.code.as_deref() == Some("syntax::removed_host_borrow")
+            }),
+            "removed borrow boundary accepted: {source}"
+        );
+    }
+    let retained = parse_source_with_id(
+        SourceId::new(28),
+        "fn release(value) { return value; } fn main() { let try_release = release; let View = [1]; return try_release(View); }",
+    );
+    assert!(
+        retained.diagnostics().is_empty(),
+        "{:?}",
+        retained.diagnostics()
+    );
 }
 
 #[test]
@@ -240,9 +281,9 @@ fn parser_rejects_legacy_global_declarations_with_replacements() {
         .expect("legacy global diagnostic");
 
     assert!(parse.tree().states().next().is_none());
-    assert_eq!(diagnostic.candidates.len(), 2);
+    assert_eq!(diagnostic.candidates.len(), 1);
     assert!(diagnostic.message.contains("`state` with an initializer"));
-    assert!(diagnostic.message.contains("`extern state`"));
+    assert!(!diagnostic.message.contains("`extern state`"));
 }
 
 #[test]
@@ -1374,7 +1415,7 @@ fn parser_parse_source_reports_restricted_type_hint_arguments() {
             "syntax::generic_type_hint",
         ),
         (
-            "fn bad(xs: Map<PathProxy, String>) { return xs; }",
+            "fn bad(xs: Map<Function, String>) { return xs; }",
             "syntax::map_key_type_argument",
         ),
         (

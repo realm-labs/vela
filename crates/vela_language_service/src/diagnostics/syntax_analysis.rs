@@ -297,9 +297,7 @@ fn diagnose_tuple_for_pattern(
 
 fn iterable_item_fact(fact: &TypeFact) -> Option<&TypeFact> {
     match fact {
-        TypeFact::Array { element }
-        | TypeFact::Iterator { item: element }
-        | TypeFact::ScopedIterator { item: element } => Some(element),
+        TypeFact::Array { element } | TypeFact::Iterator { item: element } => Some(element),
         _ => None,
     }
 }
@@ -707,7 +705,7 @@ fn member_site_diagnostic(
 
 fn is_precise_receiver(facts: &RegistryFacts, receiver: &TypeFact) -> bool {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
+        TypeFact::Record { name } | TypeFact::Trait { name } => {
             facts.type_fact(name).is_some() || facts.trait_fact(name).is_some()
         }
         TypeFact::Enum {
@@ -718,7 +716,6 @@ fn is_precise_receiver(facts: &RegistryFacts, receiver: &TypeFact) -> bool {
         | TypeFact::Map { .. }
         | TypeFact::Set { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -759,9 +756,7 @@ fn method_exists(facts: &RegistryFacts, receiver: &TypeFact, method: &str) -> bo
     }
 
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } => {
-            facts.method_fact(name, method).is_some()
-        }
+        TypeFact::Record { name } => facts.method_fact(name, method).is_some(),
         TypeFact::Trait { name } => facts.trait_method_fact(name, method).is_some(),
         _ => false,
     }
@@ -769,7 +764,7 @@ fn method_exists(facts: &RegistryFacts, receiver: &TypeFact, method: &str) -> bo
 
 fn field_owner(receiver: &TypeFact) -> Option<String> {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } => Some(name.clone()),
+        TypeFact::Record { name } => Some(name.clone()),
         TypeFact::Enum {
             name,
             variant: Some(variant),
@@ -834,7 +829,7 @@ fn field_candidate_access_labels(
     receiver: &TypeFact,
     candidates: &[String],
 ) -> Vec<String> {
-    let TypeFact::Host { name: owner } = receiver else {
+    let TypeFact::Record { name: owner } = receiver else {
         return Vec::new();
     };
     candidates
@@ -876,7 +871,7 @@ fn method_candidate_access_labels(
     receiver: &TypeFact,
     candidates: &[String],
 ) -> Vec<String> {
-    let TypeFact::Host { name: owner } = receiver else {
+    let TypeFact::Record { name: owner } = receiver else {
         return Vec::new();
     };
     candidates

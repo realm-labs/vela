@@ -59,7 +59,6 @@ fn exec_reflection_metadata_program(
 
 #[test]
 fn compiled_source_reflection_fields_returns_metadata() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_metadata_source(
         SourceId::new(1),
         r#"
@@ -76,23 +75,18 @@ fn main(player) {
 "#,
     )
     .expect("compile reflection fields source");
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let result = exec_reflection_metadata_program(
         &vm,
         &program,
-        &[OwnedValue::HostRef(host_ref)],
+        &[OwnedValue::record(
+            "Player",
+            [("level", OwnedValue::i64(9))],
+        )],
         &mut host,
     );
 
@@ -101,7 +95,6 @@ fn main(player) {
 
 #[test]
 fn compiled_source_reflects_name_kind_and_field_metadata() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_metadata_source(
         SourceId::new(1),
         r#"
@@ -113,8 +106,8 @@ fn main(player) {
     let all_fields = reflect::fields();
     if reflect::name(player) == "Player"
         && reflect::id(player) == 100
-        && reflect::kind(player) == "host"
-        && reflect::docs(player).unwrap_or("") == "A player host object."
+        && reflect::kind(player) == "script_struct"
+        && reflect::docs(player).unwrap_or("") == "A player script value."
         && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
         && reflect::attr(player, "domain").unwrap_or("") == "gameplay"
         && reflect::has_attr(player, "domain")
@@ -151,25 +144,20 @@ fn main(player) {
 "#,
     )
     .expect("compile field reflection source");
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
     vm.register_standard_natives();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(
             &vm,
             &program,
-            &[OwnedValue::HostRef(host_ref)],
+            &[OwnedValue::record(
+                "Player",
+                [("level", OwnedValue::i64(9))]
+            )],
             &mut host
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
@@ -203,60 +191,11 @@ fn main() {
         Arc::new(policy_module_reflection_registry()),
         reflect::permissions::ReflectPolicy::read_only().with_function_permission("game::admin"),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),
-        Ok(OwnedValue::Bool(true))
-    );
-}
-
-#[test]
-fn compiled_source_reflects_effect_metadata_helper() {
-    let host_ref = player_ref(3);
-    let program = compile_reflection_metadata_source(
-        SourceId::new(1),
-        r#"
-fn main(player) {
-    let method = reflect::method(player, "grant_exp");
-    let effects = reflect::effects(method);
-    let direct = reflect::effects(reflect::get(method, "effects"));
-    return reflect::get(effects, "writes_host")
-        && reflect::get(effects, "reads_host")
-        && !reflect::get(effects, "emits_events")
-        && reflect::get(direct, "writes_host")
-        && reflect::get(direct, "reads_host")
-        && reflect::kind(effects) == "effect_set";
-}
-"#,
-    )
-    .expect("compile reflected effect metadata source");
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
-    let mut vm = Vm::new();
-    vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    assert_eq!(
-        exec_reflection_metadata_program(
-            &vm,
-            &program,
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host
-        ),
         Ok(OwnedValue::Bool(true))
     );
 }
@@ -283,13 +222,8 @@ fn main() {
     .expect("compile reflected signature metadata source");
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_module_reflection_registry()));
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),
@@ -319,17 +253,12 @@ fn compiled_source_rejects_removed_async_metadata_fields() {
         registry.register_script_modules(&graph);
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(0xA535), "ProbeHost"))
-                .method(MethodDesc::new(HostMethodId::new(0xA535), "probe")),
+                .method(MethodDesc::new(MethodId::new(0xA535), "probe")),
         );
         let mut vm = Vm::new();
         vm.register_reflection_natives(Arc::new(registry));
-        let mut adapter = MockStateAdapter::new();
-        let mut access = HostAccess::new();
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut access,
-            state_values: None,
-        };
+
+        let mut host = HostExecution { state_values: None };
         let error = exec_reflection_metadata_program(&vm, &program, &[], &mut host)
             .expect_err("removed async metadata must not be projected");
         assert!(error.to_string().contains("is_async"), "{error}");
@@ -338,7 +267,6 @@ fn compiled_source_rejects_removed_async_metadata_fields() {
 
 #[test]
 fn compiled_source_reflect_fields_respect_field_access() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_metadata_source(
         SourceId::new(1),
         r#"
@@ -358,29 +286,27 @@ fn main(player) {
 "#,
     )
     .expect("compile policy fields reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     let policy = reflect::permissions::ReflectPolicy::new(
         reflect::permissions::ReflectPermissionSet::new()
             .with(reflect::permissions::ReflectPermission::ReadTypeInfo)
-            .with(reflect::permissions::ReflectPermission::InspectHostPath),
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
     );
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_field_reflection_registry()),
         policy,
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(
             &vm,
             &program,
-            &[OwnedValue::HostRef(host_ref)],
+            &[OwnedValue::record(
+                "Player",
+                [("level", OwnedValue::i64(9))]
+            )],
             &mut host
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
@@ -465,21 +391,19 @@ fn main(player) {
 "#,
     )
     .expect("compile member reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(
             &vm,
             &program,
-            &[OwnedValue::HostRef(player_ref(3))],
+            &[OwnedValue::record(
+                "Player",
+                [("level", OwnedValue::i64(9))]
+            )],
             &mut host
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
@@ -510,15 +434,10 @@ fn main() {
 "#,
     )
     .expect("compile trait metadata reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),
@@ -539,9 +458,9 @@ fn main() {
         && reflect::get(types[0], "name") == "Player"
         && reflect::get(types[0], "id") == reflect::get(player, "id")
         && reflect::name(types[0]) == "Player"
-        && reflect::kind(types[0]) == "host"
-        && reflect::get(player, "kind") == "host"
-        && reflect::kind(player) == "host"
+        && reflect::kind(types[0]) == "script_struct"
+        && reflect::get(player, "kind") == "script_struct"
+        && reflect::kind(player) == "script_struct"
         && reflect::get(player, "origin") == "host"
         && reflect::origin(player) == "host"
         && reflect::get(player, "field_count") == 2
@@ -554,15 +473,10 @@ fn main() {
 "#,
     )
     .expect("compile type metadata reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),
@@ -594,15 +508,10 @@ fn main() {
             .kind(TypeKind::ScriptStruct)
             .source_span(Span::new(SourceId::new(7), 20, 42)),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(registry));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_metadata_program(&vm, &program, &[], &mut host),

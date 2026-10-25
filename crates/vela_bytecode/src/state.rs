@@ -11,7 +11,6 @@ use crate::ScriptFunctionHandle;
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum StateStorage {
     Vm,
-    Extern,
 }
 
 #[cfg_attr(
@@ -39,26 +38,6 @@ pub struct StateDescriptor {
     pub source_span: Option<Span>,
 }
 
-impl StateDescriptor {
-    #[cfg(any(test, feature = "test-support"))]
-    #[doc(hidden)]
-    #[must_use]
-    pub fn test_extern(id: StateId, qualified_name: impl Into<String>) -> Self {
-        Self {
-            id,
-            qualified_name: qualified_name.into(),
-            visibility: StateVisibility::Private,
-            storage: StateStorage::Extern,
-            type_contract: MirTypeContract::Host(vela_mir::HostTypeTarget {
-                semantic: vela_def::TypeId::new(1),
-                runtime: vela_common::HostTypeId::new(1),
-            }),
-            initializer: None,
-            source_span: None,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LinkedStateDescriptor {
     pub id: StateId,
@@ -68,4 +47,19 @@ pub struct LinkedStateDescriptor {
     pub type_contract: MirTypeContract,
     pub initializer: Option<ScriptFunctionHandle>,
     pub source_span: Option<Span>,
+}
+
+#[cfg(test)]
+impl StateDescriptor {
+    pub(crate) fn test_vm(id: StateId, qualified_name: impl Into<String>) -> Self {
+        Self {
+            id,
+            qualified_name: qualified_name.into(),
+            visibility: StateVisibility::Private,
+            storage: StateStorage::Vm,
+            type_contract: MirTypeContract::Any,
+            initializer: Some(FunctionId::new(1)),
+            source_span: None,
+        }
+    }
 }

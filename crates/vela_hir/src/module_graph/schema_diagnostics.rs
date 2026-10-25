@@ -26,6 +26,7 @@ pub(super) fn validate_once(graph: &mut ModuleGraph) {
             graph, module.id, &owners,
         ));
     }
+    diagnostics.extend(super::removed_type_hints::diagnostics(graph));
     diagnostics.extend(duplicate_script_method_diagnostics(graph));
     diagnostics.extend(builtin_operator_trait_prerequisite_diagnostics(graph));
     diagnostics.extend(derived_operator_trait_diagnostics(graph));
@@ -768,14 +769,8 @@ fn is_builtin_type_hint(path: &[String]) -> bool {
             | "String"
             | "Bytes"
             | "Array"
-            | "ArrayView"
-            | "ArrayMut"
             | "Map"
-            | "MapView"
-            | "MapMut"
             | "Set"
-            | "SetView"
-            | "SetMut"
             | "Range"
             | "Iterator"
             | "Function"

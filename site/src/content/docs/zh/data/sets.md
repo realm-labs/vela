@@ -21,7 +21,7 @@ fn has_tag(tags, tag: String) -> bool {
 
 ## 修改
 
-Set 方法覆盖插入、移除和清空等操作。修改脚本 set 会改变脚本堆值；修改宿主拥有的 set-like 字段要经过 HostAccess。
+Set 方法覆盖插入、移除和清空等操作。修改脚本 set 会改变脚本堆值；透明宿主 set-like 字段已经删除，不隐式写回 Rust。
 
 ```vela
 fn mark_seen(seen, id: i64) {

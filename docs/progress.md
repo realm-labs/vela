@@ -24,11 +24,15 @@ Checkpoint B removes Service/Provider declarations, compilation targets,
 dispatch, artifact/schema fields, tooling projections, macros, and callers.
 Checkpoint C removes detached tasks, script async/await, native futures,
 async registration/calls, and task/async metadata; existing synchronous callback
-and re-entry paths, cancellation/deadlines and finite budgets remain. Portable
-program format is 7, Rust-binding schema is 6, and tooling schema is 3; obsolete
-formats reject before activation. The active checkpoint is D: borrowed-host,
-transparent-path and dependent-binding removal. Full repository acceptance is
-still pending.
+and re-entry paths, cancellation/deadlines and finite budgets remain.
+Checkpoint D removes caller-borrowed injection/returns/views, HostRef/PathProxy,
+transparent paths/host dispatch, leases/release, dependent macros/registrations,
+and extern-state bindings. No independent opaque runtime remains; no replacement
+was added. Existing owned conversions, native permissions, script reflection,
+VM state, exact old closures, and synchronous re-entry are retained. Portable
+program format is 8, Rust-binding schema is 7, and tooling schema is 4; obsolete
+formats reject before activation. The active checkpoint is E: final cleanup
+and repository acceptance.
 The baseline and milestone records below describe existing implementation,
 including capabilities scheduled for removal, rather than the new target.
 
@@ -722,8 +726,8 @@ in the
 ### Runtime Simplification
 
 The [removal checklist](runtime-simplification-plan.md#removal-checklist) is
-recorded: A-C/R01/R03-R07 are implemented with focused proof, R02 is deferred,
-and D-E/R08-R16 remain open. A establishes the removal contract and existing retained-language
+recorded: A-D/R01/R03-R13 are implemented with affected-test proof, R02 is
+deferred, and E/R14-R16 final audits and acceptance remain open. A establishes the removal contract and existing retained-language
 baseline, not a replacement boundary. Opaque ownership, storage, re-entry, serialization,
 and reload design questions belong to a separate follow-up. Existing LSP and
 container gaps below remain baseline observations; affected evidence must be
@@ -1227,6 +1231,15 @@ claimed. Rust 1.98.0 lacks the WASM target; cross-target verification and fresh
 affected native editor evidence remain acceptance gaps. The Zed package check
 reported a nonempty grammar checkout, left unchanged.
 
+Checkpoint D affected gates pass: compiler (876 tests), shared metadata (281),
+VM/host and macro suites, Engine/reload/bindgen, full language service (771
+passed, two ignored), LSP (847), examples (15), 299 Node matrix tests and site.
+Workspace all-target/all-feature Clippy and formatting pass. Native host-read/
+write effects remain enforced through MIR, package declarations/reload and
+ActiveBinding ceilings; regression tests also accept capability-reducing reloads
+and preserve retained old-closure behavior. No fresh native editor evidence or
+complete final workspace acceptance is claimed yet.
+
 Miri remains unavailable on the installed stable Rust 1.97.1
 `aarch64-apple-darwin` toolchain. The pre-existing erased-borrow boundary relies
 on its focused lifecycle, async, lease/re-entry, and source-audit proof until
@@ -1237,11 +1250,11 @@ provides it.
 
 ## Next Up
 
-1. Execute checkpoint D: remove borrowed roots/returns/views, transparent host
-   paths, leases/release, dependent registrations/extern bindings, and callers.
-   Preserve independent native/value calls, script reflection, state and exact
-   old closure generations; do not implement replacement objects.
-2. Follow checkpoint E for repository-wide cleanup and complete acceptance. Do not implement a replacement opaque-object system or new
+1. Execute checkpoint E: delete JIT-only preparation, finish dead metadata and
+   dependencies, update active subsystem docs/grammar/performance/validation,
+   and run repository acceptance without inventing replacement interop.
+2. Preserve interpreter MIR/root/budget/cache/physical plans and exact script
+   generations while auditing removed exports, dispatch, schemas and formats. Do not implement a replacement opaque-object system or new
    conversion APIs, or mark removals complete from documentation alone.
 3. Preserve existing LSP evidence and its execution checkpoint; revise affected
    language/schema contracts and capture fresh evidence during removal.

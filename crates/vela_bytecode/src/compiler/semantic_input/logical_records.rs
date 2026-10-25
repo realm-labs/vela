@@ -58,7 +58,6 @@ impl GenerationBuilder<'_, '_> {
                         contract: contract.clone(),
                         declaration_order: field.canonical_slot(),
                         access: CompileFieldAccess::script(),
-                        host_runtime: None,
                     },
                     origin,
                 )

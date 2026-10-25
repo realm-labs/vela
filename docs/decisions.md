@@ -23,8 +23,8 @@ entrypoints and callers rather than add compatibility wrappers. Methods-only
 object exposure and host-managed storage are future design candidates, not
 approved implementations. Concrete ownership, destruction, re-entry, and reload
 rules are deferred to a separate follow-up, not checkpoint A prerequisites.
-Checkpoints A-C consolidate the contracts and remove Service/Provider and
-script tasks/async; borrowed-host removal remains D work. Conflicting earlier roadmap and
+Checkpoints A-D consolidate the contracts and remove Service/Provider,
+script tasks/async, caller-borrowed interop, paths/leases and dependent bindings. Conflicting earlier roadmap and
 architecture requirements describe the previous implementation, not permission
 to expand the removed features. Ordinary packages, script traits, LSP worker
 scheduling, interpreter optimization, and script reload remain in scope.
@@ -41,8 +41,18 @@ rejects versions 1-6; Rust-binding schema/checksum domain is 6; tooling schema 3
 rejects old async/task fields and the detached-admission execution ceiling.
 Synchronous callback continuations/re-entry, cancellation/deadline errors and
 root accounting remain retained behavior, not replacement async machinery.
-Subsequent incompatible format changes must update versions in their owning
-checkpoint.
+Checkpoint D removes HostRef/path/lease/extern-binding runtime and schema data:
+portable format 8, binding schema/checksum 7 and tooling schema 4 reject the old
+shapes. No independent opaque runtime survived without a redesign; its missing
+surface remains deferred rather than replaced. Owned structural conversions and
+invocation-local decoded native arguments remain supported.
+
+Native host-read/write effects are independent of removed transparent access.
+They remain in MIR, observed package capabilities and binding ceilings (effect
+bits 14/15). A prior observed HostWrite covers HostRead for capability-reducing
+reloads, but declared capability expansion and read-to-write expansion still
+reject. Subsequent incompatible format changes must update versions in their
+owning checkpoint.
 
 ## Installed Editor Acceptance
 

@@ -707,12 +707,12 @@ pub fn preview() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [

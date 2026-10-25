@@ -1,38 +1,14 @@
 ---
-title: "动态方法分发"
-description: "Vela 动态方法分发文档。"
+title: "Dynamic Method Dispatch"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-动态方法分发允许普通动态值在编译期不知道 receiver 类型时调用源码中静态写出的 Method Name。它是受控的、registry-backed 分发，不是 monkey patching。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 编译期拆分
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-如果 receiver 类型已知且方法存在，编译器会生成 resolved method dispatch。如果 receiver 未知，会生成带源码方法名和原始参数信息的 dynamic dispatch。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```vela
-fn length(value) -> i64 {
-    return value.len()
-}
-```
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-## 解析顺序
-
-运行时会先分类 receiver，然后按固定顺序解析：标准 value method、脚本 impl method、宿主 method，最后才是带源码位置的 missing-method 错误。
-
-```vela
-fn starts_with_q(value) -> bool {
-    return value.starts_with("q")
-}
-```
-
-## 参数和 Guard
-
-Dynamic bytecode 会保留位置参数和命名参数，直到目标确定。解析目标后，运行时根据目标签名组装参数，在支持的位置补默认值，并运行类型或宿主转换 guard。
-
-## Cache 边界
-
-动态方法 cache 由方法名、receiver 分类，以及相关 program 或宿主 schema epoch 保护。Cache miss 会回退到解析；它本身不是语言错误。
-
-## 宿主安全
-
-动态宿主方法分发仍然经过 `HostRef`、`HostPath`、`PathProxy`、HostAccess、注册元数据、能力检查和 generation 检查，不能绕过宿主修改模型。
+详情与现有调用示例见 [English reference](/methods/dynamic-method-dispatch/)。

@@ -6,9 +6,6 @@ use vela_hir::type_hint::EnumVariantFieldsHint;
 
 use crate::hints::{schema_declaration_from_hint_in_module, type_fact_from_hint_with_schema};
 use crate::logical_records::LogicalRecordFieldTargetFact;
-use crate::registry::{
-    RegistryFieldTargetFact, RegistryIndexCapabilityFact, RegistryTypeTargetFact,
-};
 use crate::type_fact::TypeFact;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -49,10 +46,6 @@ pub enum CallTargetFact {
     NativeFunction {
         path: String,
     },
-    HostMethod {
-        owner: String,
-        name: String,
-    },
     RegistryMethod {
         owner: String,
         name: String,
@@ -77,11 +70,6 @@ pub enum MemberTargetFact {
     ScriptField {
         owner: HirDeclId,
         variant: Option<String>,
-        name: String,
-    },
-    HostField(RegistryFieldTargetFact),
-    HostProperty {
-        owner: String,
         name: String,
     },
     LogicalRecordField(LogicalRecordFieldTargetFact),
@@ -126,30 +114,6 @@ pub enum ConstructorTargetFact {
     },
     Dynamic,
     Unresolved,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HostPathTargetFact {
-    pub root: HirExprId,
-    pub root_type: RegistryTypeTargetFact,
-    pub segments: Vec<HostPathSegmentFact>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum HostPathSegmentFact {
-    Field(RegistryFieldTargetFact),
-    Index {
-        expression: HirExprId,
-        owner: RegistryTypeTargetFact,
-        kind: HostPathIndexKindFact,
-        capability: RegistryIndexCapabilityFact,
-    },
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HostPathIndexKindFact {
-    Index,
-    Key,
 }
 
 pub(super) fn direct_lambda_body(body: &HirBody, expression: HirExprId) -> Option<HirBodyId> {
@@ -255,12 +219,10 @@ pub(crate) fn registry_callable_owner(fact: &TypeFact) -> Option<&str> {
     match fact {
         TypeFact::Primitive(primitive) => Some(primitive_registry_owner(*primitive)),
         TypeFact::Range => Some("Range"),
-        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
-            Some("Array")
-        }
-        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => Some("Map"),
-        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => Some("Set"),
-        TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. } => Some("Iterator"),
+        TypeFact::Array { .. } => Some("Array"),
+        TypeFact::Map { .. } => Some("Map"),
+        TypeFact::Set { .. } => Some("Set"),
+        TypeFact::Iterator { .. } => Some("Iterator"),
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => {
             Some("Option")
         }
@@ -269,10 +231,9 @@ pub(crate) fn registry_callable_owner(fact: &TypeFact) -> Option<&str> {
         }
         TypeFact::Function { .. } => Some("Function"),
         TypeFact::Closure => Some("Closure"),
-        TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Host { name }
-        | TypeFact::Trait { name } => Some(name),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Trait { name } => {
+            Some(name)
+        }
         TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
         TypeFact::Unknown
         | TypeFact::Never

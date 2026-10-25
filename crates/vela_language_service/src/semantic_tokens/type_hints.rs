@@ -104,7 +104,7 @@ fn provenance(db: &LanguageServiceDatabases, module: ModuleId, path: &[String]) 
     let schema = db.schema_db().facts();
     let name = path.join("::");
     if schema.type_fact(&name).is_some() || schema.trait_fact(&name).is_some() {
-        M::HOST.union(M::SCHEMA)
+        M::SCHEMA
     } else {
         M::NONE
     }
@@ -124,14 +124,8 @@ fn is_builtin(path: &[String]) -> bool {
             | "Range"
             | "Iterator"
             | "Array"
-            | "ArrayView"
-            | "ArrayMut"
             | "Map"
-            | "MapView"
-            | "MapMut"
             | "Set"
-            | "SetView"
-            | "SetMut"
             | "Option"
             | "Result"
             | "bool"

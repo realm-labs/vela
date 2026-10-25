@@ -462,7 +462,6 @@ fn registered_variant_short_name_resolves_one_canonical_schema_owner() {
         "game::State::Ready",
         "amount",
         FieldId::new(8_001),
-        None,
         true,
         access,
     ));
@@ -723,7 +722,7 @@ fn insert_registered_field(
         required_permissions: Vec::new(),
     };
     schema.insert_field_target(
-        RegistryFieldTargetFact::new(owner, owner_name, name, field, None, false, access)
+        RegistryFieldTargetFact::new(owner, owner_name, name, field, false, access)
             .declaration_order(declaration_order)
             .defaulted(has_default),
     );

@@ -4,7 +4,7 @@ use crate::logical_records::{LogicalRecordKind, fixed_record, map_entry};
 #[test]
 fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
-        stdlib_function_fact("reflect::type_of", &[TypeFact::host("Player")])
+        stdlib_function_fact("reflect::type_of", &[TypeFact::record("Player")])
             .expect("reflect::type_of fact")
             .returns,
         TypeFact::option(logical(LogicalRecordKind::ReflectType))
@@ -16,19 +16,19 @@ fn reflection_functions_expose_metadata_facts() {
         TypeFact::array(logical(LogicalRecordKind::ReflectType))
     );
     assert_eq!(
-        stdlib_function_fact("reflect::attrs", &[TypeFact::host("Player")])
+        stdlib_function_fact("reflect::attrs", &[TypeFact::record("Player")])
             .expect("reflect::attrs fact")
             .returns,
         TypeFact::map(TypeFact::STRING, TypeFact::STRING)
     );
     assert_eq!(
-        stdlib_function_fact("reflect::id", &[TypeFact::host("Player")])
+        stdlib_function_fact("reflect::id", &[TypeFact::record("Player")])
             .expect("reflect::id fact")
             .returns,
         TypeFact::I64
     );
     assert_eq!(
-        stdlib_function_fact("reflect::source_span", &[TypeFact::host("Player")])
+        stdlib_function_fact("reflect::source_span", &[TypeFact::record("Player")])
             .expect("reflect::source_span fact")
             .returns,
         TypeFact::option(logical(LogicalRecordKind::ReflectSourceSpan))
@@ -99,7 +99,7 @@ fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
         stdlib_function_fact(
             "reflect::attr",
-            &[TypeFact::host("Player"), TypeFact::STRING]
+            &[TypeFact::record("Player"), TypeFact::STRING]
         )
         .expect("reflect::attr fact")
         .returns,
@@ -108,7 +108,7 @@ fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
         stdlib_function_fact(
             "reflect::has_attr",
-            &[TypeFact::host("Player"), TypeFact::STRING]
+            &[TypeFact::record("Player"), TypeFact::STRING]
         )
         .expect("reflect::has_attr fact")
         .returns,
@@ -121,7 +121,7 @@ fn reflection_functions_expose_metadata_facts() {
         TypeFact::array(logical(LogicalRecordKind::ReflectField))
     );
     assert_eq!(
-        stdlib_function_fact("reflect::fields", &[TypeFact::host("Player")])
+        stdlib_function_fact("reflect::fields", &[TypeFact::record("Player")])
             .expect("reflect::fields value fact")
             .returns,
         TypeFact::array(logical(LogicalRecordKind::ReflectField))
@@ -129,7 +129,7 @@ fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
         stdlib_function_fact(
             "reflect::method",
-            &[TypeFact::host("Player"), TypeFact::STRING]
+            &[TypeFact::record("Player"), TypeFact::STRING]
         )
         .expect("reflect::method fact")
         .returns,
@@ -153,7 +153,7 @@ fn reflection_functions_expose_metadata_facts() {
     assert_eq!(
         stdlib_function_fact(
             "reflect::call",
-            &[TypeFact::host("Player"), TypeFact::STRING, TypeFact::I64,]
+            &[TypeFact::record("Player"), TypeFact::STRING, TypeFact::I64,]
         )
         .expect("reflect::call fact")
         .returns,
@@ -185,7 +185,7 @@ fn reflection_functions_expose_metadata_facts() {
         stdlib_function_fact(
             "reflect::implements",
             &[
-                TypeFact::host("Player"),
+                TypeFact::record("Player"),
                 logical(LogicalRecordKind::ReflectTrait),
             ]
         )
@@ -205,7 +205,7 @@ fn reflection_functions_expose_metadata_facts() {
         .returns,
         TypeFact::BOOL
     );
-    assert!(stdlib_function_fact("reflect::call", &[TypeFact::host("Player")]).is_none());
+    assert!(stdlib_function_fact("reflect::call", &[TypeFact::record("Player")]).is_none());
     assert!(stdlib_function_fact("reflect::fields", &[TypeFact::Any, TypeFact::Any]).is_none());
 }
 
@@ -311,7 +311,7 @@ fn stdlib_method_facts_enumerate_receiver_api_surface() {
     }));
     assert!(
         stdlib_method_facts(
-            &TypeFact::Host {
+            &TypeFact::Record {
                 name: "Player".into()
             },
             None

@@ -5,8 +5,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use vela_engine::engine::Engine;
 
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
 
@@ -15,10 +13,8 @@ fn call_raw(
     entry: &str,
     args: &[OwnedValue],
     options: CallOptions,
-    adapter: &mut MockStateAdapter,
-    _access: &mut HostAccess,
 ) -> vela_vm::error::VmResult<OwnedValue> {
-    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let args = CallArgs::from_positional(args.iter().cloned());
     let value = runtime.call(entry, args, options)?;
     runtime.value_to_owned(&value)
 }
@@ -90,18 +86,9 @@ fn main() {
         .expect("build engine");
     let program = engine.compile_source(source).expect("compile script");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded(),),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -157,8 +144,6 @@ fn main() {
         .expect("build engine");
     let program = engine.compile_dir(root.path()).expect("compile modules");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
         call_raw(
@@ -166,8 +151,6 @@ fn main() {
             "game::main::main",
             &[],
             CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
         ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );

@@ -13,8 +13,8 @@ use crate::engine::Engine;
 
 use super::call_args::call_args_type_error;
 use super::{
-    CallArgs, RuntimeExternStateBindings, RuntimeVmStateStore, VelaValue,
-    state::RuntimeGenerations, unknown_function, unknown_method, value_type_id,
+    CallArgs, RuntimeVmStateStore, VelaValue, state::RuntimeGenerations, unknown_function,
+    unknown_method, value_type_id,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -208,29 +208,12 @@ pub enum RuntimeMethodSelectorKind {
 }
 
 #[doc(hidden)]
-pub enum RuntimeHostResolver<'state> {
-    Slots(&'state vela_host::slot::HostRefSlots),
-    Adapter(&'state dyn vela_host::adapter::ScriptStateAdapter),
-}
-
-impl RuntimeHostResolver<'_> {
-    fn resolve(&self, handle: vela_host::path::HostSlotRef) -> Option<vela_host::path::HostRef> {
-        match self {
-            Self::Slots(slots) => slots.resolve(handle),
-            Self::Adapter(adapter) => adapter.resolve_host_ref(handle).ok(),
-        }
-    }
-}
-
-#[doc(hidden)]
 pub struct RuntimeMethodResolveContext<'program, 'state> {
     pub runtime_id: u64,
     pub program_image: &'state ProgramImage,
     pub linked_program: &'program LinkedProgram,
     pub version_id: Option<ProgramVersionId>,
     pub script_heap: &'state ScriptHeap,
-    pub engine: &'state Engine,
-    pub host: RuntimeHostResolver<'state>,
 }
 
 pub(super) fn resolve_bound_method(
@@ -248,13 +231,8 @@ pub(super) fn resolve_bound_method(
             "VelaMethod belongs to another Runtime",
         ));
     }
-    let receiver_type = value_type_id(
-        &target.receiver.value,
-        context.script_heap,
-        context.engine.registry().as_ref(),
-        |handle| context.host.resolve(handle),
-    )
-    .ok_or_else(|| unknown_method(method_handle.name.clone()))?;
+    let receiver_type = value_type_id(&target.receiver.value, context.script_heap)
+        .ok_or_else(|| unknown_method(method_handle.name.clone()))?;
     if receiver_type != method_handle.receiver_type {
         return Err(call_args_type_error(
             "VelaMethod receiver type does not match value",
@@ -352,19 +330,16 @@ pub(super) struct EntryRequest {
     pub(super) receiver: Option<VelaValue>,
 }
 
-pub(super) struct RuntimeCallExecution<'program, 'state, 'host, 'budget> {
+pub(super) struct RuntimeCallExecution<'program, 'state, 'budget> {
     pub(super) runtime_id: u64,
     pub(super) engine: &'program Engine,
     pub(super) registry_image: &'program ProgramImage,
     pub(super) artifact: &'program Arc<LinkedArtifact>,
     pub(super) hot_reload: Option<&'program HotReloadRuntime>,
-    pub(super) extern_states: &'state mut RuntimeExternStateBindings,
-    pub(super) host_arena: &'state mut super::host_arena::RuntimeHostArena,
-    pub(super) host_slots: &'state mut vela_host::slot::HostRefSlots,
     pub(super) vm_states: &'state mut RuntimeVmStateStore,
     pub(super) generations: &'state mut RuntimeGenerations,
     pub(super) target: EntryRequest,
-    pub(super) args: CallArgs<'host>,
+    pub(super) args: CallArgs,
     pub(super) budget: &'budget mut vela_vm::budget::ExecutionBudget,
 }
 

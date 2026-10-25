@@ -50,7 +50,7 @@
 //! ```
 //!
 //! ```compile_fail,E0599
-//! fn removed(context: &mut vela_engine::context::NativeCallContext<'_, '_>) {
+//! fn removed(context: &mut vela_engine::context::NativeCallContext<'_>) {
 //!     let _ = context.call_async("main", vela_engine::runtime::CallArgs::new());
 //! }
 //! ```
@@ -72,6 +72,74 @@
 //! }
 //! ```
 
+//! Borrowed-host injection, path adapters, and host-owned constructors are not
+//! embedding APIs. Reference conversion through `ToScriptValueRef` makes owned
+//! copies instead.
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::args::{IntoHostArg, TypedHostRef, TypedHostMut};
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::schema::ScriptHostSchema;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_engine::host_type::HostTypeSpec;
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::runtime::CallArgs::new().with_host_ref("value", &42_i64);
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let mut value = 42_i64;
+//! let _ = vela_engine::runtime::CallArgs::new().with_host_mut("value", &mut value);
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::runtime::CallArgs::new().with_host_handle("value", 42_i64);
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::runtime::CallArgs::new().with_fallback_adapter(&mut 42_i64);
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed(builder: vela_engine::runtime::RuntimeBuilder) {
+//!     let _ = builder.bind_extern_state("value", 42_i64);
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed<A: vela_engine::binding::BindingAuthority>(authority: &mut A) {
+//!     let _ = authority.push_host_ref(&mut vela_engine::runtime::CallArgs::new(), "value", &42_i64);
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! fn removed(context: &mut vela_engine::context::NativeCallContext<'_>) {
+//!     let _ = context.adapter();
+//! }
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::engine::Engine::builder().register_host_native_fn(
+//!     vela_engine::native::NativeFunctionDesc::new("removed", vela_def::FunctionId::new(1)),
+//!     |_, _| Ok(vela_vm::owned_value::OwnedValue::Unit));
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::engine::Engine::builder().register_scoped_host_fn(
+//!     vela_engine::native::NativeFunctionDesc::new("removed", vela_def::FunctionId::new(1)),
+//!     |_| Ok(Vec::new()), |_, _| Ok(vela_vm::owned_value::OwnedValue::Unit));
+//! ```
+//!
+//! ```compile_fail,E0599
+//! let _ = vela_engine::type_binding::TypeBinding::<i64>::host(
+//!     vela_reflect::registry::TypeDesc::new(vela_reflect::registry::TypeKey::new(vela_def::TypeId::new(1), "Removed")));
+//! ```
+
 #![allow(clippy::result_large_err)]
 
 extern crate self as vela_engine;
@@ -88,17 +156,11 @@ pub mod clock;
 mod compiler_options;
 mod compiler_registry;
 pub mod context;
-pub mod context_schema;
 pub mod engine;
 pub mod error;
-pub mod host_call;
-pub mod host_lease;
-pub mod host_type;
 pub mod interop;
 pub mod io;
 mod metadata;
-pub mod method;
-mod method_family;
 pub mod native;
 pub mod permission;
 pub mod prelude;

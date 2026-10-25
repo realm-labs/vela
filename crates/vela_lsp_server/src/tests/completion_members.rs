@@ -36,7 +36,7 @@ fn callable_return_schema_lifecycle_projects_refreshed_nested_facts_and_docs() {
         let text = if step["mode"] == "invalid" {
             "{".to_owned()
         } else {
-            json!({"formatVersion":3,"facts":step["schema"]}).to_string()
+            json!({"formatVersion":4,"facts":step["schema"]}).to_string()
         };
         std::fs::write(root.join("schema.json"), text).expect("schema");
         let _ = notify::<n::DidChangeWatchedFiles>(

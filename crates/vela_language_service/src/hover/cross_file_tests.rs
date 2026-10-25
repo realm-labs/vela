@@ -21,7 +21,7 @@ pub fn main(amount: i64) -> i64 {
     let rewards_text = r#"#[doc("Base reward amount")]
 pub const BASE_REWARD: i64 = 4
 #[doc("Current reward scale")]
-pub extern state reward_scale: i64;
+pub state reward_scale: i64 = 1;
 #[doc("Compute reward bonus")]
 pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
     return amount * scale
@@ -85,11 +85,11 @@ pub fn reward_bonus(amount: i64, scale: i64 = reward_scale) -> i64 {
         )
         .expect("hover should resolve imported global use");
 
-    assert_eq!(global_hover.kind(), HoverKind::ExternState);
+    assert_eq!(global_hover.kind(), HoverKind::VmState);
     assert_eq!(global_hover.label(), "game::rewards::reward_scale");
     assert_eq!(
         global_hover.detail(),
-        "i64 (extern state; host-owned; binding required; root immutable in Vela)"
+        "i64 (VM state; owned per Runtime; initialized once; preserved on exact-compatible reload)"
     );
     assert_eq!(global_hover.docs(), Some("Current reward scale"));
     assert_eq!(

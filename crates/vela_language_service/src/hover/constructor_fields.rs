@@ -126,13 +126,11 @@ pub(super) fn hover(
         }
         let schema = db.schema_db().facts();
         let owner = path.join("::");
-        let known = matches!(
-            schema.type_fact(&owner),
-            Some(TypeFact::Host { .. } | TypeFact::Record { .. })
-        ) || (matches!(
-            schema.type_fact(&parent.join("::")),
-            Some(TypeFact::Enum { .. })
-        ) && schema.variant_fact(&parent.join("::"), name).is_some());
+        let known = matches!(schema.type_fact(&owner), Some(TypeFact::Record { .. }))
+            || (matches!(
+                schema.type_fact(&parent.join("::")),
+                Some(TypeFact::Enum { .. })
+            ) && schema.variant_fact(&parent.join("::"), name).is_some());
         return Some(
             (known && schema.field_fact(&owner, target.text()).is_some())
                 .then(|| {

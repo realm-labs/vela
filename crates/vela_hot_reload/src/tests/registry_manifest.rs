@@ -190,7 +190,7 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     let mut old_registry = TypeRegistry::new();
     old_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
-            MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            MethodDesc::new(MethodId::new(9), "grant_exp")
                 .param(MethodParamDesc::new("amount").type_hint("i64"))
                 .return_type("i64")
                 .effects(MethodEffectSet::host_write())
@@ -201,7 +201,7 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     let mut renamed_registry = TypeRegistry::new();
     renamed_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
-            MethodDesc::new(HostMethodId::new(9), "award_exp")
+            MethodDesc::new(MethodId::new(9), "award_exp")
                 .param(MethodParamDesc::new("amount").type_hint("i64"))
                 .return_type("i64")
                 .effects(MethodEffectSet::host_write())
@@ -216,7 +216,7 @@ fn registry_method_abi_accepts_host_stable_id_renames() {
     let mut changed_id_registry = TypeRegistry::new();
     changed_id_registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(
-            MethodDesc::new(HostMethodId::new(10), "grant_exp")
+            MethodDesc::new(MethodId::new(10), "grant_exp")
                 .param(MethodParamDesc::new("amount").type_hint("i64"))
                 .return_type("i64")
                 .effects(MethodEffectSet::host_write())
@@ -236,7 +236,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
     let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
         .schema_hash(SchemaHash::new(0xfeed))
         .method(
-            MethodDesc::new(HostMethodId::new(9), "grant_exp")
+            MethodDesc::new(MethodId::new(9), "grant_exp")
                 .param(MethodParamDesc::new("amount").type_hint("i64"))
                 .return_type("i64")
                 .effects(MethodEffectSet::host_write())
@@ -275,7 +275,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
-                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                MethodDesc::new(MethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("i64")
                     .effects(MethodEffectSet::host_write())
@@ -314,7 +314,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
-                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                MethodDesc::new(MethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("i64")
                     .effects(MethodEffectSet::host_write())
@@ -353,7 +353,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
-                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                MethodDesc::new(MethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("f64"))
                     .return_type("i64")
                     .effects(MethodEffectSet::host_write())
@@ -392,7 +392,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
-                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                MethodDesc::new(MethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("i64")
                     .effects(MethodEffectSet::host_write())
@@ -431,7 +431,7 @@ fn abi_manifest_can_be_built_from_type_registry() {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .schema_hash(SchemaHash::new(0xfeed))
             .method(
-                MethodDesc::new(HostMethodId::new(9), "grant_exp")
+                MethodDesc::new(MethodId::new(9), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("f64")
                     .effects(MethodEffectSet::host_write())

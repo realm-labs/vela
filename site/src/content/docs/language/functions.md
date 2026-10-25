@@ -32,7 +32,7 @@ fn main() -> i64 {
 
 ## Host Boundary
 
-Host calls into script functions use the checked entry path. That means parameter guards, return guards, capability checks, and call-stack diagnostics are preserved. Scripts still cannot expose real Rust references; host mutation happens through registered host values and HostAccess.
+Host calls into script functions use the checked entry path. That means parameter guards, return guards, capability checks, and call-stack diagnostics are preserved. Independent native calls use owned values; transparent Rust write-through is removed.
 
 ## Hot Reload
 

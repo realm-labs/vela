@@ -1,8 +1,6 @@
-use super::support::host_mutation;
 use super::{
-    CacheSiteId, CallArgument, CompileTryFamily, CompileTryTarget, DynamicCallArgument,
-    FunctionBackend, HostTargetPlan, InstructionOffset, MirBackendError, MirBlockId, MirCall,
-    MirHostOperation, MirHostPath, MirHostPathSegment, MirImmediate, MirReflectionOperation,
+    CallArgument, CompileTryFamily, CompileTryTarget, DynamicCallArgument, FunctionBackend,
+    InstructionOffset, MirBackendError, MirBlockId, MirCall, MirImmediate, MirReflectionOperation,
     MirScriptParameterGuardMode, MirTerminatorKind, Register, ScriptCallMode, TryPropagateFamily,
     UnlinkedInstructionKind,
 };
@@ -141,128 +139,6 @@ impl<'a> FunctionBackend<'a> {
             },
         };
         Ok(kind)
-    }
-
-    pub(super) fn host(
-        &mut self,
-        dst: Option<Register>,
-        operation: &MirHostOperation,
-        span: vela_common::Span,
-    ) -> Result<(), MirBackendError> {
-        let kind = self.host_instruction(dst, operation, span)?;
-        self.emit(kind, span);
-        Ok(())
-    }
-
-    fn host_instruction(
-        &mut self,
-        dst: Option<Register>,
-        operation: &MirHostOperation,
-        span: vela_common::Span,
-    ) -> Result<UnlinkedInstructionKind, MirBackendError> {
-        if let MirHostOperation::ReleaseBorrowLease { root } = operation {
-            return Ok(UnlinkedInstructionKind::ReleaseBorrowLease {
-                dst: dst.ok_or(MirBackendError::MissingDestination)?,
-                src: self.operand(root, span)?,
-            });
-        }
-        if let MirHostOperation::TryReleaseBorrowLease { root } = operation {
-            return Ok(UnlinkedInstructionKind::TryReleaseBorrowLease {
-                dst: dst.ok_or(MirBackendError::MissingDestination)?,
-                src: self.operand(root, span)?,
-            });
-        }
-        let (root, path) = match operation {
-            MirHostOperation::ReleaseBorrowLease { .. }
-            | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
-            MirHostOperation::Read { root, path } | MirHostOperation::Remove { root, path } => {
-                (root, path)
-            }
-            MirHostOperation::Write { root, path, .. }
-            | MirHostOperation::Mutate { root, path, .. }
-            | MirHostOperation::Call { root, path, .. } => (root, path),
-        };
-        let root = self.operand(root, span)?;
-        let (target, dynamic_args) = self.host_target(path, span)?;
-        let kind = match operation {
-            MirHostOperation::ReleaseBorrowLease { .. }
-            | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
-            MirHostOperation::Read { .. } => UnlinkedInstructionKind::HostRead {
-                dst: dst.ok_or(MirBackendError::MissingDestination)?,
-                root,
-                target,
-                dynamic_args,
-                cache_site: CacheSiteId::new(0),
-            },
-            MirHostOperation::Write { value, .. } => UnlinkedInstructionKind::HostWrite {
-                root,
-                target,
-                dynamic_args,
-                src: self.operand(value, span)?,
-                cache_site: CacheSiteId::new(0),
-            },
-            MirHostOperation::Mutate {
-                operation, value, ..
-            } => UnlinkedInstructionKind::HostMutate {
-                root,
-                target,
-                dynamic_args,
-                op: host_mutation(*operation),
-                rhs: self.operand(value, span)?,
-                cache_site: CacheSiteId::new(0),
-            },
-            MirHostOperation::Remove { .. } => UnlinkedInstructionKind::HostRemove {
-                root,
-                target,
-                dynamic_args,
-                cache_site: CacheSiteId::new(0),
-            },
-            MirHostOperation::Call {
-                target: method,
-                arguments,
-                ..
-            } => UnlinkedInstructionKind::HostCall {
-                dst,
-                root,
-                target,
-                dynamic_args,
-                method: method.runtime,
-                args: self.operands(arguments, span)?,
-                cache_site: CacheSiteId::new(0),
-            },
-        };
-        Ok(kind)
-    }
-
-    fn host_target(
-        &mut self,
-        path: &MirHostPath,
-        span: vela_common::Span,
-    ) -> Result<(crate::HostTargetPlanId, Vec<Register>), MirBackendError> {
-        let mut plan =
-            HostTargetPlan::with_part_capacity(path.root_type.runtime, path.segments.len());
-        let mut dynamic_args = Vec::new();
-        for segment in &path.segments {
-            match segment {
-                MirHostPathSegment::Field(field) => plan = plan.field(field.runtime),
-                MirHostPathSegment::VariantField(field) => plan = plan.variant_field(field.runtime),
-                MirHostPathSegment::ConstantIndex { value, .. } => plan = plan.const_index(*value),
-                MirHostPathSegment::ConstantKey { value, .. } => {
-                    plan = plan.const_key(value.clone())
-                }
-                MirHostPathSegment::Index { value, .. } | MirHostPathSegment::Key { value, .. } => {
-                    let index = u8::try_from(dynamic_args.len())
-                        .map_err(|_| MirBackendError::DynamicHostArgumentOverflow)?;
-                    dynamic_args.push(self.operand(value, span)?);
-                    plan = if matches!(segment, MirHostPathSegment::Index { .. }) {
-                        plan.dyn_index(index)
-                    } else {
-                        plan.dyn_key(index)
-                    };
-                }
-            }
-        }
-        Ok((self.code.intern_host_target(plan), dynamic_args))
     }
 
     pub(super) fn reflect(

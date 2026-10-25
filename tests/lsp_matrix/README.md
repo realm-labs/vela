@@ -7,7 +7,21 @@ workbench routes, independent expected outcomes, fixture identities and minimum
 evidence levels. Fixture IDs are reserved here; B01 and feature batches implement
 the shared fixtures and action drivers. A registered route is not executed proof.
 
-## Checkpoint B Consumer Changes
+## Checkpoint D Consumer Changes
+
+Tooling now uses strict schema **4** and retained registered Value facts. Host,
+view, scoped-resource, constructor and dependent extern-state projections are
+removed. Ordinary VM state, source structs/traits, collection methods,
+reflection and native LSP worker scheduling remain. Removed-feature rows are
+rejection/recovery contracts, not supported query successes.
+
+[Checkpoint D evidence](reviews/checkpoint-d-boundary.md) records exact current
+counts, the two parent-owned highlighting failures, seven parent Node golden
+failures, and the completed native LSP test gate. No fresh installed/native
+captures were taken; old hashes for changed fixtures are historical and have
+not been rewritten to imply current acceptance. Unrelated evidence stays intact.
+
+## Checkpoint B Consumer Changes (Historical)
 
 Service hotfixing and Provider discovery/selection are removed capabilities,
 not language-service or LSP protocol providers. The five `completion-service-*`

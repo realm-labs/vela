@@ -1,6 +1,5 @@
 mod contracts;
 mod descriptors;
-mod host;
 mod lambdas;
 mod placements;
 mod try_targets;
@@ -11,7 +10,7 @@ use vela_def::{FunctionId, MethodId, TypeId};
 
 use crate::{
     CompileFunctionClass, CompileFunctionDescriptor, CompileMethodClass, CompileMethodDescriptor,
-    CompileTypeDescriptor, HostTypeTarget, MethodExecutableTarget, MirBuildError, MirSourceOrigin,
+    CompileTypeDescriptor, MethodExecutableTarget, MirBuildError, MirSourceOrigin,
 };
 
 use super::{CompileFunctionTarget, CompileTargetSnapshot};
@@ -155,21 +154,11 @@ impl<'a> SnapshotValidator<'a> {
                     "{context} targets script method {target:?}, but its descriptor uses {executable:?}"
                 ),
             )),
-            CompileMethodClass::Host { .. }
-            | CompileMethodClass::Value
+            CompileMethodClass::Value
             | CompileMethodClass::Registry => Err(self.error(
                 origin,
                 format!("{context} requires script method {target:?}"),
             )),
         }
-    }
-
-    fn require_host_type(
-        &self,
-        target: HostTypeTarget,
-        origin: MirSourceOrigin,
-        context: &str,
-    ) -> Result<&'a CompileTypeDescriptor, MirBuildError> {
-        host::require_host_type(self, target, origin, context)
     }
 }

@@ -4,9 +4,7 @@ use std::error::Error;
 use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
-pub mod gameplay;
 pub mod hot_reload_demo;
-pub mod interop_round_trip_model;
 
 pub fn example_dir(example: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

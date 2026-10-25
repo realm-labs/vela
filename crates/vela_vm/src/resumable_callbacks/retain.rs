@@ -1,35 +1,19 @@
-use crate::host_collection_callback::HostRetainWriteback;
 use crate::value_key::ValueKey;
 use crate::{
     ExecutionBudget, HeapExecution, StandardMethodReceiver, Value, VmError, VmErrorKind, VmResult,
 };
-
-pub(crate) enum HostCollectionRetain {
-    Sequence {
-        writeback: HostRetainWriteback,
-        expected_len: usize,
-        keep: Vec<bool>,
-    },
-    Keys {
-        writeback: HostRetainWriteback,
-        expected: Vec<Value>,
-        keep: Vec<Value>,
-    },
-}
 
 pub(super) struct SequenceCompletion {
     pub(super) receiver: StandardMethodReceiver,
     pub(super) source: Value,
     pub(super) values: Vec<Value>,
     pub(super) retain: Vec<bool>,
-    pub(super) writeback: Option<HostRetainWriteback>,
 }
 
 pub(super) struct MapCompletion {
     pub(super) source: Value,
     pub(super) entries: Vec<(Value, Value)>,
     pub(super) retain: Vec<bool>,
-    pub(super) writeback: Option<HostRetainWriteback>,
 }
 
 pub(super) fn complete_sequence(
@@ -37,42 +21,18 @@ pub(super) fn complete_sequence(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
-) -> VmResult<Option<HostCollectionRetain>> {
+) -> VmResult<()> {
     let SequenceCompletion {
         receiver,
         source,
         values,
         retain,
-        writeback,
     } = completion;
     if values.len() != retain.len() {
         return incomplete();
     }
-    if let Some(writeback) = writeback {
-        return Ok(Some(match receiver {
-            StandardMethodReceiver::Array => HostCollectionRetain::Sequence {
-                writeback,
-                expected_len: values.len(),
-                keep: retain,
-            },
-            StandardMethodReceiver::Set => {
-                let keep = values
-                    .iter()
-                    .zip(&retain)
-                    .filter(|(_, keep)| **keep)
-                    .map(|(value, _)| *value)
-                    .collect();
-                HostCollectionRetain::Keys {
-                    writeback,
-                    expected: values,
-                    keep,
-                }
-            }
-            _ => return incomplete(),
-        }));
-    }
     apply_owned_sequence(receiver, source, &values, &retain, heap, budget, operation)?;
-    Ok(None)
+    Ok(())
 }
 
 pub(super) fn complete_map(
@@ -80,32 +40,17 @@ pub(super) fn complete_map(
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     operation: &'static str,
-) -> VmResult<Option<HostCollectionRetain>> {
+) -> VmResult<()> {
     let MapCompletion {
         source,
         entries,
         retain,
-        writeback,
     } = completion;
     if entries.len() != retain.len() {
         return incomplete();
     }
-    if let Some(writeback) = writeback {
-        let expected = entries.iter().map(|(key, _)| *key).collect();
-        let keep = entries
-            .iter()
-            .zip(&retain)
-            .filter(|(_, keep)| **keep)
-            .map(|((key, _), _)| *key)
-            .collect();
-        return Ok(Some(HostCollectionRetain::Keys {
-            writeback,
-            expected,
-            keep,
-        }));
-    }
     apply_owned_map(source, &entries, &retain, heap, budget, operation)?;
-    Ok(None)
+    Ok(())
 }
 
 fn apply_owned_sequence(

@@ -23,24 +23,12 @@ fn state_abi_preserves_exact_contracts_across_reorder_and_reports_initializer_ch
 }
 
 #[test]
-fn state_abi_rejects_storage_and_exact_type_contract_changes() {
+fn state_abi_rejects_exact_type_contract_changes() {
     let initial = compile_initial(
         SourceId::new(203),
         "state value: i64 = 1; fn main() { return value; }",
     )
     .expect("initial state generation");
-
-    let storage_error = compile_update(
-        &initial,
-        SourceId::new(204),
-        "extern state value: Player; fn main() { return value; }",
-    )
-    .expect_err("storage change must reject");
-    assert!(matches!(
-        storage_error.kind,
-        HotReloadErrorKind::ChangedStateStorage { ref state, .. } if state == "main::value"
-    ));
-    assert_eq!(storage_error.code(), "reload.state.storage_changed");
 
     let type_error = compile_update(
         &initial,

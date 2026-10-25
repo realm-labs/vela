@@ -1,13 +1,12 @@
 use vela_reflect::access::{FunctionEffectSet, MethodEffectSet};
 use vela_reflect::modules::FunctionDesc;
-use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeKind, TypeRegistry};
+use vela_reflect::registry::{MethodDesc, TraitMethodDesc, TypeRegistry};
 
 use super::{
     CallableParameterFact, CallableParameterRequirementFact, CallableSignatureFact,
     RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryFieldTargetFact,
-    RegistryFunctionAccessFact, RegistryIndexCapabilityFact, RegistryMethodAccessFact,
-    RegistryModuleFact, RegistryTypeBindingFact, RegistryTypeTargetFact, registry_hint_fact,
-    type_desc_fact,
+    RegistryFunctionAccessFact, RegistryMethodAccessFact, RegistryModuleFact,
+    RegistryTypeBindingFact, RegistryTypeTargetFact, registry_hint_fact, type_desc_fact,
 };
 use crate::type_fact::TypeFact;
 
@@ -25,30 +24,19 @@ impl RegistryFacts {
             facts.types.insert(desc.key.name.clone(), type_fact.clone());
             facts.type_targets.insert(
                 desc.key.name.clone(),
-                RegistryTypeTargetFact::new(&desc.key.name, desc.key.id, desc.host_type_id),
+                RegistryTypeTargetFact::new(&desc.key.name, desc.key.id),
             );
             if let Some(binding) = registry.type_binding_for_key(&desc.key) {
                 facts.insert_type_binding(
                     &desc.key.name,
                     RegistryTypeBindingFact {
                         id: binding.id,
-                        storage: binding.storage,
-                        capabilities: binding.capabilities,
-                        collection_views: binding.collection_views,
-                        constructor_ids: binding.constructor_ids.clone(),
-                        host_constructors: binding.host_constructors.clone(),
                         abi_fingerprint: binding.abi_fingerprint,
                     },
                 );
             }
             if let Some(docs) = &desc.docs {
                 facts.type_docs.insert(desc.key.name.clone(), docs.clone());
-            }
-            if let Some(capability) = &desc.index_capability {
-                facts.index_capabilities.insert(
-                    desc.key.name.clone(),
-                    RegistryIndexCapabilityFact::new(&desc.key.name, capability, registry),
-                );
             }
 
             for (declaration_order, field) in desc.fields.iter().enumerate() {
@@ -72,7 +60,6 @@ impl RegistryFacts {
                         &desc.key.name,
                         &field.name,
                         field.id,
-                        matches!(desc.kind, TypeKind::Host).then_some(field.id),
                         false,
                         access,
                     )
@@ -97,12 +84,7 @@ impl RegistryFacts {
                     .insert(key.clone(), method_effect_fact(&method.effects));
                 facts.method_access.insert(
                     key,
-                    RegistryMethodAccessFact::new(
-                        &desc.key.name,
-                        &method.name,
-                        method.receiver,
-                        &method.access,
-                    ),
+                    RegistryMethodAccessFact::new(&desc.key.name, &method.name, &method.access),
                 );
             }
 
@@ -150,7 +132,6 @@ impl RegistryFacts {
                             owner,
                             &field.name,
                             field.id,
-                            matches!(desc.kind, TypeKind::Host).then_some(field.id),
                             true,
                             access,
                         )

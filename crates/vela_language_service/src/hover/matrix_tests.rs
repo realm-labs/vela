@@ -84,6 +84,11 @@ pub(super) fn verify_queries(
         }
         let file = case["file"].as_str().expect("file");
         let document = fixture.document(file).expect("current query document");
+        if case["removedBoundary"] == true {
+            crate::matrix_fixture::assert_removed_borrowed_source(&document.text);
+            positions += 1;
+            continue;
+        }
         assert_recovery(db, &layout.uri(file), &case);
         for offset in 0..if case["result"].is_null() { 1 } else { 2 } {
             positions += 1;

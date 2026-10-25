@@ -33,7 +33,7 @@ pub(super) fn classification(
     schema_variant_exists(schema, path).then(|| {
         SemanticTokenClassification::new(
             SemanticTokenType::EnumMember,
-            SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA),
+            SemanticTokenModifiers::SCHEMA,
         )
     })
 }

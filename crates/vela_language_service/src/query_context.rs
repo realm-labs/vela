@@ -920,10 +920,10 @@ mod tests {
         let project = assemble_project_sources(&config, &files, &workspace.snapshot());
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_type("Player", TypeFact::record("Player"));
         schema.insert_function(
             "host::spawn",
-            TypeFact::function(vec![TypeFact::STRING], TypeFact::host("Player")),
+            TypeFact::function(vec![TypeFact::STRING], TypeFact::record("Player")),
         );
         schema.insert_type(
             "QuestProgress",
@@ -1043,7 +1043,7 @@ mod tests {
         let project = assemble_project_sources(&config, &files, &workspace.snapshot());
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_type("Enemy", TypeFact::host("Enemy"));
+        schema.insert_type("Enemy", TypeFact::record("Enemy"));
         schema.insert_method(
             "Enemy",
             "preview",
@@ -1148,10 +1148,10 @@ mod tests {
         let project = assemble_project_sources(&config, &files, &workspace.snapshot());
         let mut databases = LanguageServiceDatabases::new();
         let mut schema = vela_analysis::registry::RegistryFacts::default();
-        schema.insert_type("Player", TypeFact::host("Player"));
+        schema.insert_type("Player", TypeFact::record("Player"));
         schema.insert_function(
             "current_player",
-            TypeFact::function(Vec::new(), TypeFact::host("Player")),
+            TypeFact::function(Vec::new(), TypeFact::record("Player")),
         );
         schema.insert_method(
             "Player",

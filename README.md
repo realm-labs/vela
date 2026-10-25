@@ -34,9 +34,7 @@ and editor integrations, a browser playground, and measured interpreter baseline
 The active work is the removal-only [runtime simplification pass](docs/runtime-simplification-plan.md).
 Checkpoint B removes Rust/Vela Service hotfixing and Provider discovery/selection;
 ordinary packages, traits and script reload remain. Checkpoint C removes script
-async/tasks and the CLI async mode. Borrowed-host examples and transparent paths
-remain checkpoint D removal work; their presence
-does not establish the target boundary. No replacement features are added here.
+async/tasks and the CLI async mode. Checkpoint D removes caller-borrowed Rust roots, views, scoped resources, transparent host paths, dependent extern-state bindings and Host constructors/methods. Existing independent synchronous native/value calls and VM-owned state remain. No replacement opaque, conversion or re-entry APIs are added.
 
 See [`docs/progress.md`](docs/progress.md) for the active milestone state.
 
@@ -44,7 +42,7 @@ See [`docs/progress.md`](docs/progress.md) for the active milestone state.
 
 Vela supports functions, modules, structs, enums, traits, inherent methods,
 trait impl methods, closures, match, arrays, maps, sets, Option/Result-style
-helpers, reflection, and host-boundary method calls.
+helpers, reflection, and independent synchronous native value calls.
 
 ```vela
 struct DamageResult {
@@ -89,12 +87,12 @@ scheduling and protocol cancellation are independent tooling concerns.
 - `crates/vela_bytecode`: bytecode compiler, program metadata, and verification.
 - `crates/vela_vm`: interpreter, values, managed heap, budgets, GC roots, and
   runtime execution primitives.
-- `crates/vela_host`: existing host-boundary support, being reduced by checkpoint D.
+- `crates/vela_host`: owned native-call value support.
 - `crates/vela_reflect`: type registry, reflection records, permissions, and
   controlled read/write/call helpers.
 - `crates/vela_engine`: embedding API, `EngineBuilder`, `Runtime`, call args,
-  native functions, host type registration, VM/extern state, and hot reload integration.
-- `crates/vela_macros`: derive and helper macros for host/native bindings.
+  native/value registration, VM-owned state, and script hot reload integration.
+- `crates/vela_macros`: derive and helper macros for owned value/native bindings.
 - `crates/vela_hot_reload`: program versions, ABI/schema checks, staged updates,
   and reload reports.
 - `crates/vela_cli`: final CLI binary for direct script execution.
@@ -129,8 +127,8 @@ the full workspace command before a verified checkpoint.
 Run standalone examples:
 
 ```bash
-cargo run --manifest-path examples/Cargo.toml --bin level_up
-cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
+cargo run --manifest-path examples/Cargo.toml --bin native_function
+cargo run --manifest-path examples/Cargo.toml --bin modules
 cargo run --manifest-path examples/Cargo.toml --bin script_state
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
 cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
@@ -143,7 +141,7 @@ Run the CLI on a simple script:
 cargo run -p vela_cli -- examples/src/bin/io_stdlib/main.vela
 ```
 
-Some host-boundary examples need their Rust embedding setup and should be run
+Native/value embedding examples need their Rust registration setup and should be run
 through `vela_examples`, not directly through `vela_cli`.
 
 ## Browser Docs And Playground

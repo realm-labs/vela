@@ -13,7 +13,7 @@ state.
 ## Value Helpers
 
 Most day-to-day APIs are methods on values. They use the same dispatch path as
-script and host methods, but their implementation is native and registered with
+ordinary script methods, but their implementation is native and registered with
 stable method IDs.
 
 ```vela

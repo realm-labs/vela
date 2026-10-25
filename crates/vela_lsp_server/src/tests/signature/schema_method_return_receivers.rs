@@ -141,16 +141,16 @@ fn lsp_signature_help_resolves_schema_trait_method_on_schema_method_return() {
 
 fn schema_with_inventory_method_return() -> &'static str {
     r#"{
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 },
                 {
                     "name": "Inventory",
-                    "fact": { "kind": "host", "name": "Inventory" }
+                    "fact": { "kind": "record", "name": "Inventory" }
                 }
             ],
             "methods": [
@@ -160,7 +160,7 @@ fn schema_with_inventory_method_return() -> &'static str {
                     "fact": {
                         "kind": "function",
                         "params": [],
-                        "returns": { "kind": "host", "name": "Inventory" }
+                        "returns": { "kind": "record", "name": "Inventory" }
                     }
                 },
                 {
@@ -182,12 +182,12 @@ fn schema_with_inventory_method_return() -> &'static str {
 
 fn schema_with_rewardable_method_return() -> &'static str {
     r#"{
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "traits": [

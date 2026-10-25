@@ -14,7 +14,6 @@ pub(crate) fn value_to_reflect(
     operation: &'static str,
 ) -> VmResult<reflect::value::ReflectValue> {
     match value {
-        OwnedValue::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(*host_ref)),
         OwnedValue::Tuple(_) => Err(type_error(operation)),
         OwnedValue::Array(values) => values
             .iter()
@@ -68,7 +67,7 @@ pub(crate) fn value_to_reflect(
         }
         OwnedValue::Closure(_) => Ok(reflect::value::ReflectValue::Closure),
         OwnedValue::Range(_) => Ok(reflect::value::ReflectValue::Range),
-        OwnedValue::PathProxy(_) | OwnedValue::Iterator(_) => Err(type_error(operation)),
+        OwnedValue::Iterator(_) => Err(type_error(operation)),
         OwnedValue::Unit | OwnedValue::Bool(_) | OwnedValue::Scalar(_) | OwnedValue::String(_) => {
             Ok(reflect::value::ReflectValue::Host(owned_to_host(
                 value, operation,
@@ -83,7 +82,6 @@ pub(crate) fn value_to_reflect(
 pub(crate) fn runtime_value_to_reflect(
     value: &Value,
     heap: &HeapExecution<'_>,
-    host: Option<&crate::HostExecution<'_>>,
     operation: &'static str,
 ) -> VmResult<reflect::value::ReflectValue> {
     if let Some(value) = value.as_scalar() {
@@ -94,10 +92,6 @@ pub(crate) fn runtime_value_to_reflect(
         Value::Unit => Ok(reflect::value::ReflectValue::Host(HostValue::Unit)),
         Value::Bool(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Bool(*value))),
         Value::Char(value) => Ok(reflect::value::ReflectValue::Host(HostValue::Char(*value))),
-        Value::HostRef(host_ref) => Ok(reflect::value::ReflectValue::HostRef(
-            host.ok_or_else(|| type_error(operation))?
-                .resolve_host_ref(*host_ref)?,
-        )),
         Value::HeapRef(reference) => match heap.heap.get(*reference) {
             Some(HeapValue::Range(_)) => Ok(reflect::value::ReflectValue::Range),
             Some(HeapValue::String(value)) => Ok(reflect::value::ReflectValue::Host(
@@ -109,7 +103,7 @@ pub(crate) fn runtime_value_to_reflect(
             Some(HeapValue::Tuple(_)) => Err(type_error(operation)),
             Some(HeapValue::Array(values)) => values
                 .iter()
-                .map(|value| runtime_value_to_reflect(value, heap, host, operation))
+                .map(|value| runtime_value_to_reflect(value, heap, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Array),
             Some(HeapValue::Map(values)) => {
@@ -117,8 +111,8 @@ pub(crate) fn runtime_value_to_reflect(
                     .entries()
                     .map(|entry| {
                         Ok(ReflectMapEntry::new(
-                            runtime_value_to_reflect(&entry.key, heap, host, operation)?,
-                            runtime_value_to_reflect(&entry.value, heap, host, operation)?,
+                            runtime_value_to_reflect(&entry.key, heap, operation)?,
+                            runtime_value_to_reflect(&entry.value, heap, operation)?,
                         ))
                     })
                     .collect::<VmResult<Vec<_>>>()?;
@@ -126,7 +120,7 @@ pub(crate) fn runtime_value_to_reflect(
             }
             Some(HeapValue::Set(values)) => values
                 .values()
-                .map(|value| runtime_value_to_reflect(value, heap, host, operation))
+                .map(|value| runtime_value_to_reflect(value, heap, operation))
                 .collect::<VmResult<Vec<_>>>()
                 .map(reflect::value::ReflectValue::Set),
             Some(HeapValue::Record { fields, .. }) => {
@@ -136,7 +130,7 @@ pub(crate) fn runtime_value_to_reflect(
                     .map(|(key, value)| {
                         Ok((
                             key.to_owned(),
-                            runtime_value_to_reflect(value, heap, host, operation)?,
+                            runtime_value_to_reflect(value, heap, operation)?,
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;
@@ -153,7 +147,7 @@ pub(crate) fn runtime_value_to_reflect(
                     .map(|(key, value)| {
                         Ok((
                             key.to_owned(),
-                            runtime_value_to_reflect(value, heap, host, operation)?,
+                            runtime_value_to_reflect(value, heap, operation)?,
                         ))
                     })
                     .collect::<VmResult<BTreeMap<_, _>>>()?;
@@ -164,9 +158,7 @@ pub(crate) fn runtime_value_to_reflect(
                 })
             }
             Some(HeapValue::Closure(_)) => Ok(reflect::value::ReflectValue::Closure),
-            Some(HeapValue::Iterator(_) | HeapValue::PathProxy(_)) | None => {
-                Err(type_error(operation))
-            }
+            Some(HeapValue::Iterator(_)) | None => Err(type_error(operation)),
         },
         _ => unreachable!("scalar values return before reflection conversion match"),
     }
@@ -175,7 +167,6 @@ pub(crate) fn runtime_value_to_reflect(
 pub(crate) fn value_from_reflect(value: reflect::value::ReflectValue) -> VmResult<OwnedValue> {
     match value {
         reflect::value::ReflectValue::Host(value) => Ok(host_to_owned(value)),
-        reflect::value::ReflectValue::HostRef(host_ref) => Ok(OwnedValue::HostRef(host_ref)),
         reflect::value::ReflectValue::Closure => Err(type_error("reflect closure conversion")),
         reflect::value::ReflectValue::Range => Err(type_error("reflect range conversion")),
         reflect::value::ReflectValue::Array(values) => values
@@ -243,7 +234,6 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         OwnedValue::Scalar(value) => Ok(HostValue::Scalar(*value)),
         OwnedValue::String(value) => Ok(HostValue::String(value.clone())),
         OwnedValue::Bytes(value) => Ok(HostValue::Bytes(value.clone())),
-        OwnedValue::HostRef(value) => Ok(HostValue::HostRef(*value)),
         OwnedValue::Tuple(_)
         | OwnedValue::Array(_)
         | OwnedValue::Map(_)
@@ -252,10 +242,9 @@ fn owned_to_host(value: &OwnedValue, operation: &'static str) -> VmResult<HostVa
         | OwnedValue::Enum { .. } => Ok(HostValue::Detached(Box::new(
             crate::host_call_values::owned_to_host_call_value(value)?,
         ))),
-        OwnedValue::Closure(_)
-        | OwnedValue::Range(_)
-        | OwnedValue::PathProxy(_)
-        | OwnedValue::Iterator(_) => Err(type_error(operation)),
+        OwnedValue::Closure(_) | OwnedValue::Range(_) | OwnedValue::Iterator(_) => {
+            Err(type_error(operation))
+        }
     }
 }
 
@@ -268,7 +257,6 @@ fn host_to_owned(value: HostValue) -> OwnedValue {
         HostValue::String(value) => OwnedValue::String(value),
         HostValue::Bytes(value) => OwnedValue::Bytes(value),
         HostValue::Detached(value) => crate::host_call_values::host_call_to_owned_value(*value),
-        HostValue::HostRef(value) => OwnedValue::HostRef(value),
     }
 }
 

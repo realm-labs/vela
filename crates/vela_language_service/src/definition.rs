@@ -257,11 +257,19 @@ impl LanguageServiceDatabases {
         }
 
         if let Some(fact) = self.member_type_fact_for_target(&target) {
-            return self.type_definition_for_fact(&fact);
+            return if target.is_schema_symbol() {
+                self.type_definition_for_schema_fact(&fact)
+            } else {
+                self.type_definition_for_fact(&fact)
+            };
         }
 
         if let Some(definition) = self.member_call_return_type_definition(&query, &target) {
             return definition;
+        }
+
+        if let Some(definition) = self.call_return_type_definition(&query, &target) {
+            return Some(definition);
         }
 
         if let Some(fact) = query.type_fact_for_range(self, target.range())
@@ -411,7 +419,18 @@ impl LanguageServiceDatabases {
                         | CallableOrigin::SourceVariant
                 )
             })
-            .find_map(|callable| self.type_definition_for_fact(callable.returns()))
+            .find_map(|callable| {
+                if matches!(
+                    callable.origin(),
+                    CallableOrigin::Schema
+                        | CallableOrigin::SchemaMethod
+                        | CallableOrigin::SchemaVariant
+                ) {
+                    self.type_definition_for_schema_fact(callable.returns())
+                } else {
+                    self.type_definition_for_fact(callable.returns())
+                }
+            })
     }
 
     fn member_call_return_type_definition(
@@ -455,11 +474,28 @@ impl LanguageServiceDatabases {
             })();
             return Some(definition);
         }
-        Some(
-            callables
-                .iter()
-                .find_map(|callable| self.type_definition_for_fact(callable.returns())),
-        )
+        Some(callables.iter().find_map(|callable| {
+            if matches!(
+                callable.origin(),
+                CallableOrigin::Schema
+                    | CallableOrigin::SchemaMethod
+                    | CallableOrigin::SchemaVariant
+            ) {
+                self.type_definition_for_schema_fact(callable.returns())
+            } else {
+                self.type_definition_for_fact(callable.returns())
+            }
+        }))
+    }
+
+    fn type_definition_for_schema_fact(&self, fact: &TypeFact) -> Option<Definition> {
+        match fact {
+            TypeFact::Record { name } | TypeFact::Enum { name, .. } => {
+                self.schema_type_definition_for_name(name)
+            }
+            TypeFact::Trait { name } => self.schema_trait_definition_for_name(name),
+            _ => self.type_definition_for_fact(fact),
+        }
     }
 
     fn type_definition_for_fact(&self, fact: &TypeFact) -> Option<Definition> {
@@ -470,7 +506,6 @@ impl LanguageServiceDatabases {
             TypeFact::Enum { name, .. } => self
                 .source_type_definition_for_name(name, DeclarationKind::Enum)
                 .or_else(|| self.schema_type_definition_for_name(name)),
-            TypeFact::Host { name } => self.schema_type_definition_for_name(name),
             TypeFact::Trait { name } => self
                 .source_type_definition_for_name(name, DeclarationKind::Trait)
                 .or_else(|| self.schema_trait_definition_for_name(name)),
@@ -483,16 +518,9 @@ impl LanguageServiceDatabases {
             | TypeFact::Primitive(_)
             | TypeFact::Range
             | TypeFact::Array { .. }
-            | TypeFact::ArrayView { .. }
-            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
-            | TypeFact::MapView { .. }
-            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
-            | TypeFact::SetView { .. }
-            | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
-            | TypeFact::ScopedIterator { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
             | TypeFact::OptionNone
@@ -659,10 +687,9 @@ fn name_range_in_text(text: &str, range: TextRange, name: &str) -> Option<TextRa
 
 fn fact_owner_name(fact: &TypeFact) -> Option<String> {
     match fact {
-        TypeFact::Host { name }
-        | TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Trait { name } => Some(name.clone()),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Trait { name } => {
+            Some(name.clone())
+        }
         _ => None,
     }
 }

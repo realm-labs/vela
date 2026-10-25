@@ -20,7 +20,7 @@ fn completion_uses_short_type_labels_with_owner_details() {
     let mut schema = RegistryFacts::default();
     schema.insert_type(
         "game::schema::Region",
-        TypeFact::host("game::schema::Region"),
+        TypeFact::record("game::schema::Region"),
     );
     databases.set_schema_facts(schema);
     databases.update(&project);

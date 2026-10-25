@@ -1,6 +1,3 @@
-use vela_host::error::HostResult;
-use vela_host::object::ScriptHostObject;
-use vela_host::path::HostRef;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;
 
@@ -10,41 +7,6 @@ impl<I> RuntimeImpl<I>
 where
     I: RuntimeImageStorage,
 {
-    pub fn replace_extern_state<T>(
-        &mut self,
-        name: impl Into<String>,
-        value: T,
-    ) -> HostResult<HostRef>
-    where
-        T: ScriptHostObject + Send + Sync + 'static,
-    {
-        let name = name.into();
-        let (state, expected) =
-            super::extern_state_bindings::extern_state_schema(&self.image, &name)?;
-        self.state.extern_states.bind_host(state, expected, value)
-    }
-
-    /// Stages a host object for an `extern state` declaration in a pending
-    /// hot-reload generation. The binding is validated and published only if
-    /// that generation is accepted at a Runtime safe point.
-    pub fn stage_extern_state<T>(
-        &mut self,
-        name: impl Into<String>,
-        value: T,
-    ) -> HostResult<HostRef>
-    where
-        T: ScriptHostObject + Send + Sync + 'static,
-    {
-        self.state.extern_states.stage_host(name, value)
-    }
-
-    #[must_use]
-    pub fn extern_state_ref(&self, name: &str) -> Option<HostRef> {
-        let (state, _) =
-            super::extern_state_bindings::extern_state_schema(&self.image, name).ok()?;
-        self.state.extern_states.host_ref(state)
-    }
-
     pub fn set_state(
         &mut self,
         name: impl Into<String>,
@@ -94,7 +56,6 @@ where
         let state = self
             .image
             .state_by_name(&name)
-            .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
             .ok_or_else(|| VmError::new(VmErrorKind::MissingVmState { name: name.clone() }))?;
         let value = vela_vm::canonicalize_owned_value_contract(
             value,
@@ -110,9 +71,6 @@ where
     }
 
     fn vm_state_id(&self, name: &str) -> Option<vela_def::StateId> {
-        self.image
-            .state_by_name(name)
-            .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
-            .map(|state| state.id)
+        self.image.state_by_name(name).map(|state| state.id)
     }
 }

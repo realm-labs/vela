@@ -14,7 +14,7 @@
         {
           "name": "HostBox",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostBox"
           },
           "sourceSpan": {
@@ -25,7 +25,7 @@
         {
           "name": "HostCell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -38,7 +38,7 @@
         {
           "name": "item",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {

@@ -30,26 +30,22 @@ pub use artifact::{
     ProfileScalarUnitLayout, ProfileSelectedUnitLayout,
 };
 pub use binding_schema::{
-    RUST_BINDING_SCHEMA_VERSION, RustBindingBorrowedReturnOrigin, RustBindingBoundaryMode,
-    RustBindingCallable, RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum,
-    RustBindingErrorMode, RustBindingField, RustBindingMethodOwner, RustBindingModule,
-    RustBindingPackage, RustBindingParameter, RustBindingParameterDefault, RustBindingRecord,
-    RustBindingReturn, RustBindingReturnMode, RustBindingSchema, RustBindingScopedHostAccess,
-    RustBindingType, RustBindingTypeDefinition, RustBindingVariant, RustBindingVariantFields,
+    RUST_BINDING_SCHEMA_VERSION, RustBindingBoundaryMode, RustBindingCallable,
+    RustBindingCallableIdentity, RustBindingEffectSet, RustBindingEnum, RustBindingErrorMode,
+    RustBindingField, RustBindingMethodOwner, RustBindingModule, RustBindingPackage,
+    RustBindingParameter, RustBindingParameterDefault, RustBindingRecord, RustBindingReturn,
+    RustBindingReturnMode, RustBindingSchema, RustBindingType, RustBindingTypeDefinition,
+    RustBindingVariant, RustBindingVariantFields,
 };
 pub use budget_metadata::MirBudgetCharge;
 pub(crate) use cache_policy::{CacheSiteInstruction, CacheSiteStorage};
 
 use std::collections::BTreeMap;
 
-use vela_common::{
-    CapabilitySet, HostMethodId, HostTypeId, PrimitiveTag, ShapeId, Span, StateSlot,
-};
+use vela_common::{CapabilitySet, PrimitiveTag, ShapeId, Span, StateSlot};
 use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::HirLocalId;
 use vela_hir::module_graph::ModuleGraph;
-use vela_host::resolved::HostMutationOp;
-use vela_host::target::HostTargetPlan;
 
 pub use cache_site::{CacheSiteDesc, CacheSiteId, CacheSiteKind, CacheSiteLayout};
 pub use linked::{
@@ -401,7 +397,6 @@ pub struct UnlinkedCodeObject {
     pub frame: FrameDebugInfo,
     pub cache_sites: CacheSiteLayout,
     pub constants: Vec<Constant>,
-    pub host_targets: Vec<HostTargetPlan>,
     pub param_guards: Vec<UnlinkedParameterTypeGuard>,
     pub return_guard: Option<UnlinkedTypeGuard>,
     pub nested_functions: Vec<UnlinkedCodeObject>,
@@ -435,7 +430,6 @@ impl UnlinkedCodeObject {
             frame: FrameDebugInfo::default(),
             cache_sites: CacheSiteLayout::default(),
             constants: Vec::new(),
-            host_targets: Vec::new(),
             param_guards: Vec::new(),
             return_guard: None,
             nested_functions: Vec::new(),
@@ -478,24 +472,6 @@ impl UnlinkedCodeObject {
         let id = ConstantId(self.constants.len());
         self.constants.push(constant);
         id
-    }
-
-    pub fn intern_host_target(&mut self, target: HostTargetPlan) -> HostTargetPlanId {
-        if let Some(index) = self
-            .host_targets
-            .iter()
-            .position(|existing| existing == &target)
-        {
-            return HostTargetPlanId::new(index);
-        }
-        let id = HostTargetPlanId::new(self.host_targets.len());
-        self.host_targets.push(target);
-        id
-    }
-
-    #[must_use]
-    pub fn host_target(&self, id: HostTargetPlanId) -> Option<&HostTargetPlan> {
-        self.host_targets.get(id.index())
     }
 
     pub fn push_param_guard(&mut self, parameter: u16, guard: UnlinkedTypeGuard) {
@@ -703,31 +679,6 @@ pub struct FunctionIndex(pub usize);
     feature = "artifact-codec",
     derive(serde::Serialize, serde::Deserialize)
 )]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-#[repr(transparent)]
-pub struct HostTargetPlanId(u32);
-
-impl HostTargetPlanId {
-    #[must_use]
-    pub fn new(value: usize) -> Self {
-        Self(u32::try_from(value).expect("host target plan count exceeds u32::MAX"))
-    }
-
-    #[must_use]
-    pub const fn get(self) -> u32 {
-        self.0
-    }
-
-    #[must_use]
-    pub const fn index(self) -> usize {
-        self.0 as usize
-    }
-}
-
-#[cfg_attr(
-    feature = "artifact-codec",
-    derive(serde::Serialize, serde::Deserialize)
-)]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UnlinkedParameterTypeGuard {
     pub parameter: u16,
@@ -801,11 +752,6 @@ pub enum UnlinkedTypeGuardPlan {
         type_name: String,
         type_id: vela_def::TypeId,
         shape_id: ShapeId,
-    },
-    HostType {
-        type_name: String,
-        type_id: vela_def::TypeId,
-        host_type_id: HostTypeId,
     },
 }
 
@@ -1250,7 +1196,6 @@ pub enum UnlinkedInstructionKind {
     IterInit {
         dst: Register,
         iterable: Register,
-        host_collection: Option<vela_common::HostCollectionIteration>,
     },
     IterNext {
         iterator: Register,
@@ -1292,57 +1237,7 @@ pub enum UnlinkedInstructionKind {
         slot: Option<StateSlot>,
         src: Register,
     },
-    LoadExternState {
-        dst: Register,
-        state: String,
-        slot: Option<StateSlot>,
-        cache_site: Option<CacheSiteId>,
-    },
-    ReleaseBorrowLease {
-        dst: Register,
-        src: Register,
-    },
-    TryReleaseBorrowLease {
-        dst: Register,
-        src: Register,
-    },
-    HostRead {
-        dst: Register,
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
-    HostWrite {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        src: Register,
-        cache_site: CacheSiteId,
-    },
-    HostMutate {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        op: HostMutationOp,
-        rhs: Register,
-        cache_site: CacheSiteId,
-    },
-    HostRemove {
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
-    HostCall {
-        dst: Option<Register>,
-        root: Register,
-        target: HostTargetPlanId,
-        dynamic_args: Vec<Register>,
-        method: HostMethodId,
-        args: Vec<Register>,
-        cache_site: CacheSiteId,
-    },
+
     Return {
         src: Register,
     },
@@ -1394,9 +1289,6 @@ pub struct DynamicCallArgument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vela_common::HostTypeId;
-    use vela_def::FieldId;
-    use vela_host::target::HostTargetPlan;
 
     #[test]
     fn code_object_records_constants_and_instructions() {
@@ -1421,21 +1313,6 @@ mod tests {
             [Constant::Scalar(vela_common::ScalarValue::I64(42))]
         );
         assert_eq!(code.instructions.len(), 2);
-    }
-
-    #[test]
-    fn code_object_interns_host_target_plans() {
-        let mut code = UnlinkedCodeObject::new("host", 1);
-        let target = HostTargetPlan::new(HostTypeId::new(1)).field(FieldId::new(2));
-
-        let first = code.intern_host_target(target.clone());
-        let second = code.intern_host_target(target.clone());
-        let third = code.intern_host_target(target.const_index(0));
-
-        assert_eq!(first, second);
-        assert_ne!(first, third);
-        assert_eq!(code.host_targets.len(), 2);
-        assert_eq!(code.host_target(first), code.host_targets.first());
     }
 
     #[test]

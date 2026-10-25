@@ -254,7 +254,6 @@ pub enum MirVerifyErrorKind {
         guard: MirGuardId,
     },
     InvalidCallContract(String),
-    InvalidHostContract(String),
     InvalidReflectionContract(String),
     InvalidOperandType {
         role: &'static str,

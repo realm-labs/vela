@@ -83,6 +83,13 @@ impl CstParser<'_, '_> {
             (false, after_pub)
         };
 
+        if is_extern {
+            self.error_at(
+                after_pub,
+                "`extern state` was removed; use script-owned `state` with an initializer",
+            );
+        }
+
         if !self.at_ident_text(state_kw, "state") {
             let message = if self.at_kind(state_kw, SyntaxKind::PubKw) {
                 "invalid modifier order; use `pub extern state`"
@@ -127,6 +134,11 @@ impl CstParser<'_, '_> {
             _ => {}
         }
 
+        if is_extern {
+            self.raw_item(SyntaxKind::Error, end);
+            return;
+        }
+
         self.builder.start_node(SyntaxKind::StateItem);
         self.emit_leading_attributes(end);
         self.optional_type_hint_before(self.pos, declaration_end);
@@ -150,13 +162,11 @@ impl CstParser<'_, '_> {
         if let Some(span) = self.tokens.get(global).map(|token| token.span) {
             self.diagnostics.push(
                 Diagnostic::error(
-                    "`global` declarations were removed; use `state` with an initializer or \
-                     `extern state` for a host-provided root",
+                    "`global` declarations were removed; use `state` with an initializer",
                 )
                 .with_code("syntax::legacy_global_decl")
                 .with_span(span)
-                .with_candidate("state name: Type = expression;")
-                .with_candidate("extern state name: Type;"),
+                .with_candidate("state name: Type = expression;"),
             );
         }
         self.raw_item(SyntaxKind::Error, end);

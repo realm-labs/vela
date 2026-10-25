@@ -1,12 +1,11 @@
 use std::collections::BTreeMap;
 
-use vela_common::HostMethodId;
 use vela_def::{FunctionId, MethodId, TypeId, VariantId};
 
 use crate::{
-    CacheSiteId, CacheSiteInstruction, HostTargetPlanId, InstructionOffset, LinkedCodeObject,
-    LinkedProgram, MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle,
-    UnlinkedCodeObject, VariantHandle,
+    CacheSiteId, CacheSiteInstruction, InstructionOffset, LinkedCodeObject, LinkedProgram,
+    MethodDispatchHandle, NativeHandle, ScriptFunctionHandle, TypeHandle, UnlinkedCodeObject,
+    VariantHandle,
 };
 
 pub(super) struct LinkContext<'linker, 'registry> {
@@ -24,7 +23,6 @@ pub(super) struct LinkContext<'linker, 'registry> {
 pub(super) struct LinkInstructionContext<'a> {
     pub(super) program: &'a crate::ProgramImage,
     pub(super) code: &'a UnlinkedCodeObject,
-    pub(super) host_target_map: &'a [HostTargetPlanId],
     pub(super) linked_code: &'a mut LinkedCodeObject,
     pub(super) instruction_offset: InstructionOffset,
 }
@@ -33,7 +31,6 @@ pub(super) struct LinkInstructionContext<'a> {
 pub(super) enum MethodDispatchKey {
     Script(MethodId, ScriptFunctionHandle),
     Value(MethodId),
-    Host(HostMethodId),
 }
 
 pub(super) fn cache_site_at(

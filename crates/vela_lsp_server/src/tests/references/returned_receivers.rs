@@ -36,12 +36,12 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -50,7 +50,7 @@ fn lsp_references_find_schema_method_calls_on_schema_function_return_receivers()
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Player" }
+                            "returns": { "kind": "record", "name": "Player" }
                         }
                     }
                 ],
@@ -197,7 +197,7 @@ fn lsp_references_find_schema_trait_method_calls_on_schema_function_return_recei
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {
@@ -358,12 +358,12 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -372,7 +372,7 @@ fn lsp_document_highlight_marks_schema_method_calls_on_schema_function_return_re
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Player" }
+                            "returns": { "kind": "record", "name": "Player" }
                         }
                     }
                 ],
@@ -510,7 +510,7 @@ fn lsp_document_highlight_marks_schema_trait_method_calls_on_schema_function_ret
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {

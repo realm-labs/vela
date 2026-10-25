@@ -182,7 +182,6 @@ fn remap_heap_value(
             iterator.remap_heap_refs(references)?;
             HeapValue::Iterator(iterator)
         }
-        HeapValue::PathProxy(proxy) => HeapValue::PathProxy(proxy.clone()),
     })
 }
 

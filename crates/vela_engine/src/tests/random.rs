@@ -1,7 +1,5 @@
 use vela_bytecode::UnlinkedProgram;
 use vela_common::SourceId;
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
 use vela_reflect::permissions::ReflectPermissionSet;
 use vela_vm::HostExecution;
 use vela_vm::Vm;
@@ -197,13 +195,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &mut host),
@@ -239,20 +232,10 @@ fn main() {
     let program = first_engine
         .compile_source_with_id(SourceId::new(1), source)
         .expect("program should compile");
-    let mut first_adapter = MockStateAdapter::new();
-    let mut first_tx = HostAccess::new();
-    let mut first_host = HostExecution {
-        adapter: &mut first_adapter,
-        access: &mut first_tx,
-        state_values: None,
-    };
-    let mut second_adapter = MockStateAdapter::new();
-    let mut second_tx = HostAccess::new();
-    let mut second_host = HostExecution {
-        adapter: &mut second_adapter,
-        access: &mut second_tx,
-        state_values: None,
-    };
+
+    let mut first_host = HostExecution { state_values: None };
+
+    let mut second_host = HostExecution { state_values: None };
 
     let first = run_linked_program_with_host(&first_engine, &program, &mut first_host)
         .expect("first reflected random run should succeed");

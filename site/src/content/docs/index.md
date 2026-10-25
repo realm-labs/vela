@@ -14,10 +14,10 @@ Start with [Overview](./overview/) for the model, [Quickstart](./quickstart/) fo
 ## Main Paths
 
 - Learn the language surface in [Language Basics](./language/lexical-structure-comments/).
-- Understand host integration through [Embedding Overview](./host/embedding-overview/) and [HostAccess Write-Through Model](./host/hostaccess-write-through/).
+- Understand host integration through [Embedding Overview](./host/embedding-overview/) and [Script-Owned Snapshot Values](./host/serde-snapshot-values/).
 - Read the hot reload contract in [Hot Reload Model](./hot-reload/model/).
 - Check current implementation scope in [Project Status And Roadmap](./project-status-roadmap/).
 
 ## Current Scope
 
-The current implementation is a runnable pre-release system. It has parsing, HIR, bytecode, VM execution, standard library helpers, HostAccess, reflection, hot reload workflows, examples, benchmarks, and a WASM playground. The documentation describes the current contract and calls out non-goals where a feature is intentionally outside the MVP.
+The current implementation is a runnable pre-release system. It has parsing, HIR, bytecode, VM execution, standard library helpers, script-owned values, reflection, hot reload workflows, examples, benchmarks, and a WASM playground. The documentation describes the current contract and calls out non-goals where a feature is intentionally outside the MVP.

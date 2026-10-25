@@ -202,9 +202,9 @@ fn main(boxed: host::Box, measured: host::Measure) { boxed.add(value = 1); measu
         let impl_name = source.find("fn add(self, value").expect("impl name") + 3;
         let trait_name = source.find("fn add(self, amount").expect("trait name") + 3;
         let artifact = json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
-                "types": [{"name":"host::Box","fact":{"kind":"host","name":"host::Box"}}],
+                "types": [{"name":"host::Box","fact":{"kind":"record","name":"host::Box"}}],
                 "traits": [{"name":"host::Measure","fact":{"kind":"trait","name":"host::Measure"}}],
                 "methods": [{
                     "owner":"host::Box","name":"add",

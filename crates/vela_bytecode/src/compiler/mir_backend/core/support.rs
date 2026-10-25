@@ -1,9 +1,8 @@
 use std::collections::BTreeSet;
 
-use vela_host::resolved::HostMutationOp;
 use vela_mir::{
     MirBinaryOp, MirBlockId, MirComparisonOp, MirDynamicBinaryOp, MirFunction, MirGuardLocation,
-    MirHostMutation, MirNumericBinaryOp, MirProgram, MirTypeContract,
+    MirNumericBinaryOp, MirProgram, MirTypeContract,
 };
 
 use crate::{
@@ -125,17 +124,6 @@ pub(super) const fn i64_compare(operation: MirComparisonOp) -> crate::I64Compare
     }
 }
 
-pub(super) fn host_mutation(operation: MirHostMutation) -> HostMutationOp {
-    match operation {
-        MirHostMutation::Add => HostMutationOp::Add,
-        MirHostMutation::Subtract => HostMutationOp::Sub,
-        MirHostMutation::Multiply => HostMutationOp::Mul,
-        MirHostMutation::Divide => HostMutationOp::Div,
-        MirHostMutation::Remainder => HostMutationOp::Rem,
-        MirHostMutation::Push => HostMutationOp::Push,
-    }
-}
-
 pub(super) fn guard_kind(location: MirGuardLocation) -> GuardKind {
     let _ = location;
     GuardKind::Contract
@@ -254,17 +242,6 @@ fn type_guard_plan(
                 type_id: Some(*type_id),
                 variant: variant.name.clone(),
                 variant_id: Some(variant.id),
-            }
-        }
-        MirTypeContract::Host(target) => {
-            let ty = program
-                .targets()
-                .type_descriptor(target.semantic)
-                .ok_or(MirBackendError::MissingTarget("host type"))?;
-            UnlinkedTypeGuardPlan::HostType {
-                type_name: ty.runtime_name.clone(),
-                type_id: target.semantic,
-                host_type_id: target.runtime,
             }
         }
     })

@@ -39,10 +39,6 @@ fn update() {
             ..
         } if state == "main::counter" && *actual == slot
     )));
-    assert!(!update.instructions.iter().any(|instruction| matches!(
-        instruction.kind,
-        UnlinkedInstructionKind::LoadExternState { .. }
-    )));
 }
 
 #[test]
@@ -79,8 +75,32 @@ state value: Array = graph();
 }
 
 #[test]
-fn compiler_rejects_every_non_host_extern_state_contract_class() {
+fn compiler_rejects_removed_host_release_direct_import_and_value_aliases() {
     for source in [
+        "fn main(value) { host::release(value); }",
+        "fn main(value) { host::try_release(value); }",
+        "use host::release as dispose; fn main(value) { dispose(value); }",
+        "use host::try_release as dispose; fn main() { return dispose; }",
+        "use host as boundary; fn main() { return boundary::release; }",
+        "fn main() { let alias = host::try_release; return alias; }",
+        "fn main(value: ArrayView<i64>) { return value[0]; }",
+    ] {
+        let diagnostics = compile_test_program(SourceId::new(58), source)
+            .expect_err("removed borrowing must not reach MIR or native dispatch")
+            .into_syntax_diagnostics();
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.span.is_some()),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn compiler_rejects_every_extern_state_contract_class() {
+    for source in [
+        "extern state value: HostRoot;",
         "extern state value: i64;",
         "extern state value: Any;",
         "extern state value: Array<i64>;",
@@ -90,12 +110,12 @@ fn compiler_rejects_every_non_host_extern_state_contract_class() {
     ] {
         let error = compile_test_program(SourceId::new(56), source)
             .expect_err("non-host extern state contract must fail compilation");
-        assert!(matches!(
-            error.kind,
-            CompileErrorKind::InvalidExternStateContract { ref state, .. }
-                if state == "main::value"
-        ));
-        assert!(error.span.is_some());
+        assert!(
+            error
+                .into_syntax_diagnostics()
+                .iter()
+                .any(|d| d.message.contains("`extern state` was removed"))
+        );
     }
 }
 
@@ -110,37 +130,6 @@ state target: i64 = read_source();
 "#,
     )
     .expect_err("state reads through a script call must be rejected");
-
-    assert!(matches!(
-        error.kind,
-        CompileErrorKind::InvalidStateInitializer { state, reason }
-            if state == "main::target" && reason.contains("state access")
-    ));
-    assert!(error.span.is_some());
-}
-
-#[test]
-fn compiler_rejects_extern_state_reads_from_state_initializers() {
-    let mut registry = vela_registry::DefinitionRegistry::new();
-    registry
-        .register_type(
-            vela_registry::TypeDef::new(DefPath::ty(
-                "host",
-                std::iter::empty::<&str>(),
-                "ExternalState",
-            ))
-            .host_runtime_id(950),
-        )
-        .expect("host state type should register");
-    let error = compile_test_program_with_registry(
-        SourceId::new(53),
-        r#"
-extern state source: ExternalState;
-state target: ExternalState = source;
-"#,
-        registry.compile_view(),
-    )
-    .expect_err("extern state reads must be rejected");
 
     assert!(matches!(
         error.kind,

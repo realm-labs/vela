@@ -119,7 +119,7 @@ fn synchronous_context_callback_reentry_preserves_roots_owner_and_budget() {
         "the safe point must actually collect"
     );
     assert_eq!(
-        value_to_owned(&result, Some(&heap), None),
+        value_to_owned(&result, Some(&heap)),
         Ok(OwnedValue::Array(vec![
             OwnedValue::i64(7),
             OwnedValue::i64(8)

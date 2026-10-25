@@ -1,33 +1,24 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::{HostTypeId, PrimitiveTag, ScalarValue, SourceId};
-use vela_def::{FieldId, FunctionId, StateId, TypeId};
+use vela_common::{PrimitiveTag, ScalarValue, SourceId};
+use vela_def::{FunctionId, StateId};
 use vela_hir::binding::BindingResolution;
-use vela_hir::body::{HirBody, HirExprKind};
+use vela_hir::body::HirBody;
 use vela_hir::ids::HirDeclId;
 use vela_hir::module_graph::{DeclarationKind, ModuleGraph, ModuleSource};
 use vela_hir::type_hint::StateStorage;
 use vela_package::ModulePath;
 
 use crate::{
-    CompileFieldAccess, CompileFieldDescriptor, CompileFunctionAccess, CompileFunctionClass,
-    CompileFunctionDescriptor, CompileFunctionIdentity, CompileGuardKey, CompileGuardTarget,
-    CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget, CompilePositionalPolicy,
+    CompileFunctionAccess, CompileFunctionClass, CompileFunctionDescriptor,
+    CompileFunctionIdentity, CompileGuardKey, CompileGuardTarget, CompilePositionalPolicy,
     CompileSignature, CompileStateDescriptor, CompileStateStorage, CompileTargetSnapshot,
-    CompileTargetSnapshotBuilder, CompileTypeClass, CompileTypeDescriptor, HostFieldTarget,
-    HostTypeTarget, MirBuildError, MirEffect, MirEvaluatedConstant, MirGuardLocation,
-    MirHostOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirRvalue,
-    MirSourceOrigin, MirStateOperation, MirStatementKind, MirTypeContract, MirValueType,
+    CompileTargetSnapshotBuilder, MirBuildError, MirEffect, MirEvaluatedConstant, MirGuardLocation,
+    MirLoweringConfig, MirLoweringInput, MirPlace, MirRvalue, MirSourceOrigin, MirStateOperation,
+    MirStatementKind, MirTypeContract, MirValueType,
 };
 
 const ROOT_FUNCTION: FunctionId = FunctionId::new(9_900);
 const STATE: StateId = StateId::new(9_901);
-const HOST_TYPE_ID: TypeId = TypeId::new(9_902);
-const HOST_RUNTIME_ID: HostTypeId = HostTypeId::new(9_903);
-const HOST_FIELD_ID: FieldId = FieldId::new(9_904);
-const HOST_TYPE: HostTypeTarget = HostTypeTarget {
-    semantic: HOST_TYPE_ID,
-    runtime: HOST_RUNTIME_ID,
-};
 
 fn try_build_declarations(
     source: &str,
@@ -116,7 +107,6 @@ fn insert_state(
 ) -> Result<(), MirBuildError> {
     let metadata = graph.declaration(declaration).expect("state declaration");
     let storage = match graph.state_metadata(declaration).map(|value| value.storage) {
-        Some(StateStorage::Extern) => CompileStateStorage::Extern,
         Some(StateStorage::Vm) | None => CompileStateStorage::Vm,
     };
     let origin = MirSourceOrigin::declaration(declaration, metadata.span);
@@ -430,132 +420,6 @@ fn main() {
 }
 
 #[test]
-fn state_read_operand_feeds_hostaccess_root_without_name_reresolution() {
-    let source = "extern state state: HostRoot\nfn main() { return state.amount; }";
-    let program = try_build_declarations(source, |graph, body, targets| {
-        let state = declaration(graph, "state");
-        let (field_expression, field) = body
-            .expressions
-            .values()
-            .find_map(|expression| match &expression.kind {
-                HirExprKind::Field(field) if field.name == "amount" => {
-                    Some((expression.id, field.clone()))
-                }
-                _ => None,
-            })
-            .expect("state.amount expression");
-        let access = CompileFieldAccess::new(true, true, true, true, Vec::new());
-        let field_target = HostFieldTarget {
-            owner: HOST_TYPE,
-            semantic: HOST_FIELD_ID,
-            runtime: HOST_FIELD_ID,
-            access: access.clone(),
-        };
-        let root_origin = expression_origin(body, field.receiver);
-        let field_origin = expression_origin(body, field_expression);
-        targets.insert_type_descriptor(
-            CompileTypeDescriptor {
-                id: HOST_TYPE_ID,
-                canonical_name: "declarations::HostRoot".to_owned(),
-                runtime_name: "declarations::HostRoot".to_owned(),
-                class: CompileTypeClass::Host {
-                    runtime: HOST_RUNTIME_ID,
-                },
-                shape: None,
-                fields: vec![HOST_FIELD_ID],
-                variants: Vec::new(),
-            },
-            MirSourceOrigin::declaration(state, graph.declaration(state).expect("state").span),
-        )?;
-        targets.insert_field_descriptor(
-            CompileFieldDescriptor {
-                id: HOST_FIELD_ID,
-                owner: HOST_TYPE_ID,
-                variant: None,
-                name: "amount".to_owned(),
-                contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-                declaration_order: 0,
-                access,
-                host_runtime: Some(HOST_FIELD_ID),
-            },
-            field_origin,
-        )?;
-        insert_state(graph, targets, state, MirTypeContract::Host(HOST_TYPE))?;
-        targets.insert_host_path(
-            ROOT_FUNCTION,
-            field.receiver,
-            CompileHostPathTarget {
-                root: field.receiver,
-                root_type: HOST_TYPE,
-                segments: Vec::new(),
-            },
-            root_origin,
-        )?;
-        targets.insert_member(
-            ROOT_FUNCTION,
-            field_expression,
-            CompileMemberTarget::HostField(field_target.clone()),
-            field_origin,
-        )?;
-        targets.insert_host_path(
-            ROOT_FUNCTION,
-            field_expression,
-            CompileHostPathTarget {
-                root: field.receiver,
-                root_type: HOST_TYPE,
-                segments: vec![CompileHostPathSegment::Field(field_target)],
-            },
-            field_origin,
-        )
-    })
-    .expect("state host root");
-    let (_, function) = program.functions().next().expect("main function");
-    let statements = function
-        .statements()
-        .map(|(_, statement)| statement)
-        .collect::<Vec<_>>();
-    let (state_index, state_temp) = statements
-        .iter()
-        .enumerate()
-        .find_map(|(index, statement)| {
-            let MirStatementKind::State(MirStateOperation::ReadExternState { state: STATE }) =
-                statement.kind
-            else {
-                return None;
-            };
-            let Some(MirPlace::Temp(temp)) = statement.destination else {
-                panic!("state read destination")
-            };
-            Some((index, temp))
-        })
-        .expect("state read");
-    let (host_index, root) = statements
-        .iter()
-        .enumerate()
-        .find_map(|(index, statement)| match &statement.kind {
-            MirStatementKind::Host(MirHostOperation::Read { root, .. }) => {
-                Some((index, root.clone()))
-            }
-            _ => None,
-        })
-        .expect("HostAccess read");
-    assert!(state_index < host_index, "{}", program.dump());
-    assert_eq!(root, MirOperand::Temp(state_temp));
-    assert_eq!(
-        statements
-            .iter()
-            .filter(|statement| matches!(statement.kind, MirStatementKind::State(_)))
-            .count(),
-        1
-    );
-    assert_eq!(source_text(source, statements[state_index].origin), "state");
-    assert_eq!(
-        source_text(source, statements[host_index].origin),
-        "state.amount"
-    );
-}
-
-#[test]
 fn declaration_path_rejects_ambiguous_or_kind_incompatible_targets_without_fallback() {
     let both = try_build_declarations(
         "const VALUE = 1\nfn main() { return VALUE; }",
@@ -626,14 +490,6 @@ fn non_value_declaration_paths_do_not_gain_a_dynamic_fallback() {
 
 fn source_text(source: &str, origin: MirSourceOrigin) -> &str {
     &source[origin.span.start as usize..origin.span.end as usize]
-}
-
-fn expression_origin(body: &HirBody, expression: vela_hir::ids::HirExprId) -> MirSourceOrigin {
-    MirSourceOrigin::expression(
-        body.id,
-        expression,
-        body.expression(expression).expect("expression").origin.span,
-    )
 }
 
 #[test]

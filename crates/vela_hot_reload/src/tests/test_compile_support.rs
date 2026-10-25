@@ -113,14 +113,11 @@ fn compile_module_artifact(
 fn compile_artifact(sources: &HirSourceSet, options: &CompilerOptions) -> Arc<LinkedArtifact> {
     let mut registry = DefinitionRegistry::new();
     registry
-        .register_type(
-            TypeDef::new(vela_def::DefPath::ty(
-                "host",
-                std::iter::empty::<&str>(),
-                "Player",
-            ))
-            .host_runtime_id(1),
-        )
+        .register_type(TypeDef::new(vela_def::DefPath::ty(
+            "host",
+            std::iter::empty::<&str>(),
+            "Player",
+        )))
         .expect("hot-reload test host type must register");
     let program = compile_program(ProgramCompilationRequest {
         sources,

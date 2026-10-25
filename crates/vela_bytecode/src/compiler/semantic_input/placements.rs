@@ -1,33 +1,25 @@
-use vela_analysis::registry::{RegistryFieldTargetFact, RegistryIndexCapabilityFact};
-use vela_analysis::semantic_facts::{
-    CallTargetFact, ConstructorTargetFact, HostPathIndexKindFact, HostPathSegmentFact,
-    MemberTargetFact,
-};
+use vela_analysis::semantic_facts::{CallTargetFact, ConstructorTargetFact, MemberTargetFact};
 use vela_analysis::type_fact::TypeFact;
-use vela_analysis::validation::{
-    CallPlacementModeFact, HostAccessUseFact, HostAccessUseKind, HostIndexCapabilityResolutionFact,
-};
-use vela_common::{PrimitiveTag, ScalarValue};
+use vela_analysis::validation::CallPlacementModeFact;
+use vela_common::PrimitiveTag;
 use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{
-    HirAssignOp, HirBody, HirBodyOwner, HirExprKind, HirLiteral, HirPathKind, HirPathOwner,
-    HirPatternKind,
+    HirAssignOp, HirBody, HirBodyOwner, HirExprKind, HirPathKind, HirPathOwner, HirPatternKind,
 };
 use vela_hir::ids::{HirDeclId, HirExprId, HirPatternId};
 use vela_hir::type_hint::{HirTypeHint, StructFieldHint};
 use vela_mir::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileConstructorField,
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicConstructorField,
-    CompileFieldTarget, CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
-    CompileMemberTarget, CompilePatternConstructorTarget, CompilePlacedCallValue,
-    CompileReflectionCall, DynamicMethodTarget, HostFieldTarget, HostMethodTarget, MirBuildError,
+    CompileFieldTarget, CompileMemberTarget, CompilePatternConstructorTarget,
+    CompilePlacedCallValue, CompileReflectionCall, DynamicMethodTarget, MirBuildError,
     MirSourceOrigin,
 };
 
 use super::contracts::{
     ContractBoundary, mutation_arg_debug_name, typed_container_mutation_arg_fact,
 };
-use super::external::{external_signature, unresolved_method, unresolved_native};
+use super::external::{unresolved_method, unresolved_native};
 use super::schema::contract_from_fact;
 use super::{GenerationBuilder, input_error, registry_input_error};
 use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
@@ -78,22 +70,6 @@ impl GenerationBuilder<'_, '_> {
                             self.insert_try_target(function, &body, expression.id)?;
                         }
                         _ => {}
-                    }
-                    if self
-                        .executable_analysis(function)?
-                        .host_path_target(expression.id)
-                        .is_some()
-                    {
-                        self.insert_host_path(function, expression.id)?;
-                    } else if let Some(path) =
-                        self.derived_host_index_path(function, &body, expression.id)?
-                    {
-                        let origin = self
-                            .expression_origin(expression.id)
-                            .ok_or_else(registry_input_error)?;
-                        self.targets
-                            .insert_host_path(function, expression.id, path, origin)
-                            .map_err(input_error)?;
                     }
                 }
                 for pattern in body.patterns.values() {
@@ -183,15 +159,6 @@ impl GenerationBuilder<'_, '_> {
             expression,
             origin,
         )?;
-
-        if let Some(special) =
-            self.host_access_call(executable, body, expression, &target, &placement, origin)?
-        {
-            self.targets
-                .insert_call(executable, expression, special, origin)
-                .map_err(input_error)?;
-            return Ok(());
-        }
 
         let placed = match target {
             CallTargetFact::Declaration(declaration) => {
@@ -318,12 +285,7 @@ impl GenerationBuilder<'_, '_> {
             | CallTargetFact::StdlibFunction { path } => {
                 self.external_function_call(executable, &path, &placement, origin)?
             }
-            CallTargetFact::HostMethod { .. } => {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "host method call is missing its HostAccess use fact".to_owned(),
-                }));
-            }
+
             CallTargetFact::RegistryMethod { owner, name } => {
                 self.registry_method_call(executable, &owner, &name, &placement, origin)?
             }
@@ -427,64 +389,6 @@ impl GenerationBuilder<'_, '_> {
         }
     }
 
-    fn host_method_call(
-        &mut self,
-        executable: FunctionId,
-        owner_name: &str,
-        name: &str,
-        placement: &vela_analysis::validation::CallArgumentPlacementFact,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<CompileCallTarget> {
-        let owner = self
-            .registry_facts
-            .type_target_fact(owner_name)
-            .map(|target| target.semantic)
-            .ok_or_else(registry_input_error)?;
-        let definition = self
-            .catalog
-            .method_by_owner_name(owner, name)
-            .cloned()
-            .ok_or_else(registry_input_error)?;
-        self.ensure_external_method(definition.id, origin)?;
-        let owner_target = self
-            .host_type_target(owner)
-            .ok_or_else(registry_input_error)?;
-        let runtime = definition
-            .host_runtime_id
-            .map(vela_common::HostMethodId::new)
-            .ok_or_else(registry_input_error)?;
-        let descriptor = self
-            .catalog
-            .method(definition.id)
-            .ok_or_else(registry_input_error)?;
-        let signature = external_signature(
-            &descriptor.signature,
-            descriptor.effects,
-            &self.catalog,
-            self.request.options,
-            origin,
-        )?;
-        self.external_call_target(
-            executable,
-            CompileCalleeTarget::HostMethod(HostMethodTarget {
-                owner: owner_target,
-                semantic: definition.id,
-                runtime,
-                signature,
-                access: vela_mir::CompileMethodAccess::new(
-                    definition.access.public,
-                    definition.access.reflect_callable,
-                    definition.access.required_permissions().to_vec(),
-                ),
-                scoped_resource_return: definition.scoped_resource_return,
-            }),
-            name,
-            &definition.signature.params,
-            placement,
-            origin,
-        )
-    }
-
     fn registry_method_call(
         &mut self,
         executable: FunctionId,
@@ -538,15 +442,10 @@ impl GenerationBuilder<'_, '_> {
                 .expression(field.receiver)
                 .cloned(),
         };
-        if matches!(
-            receiver_fact,
-            Some(TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. })
-        ) && matches!(name, "map" | "filter" | "take" | "skip")
+        if matches!(receiver_fact, Some(TypeFact::Iterator { .. }))
+            && matches!(name, "map" | "filter" | "take" | "skip")
         {
             let arguments = self.dynamic_argument_values_from_source(placement, origin)?;
-            let scoped_resource = receiver_fact.as_ref().and_then(|receiver| {
-                vela_analysis::stdlib::scoped_iterator_resource(receiver, name)
-            });
             return Ok(CompileCallTarget::dynamic(
                 CompileCalleeTarget::DynamicMethod(DynamicMethodTarget::method(
                     name,
@@ -566,8 +465,7 @@ impl GenerationBuilder<'_, '_> {
                         .collect(),
                 )),
                 arguments,
-            )
-            .with_scoped_resource(scoped_resource));
+            ));
         }
         let method = match self.catalog.method_by_owner_name(owner, name).cloned() {
             Some(method) => method,
@@ -584,22 +482,18 @@ impl GenerationBuilder<'_, '_> {
             }
         };
         self.ensure_external_method(method.id, origin)?;
-        let target = self
-            .external_call_target(
-                executable,
-                CompileCalleeTarget::ValueMethod {
-                    owner: method.owner,
-                    method: method.id,
-                    debug_name: name.to_owned(),
-                },
-                name,
-                &method.signature.params,
-                placement,
-                origin,
-            )?
-            .with_scoped_resource(receiver_fact.as_ref().and_then(|receiver| {
-                vela_analysis::stdlib::scoped_iterator_resource(receiver, name)
-            }));
+        let target = self.external_call_target(
+            executable,
+            CompileCalleeTarget::ValueMethod {
+                owner: method.owner,
+                method: method.id,
+                debug_name: name.to_owned(),
+            },
+            name,
+            &method.signature.params,
+            placement,
+            origin,
+        )?;
         self.insert_typed_container_mutation_contracts(
             executable,
             receiver_fact.as_ref(),
@@ -629,28 +523,6 @@ impl GenerationBuilder<'_, '_> {
             let Some(expression) = external_parameter_expression(arguments, index) else {
                 continue;
             };
-            let actual = self
-                .body_for_expression(expression)
-                .and_then(|body| self.direct_declared_receiver_fact(body, expression))
-                .or_else(|| {
-                    self.executable_analysis(executable)
-                        .ok()?
-                        .expression(expression)
-                        .cloned()
-                });
-            if method == "extend"
-                && let Some(actual) = actual.as_ref()
-                && borrowed_collection_source(actual, &expected)
-            {
-                self.remove_native_parameter_boundary(
-                    executable,
-                    expression,
-                    method,
-                    mutation_arg_debug_name(method, &parameter.name, index),
-                    checked_u32(index, origin, "typed container mutation parameter")?,
-                );
-                continue;
-            }
             let Some(contract) = contract_from_fact(
                 &expected,
                 &self.registry_facts,
@@ -709,205 +581,6 @@ impl GenerationBuilder<'_, '_> {
         ))
     }
 
-    fn host_access_call(
-        &mut self,
-        executable: FunctionId,
-        body: &HirBody,
-        expression: HirExprId,
-        call_target: &CallTargetFact,
-        placement: &vela_analysis::validation::CallArgumentPlacementFact,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<Option<CompileCallTarget>> {
-        let Some(fact) = self
-            .executable_analysis(executable)?
-            .host_access_use(expression)
-            .cloned()
-        else {
-            if matches!(call_target, CallTargetFact::HostMethod { .. }) {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "host method target has no HostAccess use fact".to_owned(),
-                }));
-            }
-            if let Some(field) = body.field(
-                body.call(expression)
-                    .ok_or_else(registry_input_error)?
-                    .callee,
-            ) && matches!(field.name.as_str(), "remove" | "push")
-                && let Some(path) =
-                    self.derived_host_index_path(executable, body, field.receiver)?
-            {
-                let arguments = body
-                    .call(expression)
-                    .ok_or_else(registry_input_error)?
-                    .arguments
-                    .iter()
-                    .map(|argument| argument.value.ok_or_else(registry_input_error))
-                    .collect::<CompileResult<Vec<_>>>()?;
-                return match field.name.as_str() {
-                    "remove" if arguments.is_empty() => Ok(Some(CompileCallTarget::positional(
-                        CompileCalleeTarget::HostRemove { path },
-                        arguments,
-                    ))),
-                    "push" if arguments.len() == 1 => Ok(Some(CompileCallTarget::positional(
-                        CompileCalleeTarget::HostPush { path },
-                        arguments,
-                    ))),
-                    _ => Ok(None),
-                };
-            }
-            return Ok(None);
-        };
-        self.validate_host_access_call(executable, body, expression, &fact, origin)?;
-        let path_fact = self
-            .executable_analysis(executable)?
-            .host_path_target(fact.target)
-            .cloned()
-            .ok_or_else(|| {
-                input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "HostAccess call target has no host-path target".to_owned(),
-                })
-            })?;
-        let path = self.convert_host_path(executable, path_fact)?;
-        let target = match fact.kind {
-            HostAccessUseKind::Remove => {
-                let arguments = self.source_argument_values(placement, origin)?;
-                if !arguments.is_empty() {
-                    return Err(input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: "host remove placement has unexpected arguments".to_owned(),
-                    }));
-                }
-                CompileCallTarget::positional(CompileCalleeTarget::HostRemove { path }, arguments)
-            }
-            HostAccessUseKind::Push => {
-                let arguments = self.source_argument_values(placement, origin)?;
-                if arguments.len() != 1 {
-                    return Err(input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: "host push placement must contain one argument".to_owned(),
-                    }));
-                }
-                CompileCallTarget::positional(CompileCalleeTarget::HostPush { path }, arguments)
-            }
-            HostAccessUseKind::Call => {
-                let CallTargetFact::HostMethod { owner, name } = call_target else {
-                    return Err(input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: "HostAccess call fact disagrees with its host method target"
-                            .to_owned(),
-                    }));
-                };
-                self.host_method_call(executable, owner, name, placement, origin)?
-            }
-            HostAccessUseKind::Read | HostAccessUseKind::Write | HostAccessUseKind::Mutate => {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "non-call HostAccess use fact is attached to a call expression"
-                        .to_owned(),
-                }));
-            }
-        };
-        Ok(Some(target))
-    }
-
-    fn validate_host_access_call(
-        &self,
-        executable: FunctionId,
-        body: &HirBody,
-        expression: HirExprId,
-        fact: &HostAccessUseFact,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<()> {
-        let call = body.call(expression).ok_or_else(registry_input_error)?;
-        let field = body.field(call.callee).ok_or_else(|| {
-            input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: "HostAccess call has no field callee".to_owned(),
-            })
-        })?;
-        if field.receiver != fact.target {
-            return Err(input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: "HostAccess target disagrees with the call receiver".to_owned(),
-            }));
-        }
-        let analysis = self.executable_analysis(executable)?;
-        let path = analysis.host_path_target(fact.target).ok_or_else(|| {
-            input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: "HostAccess call target has no host-path fact".to_owned(),
-            })
-        })?;
-        let path_indexes = path
-            .segments
-            .iter()
-            .filter_map(|segment| match segment {
-                HostPathSegmentFact::Index {
-                    expression,
-                    owner,
-                    capability,
-                    ..
-                } => Some((*expression, owner, capability)),
-                HostPathSegmentFact::Field(_) => None,
-            })
-            .collect::<Vec<_>>();
-        if path_indexes.len() != fact.indexes.len() {
-            return Err(input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: "HostAccess indexes disagree with the host path".to_owned(),
-            }));
-        }
-        for (index_use, (key, owner, capability)) in fact.indexes.iter().zip(path_indexes) {
-            let hir_index = body.index(index_use.expression).ok_or_else(|| {
-                input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "HostAccess index use does not identify an index expression"
-                        .to_owned(),
-                })
-            })?;
-            let HostIndexCapabilityResolutionFact::Registered(index_capability) =
-                &index_use.capability
-            else {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "HostAccess index has no registered compile capability".to_owned(),
-                }));
-            };
-            if hir_index.receiver != index_use.receiver
-                || hir_index.index != index_use.key
-                || index_use.key != key
-                || &index_use.owner != owner
-                || index_capability != capability
-            {
-                return Err(input_error(MirBuildError::InconsistentInput {
-                    origin,
-                    message: "HostAccess index metadata disagrees with the host path".to_owned(),
-                }));
-            }
-        }
-        let expected_accessed_index = (fact.kind != HostAccessUseKind::Call)
-            .then(|| body.index(fact.target))
-            .flatten()
-            .and_then(|target| {
-                fact.indexes
-                    .iter()
-                    .position(|index| index.expression == target.expression)
-            });
-        if fact.accessed_index != expected_accessed_index
-            || fact
-                .accessed_index
-                .is_some_and(|index| index >= fact.indexes.len())
-        {
-            return Err(input_error(MirBuildError::InconsistentInput {
-                origin,
-                message: "HostAccess accessed index disagrees with its target".to_owned(),
-            }));
-        }
-        Ok(())
-    }
-
     fn insert_member(
         &mut self,
         executable: FunctionId,
@@ -933,31 +606,7 @@ impl GenerationBuilder<'_, '_> {
                 variant,
                 name,
             } => self.script_field_target(owner, variant.as_deref(), &name)?,
-            MemberTargetFact::HostField(field) => {
-                CompileMemberTarget::HostField(self.host_field_target(&field, origin)?)
-            }
-            MemberTargetFact::HostProperty { owner, name } => {
-                let field = self
-                    .registry_facts
-                    .host_field_target_fact(&owner, &name)
-                    .cloned()
-                    .ok_or_else(registry_input_error)?;
-                self.ensure_external_field(field.semantic, origin)?;
-                let placement = vela_analysis::validation::CallArgumentPlacementFact {
-                    mode: CallPlacementModeFact::ExternalPositional,
-                    source_order: Vec::new(),
-                    parameter_slots: Some(Vec::new()),
-                };
-                let target =
-                    self.host_method_call(executable, &owner, &name, &placement, origin)?;
-                let CompileCalleeTarget::HostMethod(method) = target.callee else {
-                    return Err(input_error(MirBuildError::InconsistentInput {
-                        origin,
-                        message: "host property did not resolve to a host method".to_owned(),
-                    }));
-                };
-                CompileMemberTarget::HostProperty(method)
-            }
+
             MemberTargetFact::LogicalRecordField(field) => {
                 self.ensure_logical_record(field.kind, origin)?;
                 CompileMemberTarget::ScriptField(CompileFieldTarget::RecordSlot {
@@ -1153,32 +802,6 @@ impl GenerationBuilder<'_, '_> {
     }
 }
 
-fn borrowed_collection_source(actual: &TypeFact, expected: &TypeFact) -> bool {
-    let borrowed = matches!(
-        actual,
-        TypeFact::ArrayView { .. }
-            | TypeFact::ArrayMut { .. }
-            | TypeFact::MapView { .. }
-            | TypeFact::MapMut { .. }
-            | TypeFact::SetView { .. }
-            | TypeFact::SetMut { .. }
-    );
-    borrowed
-        && matches!(
-            (actual, expected),
-            (
-                TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. },
-                TypeFact::Array { .. }
-            ) | (
-                TypeFact::MapView { .. } | TypeFact::MapMut { .. },
-                TypeFact::Map { .. }
-            ) | (
-                TypeFact::SetView { .. } | TypeFact::SetMut { .. },
-                TypeFact::Set { .. }
-            )
-        )
-}
-
 fn external_parameter_expression(
     arguments: &CompileCallArguments,
     parameter: usize,
@@ -1216,12 +839,11 @@ mod call_arguments;
 mod constructor_arguments;
 mod constructors;
 mod helpers;
-mod host_paths;
 use self::constructor_arguments::{
     require_constructor_slot_identity, unavailable_constructor_default,
 };
 use self::helpers::{
-    ConstantHostIndex, ConstructorFieldSpec, ConstructorSpec, callee_path, checked_u32,
-    constructor_variant_specs, field_is_call_callee, pattern_field_names, reflection_operation,
-    require_analysis_call_target, type_owner_name,
+    ConstructorFieldSpec, ConstructorSpec, callee_path, checked_u32, constructor_variant_specs,
+    field_is_call_callee, pattern_field_names, reflection_operation, require_analysis_call_target,
+    type_owner_name,
 };

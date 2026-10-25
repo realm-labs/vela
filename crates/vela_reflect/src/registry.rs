@@ -2,16 +2,14 @@ use std::collections::{BTreeMap, BTreeSet};
 
 mod lookup;
 
-use lookup::{find_field, find_method, stable_trait_id};
+use lookup::stable_trait_id;
 
 use crate::access::{FieldAccess, MethodAccess, MethodEffectSet};
-use crate::error::{ReflectError, ReflectErrorKind, ReflectResult};
 use crate::modules::{DeclOrigin, FunctionDesc, ModuleDesc, StateDesc};
 use crate::type_binding::{TypeBindingDesc, TypeBindingSnapshot};
-use vela_common::{CollectionViewMutation, HostMethodId, HostTypeId, Span};
+use vela_common::Span;
 use vela_common::{InteropTypeId, TypeBindingRegistryChecksum};
 use vela_def::{FieldId, FunctionId, MethodId, TraitId, TypeId, VariantId};
-use vela_host::path::HostRef;
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct TypeKey {
@@ -69,69 +67,8 @@ pub enum TypeKind {
     Range,
     Function,
     Closure,
-    Host,
     ScriptStruct,
     ScriptEnum,
-}
-
-#[derive(Clone, Debug, Default, Eq, PartialEq)]
-pub struct HostIndexCapability {
-    pub readable: bool,
-    pub writable: bool,
-    pub addable: bool,
-    pub removable: bool,
-    pub key_type: Option<String>,
-    pub value_type: Option<String>,
-}
-
-impl HostIndexCapability {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            readable: false,
-            writable: false,
-            addable: false,
-            removable: false,
-            key_type: None,
-            value_type: None,
-        }
-    }
-
-    #[must_use]
-    pub const fn readable(mut self, readable: bool) -> Self {
-        self.readable = readable;
-        self
-    }
-
-    #[must_use]
-    pub const fn writable(mut self, writable: bool) -> Self {
-        self.writable = writable;
-        self
-    }
-
-    #[must_use]
-    pub const fn addable(mut self, addable: bool) -> Self {
-        self.addable = addable;
-        self
-    }
-
-    #[must_use]
-    pub const fn removable(mut self, removable: bool) -> Self {
-        self.removable = removable;
-        self
-    }
-
-    #[must_use]
-    pub fn key_type(mut self, key_type: impl Into<String>) -> Self {
-        self.key_type = Some(key_type.into());
-        self
-    }
-
-    #[must_use]
-    pub fn value_type(mut self, value_type: impl Into<String>) -> Self {
-        self.value_type = Some(value_type.into());
-        self
-    }
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -177,13 +114,11 @@ pub struct TypeDesc {
     pub key: TypeKey,
     pub kind: TypeKind,
     pub schema_hash: Option<SchemaHash>,
-    pub host_type_id: Option<HostTypeId>,
     pub tuple_elements: Vec<String>,
     pub fields: Vec<FieldDesc>,
     pub methods: Vec<MethodDesc>,
     pub traits: Vec<TraitDesc>,
     pub variants: Vec<VariantDesc>,
-    pub index_capability: Option<HostIndexCapability>,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
     pub attrs: AttrMap,
@@ -195,15 +130,13 @@ impl TypeDesc {
     pub fn new(key: TypeKey) -> Self {
         Self {
             key,
-            kind: TypeKind::Host,
+            kind: TypeKind::ScriptStruct,
             schema_hash: None,
-            host_type_id: None,
             tuple_elements: Vec::new(),
             fields: Vec::new(),
             methods: Vec::new(),
             traits: Vec::new(),
             variants: Vec::new(),
-            index_capability: None,
             origin: DeclOrigin::Host,
             docs: None,
             attrs: AttrMap::new(),
@@ -220,12 +153,6 @@ impl TypeDesc {
     #[must_use]
     pub fn schema_hash(mut self, schema_hash: SchemaHash) -> Self {
         self.schema_hash = Some(schema_hash);
-        self
-    }
-
-    #[must_use]
-    pub fn host_type(mut self, host_type_id: HostTypeId) -> Self {
-        self.host_type_id = Some(host_type_id);
         self
     }
 
@@ -263,12 +190,6 @@ impl TypeDesc {
     #[must_use]
     pub fn variant(mut self, variant: VariantDesc) -> Self {
         self.variants.push(variant);
-        self
-    }
-
-    #[must_use]
-    pub fn index_capability(mut self, capability: HostIndexCapability) -> Self {
-        self.index_capability = Some(capability);
         self
     }
 
@@ -376,13 +297,11 @@ impl FieldDesc {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MethodDesc {
-    pub id: HostMethodId,
+    pub id: MethodId,
     pub name: String,
     pub params: Vec<MethodParamDesc>,
     pub return_type: Option<String>,
-    pub return_collection_mutation: Option<CollectionViewMutation>,
     pub effects: MethodEffectSet,
-    pub receiver: vela_common::ReceiverCapability,
     pub access: MethodAccess,
     pub origin: DeclOrigin,
     pub docs: Option<String>,
@@ -392,15 +311,13 @@ pub struct MethodDesc {
 
 impl MethodDesc {
     #[must_use]
-    pub fn new(id: HostMethodId, name: impl Into<String>) -> Self {
+    pub fn new(id: MethodId, name: impl Into<String>) -> Self {
         Self {
             id,
             name: name.into(),
             params: Vec::new(),
             return_type: None,
-            return_collection_mutation: None,
             effects: MethodEffectSet::default(),
-            receiver: vela_common::ReceiverCapability::Shared,
             access: MethodAccess::default(),
             origin: DeclOrigin::Host,
             docs: None,
@@ -416,12 +333,6 @@ impl MethodDesc {
     }
 
     #[must_use]
-    pub const fn receiver(mut self, receiver: vela_common::ReceiverCapability) -> Self {
-        self.receiver = receiver;
-        self
-    }
-
-    #[must_use]
     pub fn param(mut self, param: MethodParamDesc) -> Self {
         self.params.push(param);
         self
@@ -430,12 +341,6 @@ impl MethodDesc {
     #[must_use]
     pub fn return_type(mut self, return_type: impl Into<String>) -> Self {
         self.return_type = Some(return_type.into());
-        self
-    }
-
-    #[must_use]
-    pub const fn return_collection_mutation(mut self, mutation: CollectionViewMutation) -> Self {
-        self.return_collection_mutation = Some(mutation);
         self
     }
 
@@ -688,7 +593,6 @@ impl VariantDesc {
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct TypeRegistry {
     types_by_key: BTreeMap<TypeKey, TypeDesc>,
-    host_keys: BTreeMap<HostTypeId, TypeKey>,
     type_bindings_by_id: BTreeMap<InteropTypeId, TypeBindingDesc>,
     type_binding_ids_by_key: BTreeMap<TypeKey, InteropTypeId>,
     type_binding_snapshot: Option<TypeBindingSnapshot>,
@@ -707,9 +611,6 @@ impl TypeRegistry {
     }
 
     pub fn register(&mut self, desc: TypeDesc) {
-        if let Some(host_type_id) = desc.host_type_id {
-            self.host_keys.insert(host_type_id, desc.key.clone());
-        }
         self.types_by_key.insert(desc.key.clone(), desc);
     }
 
@@ -776,12 +677,6 @@ impl TypeRegistry {
             module_desc.export_state(desc.name.clone(), desc.id);
         }
         self.states_by_id.insert(desc.id, desc);
-    }
-
-    #[must_use]
-    pub fn type_of_host(&self, host_ref: HostRef) -> Option<&TypeDesc> {
-        let key = self.host_keys.get(&host_ref.type_id)?;
-        self.types_by_key.get(key)
     }
 
     #[must_use]
@@ -894,31 +789,5 @@ impl TypeRegistry {
             .find(|key| key.name == name)
             .cloned()?;
         self.types_by_key.get_mut(&key)
-    }
-
-    pub(crate) fn host_field(
-        &self,
-        host_ref: HostRef,
-        field_name: &str,
-    ) -> ReflectResult<&FieldDesc> {
-        let desc = self.type_of_host(host_ref).ok_or_else(|| {
-            ReflectError::new(ReflectErrorKind::UnknownType {
-                host_type_id: host_ref.type_id,
-            })
-        })?;
-        find_field(desc, field_name)
-    }
-
-    pub(crate) fn host_method(
-        &self,
-        host_ref: HostRef,
-        method_name: &str,
-    ) -> ReflectResult<&MethodDesc> {
-        let desc = self.type_of_host(host_ref).ok_or_else(|| {
-            ReflectError::new(ReflectErrorKind::UnknownType {
-                host_type_id: host_ref.type_id,
-            })
-        })?;
-        find_method(desc, method_name)
     }
 }

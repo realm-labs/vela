@@ -20,13 +20,13 @@ use crate::facts::{AnalysisFacts, ExecutableReceiverSeed};
 use crate::literals::{LiteralPrimitiveContext, LiteralResult};
 use crate::registry::{RegistryEffectFact, RegistryFacts};
 use crate::semantic_facts::{
-    CallTargetFact, ConstructorTargetFact, ControlFlowFact, HostPathTargetFact, MemberTargetFact,
-    OperatorTargetFact, ScriptTypeTargetFact,
+    CallTargetFact, ConstructorTargetFact, ControlFlowFact, MemberTargetFact, OperatorTargetFact,
+    ScriptTypeTargetFact,
 };
 use crate::type_fact::TypeFact;
 use crate::validation::{
     ArrayOrderingCapabilityFact, CallArgumentPlacementFact, ConstructorPlacementFact,
-    ExecutableValidationFacts, HostAccessUseFact, LoopControlFact, OperatorCapabilityFact,
+    ExecutableValidationFacts, LoopControlFact, OperatorCapabilityFact,
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -432,17 +432,8 @@ impl ExecutableAnalysisView<'_> {
     }
 
     #[must_use]
-    pub fn host_path_target(&self, expression: HirExprId) -> Option<&HostPathTargetFact> {
-        self.root.facts.host_path_target(expression)
-    }
-
-    #[must_use]
     pub fn effect(&self, expression: HirExprId) -> Option<&RegistryEffectFact> {
-        self.root
-            .validation
-            .host_access_use(expression)
-            .map(|fact| &fact.effect)
-            .or_else(|| self.root.facts.effect(expression))
+        self.root.facts.effect(expression)
     }
 
     #[must_use]
@@ -476,11 +467,6 @@ impl ExecutableAnalysisView<'_> {
     #[must_use]
     pub fn loop_control(&self, statement: HirStmtId) -> Option<LoopControlFact> {
         self.root.validation.loop_control(statement)
-    }
-
-    #[must_use]
-    pub fn host_access_use(&self, expression: HirExprId) -> Option<&HostAccessUseFact> {
-        self.root.validation.host_access_use(expression)
     }
 
     #[must_use]

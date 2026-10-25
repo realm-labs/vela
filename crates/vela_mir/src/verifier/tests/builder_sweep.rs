@@ -3,18 +3,15 @@ use vela_package::ModulePath;
 
 use super::*;
 
-use vela_common::HostTypeId;
 use vela_def::{FieldId, TypeId, VariantId};
 use vela_hir::body::{HirBody, HirBodyOwner, HirExprKind};
 use vela_hir::ids::HirExprId;
 
 use crate::{
     CompileCallTarget, CompileCalleeTarget, CompileFieldAccess, CompileFieldDescriptor,
-    CompileHostPathSegment, CompileHostPathTarget, CompileLambdaParameterTarget,
-    CompileLambdaTarget, CompileMemberTarget, CompileReflectionCall, CompileTargetSnapshotBuilder,
-    CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, CompileTypeClass,
-    CompileTypeDescriptor, CompileVariantDescriptor, HostFieldTarget, MirBuildError, MirLiveValue,
-    MirTypeContract,
+    CompileLambdaParameterTarget, CompileLambdaTarget, CompileReflectionCall,
+    CompileTargetSnapshotBuilder, CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MirBuildError, MirLiveValue,
 };
 
 const SWEEP_SOURCE: SourceId = SourceId::new(112);
@@ -285,99 +282,6 @@ fn mir_verifier_sweeps_registry_calls_and_reflection() {
     verify_mir(&program).expect("registry call/reflection builder output verifies");
 }
 
-const HOST_TYPE_ID: TypeId = TypeId::new(7_620);
-const HOST_RUNTIME_ID: HostTypeId = HostTypeId::new(7_621);
-const HOST_FIELD_ID: FieldId = FieldId::new(7_622);
-const HOST_TYPE: HostTypeTarget = HostTypeTarget {
-    semantic: HOST_TYPE_ID,
-    runtime: HOST_RUNTIME_ID,
-};
-
-fn host_field() -> HostFieldTarget {
-    HostFieldTarget {
-        owner: HOST_TYPE,
-        semantic: HOST_FIELD_ID,
-        runtime: HOST_FIELD_ID,
-        access: CompileFieldAccess::new(true, false, true, false, Vec::new()),
-    }
-}
-
-fn host_path(body: &HirBody, expression: HirExprId) -> Option<CompileHostPathTarget> {
-    match &body.expression(expression)?.kind {
-        HirExprKind::Path(path) => {
-            let path = body.paths.get(path)?;
-            matches!(path.path.as_slice(), [name] if name == "host").then_some(
-                CompileHostPathTarget {
-                    root: expression,
-                    root_type: HOST_TYPE,
-                    segments: Vec::new(),
-                },
-            )
-        }
-        HirExprKind::Field(field) if field.name == "value" => {
-            let mut path = host_path(body, field.receiver)?;
-            path.segments
-                .push(CompileHostPathSegment::Field(host_field()));
-            Some(path)
-        }
-        _ => None,
-    }
-}
-
-#[test]
-fn mir_verifier_sweeps_hostaccess_builder_output() {
-    let program = build_configured(
-        "fn main(host) { return host.value; }",
-        |_graph, body, targets| {
-            let origin = MirSourceOrigin::body(body.id, body.origin.span);
-            targets.insert_type_descriptor(
-                CompileTypeDescriptor {
-                    id: HOST_TYPE_ID,
-                    canonical_name: "host::Root".to_owned(),
-                    runtime_name: "host::Root".to_owned(),
-                    class: CompileTypeClass::Host {
-                        runtime: HOST_RUNTIME_ID,
-                    },
-                    shape: None,
-                    fields: vec![HOST_FIELD_ID],
-                    variants: Vec::new(),
-                },
-                origin,
-            )?;
-            targets.insert_field_descriptor(
-                CompileFieldDescriptor {
-                    id: HOST_FIELD_ID,
-                    owner: HOST_TYPE_ID,
-                    variant: None,
-                    name: "value".to_owned(),
-                    contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-                    declaration_order: 0,
-                    access: host_field().access,
-                    host_runtime: Some(HOST_FIELD_ID),
-                },
-                origin,
-            )?;
-            for (expression, record) in &body.expressions {
-                let Some(path) = host_path(body, *expression) else {
-                    continue;
-                };
-                let expression_origin = expression_origin(body, *expression);
-                targets.insert_host_path(SWEEP_FUNCTION, *expression, path, expression_origin)?;
-                if matches!(record.kind, HirExprKind::Field(_)) {
-                    targets.insert_member(
-                        SWEEP_FUNCTION,
-                        *expression,
-                        CompileMemberTarget::HostField(host_field()),
-                        expression_origin,
-                    )?;
-                }
-            }
-            Ok(())
-        },
-    );
-    verify_mir(&program).expect("HostAccess builder output verifies");
-}
-
 const OPTION_TYPE: TypeId = TypeId::new(7_630);
 const OPTION_SOME: VariantId = VariantId::new(7_631);
 const OPTION_NONE: VariantId = VariantId::new(7_632);
@@ -437,7 +341,6 @@ fn mir_verifier_sweeps_try_builder_output() {
                     contract: None,
                     declaration_order: 0,
                     access: CompileFieldAccess::script(),
-                    host_runtime: None,
                 },
                 origin,
             )?;

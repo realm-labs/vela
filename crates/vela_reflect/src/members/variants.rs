@@ -166,7 +166,6 @@ fn variant_name(target: &ReflectValue) -> ReflectResult<&str> {
     match target {
         ReflectValue::ScriptEnum { variant, .. } => Ok(variant),
         ReflectValue::Host(_)
-        | ReflectValue::HostRef(_)
         | ReflectValue::Closure
         | ReflectValue::Range
         | ReflectValue::Array(_)

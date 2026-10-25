@@ -264,16 +264,16 @@ pub fn grant() { return 1 }";
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -283,7 +283,7 @@ pub fn grant() { return 1 }";
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         },
                         "sourceSpan": {
                             "source": 1,
@@ -326,12 +326,12 @@ pub fn preview() { return 1 }";
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [

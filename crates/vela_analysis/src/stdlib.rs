@@ -136,32 +136,6 @@ pub fn stdlib_method_fact_with_lambda_arity(
     methods::method_fact(receiver, method, lambda_return, lambda_param_count, None)
 }
 
-/// Classifies lazy traversal created from a Host-backed collection view.
-/// Owned script collections produce ordinary iterators; only view families
-/// retain Host authority and therefore require authored release.
-pub fn scoped_iterator_resource(
-    receiver: &TypeFact,
-    method: &str,
-) -> Option<vela_registry::ScopedResourceReturnDef> {
-    let produces_iterator = match receiver {
-        TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => {
-            matches!(method, "iter" | "values")
-        }
-        TypeFact::MapView { .. } | TypeFact::MapMut { .. } => {
-            matches!(method, "iter" | "entries" | "values")
-        }
-        TypeFact::SetView { .. } | TypeFact::SetMut { .. } => {
-            matches!(method, "iter" | "values")
-        }
-        TypeFact::ScopedIterator { .. } => matches!(method, "map" | "filter" | "take" | "skip"),
-        _ => false,
-    };
-    produces_iterator.then_some(vela_registry::ScopedResourceReturnDef {
-        kind: vela_registry::ScopedResourceKindDef::Iterator,
-        parent: vela_registry::ScopedResourceParentDef::Receiver,
-    })
-}
-
 pub(crate) fn stdlib_method_fact_for_call(
     receiver: &TypeFact,
     method: &str,

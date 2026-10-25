@@ -39,4 +39,4 @@ Trait method calls are still receiver-dispatched. Known receiver calls can use l
 
 ## Boundaries
 
-Traits do not allow monkey patching or runtime mutation of type structure. Host type implementations must be registered by the host and must preserve HostAccess safety, capability checks, and hot reload compatibility.
+Traits do not allow monkey patching or runtime mutation of type structure. Ordinary script traits retain capability checks and exact-generation hot reload compatibility.

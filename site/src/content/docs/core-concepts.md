@@ -1,76 +1,18 @@
 ---
 title: "Core Concepts"
-description: "Core concepts documentation for Vela."
+description: "The retained synchronous Vela language and removal boundary."
 ---
 
-This page defines the terms used throughout the documentation. It starts with
-the embedding model because Vela is designed to run inside a Rust host, not as
-a standalone shell-only language.
+## Engine, Runtime And Values
 
-The shortest mental model is:
+An Engine owns compiled/linked metadata and independent native/value registrations. A Runtime owns a script heap, VM state, caches, budgets and executable-generation ownership. `CallArgs` passes values to synchronous calls; `CallOptions` bounds execution.
 
-```text
-Engine  = configured compiler and host registry
-Program = compiled Vela code
-Runtime = mutable execution instance for a Program
-```
+Script structs, enums, traits, modules, collections and iterators remain ordinary language values. Existing serde conversion makes script-owned snapshots, with no implicit mutation of the Rust input. Rust host state does not enter script GC.
 
-## Engine, Program, Runtime
+## State And Reload
 
-An `Engine` is the long-lived object that knows what the host has made
-available to scripts. It owns host type registrations, native functions,
-standard library natives, capability profiles, reflection permissions, and
-compiler options. If a script mentions `Player.level`, the engine is where that
-host schema was registered.
+Ordinary VM `state` persists through compatible reload. Old calls and closures retain their exact old generation and state. Dependent `extern state` host bindings are removed; their removal does not remove ordinary state.
 
-A `Program` is compiled Vela code. It is the result of compiling one source
-file, a set of module sources, or a source directory through an `Engine`. A
-program contains bytecode, metadata, stable IDs, cache sites, and entry points,
-but it is not itself "running" yet.
+## Reduced Boundary
 
-A `Runtime` is where a program actually executes. It owns the mutable VM state
-for one active program version: script heap, VM/extern state, inline caches, execution
-budgets, and hot reload state. Calls enter the runtime through named entries or
-cached entry handles, pass values through `CallArgs`, and are bounded by
-`CallOptions` such as instruction budget, memory budget, and call depth.
-
-In ordinary embedding code the flow is:
-
-```text
-build Engine -> compile Program -> create Runtime -> call script entries
-```
-
-```rust
-let engine = Engine::builder()
-    .capability(Capability::HostRead)
-    .capability(Capability::HostWrite)
-    .register_script_host::<Player>()
-    .build()?;
-let program = engine.compile_source(source)?;
-let mut runtime = Runtime::new(engine, program);
-```
-
-Keep the boundaries separate:
-
-- Change host registrations or policy before compiling by configuring the
-  `Engine`.
-- Change script code by compiling a new `Program`.
-- Change running script state by calling or hot-reloading the `Runtime`.
-
-## Script Values And Host State
-
-Script-owned values include primitives, arrays, maps, sets, strings, records, enums, closures, and iterator values managed by the VM. Host-owned values remain in Rust. When script code receives a host object, it receives a controlled handle, not ownership of the Rust object.
-
-Host writes are immediate write-through operations. A script expression such as `player.inventory.items["gold"].count += amount` is lowered into a host path operation that the host adapter can validate, reject, or apply.
-
-## Capabilities And Budgets
-
-Capabilities describe what effects a runtime may perform, such as host read, host write, host call, random, time, I/O read, or I/O write. Budgets bound execution so script code cannot run forever or grow memory without limits.
-
-The host decides these policies when building the engine or runtime profile. The same script can succeed in one profile and fail in another if it attempts a denied effect.
-
-## Hot Reload Boundary
-
-Hot reload replaces code at function or module boundaries after compatibility checks. The runtime preserves old code for frames that are already executing, then routes new calls to the accepted version.
-
-Schema and ABI compatibility matter. Changes that would invalidate active host bindings, field IDs, method IDs, effects, or callable signatures can be rejected with diagnostics instead of partially applied.
+There are no caller-borrowed roots, returns, views, leases, transparent paths or Host construction/method registrations. Missing opaque/object interoperability is separately deferred; this pass adds no replacement APIs. Script reflection remains controlled, structurally read-only and unable to reconstruct removed host paths.

@@ -84,6 +84,10 @@ fn verify_fixture(fixture_name: &str) {
         for query in spec.oracle["queries"].as_array().expect("queries") {
             let file = query["file"].as_str().expect("file");
             let source = fixture.document(file).expect("source");
+            if query["removedBoundary"] == true {
+                crate::matrix_fixture::assert_removed_borrowed_source(&source.text);
+                continue;
+            }
             if query["parseErrors"] == true {
                 assert!(
                     !vela_syntax::parse::parse_source(&source.text)

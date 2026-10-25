@@ -1,15 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-use vela_common::{HostMethodId, HostObjectId, HostTypeId};
-use vela_def::{FieldId, TypeId};
-use vela_engine::args::{FromScriptArg, IntoScriptArg, ScriptArgsExt};
+use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::proxy::PathProxy;
-use vela_reflect::registry::{MethodDesc, TypeDesc, TypeKey};
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
 
@@ -18,10 +11,8 @@ fn call_raw(
     entry: &str,
     args: &[OwnedValue],
     options: CallOptions,
-    adapter: &mut MockStateAdapter,
-    _access: &mut HostAccess,
 ) -> vela_vm::error::VmResult<OwnedValue> {
-    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let args = CallArgs::from_positional(args.iter().cloned());
     let value = runtime.call(entry, args, options)?;
     runtime.value_to_owned(&value)
 }
@@ -385,144 +376,13 @@ fn script_arg_conversions_support_non_string_map_keys() {
 }
 
 #[test]
-fn args_macro_converts_rust_values_and_host_refs() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
-    let mut map = BTreeMap::new();
-    map.insert("key", 9_i64);
-    let mut hash_map = HashMap::new();
-    hash_map.insert("hash", 11_i64);
-
-    let args = vela_engine::args![
-        (),
-        true,
-        5_i64,
-        2.5_f64,
-        "title",
-        ["a", "b"],
-        map,
-        hash_map,
-        host_ref,
-        proxy.clone(),
-    ];
-
-    assert_eq!(
-        args,
-        vec![
-            OwnedValue::Unit,
-            OwnedValue::Bool(true),
-            OwnedValue::Scalar(vela_common::ScalarValue::I64(5)),
-            OwnedValue::Scalar(vela_common::ScalarValue::F64(2.5)),
-            OwnedValue::String("title".to_owned()),
-            OwnedValue::Array(vec![
-                OwnedValue::String("a".to_owned()),
-                OwnedValue::String("b".to_owned())
-            ]),
-            OwnedValue::map([("key", OwnedValue::Scalar(vela_common::ScalarValue::I64(9)))]),
-            OwnedValue::map([(
-                "hash",
-                OwnedValue::Scalar(vela_common::ScalarValue::I64(11))
-            )]),
-            OwnedValue::HostRef(host_ref),
-            OwnedValue::PathProxy(proxy),
-        ]
-    );
-    assert_eq!(vela_engine::args!(), Vec::<OwnedValue>::new());
-    assert_eq!(vela_engine::host!(1, 42, 7), OwnedValue::HostRef(host_ref));
-    assert_eq!(vela_engine::host!(host_ref), OwnedValue::HostRef(host_ref));
-    assert_eq!(
-        vela_engine::args::host(host_ref),
-        OwnedValue::HostRef(host_ref)
-    );
-    assert_eq!(
-        vela_engine::args::host((1_u32, 42_u64, 7_u32)),
-        OwnedValue::HostRef(host_ref)
-    );
-    assert_eq!(
-        vela_engine::args::host((HostTypeId::new(1), HostObjectId::new(42), 7_u32)),
-        OwnedValue::HostRef(host_ref)
-    );
-}
-
-#[test]
-fn script_arg_conversions_extract_owned_rust_values() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 7);
-    let proxy = PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(9)));
-    let args = vela_engine::args![
-        true,
-        5_i64,
-        2.5_f64,
-        "title",
-        [1_i64, 2_i64, 3_i64],
-        BTreeMap::from([("key", "value")]),
-        HashMap::from([("hash", "map")]),
-        host_ref,
-        proxy.clone(),
-    ];
-
-    assert!(args.required::<bool>(0).expect("bool arg"));
-    assert_eq!(args.required::<i64>(1), Ok(5));
-    assert_eq!(args.required::<f64>(2), Ok(2.5));
-    assert_eq!(
-        f32::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::F32(2.5))),
-        Ok(2.5_f32)
-    );
-    assert_eq!(args.required::<String>(3), Ok("title".to_owned()));
-    assert_eq!(args.required::<Vec<i64>>(4), Ok(vec![1, 2, 3]));
-    assert_eq!(args.required::<[i64; 3]>(4), Ok([1, 2, 3]));
-    assert_eq!(
-        args.required::<BTreeMap<String, String>>(5),
-        Ok(BTreeMap::from([("key".to_owned(), "value".to_owned())]))
-    );
-    assert_eq!(
-        args.required::<HashMap<String, String>>(6),
-        Ok(HashMap::from([("hash".to_owned(), "map".to_owned())]))
-    );
-    assert_eq!(args.required::<HostRef>(7), Ok(host_ref));
-    assert_eq!(args.required::<PathProxy>(8), Ok(proxy));
-
-    assert!(matches!(
-        args.required::<HostRef>(1),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "host ref" })
-            && error.source_span.is_none()
-    ));
-    assert!(matches!(
-        f32::from_script_arg(&OwnedValue::Scalar(vela_common::ScalarValue::F64(f64::MAX))),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "f32" })
-            && error.source_span.is_none()
-    ));
-    assert!(matches!(
-        args.required::<[i64; 2]>(4),
-        Err(error) if matches!(error.kind(), VmErrorKind::TypeMismatch { operation: "array" })
-            && error.source_span.is_none()
-    ));
-    assert!(matches!(
-        args.required::<i64>(9),
-        Err(error) if matches!(error.kind(), VmErrorKind::ArityMismatch {
-                name,
-                expected: 10,
-                actual: 9,
-            } if name == "native argument conversion")
-            && error.source_span.is_none()
-    ));
-}
-
-#[test]
-fn runtime_call_accepts_args_and_host_macros() {
-    let method = HostMethodId::new(23);
-    let engine = Engine::builder()
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(method, "grant_exp")),
-        )
-        .build()
-        .expect("engine should build");
+fn runtime_call_accepts_owned_args_macro() {
+    let engine = Engine::builder().build().expect("engine");
     let program = engine
         .compile_source(
             r#"
-fn main(player: Player, amount: i64) {
-    player.grant_exp(amount);
+fn main(label: String, amount: i64) {
+    let copy = label;
     return amount;
 }
 "#,
@@ -530,19 +390,11 @@ fn main(player: Player, amount: i64) {
         .expect("program should compile");
     let mut runtime =
         vela_engine::runtime::Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let args = vela_engine::args![vela_engine::host!(1, 42, 1), 12_i64];
 
-    let result = call_raw(
-        &mut runtime,
-        "main",
-        &args,
-        CallOptions::unbounded(),
-        &mut adapter,
-        &mut tx,
-    )
-    .expect("runtime call should run");
+    let args = vela_engine::args!["owned", 12_i64];
+
+    let result = call_raw(&mut runtime, "main", &args, CallOptions::unbounded())
+        .expect("runtime call should run");
 
     assert_eq!(
         result,

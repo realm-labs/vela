@@ -111,8 +111,8 @@ fn engine_rejects_module_names_that_shadow_controlled_random_modules() {
 #[test]
 fn engine_rejects_duplicate_type_names() {
     let result = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type_desc(player_type(TypeId::new(2), HostTypeId::new(2)))
+        .register_type_desc(player_type(TypeId::new(1)))
+        .register_type_desc(player_type(TypeId::new(2)))
         .build();
 
     assert!(matches!(
@@ -223,10 +223,8 @@ fn engine_accepts_supported_generic_field_type_hints() {
 #[test]
 fn engine_rejects_duplicate_type_ids() {
     let result = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Monster")).host_type(HostTypeId::new(2)),
-        )
+        .register_type_desc(player_type(TypeId::new(1)))
+        .register_type_desc(TypeDesc::new(TypeKey::new(TypeId::new(1), "Monster")))
         .build();
 
     assert!(matches!(
@@ -240,7 +238,6 @@ fn engine_rejects_malformed_field_names() {
     let result = Engine::builder()
         .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "")),
         )
         .build();
@@ -259,12 +256,10 @@ fn engine_rejects_malformed_field_names() {
 fn engine_rejects_empty_field_required_permissions() {
     let result = Engine::builder()
         .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
-                .field(
-                    FieldDesc::new(FieldId::new(1), "level")
-                        .access(FieldAccess::new().require_permission("")),
-                ),
+            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).field(
+                FieldDesc::new(FieldId::new(1), "level")
+                    .access(FieldAccess::new().require_permission("")),
+            ),
         )
         .build();
 
@@ -457,29 +452,6 @@ fn engine_rejects_generic_trait_method_type_hints() {
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
             descriptor: "trait method Player::Rewardable::reward return".to_owned(),
             type_name: "Result<i64>".to_owned(),
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_generic_trait_method_param_type_hints() {
-    let result = Engine::builder()
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).trait_impl(
-                trait_desc_with_id(TraitId::new(1), "Rewardable").method(
-                    TraitMethodDesc::new(MethodId::new(1), "reward")
-                        .param(MethodParamDesc::new("items").type_hint("Map<PathProxy, String>"))
-                        .return_type("Result"),
-                ),
-            ),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "trait method Player::Rewardable::reward parameter items".to_owned(),
-            type_name: "Map<PathProxy, String>".to_owned(),
         }
     ));
 }

@@ -1,8 +1,8 @@
-use vela_common::{HostTypeId, SourceId};
-use vela_def::{DefPath, FieldId};
+use vela_common::SourceId;
+use vela_def::DefPath;
 use vela_hir::module_graph::ModuleSource;
 use vela_hir::source_ingestion::build_module_source_set;
-use vela_host::target::HostTargetPlan;
+
 use vela_package::ModulePath;
 use vela_registry::{DefinitionRegistry, FunctionDef, FunctionSignature};
 
@@ -412,7 +412,7 @@ fn linker_maps_states_map_keys_and_field_slots_without_instruction_names() {
     let mut code = UnlinkedCodeObject::new("main", 4);
     code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadExternState {
+        UnlinkedInstructionKind::LoadState {
             dst: Register(0),
             state: "main::state".to_owned(),
             slot: None,
@@ -453,10 +453,11 @@ fn linker_maps_states_map_keys_and_field_slots_without_instruction_names() {
         },
     ));
     let mut program = UnlinkedProgram::new();
-    program.set_states([crate::StateDescriptor::test_extern(
+    program.set_states([crate::StateDescriptor::test_vm(
         vela_def::StateId::new(1),
         "main::state",
     )]);
+    code.stable_function = Some(FunctionId::new(1));
     program.insert_function(code);
 
     let linked = Linker::new()
@@ -470,7 +471,7 @@ fn linker_maps_states_map_keys_and_field_slots_without_instruction_names() {
 
     assert!(matches!(
         main.instructions[0].kind,
-        InstructionKind::LoadExternState { slot, .. } if slot == vela_common::StateSlot::new(0)
+        InstructionKind::LoadState { slot, .. } if slot == vela_common::StateSlot::new(0)
     ));
     assert!(matches!(
         &main.instructions[1].kind,
@@ -637,70 +638,5 @@ fn linker_links_dynamic_method_and_field_fallbacks() {
         &field.instructions[0].kind,
         InstructionKind::GetRecordField { debug_name, .. }
             if linked.debug_name(*debug_name) == "score"
-    ));
-}
-
-#[test]
-fn linker_remaps_host_target_plans_and_host_methods_to_linked_handles() {
-    let method = HostMethodId::new(13);
-    let plan = HostTargetPlan::new(HostTypeId::new(7)).field(FieldId::new(11));
-    let mut code = UnlinkedCodeObject::new("main", 3).with_params(vec!["player".to_owned()]);
-    code.host_targets.push(plan.clone());
-    code.host_targets.push(plan.clone());
-    let read_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    let call_site = code.push_cache_site(CacheSiteKind::HostPathCall, InstructionOffset(1));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(1),
-            root: Register(0),
-            target: HostTargetPlanId::new(1),
-            dynamic_args: Vec::new(),
-            cache_site: read_site,
-        },
-    ));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostCall {
-            dst: Some(Register(2)),
-            root: Register(0),
-            target: HostTargetPlanId::new(1),
-            dynamic_args: Vec::new(),
-            method,
-            args: vec![Register(1)],
-            cache_site: call_site,
-        },
-    ));
-    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(2),
-    }));
-    let mut program = UnlinkedProgram::new();
-    program.insert_function(code);
-
-    let linked = Linker::new()
-        .link_test_program(&program)
-        .expect("host targets should link");
-    let main = linked
-        .functions()
-        .find(|(_, code)| linked.debug_name(code.debug_name) == "main")
-        .map(|(_, code)| code)
-        .expect("main function should link");
-
-    assert_eq!(main.host_targets, vec![plan]);
-    assert!(matches!(
-        main.instructions[0].kind,
-        InstructionKind::HostRead {
-            target,
-            ..
-        } if target == HostTargetPlanId::new(0)
-    ));
-    assert!(matches!(
-        main.instructions[1].kind,
-        InstructionKind::HostCall {
-            target,
-            method: dispatch,
-            ..
-        } if target == HostTargetPlanId::new(0)
-            && linked.method_dispatch(dispatch).is_some_and(|dispatch| {
-                dispatch.kind == LinkedMethodDispatchKind::Host { method_id: method }
-            })
     ));
 }

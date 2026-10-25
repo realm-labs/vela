@@ -1,7 +1,6 @@
 use super::*;
 
 use vela_bytecode::UnlinkedProgram;
-use vela_vm::budget::ExecutionBudget;
 use vela_vm::error::VmResult;
 
 fn run_linked_program(
@@ -16,81 +15,6 @@ fn run_linked_program(
     engine
         .into_vm_for_program(program)
         .run_linked_program(&linked, entry, args)
-}
-
-fn run_linked_program_with_host(
-    engine: &Engine,
-    program: &UnlinkedProgram,
-    entry: &str,
-    args: &[OwnedValue],
-    host: &mut HostExecution<'_>,
-) -> VmResult<OwnedValue> {
-    let linked = engine
-        .link_test_program(program)
-        .expect("source reload directory host test program should link");
-    let mut budget = ExecutionBudget::unbounded();
-    engine
-        .into_vm_for_program(program)
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            entry,
-            args,
-            host,
-            &mut budget,
-            None,
-        )
-}
-
-#[test]
-fn engine_compile_file_uses_engine_compiler_options() {
-    let root = unique_test_dir("compile_file");
-    std::fs::create_dir_all(&root).expect("create temp source dir");
-    let source = root.join("main.vela");
-    std::fs::write(
-        &source,
-        r#"
-fn main(player: Player) {
-    player.level += 1;
-    player.grant_exp(7);
-    return player.level;
-}
-"#,
-    )
-    .expect("write source file");
-    let method = HostMethodId::new(77);
-    let engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(method, "grant_exp")),
-        )
-        .build()
-        .expect("engine should build");
-
-    let program = engine.compile_file(&source).expect("compile file");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        HostPath::new(host_ref).field(FieldId::new(1)),
-        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
-    );
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    assert_eq!(
-        run_linked_program_with_host(
-            &engine,
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
-    );
 }
 
 #[test]
@@ -175,17 +99,9 @@ pub fn grant() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -220,13 +136,7 @@ pub fn grant() {
         vec!["game::main".to_owned(), "game::reward".to_owned()]
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
     );
 }
@@ -244,17 +154,9 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -268,13 +170,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             .expect("dir update should be pending")
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -296,13 +192,7 @@ fn runtime_stages_hot_reload_dir_until_check_reload_safe_point() {
             .expect("safe point should consume dir update")
     );
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
@@ -321,21 +211,13 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     write_reward_module_with_helper(&reward_file, 6);
     runtime
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("hot reload rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -352,13 +234,7 @@ fn runtime_stages_dir_hot_reload_rejection_until_safe_point() {
             if function == "game::reward::helper"
     ));
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -392,17 +268,9 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -411,13 +279,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir return ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -448,13 +310,7 @@ fn runtime_stages_dir_return_abi_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }

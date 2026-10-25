@@ -61,16 +61,6 @@ impl ResumableArrayOrdering {
         Self::from_values(kind, values, heap)
     }
 
-    pub(crate) fn from_projected_values(
-        kind: ResumableArrayOrderingKind,
-        values: Vec<Value>,
-        args: &[Value],
-        heap: Option<&HeapExecution<'_>>,
-    ) -> VmResult<Self> {
-        Self::validate_arity(kind, args)?;
-        Self::from_values(kind, values, heap)
-    }
-
     fn from_values(
         kind: ResumableArrayOrderingKind,
         values: Vec<Value>,

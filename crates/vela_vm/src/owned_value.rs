@@ -2,8 +2,6 @@ use std::sync::Arc;
 
 use vela_bytecode::{Constant, LinkedArtifact, ScriptFunctionHandle};
 use vela_common::ScalarValue;
-use vela_host::path::HostRef;
-use vela_host::proxy::PathProxy;
 
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::iteration::IteratorState;
@@ -11,6 +9,17 @@ use crate::ranges::RangeValue;
 use crate::script_object::ScriptFields;
 use crate::value::Value;
 
+/// Owned script data; host references and transparent paths cannot cross this boundary.
+///
+/// ```compile_fail,E0599
+/// use vela_vm::owned_value::OwnedValue;
+/// let value = OwnedValue::HostRef(());
+/// ```
+///
+/// ```compile_fail,E0599
+/// use vela_vm::owned_value::OwnedValue;
+/// let value = OwnedValue::PathProxy(());
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub enum OwnedValue {
     Unit,
@@ -34,8 +43,6 @@ pub enum OwnedValue {
     },
     Closure(OwnedClosureValue),
     Range(RangeValue),
-    HostRef(HostRef),
-    PathProxy(PathProxy),
     Iterator(OwnedIteratorState),
 }
 
@@ -214,8 +221,6 @@ impl OwnedValue {
                     format!("{}..{}", value.start, value.end)
                 }
             }
-            Self::HostRef(value) => format!("{value:?}"),
-            Self::PathProxy(value) => format!("{value:?}"),
             Self::Iterator(_) => "<iterator>".to_owned(),
         }
     }
@@ -458,19 +463,12 @@ impl From<Vec<u8>> for OwnedValue {
     }
 }
 
-impl From<HostRef> for OwnedValue {
-    fn from(value: HostRef) -> Self {
-        Self::HostRef(value)
-    }
-}
-
 pub fn owned_to_value_detached(value: OwnedValue) -> Value {
     match value {
         OwnedValue::Unit => Value::Unit,
         OwnedValue::Bool(value) => Value::Bool(value),
         OwnedValue::Char(value) => Value::Char(value),
         OwnedValue::Scalar(value) => Value::from_scalar(value),
-        OwnedValue::HostRef(_) => Value::Missing,
         OwnedValue::Range(_)
         | OwnedValue::String(_)
         | OwnedValue::Bytes(_)
@@ -481,7 +479,6 @@ pub fn owned_to_value_detached(value: OwnedValue) -> Value {
         | OwnedValue::Record { .. }
         | OwnedValue::Enum { .. }
         | OwnedValue::Closure(_)
-        | OwnedValue::PathProxy(_)
         | OwnedValue::Iterator(_) => Value::Missing,
     }
 }
@@ -502,7 +499,6 @@ pub fn value_to_owned_detached(value: &Value) -> VmResult<OwnedValue> {
         Value::U64(value) => Ok(OwnedValue::Scalar(ScalarValue::U64(*value))),
         Value::F32(value) => Ok(OwnedValue::Scalar(ScalarValue::F32(*value))),
         Value::F64(value) => Ok(OwnedValue::Scalar(ScalarValue::F64(*value))),
-        Value::HostRef(_) => Err(boundary_type_error("detached host ref")),
         Value::HeapRef(_) => Err(boundary_type_error("detached heap value")),
     }
 }
@@ -529,7 +525,6 @@ fn owned_value_eq_runtime(lhs: &OwnedValue, rhs: &Value) -> bool {
         (OwnedValue::Bool(lhs), Value::Bool(rhs)) => lhs == rhs,
         (OwnedValue::Char(lhs), Value::Char(rhs)) => lhs == rhs,
         (OwnedValue::Scalar(lhs), rhs) => rhs.as_scalar().as_ref() == Some(lhs),
-        (OwnedValue::HostRef(_), Value::HostRef(_)) => false,
         _ => false,
     }
 }

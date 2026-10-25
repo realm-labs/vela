@@ -153,6 +153,13 @@ fn script_method_use_references_for_source(
         let Some(member_range) = span_text_range(field.member_origin.span) else {
             continue;
         };
+        if query_context::source_origins_for_source_range(databases, source_id, receiver_range)
+            .is_none_or(|origins| origins.possible().is_empty())
+            && matches!(query_context::type_fact_for_source_range(databases, source_id, receiver_range),
+                Some(TypeFact::Record { name }) if databases.schema_db().facts().type_fact(&name).is_some())
+        {
+            continue;
+        }
         if query_context::type_fact_for_source_range(databases, source_id, receiver_range)
             .and_then(|receiver| {
                 script_method_target_for_receiver_fact(graph, &receiver, &target.method)

@@ -1,6 +1,5 @@
 use super::*;
 use crate::owned_value::OwnedValue;
-use crate::value::Value as RuntimeValue;
 use vela_reflect::value::{ReflectMapEntry, ReflectValue};
 
 fn reflection_value_natives() -> &'static [&'static str] {
@@ -62,20 +61,6 @@ fn exec_reflection_value_program_with_budget(
     run_linked_test_program_with_host_budget(vm, program, entry, args, host, budget)
 }
 
-fn exec_reflection_value_runtime(
-    vm: &Vm,
-    program: &UnlinkedProgram,
-    entry: &str,
-    args: &[RuntimeValue],
-    host: &mut HostExecution<'_>,
-    heap: &mut HeapExecution<'_>,
-    budget: &mut ExecutionBudget,
-) -> VmResult<RuntimeValue> {
-    run_linked_test_program_runtime_with_host_heap_and_budget(
-        vm, program, entry, args, host, heap, budget,
-    )
-}
-
 #[test]
 fn reflection_execution_unit_limit_has_a_stable_edge() {
     let program = compile_reflection_value_source(
@@ -85,13 +70,8 @@ fn reflection_execution_unit_limit_has_a_stable_edge() {
     .expect("compile reflection execution-unit fixture");
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
     let mut exact = ExecutionBudget::new(3, usize::MAX, usize::MAX);
     assert_eq!(
         exec_reflection_value_program_with_budget(
@@ -159,11 +139,10 @@ fn runtime_reflection_preserves_map_key_values() {
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
     let runtime =
-        owned_to_value(value.clone(), &mut heap_execution, None, None).expect("materialize map");
+        owned_to_value(value.clone(), &mut heap_execution, None).expect("materialize map");
 
-    let reflected =
-        runtime_value_to_reflect(&runtime, &heap_execution, None, "test runtime reflect map")
-            .expect("reflect runtime map");
+    let reflected = runtime_value_to_reflect(&runtime, &heap_execution, "test runtime reflect map")
+        .expect("reflect runtime map");
 
     assert_eq!(
         reflected,
@@ -203,15 +182,10 @@ fn main() {
 "#,
     )
     .expect("compile script record reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -232,18 +206,13 @@ fn main() {
 "#,
     )
     .expect("compile closure reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     let mut registry = script_reflection_registry();
     registry
         .register(TypeDesc::new(TypeKey::new(TypeId::new(201), "closure")).kind(TypeKind::Closure));
     vm.register_reflection_natives(Arc::new(registry));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -272,15 +241,10 @@ fn main() {
 "#,
     )
     .expect("compile script record reflect set source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -300,15 +264,10 @@ fn main() {
 "#,
     )
     .expect("compile metadata reflect set source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -330,15 +289,10 @@ fn main() {
 "#,
     )
     .expect("compile script record unknown field source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -374,18 +328,13 @@ fn main() {
                     .access(FieldAccess::new().require_permission("player.level.inspect")),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(registry),
         reflect::permissions::ReflectPolicy::all(),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_value_program(&vm, &program, "main", &[], &mut host),
@@ -396,56 +345,6 @@ fn main() {
             source_span: None,
         })
     ));
-}
-
-#[test]
-fn heap_execution_reflection_fields_returns_heap_metadata_records() {
-    let host_ref = player_ref(3);
-    let program = compile_reflection_value_source(
-        SourceId::new(1),
-        r#"
-fn main(player) {
-    let fields = reflect::fields(player);
-    return reflect::get(fields[0], "owner") == "Player"
-        && reflect::get(fields[0], "name") == "id"
-        && reflect::get(fields[1], "owner") == "Player"
-        && reflect::get(fields[1], "name") == "level";
-}
-"#,
-    )
-    .expect("compile reflection fields source");
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
-        .expect("host ref should intern");
-    let mut tx = HostAccess::new();
-    let mut vm = Vm::new();
-    vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut heap = ScriptHeap::new();
-    let mut heap_execution = HeapExecution::new(&mut heap);
-    let mut budget = ExecutionBudget::new(u64::MAX, 8192, usize::MAX);
-
-    let result = {
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut tx,
-            state_values: None,
-        };
-        exec_reflection_value_runtime(
-            &vm,
-            &program,
-            "main",
-            &[RuntimeValue::HostRef(host_slot)],
-            &mut host,
-            &mut heap_execution,
-            &mut budget,
-        )
-    }
-    .expect("run heap reflection fields");
-
-    assert_eq!(result, RuntimeValue::Bool(true));
 }
 
 #[test]
@@ -470,18 +369,13 @@ fn main() {
 "#,
     )
     .expect("compile heap script record reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(script_reflection_registry()));
     let mut budget = ExecutionBudget::unbounded();
 
     let result = {
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut tx,
-            state_values: None,
-        };
+        let mut host = HostExecution { state_values: None };
         exec_reflection_value_program_with_budget(
             &vm,
             &program,
@@ -537,70 +431,13 @@ pub fn main() {
     registry.register_script_types(&graph);
     let program =
         compile_reflection_value_module_sources(&sources).expect("compile script trait module");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(registry));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_value_program(&vm, &program, "game::main", &[], &mut host),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(8)))
-    );
-}
-
-#[test]
-fn compiled_source_reflect_call_calls_host_method() {
-    let host_ref = player_ref(3);
-    let method = HostMethodId::new(5);
-    let program = compile_reflection_value_source(
-        SourceId::new(1),
-        r#"
-fn main(player) {
-    reflect::call(player, "grant_exp", 20);
-    return 1;
-}
-"#,
-    )
-    .expect("compile reflection call source");
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    adapter.insert_method_return(method, HostValue::Scalar(vela_common::ScalarValue::I64(12)));
-    let mut tx = HostAccess::new();
-    let mut vm = Vm::new();
-    vm.register_reflection_natives(Arc::new(reflection_registry()));
-
-    let result = {
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut tx,
-            state_values: None,
-        };
-        exec_reflection_value_program(
-            &vm,
-            &program,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-        )
-    };
-
-    assert_eq!(
-        result,
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-    assert_eq!(
-        adapter.method_calls(),
-        &[(
-            HostPath::new(host_ref),
-            method,
-            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
-        )]
     );
 }

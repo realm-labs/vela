@@ -1,11 +1,15 @@
-error: Vela exports are synchronous; async Rust functions cannot be exported or registered
- --> tests/ui/interop/fail/async_methods.rs:8:9
+error[E0432]: unresolved import `vela_macros::methods`
+ --> tests/ui/interop/fail/async_methods.rs:1:5
   |
-8 |     pub async fn value(&self) -> i64 {
-  |         ^^^^^
+1 | use vela_macros::methods;
+  |     ^^^^^^^^^^^^^-------
+  |                  |
+  |                  no `methods` in the root
 
-error: Vela exports are synchronous; async Rust functions cannot be exported or registered
-  --> tests/ui/interop/fail/async_methods.rs:16:9
+error: cannot find attribute `vela` in this scope
+  --> tests/ui/interop/fail/async_methods.rs:15:7
    |
-16 |     pub async fn lookup(&self) -> Option<&Row> {
-   |         ^^^^^
+15 |     #[vela]
+   |       ^^^^
+   |
+   = note: `vela` is an attribute that can be used by the derive macro `Value`, you might be missing a `derive` attribute

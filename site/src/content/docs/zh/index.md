@@ -14,10 +14,10 @@ Vela 是一个面向 Rust 应用的 Hot Reload First 动态脚本语言。Rust �
 ## 主要阅读路径
 
 - 语言基础从[词法结构和注释](./language/lexical-structure-comments/)开始。
-- 宿主集成先看[嵌入概览](./host/embedding-overview/)和 [HostAccess 写穿模型](./host/hostaccess-write-through/)。
+- 宿主集成先看[嵌入概览](./host/embedding-overview/)和 [脚本自有快照值](./host/serde-snapshot-values/)。
 - 热更新语义看[热更新模型](./hot-reload/model/)。
 - 当前实现范围看[项目状态和路线图](./project-status-roadmap/)。
 
 ## 当前范围
 
-当前实现是一个可运行的预发布系统，已经包含解析、HIR、字节码、VM、标准库辅助函数、HostAccess、反射、热更新流程、示例、benchmark 和 WASM Playground。文档会描述当前契约，并在功能明确不属于 MVP 时直接标出边界。
+当前实现是一个可运行的预发布系统，已经包含解析、HIR、字节码、VM、标准库辅助函数、脚本自有值、反射、热更新流程、示例、benchmark 和 WASM Playground。文档会描述当前契约，并在功能明确不属于 MVP 时直接标出边界。

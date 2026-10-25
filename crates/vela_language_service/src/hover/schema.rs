@@ -1,7 +1,4 @@
-use vela_analysis::registry::{
-    RegistryEffectFact, RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef,
-    ScopedResourceReturnDef,
-};
+use vela_analysis::registry::{RegistryEffectFact, RegistryFacts};
 use vela_analysis::type_fact::TypeFact;
 
 use crate::{
@@ -159,10 +156,7 @@ fn function_detail_parts(schema: &RegistryFacts, name: &str, fact: &TypeFact) ->
     let effects = schema
         .function_effect_fact(name)
         .map_or_else(|| "effects: unknown".to_owned(), effect_detail);
-    let mut metadata = vec![effects];
-    if let Some(resource) = schema.function_scoped_resource(name) {
-        metadata.push(scoped_resource_detail(resource));
-    }
+    let metadata = vec![effects];
     callable_metadata_detail_parts(fact.display_name(), metadata)
 }
 
@@ -180,26 +174,8 @@ fn method_detail_parts(
         || "none".to_owned(),
         |access| permissions_detail(&access.required_permissions),
     );
-    let mut metadata = vec![effects, format!("permissions: {permissions}")];
-    if let Some(resource) = schema.method_scoped_resource(owner, method) {
-        metadata.push(scoped_resource_detail(resource));
-    }
+    let metadata = vec![effects, format!("permissions: {permissions}")];
     callable_metadata_detail_parts(fact.display_name(), metadata)
-}
-
-fn scoped_resource_detail(resource: ScopedResourceReturnDef) -> String {
-    let kind = match resource.kind {
-        ScopedResourceKindDef::View => "View",
-        ScopedResourceKindDef::MutView => "MutView",
-        ScopedResourceKindDef::Iterator => "ScopedIterator",
-    };
-    let parent = match resource.parent {
-        ScopedResourceParentDef::Receiver => "receiver".to_owned(),
-        ScopedResourceParentDef::Parameter(index) => {
-            format!("parameter #{}", usize::from(index) + 1)
-        }
-    };
-    format!("scoped resource: {kind}; parent: {parent}; release: explicit")
 }
 
 fn callable_metadata_detail_parts(
@@ -254,10 +230,9 @@ fn permissions_detail(permissions: &[String]) -> String {
 
 fn owner_name(fact: &TypeFact) -> Option<String> {
     match fact {
-        TypeFact::Host { name }
-        | TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Trait { name } => Some(name.clone()),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Trait { name } => {
+            Some(name.clone())
+        }
         _ => None,
     }
 }

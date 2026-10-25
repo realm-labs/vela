@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use vela_common::StoragePolicy;
 use vela_engine::args::{FromScriptArg, IntoScriptArg};
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
@@ -88,7 +87,10 @@ fn value_derive_generates_schema_codec_and_unified_binding() {
     let binding = type_bindings
         .get_for::<ItemGrant>()
         .expect("derived binding should use typed lookup");
-    assert_eq!(binding.storage, StoragePolicy::Value);
+    let proof = ItemGrant::vela_type_binding().interop_contract();
+    assert!(type_bindings.matches_contract(proof));
+    assert_eq!(binding.id, proof.type_id);
+    assert_eq!(binding.abi_fingerprint, proof.abi_fingerprint);
     assert_eq!(binding.key, desc.key);
 }
 

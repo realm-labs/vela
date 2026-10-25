@@ -1,0 +1,31 @@
+error: borrowed returns and nested references are removed; use owned values
+ --> tests/ui/interop/fail/borrowed_return_shapes.rs:7:35
+  |
+7 | pub fn slice(_record: &Record) -> &[i64] { todo!() }
+  |                                   ^^^^^^
+
+error: borrowed returns and nested references are removed; use owned values
+  --> tests/ui/interop/fail/borrowed_return_shapes.rs:10:40
+   |
+10 | pub fn nested(_record: &Record) -> Vec<&Record> { todo!() }
+   |                                        ^^^^^^^
+
+error: borrowed returns and nested references are removed; use owned values
+  --> tests/ui/interop/fail/borrowed_return_shapes.rs:13:53
+   |
+13 | pub fn result(_record: &Record) -> VmResult<Option<(&Record, &Record)>> { todo!() }
+   |                                                     ^^^^^^^
+
+error: borrowed returns and nested references are removed; use owned values
+  --> tests/ui/interop/fail/borrowed_return_shapes.rs:17:33
+   |
+17 |     pub fn borrowed() -> Option<&'static str> { None }
+   |                                 ^^^^^^^^^^^^
+
+warning: unused import: `vela_vm::error::VmResult`
+ --> tests/ui/interop/fail/borrowed_return_shapes.rs:2:5
+  |
+2 | use vela_vm::error::VmResult;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default

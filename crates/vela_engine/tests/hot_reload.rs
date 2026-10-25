@@ -4,8 +4,6 @@ use vela_def::FunctionId;
 use vela_engine::engine::Engine;
 use vela_engine::native::NativeFunctionDesc;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::version::ProgramVersion;
 use vela_reflect::permissions::ReflectPolicy;
 use vela_vm::owned_value::OwnedValue;
@@ -15,10 +13,8 @@ fn call_raw(
     entry: &str,
     args: &[OwnedValue],
     options: CallOptions,
-    adapter: &mut MockStateAdapter,
-    _access: &mut HostAccess,
 ) -> vela_vm::error::VmResult<OwnedValue> {
-    let args = CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
+    let args = CallArgs::from_positional(args.iter().cloned());
     let value = runtime.call(entry, args, options)?;
     runtime.value_to_owned(&value)
 }
@@ -39,18 +35,9 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
     let initial_version = initial.id;
     let initial_artifact = Arc::clone(initial.linked_artifact());
     assert!(has_selected_scalar_loop(&initial));
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -69,14 +56,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
         &initial_artifact
     ));
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -101,14 +81,7 @@ fn runtime_hot_reload_update_waits_for_explicit_reload_safe_point() {
             .any(|plan| plan.range_loop.is_some())
     }));
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -426,18 +399,9 @@ fn main() {
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -467,14 +431,7 @@ fn main() {
         .expect("compatible update should stage");
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -485,14 +442,7 @@ fn main() {
 
     assert!(report.accepted);
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -525,18 +475,9 @@ fn main() {
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 
@@ -565,14 +506,7 @@ fn main() {
         .expect("compatible update should stage");
 
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(12)))
     );
 
@@ -583,14 +517,7 @@ fn main() {
 
     assert!(report.accepted);
     assert_eq!(
-        call_raw(
-            &mut runtime,
-            "main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        call_raw(&mut runtime, "main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(17)))
     );
 }

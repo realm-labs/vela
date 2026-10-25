@@ -15,7 +15,7 @@ use super::{
 pub(crate) fn sum(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     if args.len() > 1 {
         return Err(VmError::new(VmErrorKind::ArityMismatch {
@@ -51,7 +51,7 @@ pub(crate) fn sum_values(
 pub(crate) fn group_by(
     receiver: &Value,
     args: &[Value],
-    mut runtime: MethodRuntime<'_, '_, '_>,
+    mut runtime: MethodRuntime<'_, '_>,
 ) -> VmResult<Value> {
     expect_arity("group_by", args, 1)?;
     let values = array_values(receiver, runtime.heap.as_deref(), "method group_by")?;

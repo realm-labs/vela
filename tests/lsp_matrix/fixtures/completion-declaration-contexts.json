@@ -3,11 +3,11 @@
   "id": "completion-declaration-contexts",
   "files": {
     "vela.toml": "[package]\nid=\"dev.vela.declaration_contexts\"\nname=\"declaration_contexts\"\nversion=\"0.1.0\"\n[source]\nroots=[\"scripts\"]\n[host]\nschema=\"schema.json\"\n",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{}}",
+    "schema.json": "{\"formatVersion\":4,\"facts\":{}}",
     "scripts/constant.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
     "scripts/unhinted_constant.vela": "const [[decl:start]]zz_pick[[decl:end]] = true; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
     "scripts/state.vela": "state [[decl:start]]zz_pick[[decl:end]]: i64 = 1; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
-    "scripts/extern_state.vela": "extern state [[decl:start]]zz_pick[[decl:end]]: i64; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
+    "scripts/extern_state.vela": "state [[decl:start]]zz_pick[[decl:end]]: i64 = 1; fn main() { /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]]; }\n",
     "scripts/constant_initializer.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; const result = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]];\n",
     "scripts/state_initializer.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; state result: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]];\n",
     "scripts/field_default.vela": "const [[decl:start]]zz_pick[[decl:end]]: i64 = 1; struct Record { value: i64 = /* 中😀 */ [[replace:start]]zz_p[[cursor]][[replace:end]] }\n",

@@ -9,7 +9,7 @@
     "scripts/default.vela": "use host::Row as Alias;\n/* 中😀 */ trait Provider { fn echo(self, rows: Array<Alias>) -> Array<Alias> { rows } } pub struct Worker {} impl Provider for Worker {}\nfn main(rows: Array<Alias>, level: i64, worker: Worker) { worker.echo(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
     "scripts/field.vela": "use host::Row as Alias;\n/* 中😀 */ struct Holder { rows: Array<Alias> }\nfn main(rows: Array<Alias>, level: i64, holder: Holder) { holder.rows[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
     "scripts/constant.vela": "use host::Row as Alias;\n/* 中😀 */ const ROWS: Array<Alias> = [];\nfn main(rows: Array<Alias>, level: i64) { ROWS[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
-    "scripts/state.vela": "use host::Row as Alias;\n/* 中😀 */ extern state STATE: Array<Alias>;\nfn main(rows: Array<Alias>, level: i64) { STATE[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
+    "scripts/state.vela": "use host::Row as Alias;\n/* 中😀 */ state STATE: Array<Alias> = [];\nfn main(rows: Array<Alias>, level: i64) { STATE[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
     "scripts/source_function.vela": "use api::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
     "scripts/source_provider.vela": "use api::Row as Alias;\n/* 中😀 */ trait Provider { fn echo(self, rows: Array<Alias>) -> Array<Alias>; } pub struct Worker {} impl Provider for Worker { pub fn echo(self, rows: Array<Alias>) -> Array<Alias> { rows } }\nfn main(rows: Array<Alias>, level: i64, worker: Worker) { worker.echo(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
     "scripts/missing.vela": "use missing::Row as Alias;\n/* 中😀 */ fn accept(rows: Array<Alias>) -> Array<Alias> { rows }\nfn main(rows: Array<Alias>, level: i64) { accept(rows)[0].[[replace:start]]co[[cursor]][[replace:end]]; }\n",
@@ -24,49 +24,49 @@
         {
           "name": "host::Row",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Row"
           }
         },
         {
           "name": "host::Issue",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Issue"
           }
         },
         {
           "name": "api::Row",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "api::Row"
           }
         },
         {
           "name": "api::Hidden",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "api::Hidden"
           }
         },
         {
           "name": "api::Mask",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "api::Mask"
           }
         },
         {
           "name": "Alias",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "Alias"
           }
         },
         {
           "name": "Row",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "Row"
           }
         }
@@ -328,49 +328,49 @@
             {
               "name": "host::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Row"
               }
             },
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }
@@ -454,49 +454,49 @@
             {
               "name": "host::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Row"
               }
             },
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }
@@ -580,49 +580,49 @@
             {
               "name": "host::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Row"
               }
             },
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }
@@ -706,42 +706,42 @@
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }
@@ -809,42 +809,42 @@
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }
@@ -912,49 +912,49 @@
             {
               "name": "host::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Row"
               }
             },
             {
               "name": "host::Issue",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "host::Issue"
               }
             },
             {
               "name": "api::Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Row"
               }
             },
             {
               "name": "api::Hidden",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Hidden"
               }
             },
             {
               "name": "api::Mask",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "api::Mask"
               }
             },
             {
               "name": "Alias",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Alias"
               }
             },
             {
               "name": "Row",
               "fact": {
-                "kind": "host",
+                "kind": "record",
                 "name": "Row"
               }
             }

@@ -167,9 +167,6 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::InvalidStateInitializer { state, reason } => {
             single_error_response(format!("invalid state initializer for `{state}`: {reason}"))
         }
-        CompileErrorKind::InvalidExternStateContract { state, actual } => single_error_response(
-            format!("extern state `{state}` requires a registered host type, found `{actual}`"),
-        ),
         CompileErrorKind::UnknownLocal(name) => {
             single_error_response(format!("unknown local `{name}`"))
         }
@@ -207,13 +204,6 @@ fn compile_error_response(error: CompileError) -> PlaygroundResponse {
         CompileErrorKind::RegistrySnapshot(message) => single_error_response(format!(
             "invalid compile-target registry snapshot: {message}"
         )),
-
-        CompileErrorKind::DiscardedScopedResource { kind, parent } => single_error_response(
-            format!("discarded scoped {kind:?} result retaining {parent:?}"),
-        ),
-        CompileErrorKind::UnnameableScopedResource { kind, parent } => single_error_response(
-            format!("unnamed scoped {kind:?} result retaining {parent:?}"),
-        ),
     }
 }
 
@@ -351,10 +341,6 @@ fn owned_value_to_json(value: &OwnedValue) -> JsonValue {
         }),
         OwnedValue::Closure(_) => json!({ "kind": "closure" }),
         OwnedValue::Range(value) => json!({ "kind": "range", "value": format!("{value:?}") }),
-        OwnedValue::HostRef(value) => json!({ "kind": "host_ref", "value": format!("{value:?}") }),
-        OwnedValue::PathProxy(value) => {
-            json!({ "kind": "path_proxy", "value": format!("{value:?}") })
-        }
         OwnedValue::Iterator(_) => json!({ "kind": "iterator" }),
     }
 }
@@ -426,17 +412,14 @@ mod tests {
     }
 
     #[test]
-    fn compile_script_reports_invalid_extern_state_contract() {
+    fn compile_script_rejects_removed_extern_state() {
         let response: JsonValue = serde_json::from_str(&compile_script(
             "extern state value: i64; fn main() { return 0; }",
         ))
         .expect("valid playground response");
 
         assert_eq!(response["ok"], false);
-        assert_eq!(
-            response["diagnostics"][0]["code"],
-            "compiler::invalid_extern_state_contract"
-        );
+        assert_eq!(response["diagnostics"][0]["code"], "E_PARSE");
     }
 
     #[test]

@@ -255,7 +255,7 @@ fn value_checksum(value: &OwnedValue) -> u64 {
             |checksum, value| mix(checksum, value_checksum(value)),
         ),
         OwnedValue::Range(_) => 0x09,
-        OwnedValue::Closure(_) | OwnedValue::HostRef(_) | OwnedValue::PathProxy(_) => 0x0a,
+        OwnedValue::Closure(_) => 0x0a,
         OwnedValue::Iterator(_) => 0x0b,
     }
 }

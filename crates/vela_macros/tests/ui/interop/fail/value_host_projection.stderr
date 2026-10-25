@@ -1,0 +1,17 @@
+error: host projection attributes are removed; Value only supports script-owned data
+ --> tests/ui/interop/fail/value_host_projection.rs:4:37
+  |
+4 | #[vela(path = "removed::Projected", fields)]
+  |                                     ^^^^^^
+
+error: host projection attributes are removed; Value only supports script-owned data
+  --> tests/ui/interop/fail/value_host_projection.rs:10:12
+   |
+10 |     #[vela(host = "removed::Host")]
+   |            ^^^^
+
+error: host projection attributes are removed; Value only supports script-owned data
+  --> tests/ui/interop/fail/value_host_projection.rs:17:12
+   |
+17 |     #[vela(deref)]
+   |            ^^^^^

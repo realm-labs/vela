@@ -289,6 +289,29 @@ mod tests {
     }
 
     #[test]
+    fn reflection_host_package_is_native_identity_not_borrowed_host_access() {
+        let mut registry = standard_registry().expect("standard registry");
+        register_reflection_natives(&mut registry).expect("reflection registration");
+        for spec in reflection_native_specs() {
+            assert_eq!(spec.path().package, "host");
+            assert!(spec.source_name.starts_with("reflect::"));
+        }
+        for name in ["release", "try_release"] {
+            assert!(
+                registry
+                    .compile_view()
+                    .resolve_native_function_path(&DefPath::function("host", ["host"], name),)
+                    .is_none()
+            );
+            assert!(reflection_native_spec(&format!("host::{name}")).is_none());
+        }
+        assert!(registry.compile_view().definitions().all(|definition| {
+            !matches!(definition, Def::Type(ty) if matches!(ty.path.name.as_str(),
+                "ArrayView" | "ArrayMut" | "MapView" | "MapMut" | "SetView" | "SetMut"))
+        }));
+    }
+
+    #[test]
     fn reflection_natives_remain_policy_controlled_and_duplicate_safe() {
         let standard = standard_registry().expect("standard registry");
         for spec in reflection_native_specs() {

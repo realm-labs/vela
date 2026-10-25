@@ -180,7 +180,7 @@
       },
       {
         "id": "extern-no-name",
-        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nextern state : i64;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
+        "source": "/*中😀*/ [[before:start]]fn before() [[before-body:start]]{\n return 1;\n}[[before-body:end]][[before:end]]\nstate : i64 = 1;\n[[after:start]]fn after() [[after-body:start]]{\n return 2;\n}[[after-body:end]][[after:end]]\n",
         "ranges": [
           {
             "kind": "region",

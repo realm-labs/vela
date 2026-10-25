@@ -66,27 +66,13 @@ fn linked_execution_rejects_undersized_inline_cache_provider() {
         }
     }
 
-    let mut program = vela_bytecode::LinkedProgram::new();
-    let main_name = program.intern_debug_name("main");
-    let slot = vela_bytecode::test_support::push_extern_state(&mut program, "test::server");
-    let state_name = program.intern_debug_name("test::server");
-    let mut code = vela_bytecode::LinkedCodeObject::new(main_name, 1);
-    let cache_site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
-    code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::LoadExternState {
-            dst: Register(0),
-            slot,
-            debug_name: state_name,
-            cache_site: Some(cache_site),
-        },
-    ));
-    code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::Return { src: Register(0) },
-    ));
-    let function = program.push_function(code);
-    program.set_entry_point(main_name, function);
-    program.function(function).expect("main function");
-    let program = linked_test_owner(program);
+    let compiled = compile_test_program(
+        SourceId::new(90),
+        "struct Probe { value: i64 } fn main() { return Probe { value: 1 }.value; }",
+    )
+    .expect("compile cached script field");
+    let program = link_test_program(&compiled);
+    let function = program.entry_point_by_name("main").expect("main entry");
 
     let error = Vm::new()
         .execute_linked_call(
@@ -341,93 +327,6 @@ fn linked_program_calls_script_method_by_dispatch_handle() {
     assert_eq!(
         Vm::new().run_linked_program(&program, "main", &[]),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(41)))
-    );
-}
-
-#[test]
-fn linked_program_calls_host_method_by_dispatch_handle() {
-    let host_ref = player_ref(3);
-    let method_id = HostMethodId::new(8);
-    let mut program = vela_bytecode::LinkedProgram::new();
-    let main_name = program.intern_debug_name("main");
-    let player_name = program.intern_debug_name("player");
-    let method_name = program.intern_debug_name("debug_only_host_method");
-    let method = program.push_method_dispatch(vela_bytecode::LinkedMethodDispatch::new(
-        method_name,
-        vela_bytecode::LinkedMethodDispatchKind::Host { method_id },
-    ));
-
-    let mut code =
-        vela_bytecode::LinkedCodeObject::new(main_name, 3).with_params(vec![player_name]);
-    let amount = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(20)));
-    code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::LoadConst {
-            dst: Register(1),
-            constant: amount,
-        },
-    ));
-    code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::CallMethod {
-            dst: Register(2),
-            receiver: Register(0),
-            dispatch: method,
-            debug_name: method_name,
-            cache_site: None,
-            args: vec![vela_bytecode::CallArgument::Register(Register(1))],
-        },
-    ));
-    code.push_instruction(vela_bytecode::linked::Instruction::new(
-        vela_bytecode::linked::InstructionKind::Return { src: Register(2) },
-    ));
-    let main = program.push_function(code);
-    program.set_entry_point(main_name, main);
-    let program = linked_test_owner(program);
-
-    let mut adapter = host_adapter(
-        host_ref,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    adapter.insert_method_return(
-        method_id,
-        HostValue::Scalar(vela_common::ScalarValue::I64(12)),
-    );
-    let host_slot = vela_host::adapter::ScriptStateAdapter::intern_host_ref(&mut adapter, host_ref)
-        .expect("host ref should intern");
-    let mut access = HostAccess::new();
-    let mut budget = ExecutionBudget::unbounded();
-    let result = {
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut access,
-            state_values: None,
-        };
-        program.function(main).expect("main linked code exists");
-        Vm::new().execute_linked_call(
-            crate::linked_execution::LinkedExecutionCall {
-                owner: Arc::clone(&program),
-                function: main,
-                captures: &[],
-                args: &[Value::HostRef(host_slot)],
-                check_param_guards: true,
-                call_site: None,
-                call_site_offset: None,
-                inline_caches: None,
-                bytecode_profiler: None,
-            },
-            Some(&mut host),
-            None,
-            Some(&mut budget),
-        )
-    };
-
-    assert_eq!(result, Ok(Value::I64(12)));
-    assert_eq!(
-        adapter.method_calls(),
-        &[(
-            HostPath::new(host_ref),
-            method_id,
-            vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
-        )]
     );
 }
 

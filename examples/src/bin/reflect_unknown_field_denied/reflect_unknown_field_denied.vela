@@ -1,3 +1,6 @@
-fn main(player: Player) {
+struct Player { level: i64 }
+
+fn main() {
+    let player = Player { level: 1 };
     return reflect::get(player, "leve");
 }

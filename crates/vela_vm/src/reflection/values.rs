@@ -7,9 +7,8 @@ use vela_reflect::{self as reflect};
 
 use crate::owned_value::OwnedValue;
 use crate::{
-    ExecutionBudget, HostExecution, HostMethodFunction, HostNativeFunction, NativeFunction, Vm,
-    VmError, VmErrorKind, VmResult, expect_arity, expect_string, value_from_reflect,
-    value_to_reflect,
+    ExecutionBudget, HostExecution, HostNativeFunction, NativeFunction, Vm, VmError, VmErrorKind,
+    VmResult, expect_arity, expect_string, value_from_reflect, value_to_reflect,
 };
 
 use super::common::check_reflect_policy;
@@ -18,19 +17,16 @@ use super::common::check_reflect_policy;
 pub(super) struct ReflectedFunctionCalls {
     natives: HashMap<FunctionId, NativeFunction>,
     host_natives: HashMap<FunctionId, HostNativeFunction>,
-    host_methods: HashMap<vela_common::HostMethodId, HostMethodFunction>,
 }
 
 impl ReflectedFunctionCalls {
     pub(super) fn new(
         natives: HashMap<FunctionId, NativeFunction>,
         host_natives: HashMap<FunctionId, HostNativeFunction>,
-        host_methods: HashMap<vela_common::HostMethodId, HostMethodFunction>,
     ) -> Self {
         Self {
             natives,
             host_natives,
-            host_methods,
         }
     }
 
@@ -64,7 +60,7 @@ pub(super) fn register(
     let get_registry = Arc::clone(registry);
     let get_policy = policy.clone();
     let get_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect::get", move |args, host| {
+    vm.register_host_native("reflect::get", move |args, _host| {
         check_reflect_policy(
             &get_policy,
             &get_budget,
@@ -75,8 +71,6 @@ pub(super) fn register(
         let field = expect_string(&args[1], "reflect::get")?;
         let mut ctx = reflect::value::ReflectContext {
             registry: &get_registry,
-            adapter: host.adapter,
-            access: &mut *host.access,
         };
         let value = reflect::value::get_with_policy(&mut ctx, &target, field, &get_policy)?;
         value_from_reflect(value)
@@ -85,7 +79,7 @@ pub(super) fn register(
     let set_registry = Arc::clone(registry);
     let set_policy = policy.clone();
     let set_budget = Arc::clone(lookup_budget);
-    vm.register_host_native("reflect::set", move |args, host| {
+    vm.register_host_native("reflect::set", move |args, _host| {
         check_reflect_policy(
             &set_policy,
             &set_budget,
@@ -97,8 +91,6 @@ pub(super) fn register(
         let value = value_to_reflect(&args[2], "reflect::set")?;
         let mut ctx = reflect::value::ReflectContext {
             registry: &set_registry,
-            adapter: host.adapter,
-            access: &mut *host.access,
         };
         value_from_reflect(reflect::value::set_with_policy(
             &mut ctx,
@@ -151,30 +143,8 @@ pub(super) fn register(
                 actual: args.len(),
             }));
         }
-        let method = expect_string(&args[1], "reflect::call")?;
-        if let reflect::value::ReflectValue::HostRef(host_ref) = &target {
-            let method_desc = reflect::value::resolve_host_method_with_policy(
-                &call_registry,
-                &target,
-                method,
-                &call_policy,
-            )?;
-            if let Some(function) = function_calls.host_methods.get(&method_desc.id) {
-                let receiver = vela_host::path::HostPath::new(*host_ref);
-                return function(&receiver, &args[2..], host);
-            }
-        }
-        let call_args = args[2..]
-            .iter()
-            .map(|arg| value_to_reflect(arg, "reflect::call"))
-            .collect::<VmResult<Vec<_>>>()?;
-        let mut ctx = reflect::value::ReflectContext {
-            registry: &call_registry,
-            adapter: host.adapter,
-            access: &mut *host.access,
-        };
-        let value =
-            reflect::value::call_with_policy(&mut ctx, &target, method, call_args, &call_policy)?;
-        value_from_reflect(value)
+        Err(VmError::new(VmErrorKind::Reflect(
+            reflect::error::ReflectErrorKind::InvalidTarget,
+        )))
     });
 }

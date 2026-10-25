@@ -588,13 +588,7 @@ fn run_profiled_workload(
     profiler: &RecordingBytecodeProfiler,
     iterations: i64,
 ) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut adapter = vela_host::mock::MockStateAdapter::default();
-    let mut access = vela_host::access::HostAccess;
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut access,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
     let mut budget = ExecutionBudget::unbounded();
     let value = vm.run_linked_program_host_budget_call(LinkedProgramHostBudgetCall {
         artifact: linked,
@@ -756,7 +750,7 @@ fn budget_class_label(class: MirBudgetClass) -> &'static str {
         MirBudgetClass::Call => "call",
         MirBudgetClass::DynamicWork => "dynamic_work",
         MirBudgetClass::Allocation => "allocation",
-        MirBudgetClass::HostAccess => "host_access",
+
         MirBudgetClass::Reflection => "reflection",
     }
 }
@@ -843,14 +837,7 @@ fn opcode_label(kind: &InstructionKind) -> &'static str {
         InstructionKind::EnumTagEqual { .. } => "EnumTagEqual",
         InstructionKind::LoadState { .. } => "LoadState",
         InstructionKind::StoreState { .. } => "StoreState",
-        InstructionKind::LoadExternState { .. } => "LoadExternState",
-        InstructionKind::HostRead { .. } => "HostRead",
-        InstructionKind::HostWrite { .. } => "HostWrite",
-        InstructionKind::HostMutate { .. } => "HostMutate",
-        InstructionKind::HostRemove { .. } => "HostRemove",
-        InstructionKind::HostCall { .. } => "HostCall",
-        InstructionKind::ReleaseBorrowLease { .. } => "ReleaseBorrowLease",
-        InstructionKind::TryReleaseBorrowLease { .. } => "TryReleaseBorrowLease",
+
         InstructionKind::Return { .. } => "Return",
     }
 }

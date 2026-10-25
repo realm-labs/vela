@@ -907,10 +907,8 @@ fn main() {
         .link_test_program(&program)
         .expect("engine-compiled standard native program should link");
     let mut runtime = Runtime::new(engine, program).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
-    let result = runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx);
+    let result = runtime.call_raw("main", &[], CallOptions::unbounded());
     assert_eq!(
         result,
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(44))),

@@ -6,7 +6,6 @@ use std::mem;
 
 use vela_common::ShapeId;
 use vela_def::{FieldId, TypeId, VariantId};
-use vela_host::proxy::PathProxy;
 
 use crate::container_contracts::{
     ContainerContractStamp, ContainerContracts, ContainerTypeSummary, ShallowTypeKey,
@@ -41,6 +40,12 @@ impl GcRef {
     }
 }
 
+/// Script heap objects never contain Rust host state or transparent path proxies.
+///
+/// ```compile_fail,E0599
+/// use vela_vm::heap::HeapValue;
+/// let value = HeapValue::PathProxy(());
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub enum HeapValue {
     String(String),
@@ -66,7 +71,6 @@ pub enum HeapValue {
     },
     Closure(ClosureValue),
     Iterator(IteratorState),
-    PathProxy(PathProxy),
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -107,7 +111,7 @@ impl EnumIdentity {
 impl HeapValue {
     pub(crate) fn trace_refs(&self, refs: &mut Vec<GcRef>) {
         match self {
-            Self::String(_) | Self::Bytes(_) | Self::Range(_) | Self::PathProxy(_) => {}
+            Self::String(_) | Self::Bytes(_) | Self::Range(_) => {}
             Self::Tuple(values) | Self::Array(values) => {
                 values.iter().for_each(|value| value.trace_refs(refs));
             }
@@ -175,7 +179,6 @@ impl HeapValue {
             Self::Iterator(iterator) => {
                 mem::size_of::<IteratorState>() + mem::size_of_val(iterator.values())
             }
-            Self::PathProxy(_) => mem::size_of::<PathProxy>(),
         }
     }
 }
@@ -851,13 +854,6 @@ mod tests {
         vela_bytecode::test_support::linked_artifact(vela_bytecode::LinkedProgram::new())
     }
     use crate::small_storage::SmallStorage;
-    use vela_common::{HostObjectId, HostTypeId};
-    use vela_def::FieldId;
-    use vela_host::path::{HostPath, HostRef};
-
-    fn host_ref() -> HostRef {
-        HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
-    }
 
     #[test]
     fn live_script_objects_survive_full_gc() {
@@ -985,38 +981,6 @@ mod tests {
         assert!(!heap.contains(first));
         assert!(!heap.contains(second));
         assert_eq!(heap.live_object_count(), 0);
-    }
-
-    #[test]
-    fn host_refs_are_external_and_do_not_trace_rust_owned_state() {
-        let mut heap = ScriptHeap::new();
-        let root = heap.allocate(HeapValue::Array(vec![Value::HostRef(
-            vela_host::path::HostSlotRef::new(7, 3),
-        )]));
-        let unreachable = heap.allocate(HeapValue::String("unused".into()));
-
-        let stats = heap.collect_full(&[root]);
-
-        assert_eq!(stats.marked, 1);
-        assert_eq!(stats.swept, 1);
-        assert!(heap.contains(root));
-        assert!(!heap.contains(unreachable));
-    }
-
-    #[test]
-    fn path_proxies_are_external_and_do_not_trace_rust_owned_state() {
-        let mut heap = ScriptHeap::new();
-        let proxy =
-            PathProxy::from_diagnostic_path(HostPath::new(host_ref()).field(FieldId::new(2)));
-        let root = heap.allocate(HeapValue::PathProxy(proxy));
-        let unreachable = heap.allocate(HeapValue::String("unused".into()));
-
-        let stats = heap.collect_full(&[root]);
-
-        assert_eq!(stats.marked, 1);
-        assert_eq!(stats.swept, 1);
-        assert!(heap.contains(root));
-        assert!(!heap.contains(unreachable));
     }
 
     #[test]

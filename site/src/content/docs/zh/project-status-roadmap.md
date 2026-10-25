@@ -1,28 +1,14 @@
 ---
-title: "项目状态和路线图"
-description: "Vela 项目状态和路线图文档。"
+title: "Project Status And Roadmap"
+description: "Vela 同步语言与删除边界。"
 ---
 
-Vela 目前是预发布实现，但已经有较完整的可运行原型。稳定产品方向以 `docs/goal.md` 为准，技术契约以 `docs/architecture.md` 为准，当前 milestone 状态由 `docs/progress.md` 跟踪。
+Vela 是同步、解释执行、Hot Reload First 的动态脚本语言。保留普通函数、结构体、枚举、trait、模块与包、脚本集合及迭代器、受控反射、非移动 GC 和有限执行预算。
 
-## 当前可用
+现有独立同步 native/value API 与 serde 快照转换继续可用，脚本修改不会隐式写回 Rust。普通 VM `state` 在兼容热重载时保留；活动调用与旧闭包保留精确的旧代码代际、嵌套调用和状态。
 
-当前代码库已经包含源码解析、HIR lowering、字节码编译、VM 执行、执行预算、非移动 GC 基础、数组、map、set、字符串、Option/Result 辅助方法、模块、VM/extern state、标准 native、反射元数据、宿主注册、HostAccess 写穿和热更新流程。
+已删除 Service/Provider、脚本 async/tasks、借用的 Rust 根/参数/返回值/view、租约/释放、透明宿主路径、依赖的 `extern state` 绑定和 Host 构造器/方法。普通脚本状态和 LSP 工作线程不是删除对象。没有新增 opaque 对象、codec、转换或重入 API；这些设计问题单独延期。
 
-项目还包含浏览器 Playground、文档站、独立嵌入示例、conformance 风格测试、benchmark harness 和 parser fuzz 基础设施。
+继续使用 `native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例。工具元数据使用严格格式 4；旧格式与已删除字段被拒绝。修改后的夹具不代表新的原生编辑器采集，也不代表完整仓库验收通过。
 
-## 当前工作
-
-当前实现重点在解释器和 inline cache 性能、宿主边界 fast path，以及在保持 HostAccess、热更新兼容性、诊断和受控反射这些产品契约的同时继续清理架构。
-
-当前简化工作移除脚本 async/task 和借用宿主路径，不引入替代 API。保留解释器优化、普通热更新、CLI/浏览器执行和原生 LSP worker。JIT 不是产品路线。
-
-## MVP 明确非目标
-
-MVP 不包含脚本泛型、monkey patching、任意 `eval`、脚本可见的 task/coroutine handle、手动 resume、JIT、完整 LSP、通过反射修改运行时类型结构、挂起 async frame 的热迁移，也不会把 Rust `&mut T` 引用暴露给脚本。
-
-这些限制是有意的，用来保证热更新、宿主所有权、capability enforcement 和诊断仍然可控。
-
-## 文档状态
-
-本站会按章节逐步补齐。页面应该描述当前行为和稳定设计意图；如果提到计划中的能力，需要明确说明是未来工作，不能把未实现功能写成已经可用。
+参见 [English reference](/project-status-roadmap/) 和仓库中的权威目标、架构、进度与删除计划文档。

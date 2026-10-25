@@ -1,12 +1,7 @@
 use std::any::{Any, TypeId};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
-use std::marker::PhantomData;
-use std::ops::Deref;
 
-use vela_common::{HostObjectId, HostTypeId};
-use vela_host::path::{HostPath, HostRef};
-use vela_host::proxy::PathProxy;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::{OwnedMapEntry, OwnedValue};
 
@@ -21,21 +16,11 @@ pub trait ToScriptValueRef {
     fn to_script_value_ref(&self) -> OwnedValue;
 }
 
-pub trait IntoHostArg {
-    fn into_host_ref(self) -> HostRef;
-}
-
 pub trait FromScriptArg: Sized {
     const TYPE_NAME: &'static str;
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self>;
 }
-
-pub trait HostArgType {
-    const TYPE_NAME: &'static str;
-    const HOST_TYPE_ID: Option<HostTypeId>;
-}
-
 macro_rules! copy_value_ref {
     ($($ty:ty),* $(,)?) => {
         $(
@@ -201,96 +186,6 @@ macro_rules! tuple_value_ref {
 
 tuple_value_ref!((A:0, B:1), (A:0, B:1, C:2), (A:0, B:1, C:2, D:3));
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct TypedHostRef<T: HostArgType> {
-    path: HostPath,
-    _marker: PhantomData<fn() -> T>,
-}
-
-impl<T: HostArgType> TypedHostRef<T> {
-    #[must_use]
-    pub fn new(path: HostPath) -> Self {
-        Self {
-            path,
-            _marker: PhantomData,
-        }
-    }
-
-    #[must_use]
-    pub fn path(&self) -> &HostPath {
-        &self.path
-    }
-
-    #[must_use]
-    pub fn into_path(self) -> HostPath {
-        self.path
-    }
-
-    #[must_use]
-    pub fn root(&self) -> HostRef {
-        self.path.root
-    }
-}
-
-impl<T: HostArgType> Clone for TypedHostRef<T> {
-    fn clone(&self) -> Self {
-        Self::new(self.path.clone())
-    }
-}
-
-impl<T: HostArgType> Deref for TypedHostRef<T> {
-    type Target = HostPath;
-
-    fn deref(&self) -> &Self::Target {
-        &self.path
-    }
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub struct TypedHostMut<T: HostArgType> {
-    path: HostPath,
-    _marker: PhantomData<fn() -> T>,
-}
-
-impl<T: HostArgType> TypedHostMut<T> {
-    #[must_use]
-    pub fn new(path: HostPath) -> Self {
-        Self {
-            path,
-            _marker: PhantomData,
-        }
-    }
-
-    #[must_use]
-    pub fn path(&self) -> &HostPath {
-        &self.path
-    }
-
-    #[must_use]
-    pub fn into_path(self) -> HostPath {
-        self.path
-    }
-
-    #[must_use]
-    pub fn root(&self) -> HostRef {
-        self.path.root
-    }
-}
-
-impl<T: HostArgType> Clone for TypedHostMut<T> {
-    fn clone(&self) -> Self {
-        Self::new(self.path.clone())
-    }
-}
-
-impl<T: HostArgType> Deref for TypedHostMut<T> {
-    type Target = HostPath;
-
-    fn deref(&self) -> &Self::Target {
-        &self.path
-    }
-}
-
 pub trait ScriptArgsExt {
     fn required<T: FromScriptArg>(&self, index: usize) -> VmResult<T>;
 }
@@ -325,100 +220,6 @@ impl FromScriptArg for OwnedValue {
 
     fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
         Ok(value.clone())
-    }
-}
-
-impl IntoScriptArg for HostRef {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::HostRef(self)
-    }
-}
-
-impl IntoHostArg for HostRef {
-    fn into_host_ref(self) -> HostRef {
-        self
-    }
-}
-
-impl FromScriptArg for HostRef {
-    const TYPE_NAME: &'static str = "host ref";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        match value {
-            OwnedValue::HostRef(host_ref) => Ok(*host_ref),
-            _ => Err(type_mismatch(Self::TYPE_NAME)),
-        }
-    }
-}
-
-impl IntoScriptArg for &HostRef {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::HostRef(*self)
-    }
-}
-
-impl IntoHostArg for &HostRef {
-    fn into_host_ref(self) -> HostRef {
-        *self
-    }
-}
-
-impl IntoHostArg for (u32, u64, u32) {
-    fn into_host_ref(self) -> HostRef {
-        HostRef::new(
-            HostTypeId::new(u64::from(self.0)),
-            HostObjectId::new(self.1),
-            self.2,
-        )
-    }
-}
-
-impl IntoHostArg for (HostTypeId, HostObjectId, u32) {
-    fn into_host_ref(self) -> HostRef {
-        HostRef::new(self.0, self.1, self.2)
-    }
-}
-
-impl IntoScriptArg for PathProxy {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::PathProxy(self)
-    }
-}
-
-impl FromScriptArg for PathProxy {
-    const TYPE_NAME: &'static str = "path proxy";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        match value {
-            OwnedValue::PathProxy(proxy) => Ok(proxy.clone()),
-            _ => Err(type_mismatch(Self::TYPE_NAME)),
-        }
-    }
-}
-
-impl<T: HostArgType> FromScriptArg for TypedHostRef<T> {
-    const TYPE_NAME: &'static str = "typed host ref";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        let path = host_path_arg(value, Self::TYPE_NAME)?;
-        require_host_arg_type::<T>(&path, "typed host ref type")?;
-        Ok(Self::new(path))
-    }
-}
-
-impl<T: HostArgType> FromScriptArg for TypedHostMut<T> {
-    const TYPE_NAME: &'static str = "typed host mut";
-
-    fn from_script_arg(value: &OwnedValue) -> VmResult<Self> {
-        let path = host_path_arg(value, Self::TYPE_NAME)?;
-        require_host_arg_type::<T>(&path, "typed host mut type")?;
-        Ok(Self::new(path))
-    }
-}
-
-impl IntoScriptArg for &PathProxy {
-    fn into_script_arg(self) -> OwnedValue {
-        OwnedValue::PathProxy(self.clone())
     }
 }
 
@@ -949,21 +750,6 @@ fn type_mismatch(operation: &'static str) -> VmError {
     VmError::new(VmErrorKind::TypeMismatch { operation })
 }
 
-fn host_path_arg(value: &OwnedValue, operation: &'static str) -> VmResult<HostPath> {
-    match value {
-        OwnedValue::HostRef(host_ref) => Ok(HostPath::new(*host_ref)),
-        OwnedValue::PathProxy(proxy) => Ok(proxy.to_diagnostic_path()),
-        _ => Err(type_mismatch(operation)),
-    }
-}
-
-fn require_host_arg_type<T: HostArgType>(path: &HostPath, operation: &'static str) -> VmResult<()> {
-    match T::HOST_TYPE_ID {
-        Some(expected) if path.root.type_id != expected => Err(type_mismatch(operation)),
-        _ => Ok(()),
-    }
-}
-
 fn enum_payload(enum_name: &str, variant: &str, payload: OwnedValue) -> OwnedValue {
     OwnedValue::Enum {
         enum_name: enum_name.to_owned(),
@@ -986,17 +772,6 @@ pub fn empty_args() -> Vec<OwnedValue> {
     Vec::new()
 }
 
-#[doc(hidden)]
-#[must_use]
-pub fn host_ref_value(type_id: u32, object_id: u64, generation: u32) -> OwnedValue {
-    host((type_id, object_id, generation))
-}
-
-#[must_use]
-pub fn host(host: impl IntoHostArg) -> OwnedValue {
-    OwnedValue::HostRef(host.into_host_ref())
-}
-
 #[macro_export]
 macro_rules! args {
     () => {
@@ -1004,15 +779,5 @@ macro_rules! args {
     };
     ($($arg:expr),+ $(,)?) => {
         ::std::vec![$($crate::args::IntoScriptArg::into_script_arg($arg)),+]
-    };
-}
-
-#[macro_export]
-macro_rules! host {
-    ($type_id:expr, $object_id:expr, $generation:expr $(,)?) => {
-        $crate::args::host_ref_value($type_id, $object_id, $generation)
-    };
-    ($host:expr $(,)?) => {
-        $crate::args::host($host)
     };
 }

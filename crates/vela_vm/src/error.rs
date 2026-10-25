@@ -167,17 +167,6 @@ pub enum VmErrorKind {
         expected: usize,
         actual: usize,
     },
-    HostArgumentTypeMismatch {
-        callable: String,
-        parameter: String,
-        expected: vela_common::HostTypeId,
-        actual: vela_common::HostTypeId,
-    },
-    AliasedMutableHostArguments {
-        callable: String,
-        first_parameter: String,
-        second_parameter: String,
-    },
     RustCallablePanicked {
         callable: String,
     },
@@ -247,8 +236,6 @@ impl VmErrorKind {
             Self::UnknownFunction { .. } => "vm::unknown_function",
             Self::UnknownMethod { .. } => "vm::unknown_method",
             Self::ArityMismatch { .. } => "vm::arity_mismatch",
-            Self::HostArgumentTypeMismatch { .. } => "vm::host_argument_type_mismatch",
-            Self::AliasedMutableHostArguments { .. } => "vm::aliased_mutable_host_arguments",
             Self::RustCallablePanicked { .. } => "vm::rust_callable_panicked",
             Self::Host(_) => "vm::host_error",
             Self::Reflect(kind) => kind.code(),
@@ -312,21 +299,6 @@ impl VmErrorKind {
             } => {
                 format!("`{name}` expected {expected} arguments but got {actual}")
             }
-            Self::HostArgumentTypeMismatch {
-                callable,
-                parameter,
-                expected,
-                actual,
-            } => format!(
-                "host parameter `{parameter}` of `{callable}` expected type {expected:?}, found {actual:?}"
-            ),
-            Self::AliasedMutableHostArguments {
-                callable,
-                first_parameter,
-                second_parameter,
-            } => format!(
-                "host parameters `{first_parameter}` and `{second_parameter}` of `{callable}` alias while at least one requires exclusive access"
-            ),
             Self::RustCallablePanicked { callable } => {
                 format!("exported Rust callable `{callable}` panicked")
             }

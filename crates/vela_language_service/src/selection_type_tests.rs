@@ -56,6 +56,26 @@ fn check(db: &LanguageServiceDatabases, main: &Document, helper: &Document, case
             },
             "non-executing selection recovery: {file}"
         );
+        assert_eq!(
+            db.diagnostics_for_document(&id)
+                .diagnostics()
+                .iter()
+                .filter_map(|d| d
+                    .code()
+                    .filter(|code| *code == "hir::removed_host_type_hint"))
+                .collect::<Vec<_>>(),
+            if file == "scripts/main.vela" {
+                case["hirCodes"].as_array().map_or_else(Vec::new, |codes| {
+                    codes
+                        .iter()
+                        .map(|code| code.as_str().expect("HIR code"))
+                        .collect()
+                })
+            } else {
+                Vec::new()
+            },
+            "removed type rejection: {file}"
+        );
     }
     assert_eq!(db.schema_db().facts().types().count(), 0);
     assert_eq!(db.schema_db().facts().functions().count(), 0);

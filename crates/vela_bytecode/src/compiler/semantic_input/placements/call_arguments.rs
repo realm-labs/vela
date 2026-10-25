@@ -185,14 +185,6 @@ impl GenerationBuilder<'_, '_> {
         Ok(slots.to_vec())
     }
 
-    pub(super) fn source_argument_values(
-        &self,
-        placement: &CallArgumentPlacementFact,
-        origin: MirSourceOrigin,
-    ) -> CompileResult<Vec<HirExprId>> {
-        source_values(placement, origin)
-    }
-
     pub(super) fn external_call_target(
         &mut self,
         executable: FunctionId,
@@ -202,14 +194,6 @@ impl GenerationBuilder<'_, '_> {
         placement: &CallArgumentPlacementFact,
         origin: MirSourceOrigin,
     ) -> CompileResult<CompileCallTarget> {
-        let scoped_resource = match &callee {
-            CompileCalleeTarget::NativeFunction { function, .. } => self
-                .catalog
-                .function(*function)
-                .and_then(|definition| definition.scoped_resource_return),
-            CompileCalleeTarget::HostMethod(target) => target.scoped_resource_return,
-            _ => None,
-        };
         let target =
             match placement.mode {
                 CallPlacementModeFact::ExternalPositional => {
@@ -286,7 +270,7 @@ impl GenerationBuilder<'_, '_> {
                     "analysis call placement mode does not match an external call",
                 )),
             }?;
-        Ok(target.with_scoped_resource(scoped_resource))
+        Ok(target)
     }
 
     pub(super) fn set_from_array_call_target(

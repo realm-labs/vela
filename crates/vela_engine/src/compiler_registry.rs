@@ -1,24 +1,18 @@
 use crate::type_binding::TypeBindingRegistry;
 use vela_def::{DefPath, VariantId};
 use vela_reflect::registry::{
-    FieldDesc, HostIndexCapability, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
+    FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKind, VariantDesc,
 };
 use vela_registry::{
     DefinitionRegistry, EffectSet as DefinitionEffectSet, FieldAccessDef, FieldDef,
-    FunctionAccessDef, FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef,
-    MethodDef, ParamDef, RegistryError, ScopedResourceKindDef, ScopedResourceParentDef,
-    ScopedResourceReturnDef, TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
+    FunctionAccessDef, FunctionDef, FunctionSignature, MethodAccessDef, MethodDef, ParamDef,
+    RegistryError, TypeBindingDef, TypeDef, TypeHintDef, TypeKindDef, VariantDef,
 };
 
-use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry, ScopedHostNativeFunctionEntry,
-};
+use crate::native::{ContextHostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry};
 
 pub(crate) struct EngineFunctionEntries<'a> {
     pub(crate) native: &'a [NativeFunctionEntry],
-    pub(crate) scoped_host: &'a [ScopedHostNativeFunctionEntry],
-    pub(crate) host: &'a [HostNativeFunctionEntry],
     pub(crate) context_host: &'a [ContextHostNativeFunctionEntry],
 }
 
@@ -40,8 +34,6 @@ pub(crate) fn definition_registry_from_engine_parts(
         .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
-        .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
         registry.register_function(native_function_def(desc))?;
@@ -90,43 +82,14 @@ fn type_def(desc: &TypeDesc, type_bindings: &TypeBindingRegistry) -> TypeDef {
     let mut def = TypeDef::new(source_type_path("host", &desc.key.name))
         .with_id(desc.key.id)
         .kind(definition_type_kind(desc.kind));
-    if let Some(host_type_id) = desc.host_type_id {
-        def = def.host_runtime_id(host_type_id.get().into());
-    }
     for element in &desc.tuple_elements {
         def = def.tuple_element(raw_type_hint_def(element));
     }
-    if let Some(capability) = &desc.index_capability {
-        def = def.index_capability(index_capability_def(capability));
-    }
     if let Some(binding) = type_bindings.get(vela_common::InteropTypeId::from_type_id(desc.key.id))
     {
-        def = def.binding(TypeBindingDef::new(
-            binding.id,
-            binding.storage,
-            binding.capabilities,
-            binding.collection_views,
-            binding.constructor_ids.clone(),
-            binding.host_constructors.clone(),
-            binding.abi_fingerprint,
-        ));
+        def = def.binding(TypeBindingDef::new(binding.id, binding.abi_fingerprint));
     }
     def
-}
-
-fn index_capability_def(capability: &HostIndexCapability) -> IndexCapabilityDef {
-    let mut definition = IndexCapabilityDef::new()
-        .readable(capability.readable)
-        .writable(capability.writable)
-        .addable(capability.addable)
-        .removable(capability.removable);
-    if let Some(key_type) = capability.key_type.as_deref() {
-        definition = definition.key_type(raw_type_hint_def(key_type));
-    }
-    if let Some(value_type) = capability.value_type.as_deref() {
-        definition = definition.value_type(raw_type_hint_def(value_type));
-    }
-    definition
 }
 
 fn field_def(
@@ -135,18 +98,14 @@ fn field_def(
     field: &FieldDesc,
     declaration_order: u32,
 ) -> FieldDef {
-    let mut definition = FieldDef::new(
+    FieldDef::new(
         source_field_path("host", &desc.key.name, &field.name),
         owner,
     )
     .declaration_order(declaration_order)
     .defaulted(field.has_default)
     .access(field_access(&field.access))
-    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def));
-    if desc.host_type_id.is_some() && field.attrs.get("vela_external_property").is_none() {
-        definition = definition.host_runtime_id(field.id.get());
-    }
-    definition
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
 
 fn variant_def(
@@ -170,7 +129,7 @@ fn variant_field_def(
     field: &FieldDesc,
     declaration_order: u32,
 ) -> FieldDef {
-    let definition = FieldDef::new(
+    FieldDef::new(
         source_field_path(
             "host",
             &format!("{}::{variant}", desc.key.name),
@@ -182,35 +141,21 @@ fn variant_field_def(
     .declaration_order(declaration_order)
     .defaulted(field.has_default)
     .access(field_access(&field.access))
-    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def));
-    if desc.host_type_id.is_some() {
-        definition.host_runtime_id(field.id.get())
-    } else {
-        definition
-    }
+    .type_hint(field.type_hint.as_deref().map(raw_type_hint_def))
 }
 
 fn method_def(desc: &TypeDesc, owner: vela_def::TypeId, method: &MethodDesc) -> MethodDef {
-    let return_type = method.return_type.as_deref().map(|return_type| {
-        let hint = raw_type_hint_def(return_type);
-        match method.return_collection_mutation {
-            Some(mutation) => hint.with_collection_mutation(mutation),
-            None => hint,
-        }
-    });
-    let mut definition = MethodDef::new(
+    MethodDef::new(
         source_method_path("host", &desc.key.name, &method.name),
         owner,
-        FunctionSignature::new(method.params.iter().map(method_param_def), return_type),
+        FunctionSignature::new(
+            method.params.iter().map(method_param_def),
+            method.return_type.as_deref().map(raw_type_hint_def),
+        ),
     )
-    .host_runtime_id(method.id.get())
+    .with_id(method.id)
     .effects(method_effects(&method.effects))
-    .receiver(method.receiver)
-    .access(method_access(&method.access));
-    if let Some(resource) = scoped_resource_return_from_attrs(&method.attrs) {
-        definition = definition.scoped_resource_return(resource);
-    }
-    definition
+    .access(method_access(&method.access))
 }
 
 fn method_param_def(param: &MethodParamDesc) -> ParamDef {
@@ -227,7 +172,7 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     } else {
         "host"
     };
-    let mut definition = FunctionDef::new(
+    FunctionDef::new(
         source_function_path(package, &desc.name),
         FunctionSignature::new(
             desc.params
@@ -238,53 +183,7 @@ fn native_function_def(desc: &NativeFunctionDesc) -> FunctionDef {
     )
     .with_id(desc.id)
     .effects(native_function_effects(&desc.effects))
-    .access(function_access(&desc.access));
-    if let Some(resource) = scoped_resource_return_from_contract(desc.callable_contract.as_ref()) {
-        definition = definition.scoped_resource_return(resource);
-    }
-    definition
-}
-
-fn scoped_resource_return_from_contract(
-    contract: Option<&crate::interop::CallableContract>,
-) -> Option<ScopedResourceReturnDef> {
-    let crate::interop::ReturnMode::ScopedHost {
-        origin,
-        child_access,
-        ..
-    } = contract?.returns.mode
-    else {
-        return None;
-    };
-    let kind = match child_access {
-        crate::interop::ScopedHostAccess::Shared => ScopedResourceKindDef::View,
-        crate::interop::ScopedHostAccess::Exclusive => ScopedResourceKindDef::MutView,
-    };
-    let parent = match origin {
-        crate::interop::BorrowedReturnOrigin::Receiver => ScopedResourceParentDef::Receiver,
-        crate::interop::BorrowedReturnOrigin::Parameter(index) => {
-            ScopedResourceParentDef::Parameter(index)
-        }
-    };
-    Some(ScopedResourceReturnDef::new(kind, parent))
-}
-
-fn scoped_resource_return_from_attrs(
-    attrs: &vela_reflect::registry::AttrMap,
-) -> Option<ScopedResourceReturnDef> {
-    let kind = match attrs.get("vela.scoped_resource.kind")? {
-        "view" => ScopedResourceKindDef::View,
-        "mut_view" => ScopedResourceKindDef::MutView,
-        "iterator" => ScopedResourceKindDef::Iterator,
-        _ => return None,
-    };
-    let parent = match attrs.get("vela.scoped_resource.parent")? {
-        "receiver" => ScopedResourceParentDef::Receiver,
-        value => {
-            ScopedResourceParentDef::Parameter(value.strip_prefix("parameter:")?.parse().ok()?)
-        }
-    };
-    Some(ScopedResourceReturnDef::new(kind, parent))
+    .access(function_access(&desc.access))
 }
 
 fn source_function_path(package: &str, name: &str) -> DefPath {
@@ -341,7 +240,6 @@ const fn definition_type_kind(kind: TypeKind) -> TypeKindDef {
         TypeKind::Range => TypeKindDef::Range,
         TypeKind::Function => TypeKindDef::Function,
         TypeKind::Closure => TypeKindDef::Closure,
-        TypeKind::Host => TypeKindDef::Host,
         TypeKind::ScriptStruct => TypeKindDef::ScriptStruct,
         TypeKind::ScriptEnum => TypeKindDef::ScriptEnum,
     }
@@ -428,36 +326,14 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
         crate::native::TypeHint::ArrayOf(element) => {
             TypeHintDef::named("Array").with_args([type_hint_def(element)])
         }
-        crate::native::TypeHint::ArrayViewOf(element) => {
-            TypeHintDef::named("ArrayView").with_args([type_hint_def(element)])
-        }
-        crate::native::TypeHint::ArrayMutOf { element, mutation } => TypeHintDef::named("ArrayMut")
-            .with_args([type_hint_def(element)])
-            .with_collection_mutation(*mutation),
         crate::native::TypeHint::Map => TypeHintDef::named("Map"),
         crate::native::TypeHint::MapOf { key, value } => {
             TypeHintDef::named("Map").with_args([type_hint_def(key), type_hint_def(value)])
         }
-        crate::native::TypeHint::MapViewOf { key, value } => {
-            TypeHintDef::named("MapView").with_args([type_hint_def(key), type_hint_def(value)])
-        }
-        crate::native::TypeHint::MapMutOf {
-            key,
-            value,
-            mutation,
-        } => TypeHintDef::named("MapMut")
-            .with_args([type_hint_def(key), type_hint_def(value)])
-            .with_collection_mutation(*mutation),
         crate::native::TypeHint::Set => TypeHintDef::named("Set"),
         crate::native::TypeHint::SetOf(element) => {
             TypeHintDef::named("Set").with_args([type_hint_def(element)])
         }
-        crate::native::TypeHint::SetViewOf(element) => {
-            TypeHintDef::named("SetView").with_args([type_hint_def(element)])
-        }
-        crate::native::TypeHint::SetMutOf { element, mutation } => TypeHintDef::named("SetMut")
-            .with_args([type_hint_def(element)])
-            .with_collection_mutation(*mutation),
         crate::native::TypeHint::TupleOf(elements) => {
             TypeHintDef::tuple(elements.iter().map(type_hint_def))
         }
@@ -471,10 +347,9 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
         crate::native::TypeHint::ResultOf { ok, err } => {
             TypeHintDef::named("Result").with_args([type_hint_def(ok), type_hint_def(err)])
         }
-        crate::native::TypeHint::PathProxy => TypeHintDef::named("path_proxy"),
-        crate::native::TypeHint::Record(key)
-        | crate::native::TypeHint::Enum(key)
-        | crate::native::TypeHint::Host(key) => TypeHintDef::named(key.name.clone()),
+        crate::native::TypeHint::Record(key) | crate::native::TypeHint::Enum(key) => {
+            TypeHintDef::named(key.name.clone())
+        }
         crate::native::TypeHint::Trait(name) => TypeHintDef::named(name.clone()),
         crate::native::TypeHint::Function => TypeHintDef::named("Function"),
     }
@@ -484,18 +359,16 @@ fn type_hint_def(hint: &crate::native::TypeHint) -> TypeHintDef {
 mod tests {
     use vela_analysis::facts::AnalysisFacts;
     use vela_analysis::registry::RegistryFacts;
-    use vela_analysis::semantic_facts::HostPathSegmentFact;
     use vela_analysis::type_fact::TypeFact;
-    use vela_common::{HostMethodId, HostTypeId, SourceId};
+    use vela_common::SourceId;
+    use vela_def::MethodId;
     use vela_def::{FieldId, FunctionId, TypeId, VariantId};
     use vela_hir::body::HirExprKind;
     use vela_hir::module_graph::{ModuleGraph, ModuleSource};
     use vela_package::ModulePath;
     use vela_reflect::access::{FieldAccess, MethodAccess, MethodEffectSet};
-    use vela_reflect::registry::{
-        FieldDesc, HostIndexCapability, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc,
-    };
-    use vela_registry::{Def, IndexCapabilityDef, TypeHintDef, TypeKindDef};
+    use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeKind, VariantDesc};
+    use vela_registry::{Def, TypeKindDef};
 
     use super::{EngineFunctionEntries, definition_registry_from_engine_parts};
     use crate::native::{EffectSet, NativeFunctionDesc, NativeFunctionEntry};
@@ -504,7 +377,6 @@ mod tests {
     fn production_registry_conversion_preserves_compile_and_analysis_metadata() {
         let type_desc = TypeDesc::new(TypeKey::new(TypeId::new(70), "QuestState"))
             .kind(TypeKind::ScriptEnum)
-            .host_type(HostTypeId::new(71))
             .field(
                 FieldDesc::new(FieldId::new(72), "revision")
                     .type_hint("u32")
@@ -532,7 +404,7 @@ mod tests {
                     .field(FieldDesc::new(FieldId::new(77), "payload").type_hint("String")),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(78), "rewrite")
+                MethodDesc::new(MethodId::new(78), "rewrite")
                     .effects(MethodEffectSet {
                         writes_reflection: true,
                         ..MethodEffectSet::default()
@@ -543,18 +415,6 @@ mod tests {
                             .reflect_callable(false)
                             .require_permission("quest.admin"),
                     ),
-            );
-        let index_desc = TypeDesc::new(TypeKey::new(TypeId::new(80), "QuestIndex"))
-            .kind(TypeKind::Host)
-            .host_type(HostTypeId::new(81))
-            .index_capability(
-                HostIndexCapability::new()
-                    .readable(true)
-                    .writable(false)
-                    .addable(true)
-                    .removable(false)
-                    .key_type("String")
-                    .value_type("i64"),
             );
         let native = NativeFunctionEntry::new(
             NativeFunctionDesc::new("admin::rewrite", FunctionId::new(79))
@@ -570,12 +430,10 @@ mod tests {
         let type_bindings = crate::type_binding::TypeBindingRegistry::seal(Vec::new(), &[])
             .expect("empty type binding registry");
         let registry = definition_registry_from_engine_parts(
-            &[type_desc, index_desc],
+            &[type_desc],
             &type_bindings,
             EngineFunctionEntries {
                 native: &[native],
-                scoped_host: &[],
-                host: &[],
                 context_host: &[],
             },
             true,
@@ -592,30 +450,6 @@ mod tests {
             })
             .expect("QuestState type definition");
         assert_eq!(type_definition.kind, TypeKindDef::ScriptEnum);
-        assert_eq!(type_definition.host_runtime_id, Some(71));
-        assert!(type_definition.index_capability.is_none());
-        let index_definition = definitions
-            .iter()
-            .find_map(|definition| match definition {
-                Def::Type(definition) if definition.path.name == "QuestIndex" => Some(definition),
-                _ => None,
-            })
-            .expect("QuestIndex type definition");
-        assert_eq!(index_definition.kind, TypeKindDef::Host);
-        assert_eq!(index_definition.host_runtime_id, Some(81));
-        assert_eq!(
-            index_definition.index_capability,
-            Some(
-                IndexCapabilityDef::new()
-                    .readable(true)
-                    .writable(false)
-                    .addable(true)
-                    .removable(false)
-                    .key_type(TypeHintDef::named("String"))
-                    .value_type(TypeHintDef::named("i64"))
-            )
-        );
-
         let mut variants = definitions
             .iter()
             .filter_map(|definition| match definition {
@@ -702,21 +536,6 @@ mod tests {
             .type_target_fact("QuestState")
             .expect("semantic type target");
         assert_eq!(type_target.semantic, type_definition.id);
-        assert_eq!(type_target.host_runtime, Some(HostTypeId::new(71)));
-        let index_type_target = facts
-            .type_target_fact("QuestIndex")
-            .expect("semantic index type target");
-        assert_eq!(index_type_target.semantic, index_definition.id);
-        assert_eq!(index_type_target.host_runtime, Some(HostTypeId::new(81)));
-        let index_capability = facts
-            .index_capability_fact("QuestIndex")
-            .expect("host index capability fact");
-        assert!(index_capability.readable);
-        assert!(!index_capability.writable);
-        assert!(index_capability.addable);
-        assert!(!index_capability.removable);
-        assert_eq!(index_capability.key, TypeFact::STRING);
-        assert_eq!(index_capability.value, TypeFact::I64);
         assert!(facts.variant_fact("QuestState", "Active").is_some());
         assert!(facts.variant_fact("QuestState", "Done").is_some());
         assert!(facts.field_fact("QuestState::Active", "payload").is_some());
@@ -725,7 +544,6 @@ mod tests {
             .field_target_fact("QuestState", "revision")
             .expect("semantic field target");
         assert_eq!(field_target.semantic, root_field.id);
-        assert_eq!(field_target.host_runtime, Some(FieldId::new(72)));
         assert_eq!(field_target.declaration_order, 0);
         assert!(field_target.has_default);
         assert_eq!(
@@ -778,7 +596,7 @@ mod tests {
             SourceId::new(1),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
-            "fn lookup(state: QuestIndex, key: i64) -> i64 { return state[key]; }",
+            "fn lookup(state: Array<i64>, key: i64) -> i64 { return state[key]; }",
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
@@ -788,18 +606,10 @@ mod tests {
             .expressions
             .values()
             .find(|expression| matches!(expression.kind, HirExprKind::Index(_)))
-            .expect("indexed host expression");
+            .expect("indexed script expression");
         let HirExprKind::Index(index) = &indexed.kind else {
             unreachable!("index expression selected above")
         };
         assert_eq!(analysis.expression(index.index), Some(&TypeFact::I64));
-        let path = analysis
-            .host_path_target(indexed.id)
-            .expect("host index path target");
-        let Some(HostPathSegmentFact::Index { capability, .. }) = path.segments.last() else {
-            panic!("expected terminal host index segment: {path:?}");
-        };
-        assert_eq!(capability.key, TypeFact::STRING);
-        assert_ne!(analysis.expression(index.index), Some(&capability.key));
     }
 }

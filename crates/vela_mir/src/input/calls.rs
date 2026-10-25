@@ -1,13 +1,12 @@
 use vela_def::{FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirExprId, HirLocalId};
 
-use super::{CompileHostPathTarget, DynamicMethodTarget, HostMethodTarget, MethodExecutableTarget};
+use super::{DynamicMethodTarget, MethodExecutableTarget};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CompileCallTarget {
     pub callee: CompileCalleeTarget,
     pub arguments: CompileCallArguments,
-    pub scoped_resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
 }
 
 impl CompileCallTarget {
@@ -23,7 +22,6 @@ impl CompileCallTarget {
                 evaluation_order,
                 parameter_slots,
             },
-            scoped_resource: None,
         }
     }
 
@@ -32,7 +30,6 @@ impl CompileCallTarget {
         Self {
             callee,
             arguments: CompileCallArguments::Positional(arguments),
-            scoped_resource: None,
         }
     }
 
@@ -48,7 +45,6 @@ impl CompileCallTarget {
                 evaluation_order,
                 parameter_slots,
             },
-            scoped_resource: None,
         }
     }
 
@@ -60,17 +56,7 @@ impl CompileCallTarget {
         Self {
             callee,
             arguments: CompileCallArguments::Dynamic(arguments),
-            scoped_resource: None,
         }
-    }
-
-    #[must_use]
-    pub const fn with_scoped_resource(
-        mut self,
-        resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
-    ) -> Self {
-        self.scoped_resource = resource;
-        self
     }
 }
 
@@ -99,7 +85,6 @@ pub enum CompileCalleeTarget {
         method: MethodId,
         debug_name: String,
     },
-    HostMethod(HostMethodTarget),
     Reflection {
         operation: CompileReflectionCall,
         function: FunctionId,
@@ -109,12 +94,7 @@ pub enum CompileCalleeTarget {
         function: FunctionId,
         debug_name: String,
     },
-    HostRemove {
-        path: CompileHostPathTarget,
-    },
-    HostPush {
-        path: CompileHostPathTarget,
-    },
+
     DynamicCallable,
     DynamicMethod(DynamicMethodTarget),
 }

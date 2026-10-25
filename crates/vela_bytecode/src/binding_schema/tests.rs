@@ -9,6 +9,129 @@ use super::{
 use crate::compiler::compile_test_program;
 
 #[test]
+fn native_host_effect_bits_and_capability_ceilings_remain_distinct() {
+    use super::RustBindingEffectSet;
+    use vela_common::{Capability, CapabilitySet};
+    use vela_mir::MirEffect;
+
+    let read = RustBindingEffectSet::from(MirEffect {
+        host_read: true,
+        ..MirEffect::PURE
+    });
+    let write = RustBindingEffectSet::from(MirEffect {
+        host_write: true,
+        ..MirEffect::PURE
+    });
+    let both = RustBindingEffectSet::from(MirEffect {
+        host_read: true,
+        host_write: true,
+        ..MirEffect::PURE
+    });
+    assert_eq!(read.bits(), 1 << 14);
+    assert_eq!(write.bits(), 1 << 15);
+    assert_eq!(both.bits(), (1 << 14) | (1 << 15));
+    assert_eq!(
+        read.required_capabilities(),
+        CapabilitySet::new().with(Capability::HostRead)
+    );
+    assert_eq!(
+        write.required_capabilities(),
+        CapabilitySet::new().with(Capability::HostWrite)
+    );
+    assert_eq!(both.required_capabilities(), write.required_capabilities());
+    assert!(
+        !read
+            .required_capabilities()
+            .contains_all(write.required_capabilities())
+    );
+    assert!(
+        !RustBindingEffectSet::default()
+            .required_capabilities()
+            .contains_all(read.required_capabilities())
+    );
+    assert_eq!(
+        RustBindingEffectSet {
+            reflection_read: true,
+            ..RustBindingEffectSet::default()
+        }
+        .bits(),
+        1 << 6
+    );
+    assert_eq!(
+        RustBindingEffectSet {
+            writes_io: true,
+            ..RustBindingEffectSet::default()
+        }
+        .bits(),
+        1 << 13
+    );
+}
+
+#[cfg(feature = "artifact-codec")]
+#[test]
+fn native_host_effects_round_trip_through_mir_and_schema_codecs() {
+    use super::RustBindingEffectSet;
+    use vela_mir::MirEffect;
+
+    let baseline = compile_test_program(SourceId::new(508), "pub fn value() -> i64 { return 1; }")
+        .expect("schema fixture");
+    for (host_read, host_write) in [(true, false), (false, true), (true, true)] {
+        let mir = MirEffect {
+            host_read,
+            host_write,
+            ..MirEffect::external_call()
+        };
+        let encoded = bincode::serialize(&mir).expect("encode MIR effect");
+        assert_eq!(
+            bincode::deserialize::<MirEffect>(&encoded).expect("decode MIR effect"),
+            mir
+        );
+        let effects = RustBindingEffectSet::from(mir);
+        let encoded = bincode::serialize(&effects).expect("encode binding effect");
+        assert_eq!(
+            bincode::deserialize::<RustBindingEffectSet>(&encoded).expect("decode binding effect"),
+            effects
+        );
+
+        let mut schema = baseline.binding_schema().as_ref().clone();
+        let callable = schema.callables_mut().next().expect("public binding");
+        callable.effects = effects;
+        callable.required_capabilities = effects.required_capabilities();
+        callable.refresh_contract_fingerprint();
+        schema.refresh_checksum();
+        let encoded = bincode::serialize(&schema).expect("encode binding schema");
+        let decoded = bincode::deserialize::<super::RustBindingSchema>(&encoded)
+            .expect("decode binding schema");
+        assert_eq!(decoded, schema);
+        assert_ne!(decoded.checksum(), baseline.binding_schema().checksum());
+        assert_eq!(
+            decoded
+                .callables()
+                .next()
+                .expect("decoded binding")
+                .required_capabilities,
+            effects.required_capabilities()
+        );
+    }
+}
+
+#[cfg(feature = "artifact-codec")]
+#[test]
+fn schema_rejects_obsolete_versions_before_decoding_binding_facts() {
+    for version in 1_u32..=6 {
+        let error = bincode::deserialize::<super::RustBindingSchema>(&version.to_le_bytes())
+            .expect_err("obsolete schema must reject before reading checksum or binding facts");
+        assert!(
+            error
+                .to_string()
+                .contains("unsupported Rust binding schema"),
+            "{error}"
+        );
+    }
+    assert_eq!(RUST_BINDING_SCHEMA_VERSION, 7);
+}
+
+#[test]
 fn schema_exports_public_functions_and_methods_with_structural_contracts() {
     let program = compile_test_program(
         SourceId::new(501),

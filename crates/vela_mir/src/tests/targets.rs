@@ -1,4 +1,4 @@
-use vela_common::{HostTypeId, PrimitiveTag, ScalarValue};
+use vela_common::PrimitiveTag;
 use vela_def::{FieldId, FunctionId, MethodId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirNodeId};
 
@@ -74,32 +74,6 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
         },
         vec![HirExprId::new(313)],
     );
-    let path = CompileHostPathTarget {
-        root: HirExprId::new(303),
-        root_type: HostTypeTarget {
-            semantic: TypeId::new(304),
-            runtime: HostTypeId::new(305),
-        },
-        segments: vec![CompileHostPathSegment::DynamicIndex {
-            expression: HirExprId::new(306),
-            capability: CompileHostIndexCapability {
-                readable: true,
-                writable: true,
-                mutable: true,
-                removable: true,
-                key: None,
-                value: None,
-            },
-        }],
-    };
-    let remove = CompileCallTarget::positional(
-        CompileCalleeTarget::HostRemove { path: path.clone() },
-        Vec::new(),
-    );
-    let push = CompileCallTarget::positional(
-        CompileCalleeTarget::HostPush { path },
-        vec![HirExprId::new(314)],
-    );
     let script = CompileCallTarget::script(
         CompileCalleeTarget::ScriptFunction {
             function: FunctionId::new(315),
@@ -125,8 +99,6 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
     let expressions = [
         (HirExprId::new(307), reflection.clone()),
         (HirExprId::new(308), set.clone()),
-        (HirExprId::new(309), remove.clone()),
-        (HirExprId::new(310), push.clone()),
         (HirExprId::new(318), script.clone()),
         (HirExprId::new(319), dynamic.clone()),
     ];
@@ -140,10 +112,8 @@ fn mir_model_compile_targets_select_behavior_intrinsics_without_names() {
 
     assert_eq!(snapshot.call(function, expressions[0].0), Some(&reflection));
     assert_eq!(snapshot.call(function, expressions[1].0), Some(&set));
-    assert_eq!(snapshot.call(function, expressions[2].0), Some(&remove));
-    assert_eq!(snapshot.call(function, expressions[3].0), Some(&push));
-    assert_eq!(snapshot.call(function, expressions[4].0), Some(&script));
-    assert_eq!(snapshot.call(function, expressions[5].0), Some(&dynamic));
+    assert_eq!(snapshot.call(function, expressions[2].0), Some(&script));
+    assert_eq!(snapshot.call(function, expressions[3].0), Some(&dynamic));
 }
 
 #[test]
@@ -467,7 +437,7 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
         parameters: Vec::new(),
         positional: CompilePositionalPolicy::RuntimeChecked,
         return_contract: None,
-        effect: MirEffect::host_read(),
+        effect: MirEffect::may_trap(),
     };
     let mut targets = CompileTargetSnapshot::builder();
     targets
@@ -490,9 +460,7 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
                 owner,
                 member_name: "reward".to_owned(),
                 debug_name: "Player::reward".to_owned(),
-                class: CompileMethodClass::Host {
-                    runtime: vela_common::HostMethodId::new(345),
-                },
+                class: CompileMethodClass::Registry,
                 signature: signature.clone(),
                 access: method_access.clone(),
             },
@@ -509,7 +477,6 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
                 contract: None,
                 declaration_order: 0,
                 access: field_access.clone(),
-                host_runtime: Some(FieldId::new(346)),
             },
             origin,
         )
@@ -540,36 +507,6 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
     );
     assert_eq!(field_access.required_permissions(), ["player.inspect"]);
 
-    let host_type = HostTypeTarget {
-        semantic: owner,
-        runtime: HostTypeId::new(347),
-    };
-    let host_field = HostFieldTarget {
-        owner: host_type,
-        semantic: field,
-        runtime: FieldId::new(346),
-        access: field_access,
-    };
-    let host_method = HostMethodTarget {
-        owner: host_type,
-        semantic: method,
-        runtime: vela_common::HostMethodId::new(345),
-        signature,
-        access: method_access,
-        scoped_resource_return: None,
-    };
-    assert!(host_field.access.readable);
-    assert!(!host_field.access.writable);
-    assert!(host_field.access.reflect_readable);
-    assert!(!host_field.access.reflect_writable);
-    assert_eq!(host_field.access.required_permissions(), ["player.inspect"]);
-    assert!(!host_method.access.public);
-    assert!(!host_method.access.reflect_callable);
-    assert_eq!(
-        host_method.access.required_permissions(),
-        ["player.admin", "player.reward"]
-    );
-
     assert_eq!(
         CompileFunctionAccess::script(false),
         CompileFunctionAccess::new(false, true, false)
@@ -587,192 +524,4 @@ fn mir_model_target_access_is_complete_and_registry_independent() {
     assert!(dump.contains("reflect_visible: true"));
     assert!(dump.contains("required_permissions: [\"player.admin\", \"player.reward\"]"));
     assert!(dump.contains("required_permissions: [\"player.inspect\"]"));
-}
-
-#[test]
-fn mir_model_dynamic_host_path_segments_retain_index_capabilities() {
-    let body = HirBodyId::new(350);
-    let origin = MirSourceOrigin::body(
-        body,
-        vela_common::Span::new(vela_common::SourceId::new(10), 2, 11),
-    );
-    let host_type = HostTypeTarget {
-        semantic: TypeId::new(351),
-        runtime: HostTypeId::new(352),
-    };
-    let index_capability = CompileHostIndexCapability {
-        readable: true,
-        writable: false,
-        mutable: false,
-        removable: true,
-        key: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-        value: Some(MirTypeContract::Primitive(PrimitiveTag::String)),
-    };
-    let key_capability = CompileHostIndexCapability {
-        readable: true,
-        writable: true,
-        mutable: true,
-        removable: false,
-        key: Some(MirTypeContract::Primitive(PrimitiveTag::Char)),
-        value: Some(MirTypeContract::Primitive(PrimitiveTag::Bool)),
-    };
-    let path = MirHostPath {
-        root_type: host_type,
-        segments: vec![
-            MirHostPathSegment::Index {
-                value: MirOperand::Immediate(MirImmediate::Scalar(ScalarValue::I64(2))),
-                capability: index_capability.clone(),
-            },
-            MirHostPathSegment::Key {
-                value: MirOperand::Immediate(MirImmediate::Char('k')),
-                capability: key_capability.clone(),
-            },
-        ],
-    };
-    assert!(matches!(
-        &path.segments[0],
-        MirHostPathSegment::Index { capability, .. } if capability == &index_capability
-    ));
-    assert!(matches!(
-        &path.segments[1],
-        MirHostPathSegment::Key { capability, .. } if capability == &key_capability
-    ));
-
-    let mut function = MirFunction::new(
-        body,
-        MirFunctionOwner::Function(FunctionId::new(353)),
-        "host::indexed".to_owned(),
-        None,
-        origin,
-    );
-    let root = function.add_synthetic_local(MirValueType::Host(host_type), origin);
-    let result = function.add_temp(MirValueType::Dynamic, origin);
-    let safepoint = function.add_safepoint(MirSafepoint::new(origin));
-    function
-        .append_statement(
-            function.entry_block(),
-            MirStatement::new(
-                origin,
-                Some(MirPlace::temp(result)),
-                MirStatementKind::Host(MirHostOperation::Read {
-                    root: MirOperand::Local(root),
-                    path,
-                }),
-                MirEffect::host_read(),
-                Some(safepoint),
-            ),
-        )
-        .expect("dynamic host path capability metadata should remain executable MIR");
-    let mut program = MirProgram::new(MirTargetTable::default());
-    program
-        .add_function(function)
-        .expect("host path fixture function should be unique");
-    let dump = program.dump();
-    assert!(dump.contains("Index {"));
-    assert!(dump.contains("key: Some(Primitive(I64))"));
-    assert!(dump.contains("Key {"));
-    assert!(dump.contains("value: Some(Primitive(String))"));
-    assert!(dump.contains("key: Some(Primitive(Char))"));
-}
-
-#[test]
-fn mir_model_constant_host_path_segments_retain_complete_index_capabilities() {
-    let body = HirBodyId::new(360);
-    let function = FunctionId::new(359);
-    let root = HirExprId::new(361);
-    let path_expression = HirExprId::new(362);
-    let origin = MirSourceOrigin::expression(
-        body,
-        path_expression,
-        vela_common::Span::new(vela_common::SourceId::new(11), 3, 19),
-    );
-    let host_type = HostTypeTarget {
-        semantic: TypeId::new(363),
-        runtime: HostTypeId::new(364),
-    };
-    let index_capability = CompileHostIndexCapability {
-        readable: true,
-        writable: false,
-        mutable: true,
-        removable: false,
-        key: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-        value: Some(MirTypeContract::Primitive(PrimitiveTag::String)),
-    };
-    let key_capability = CompileHostIndexCapability {
-        readable: false,
-        writable: true,
-        mutable: false,
-        removable: true,
-        key: Some(MirTypeContract::Primitive(PrimitiveTag::Char)),
-        value: Some(MirTypeContract::Primitive(PrimitiveTag::Bool)),
-    };
-    let compile_path = CompileHostPathTarget {
-        root,
-        root_type: host_type,
-        segments: vec![
-            CompileHostPathSegment::ConstantIndex {
-                value: 7,
-                capability: index_capability.clone(),
-            },
-            CompileHostPathSegment::ConstantKey {
-                value: "reward".to_owned(),
-                capability: key_capability.clone(),
-            },
-        ],
-    };
-    let mut targets = CompileTargetSnapshot::builder();
-    targets
-        .insert_host_path(function, path_expression, compile_path, origin)
-        .expect("constant host path target should be unique");
-    let targets = targets.build_unchecked();
-    let retained = targets
-        .host_path(function, path_expression)
-        .expect("constant host path should remain in the immutable snapshot");
-    assert!(matches!(
-        &retained.segments[0],
-        CompileHostPathSegment::ConstantIndex { value: 7, capability }
-            if capability == &index_capability
-                && capability.readable
-                && !capability.writable
-                && capability.mutable
-                && !capability.removable
-                && capability.key == Some(MirTypeContract::Primitive(PrimitiveTag::I64))
-                && capability.value == Some(MirTypeContract::Primitive(PrimitiveTag::String))
-    ));
-    assert!(matches!(
-        &retained.segments[1],
-        CompileHostPathSegment::ConstantKey { value, capability }
-            if value == "reward"
-                && capability == &key_capability
-                && !capability.readable
-                && capability.writable
-                && !capability.mutable
-                && capability.removable
-                && capability.key == Some(MirTypeContract::Primitive(PrimitiveTag::Char))
-                && capability.value == Some(MirTypeContract::Primitive(PrimitiveTag::Bool))
-    ));
-
-    let mir_path = MirHostPath {
-        root_type: retained.root_type,
-        segments: vec![
-            MirHostPathSegment::ConstantIndex {
-                value: 7,
-                capability: index_capability.clone(),
-            },
-            MirHostPathSegment::ConstantKey {
-                value: "reward".to_owned(),
-                capability: key_capability.clone(),
-            },
-        ],
-    };
-    assert!(matches!(
-        &mir_path.segments[0],
-        MirHostPathSegment::ConstantIndex { value: 7, capability }
-            if capability == &index_capability
-    ));
-    assert!(matches!(
-        &mir_path.segments[1],
-        MirHostPathSegment::ConstantKey { value, capability }
-            if value == "reward" && capability == &key_capability
-    ));
 }

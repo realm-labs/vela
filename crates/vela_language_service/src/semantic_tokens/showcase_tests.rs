@@ -12,7 +12,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
     let main = DocumentId::from("/workspace/scripts/game/main.vela");
     let helper = DocumentId::from("/workspace/scripts/game/support.vela");
     let mut schema = RegistryFacts::default();
-    schema.insert_type("SchemaPlayer", TypeFact::host("SchemaPlayer"));
+    schema.insert_type("SchemaPlayer", TypeFact::record("SchemaPlayer"));
     schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
     schema.insert_field("SchemaPlayer", "level", TypeFact::I64);
     schema.insert_method(
@@ -42,7 +42,7 @@ fn semantic_tokens_highlighting_showcase_pins_current_collapses() {
         .union(SemanticTokenModifiers::SOURCE);
     let source_declaration =
         SemanticTokenModifiers::DECLARATION.union(SemanticTokenModifiers::SOURCE);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,

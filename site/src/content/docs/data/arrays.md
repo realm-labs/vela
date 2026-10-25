@@ -20,7 +20,7 @@ fn second_reward() -> i64 {
 
 ## Mutation
 
-Array methods cover common update operations such as appending, removing, and querying. Mutating a script array changes that script heap value; mutating a host-owned array path must go through HostAccess.
+Array methods cover common update operations such as appending, removing, and querying. Mutating a script array changes that script heap value; transparent host array paths are removed and do not provide Rust write-through.
 
 ```vela
 fn collect_large(values) {

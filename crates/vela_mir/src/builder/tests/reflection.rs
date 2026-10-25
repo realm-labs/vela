@@ -306,7 +306,7 @@ fn reflection_write_guards_each_operand_before_later_effects_and_unions_effects(
             "reflect::set",
             vec![required("target"), required("field"), required("value")],
             CompilePositionalPolicy::ExactOrTrailingDefaults,
-            MirEffect::host_write(),
+            MirEffect::external_call(),
         )?;
         for (index, value) in values[..2].iter().copied().enumerate() {
             targets.insert_guard(
@@ -383,7 +383,7 @@ fn reflection_write_guards_each_operand_before_later_effects_and_unions_effects(
     assert_eq!(operand_source(source, function, value), "\"later\"");
     assert_eq!(
         statement.effect,
-        MirEffect::reflection_write().union(MirEffect::host_write())
+        MirEffect::reflection_write().union(MirEffect::external_call())
     );
     assert!(statement.safepoint.is_some());
 }

@@ -113,7 +113,6 @@ for (const id of expectedSemanticTokenTypes) {
 }
 
 const expectedSemanticTokenModifiers = [
-  "host",
   "unresolved",
   "source",
   "public",

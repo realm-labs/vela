@@ -11,7 +11,7 @@ fn option_type_desc(value: &str) -> ReflectValue {
 #[test]
 fn name_kind_and_field_queries_return_copied_metadata() {
     let registry = registry();
-    let target = ReflectValue::HostRef(player_ref());
+    let target = player_value();
 
     assert_eq!(
         name(&registry, &target).expect("name"),
@@ -19,7 +19,7 @@ fn name_kind_and_field_queries_return_copied_metadata() {
     );
     assert_eq!(
         kind(&registry, &target).expect("kind"),
-        ReflectValue::Host(HostValue::String("host".to_owned()))
+        ReflectValue::Host(HostValue::String("script_struct".to_owned()))
     );
     assert_eq!(
         docs(&registry, &target).expect("docs"),
@@ -196,12 +196,8 @@ fn name_kind_and_field_queries_return_copied_metadata() {
 fn method_trait_and_variant_queries_return_copied_metadata() {
     let registry = registry();
 
-    assert!(
-        has_method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
-            .expect("has method")
-    );
-    let ReflectValue::Array(method_records) =
-        methods(&registry, &ReflectValue::HostRef(player_ref())).expect("methods")
+    assert!(has_method(&registry, &player_value(), "grant_exp").expect("has method"));
+    let ReflectValue::Array(method_records) = methods(&registry, &player_value()).expect("methods")
     else {
         panic!("methods should be an array");
     };
@@ -294,8 +290,8 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
             "grant_exp".to_owned()
         )))
     );
-    let single_method_value = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_exp")
-        .expect("method metadata");
+    let single_method_value =
+        method(&registry, &player_value(), "grant_exp").expect("method metadata");
     assert_eq!(
         method(&registry, &player_type, "grant_exp").expect("type method"),
         single_method_value
@@ -409,8 +405,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
             fields: helper_access,
         }
     );
-    let unknown = method(&registry, &ReflectValue::HostRef(player_ref()), "grant_xp")
-        .expect_err("unknown method");
+    let unknown = method(&registry, &player_value(), "grant_xp").expect_err("unknown method");
     assert_eq!(
         unknown.kind,
         ReflectErrorKind::UnknownMethod {
@@ -424,8 +419,7 @@ fn method_trait_and_variant_queries_return_copied_metadata() {
         }
     );
 
-    let ReflectValue::Array(trait_records) =
-        traits(&registry, &ReflectValue::HostRef(player_ref())).expect("traits")
+    let ReflectValue::Array(trait_records) = traits(&registry, &player_value()).expect("traits")
     else {
         panic!("traits should be an array");
     };

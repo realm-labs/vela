@@ -22,8 +22,8 @@ test("workspace picker keeps complete original source/schema names and absent so
   const o=m.cases[1];assert.equal(o.wire("").filter(r=>r.location.uri==="vela-schema:").length,19);
   assert(o.wire("").filter(r=>r.location.uri==="vela-schema:").every(r=>!Object.hasOwn(r.location,"range")));
   assert.deepEqual(o.rows.filter(r=>r.view.name==="source::make").map(r=>r.view.description),["source • scripts\\source.vela","."]);
-  assert.deepEqual(o.rows.filter(r=>r.view.name==="source::Widget").map(r=>r.view.icon),["symbol-class","symbol-struct"]);
-  assert.equal(o.targets.find(r=>r.id==="source-widget").index,1);assert.equal(d.targets.find(r=>r.id==="nested-api-file").index,1);
+  assert.deepEqual(o.rows.filter(r=>r.view.name==="source::Widget").map(r=>r.view.icon),["symbol-struct","symbol-struct"]);
+  assert.equal(o.targets.find(r=>r.id==="source-widget").index,0);assert.equal(d.targets.find(r=>r.id==="nested-api-file").index,1);
   assert(m.cases.every(c=>c.absent.every(q=>c.wire(q.query).length===0)));
   const before=structuredClone(require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"));workspacePickerModel();assert.deepEqual(require("../../tests/lsp_matrix/fixtures/workspace-symbol-ownership.json"),before);
 });

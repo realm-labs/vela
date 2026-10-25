@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use vela_engine::engine::Engine;
 use vela_engine::runtime::{CallArgs, CallOptions, Runtime};
-use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::version::ProgramVersion;
 use vela_vm::owned_value::OwnedValue;
 
@@ -13,7 +12,8 @@ pub fn run(
     updated_label: &str,
     updated_source: &str,
 ) -> Result<(), Box<dyn Error>> {
-    let engine = crate::gameplay::build_engine(crate::gameplay::GameEngineOptions::default())
+    let engine = Engine::builder()
+        .build()
         .map_err(|error| format!("{error:?}"))?;
     let program = engine.compile_source(initial_source).map_err(|error| {
         crate::diagnostics::render_engine_source_error(initial_label, initial_source, &error)
@@ -51,13 +51,8 @@ pub fn run(
 }
 
 fn run_current_main(runtime: &mut Runtime) -> Result<OwnedValue, Box<dyn Error>> {
-    let mut adapter = MockStateAdapter::new();
     let value = runtime
-        .call(
-            "main",
-            CallArgs::new().with_fallback_adapter(&mut adapter),
-            CallOptions::unbounded(),
-        )
+        .call("main", CallArgs::new(), CallOptions::unbounded())
         .map_err(|error| format!("{error:?}"))?;
     runtime
         .value_to_owned(&value)

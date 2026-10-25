@@ -353,7 +353,7 @@
         {
           "name": "HostCell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -364,7 +364,7 @@
         {
           "name": "HostBox",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostBox"
           },
           "sourceSpan": {
@@ -382,7 +382,7 @@
         {
           "name": "MetadataOnly",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "MetadataOnly"
           }
         }
@@ -392,7 +392,7 @@
           "owner": "HostBox",
           "name": "item",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -404,7 +404,7 @@
           "owner": "HostChoice::Record",
           "name": "item",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -416,7 +416,7 @@
           "owner": "MetadataOnly",
           "name": "item",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           }
         }

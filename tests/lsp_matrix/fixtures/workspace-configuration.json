@@ -9,8 +9,8 @@
     "roots/left/schema_caller.vela": "fn schema_main(host: HostCell) {\n  /* 中😀 */ host.[[value:start]]value[[value:end]]; host.[[gone:start]]gone[[gone:end]]; host.[[rank:start]]rank[[rank:end]];\n}\n",
     "roots/right/beta.vela": "// independent root\n// independent location\npub fn [[decl:start]]beta[[decl:end]]() -> i64 { return 2; }\n",
     "roots/right/other_caller.vela": "[[import:start]]use beta::beta;[[import:end]]\nfn right_main() { /* 中😀 */ [[call:start]]beta[[call:end]](); }\n",
-    "schema-one.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
-    "schema-two.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "schema-one.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"record\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "schema-two.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"record\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
     "schema-invalid.json": "{\"formatVersion\":99,\"facts\":{}}",
     "schema-missing.json": "{}"
   },
@@ -36,7 +36,7 @@
     "schemaStates": [
       {"path":"schema-one.json","fields":{"value":"i64","gone":"bool","rank":null},"error":null},
       {"path":"schema-two.json","fields":{"value":"String","gone":null,"rank":"bool"},"error":null},
-      {"path":"schema-invalid.json","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 3; host facts degrade to Any"},
+      {"path":"schema-invalid.json","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is invalid: unsupported schema artifact format version 99; expected 4; host facts degrade to Any"},
       {"path":"schema-missing.json","fields":{"value":null,"gone":null,"rank":null},"error":"host schema `{SCHEMA}` is unavailable; host facts degrade to Any"},
       {"path":"","fields":{"value":null,"gone":null,"rank":null},"error":null},
       {"path":"schema-one.json","fields":{"value":"i64","gone":"bool","rank":null},"error":null}

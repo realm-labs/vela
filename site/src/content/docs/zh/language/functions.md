@@ -32,7 +32,7 @@ fn main() -> i64 {
 
 ## 宿主边界
 
-宿主调用脚本函数会进入 checked entry。参数 guard、返回 guard、能力检查和调用栈诊断都会保留。脚本仍然不会暴露真实 Rust 引用；宿主状态修改通过注册的宿主值和 HostAccess 完成。
+宿主调用脚本函数会进入 checked entry。参数 guard、返回 guard、能力检查和调用栈诊断都会保留。脚本仍然不会暴露真实 Rust 引用；独立 native 调用使用自有值；透明 Rust 写穿已经删除。
 
 ## 热更新
 

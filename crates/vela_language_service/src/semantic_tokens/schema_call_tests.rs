@@ -12,10 +12,10 @@ pub fn main() -> i64 {
     return current_player().grant(1)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function(
         "current_player",
-        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        TypeFact::function(Vec::new(), TypeFact::record("Player")),
     );
     schema.insert_method(
         "Player",
@@ -28,7 +28,7 @@ pub fn main() -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -60,12 +60,12 @@ pub fn main(player: Player) -> i64 {
     return player.inventory().grant(1)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_type("Player", TypeFact::record("Player"));
+    schema.insert_type("Inventory", TypeFact::record("Inventory"));
     schema.insert_method(
         "Player",
         "inventory",
-        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+        TypeFact::function(Vec::new(), TypeFact::record("Inventory")),
     );
     schema.insert_method(
         "Inventory",
@@ -78,7 +78,7 @@ pub fn main(player: Player) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -126,7 +126,7 @@ pub fn main() -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -158,7 +158,7 @@ pub fn main(player: Player) -> i64 {
     return player.rewardable().preview(1)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
     schema.insert_method(
         "Player",
@@ -176,7 +176,7 @@ pub fn main(player: Player) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,

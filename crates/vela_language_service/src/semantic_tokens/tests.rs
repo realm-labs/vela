@@ -61,7 +61,7 @@ fn semantic_tokens_cover_lexical_classes() {
 #[test]
 fn semantic_tokens_treat_state_as_contextual_declaration_keyword() {
     let document = DocumentId::from("/workspace/scripts/game/state.vela");
-    let text = "state state: i64 = 1;\nextern state player: Player;\nfn read(state: i64) -> i64 { return state; }";
+    let text = "state state: i64 = 1;\nstate player: Player = Player {};\nfn read(state: i64) -> i64 { return state; }";
     let databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let tokens = databases.semantic_tokens(&document);
 
@@ -86,9 +86,7 @@ fn semantic_tokens_treat_state_as_contextual_declaration_keyword() {
     assert_token_at(
         &tokens,
         1,
-        line(text, 1)
-            .find("state")
-            .expect("extern state introducer"),
+        line(text, 1).find("state").expect("state introducer"),
         "state".len(),
         SemanticTokenType::Keyword,
         SemanticTokenModifiers::NONE,
@@ -739,7 +737,7 @@ pub fn main(state: QuestState) -> QuestState {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     for (line_index, variant) in [(1, "Active"), (2, "Done"), (4, "Active"), (5, "Done")] {
         assert_token_at(
@@ -830,7 +828,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     return names.len()
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_method(
         "Player",
@@ -843,7 +841,7 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -897,7 +895,7 @@ pub fn main(rewardable: Rewardable) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -920,10 +918,10 @@ pub fn main(player: Player) -> i64 {
     return math::max(reward, 10)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function(
         "grant_reward",
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::I64),
+        TypeFact::function(vec![TypeFact::record("Player")], TypeFact::I64),
     );
     let databases = databases_for_with_schema(
         vec![SourceFileSnapshot::new(document.clone(), text)],
@@ -931,7 +929,7 @@ pub fn main(player: Player) -> i64 {
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -964,14 +962,14 @@ pub fn main(player: Player, names: Array<String>) -> i64 {
     return 1
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     let databases = databases_for_with_schema(
         vec![SourceFileSnapshot::new(document.clone(), text)],
         schema,
     );
 
     let tokens = databases.semantic_tokens(&document);
-    let schema_host = SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA);
+    let schema_host = SemanticTokenModifiers::SCHEMA;
 
     assert_token_at(
         &tokens,
@@ -1147,7 +1145,6 @@ fn semantic_token_taxonomy_declares_custom_fallbacks() {
         ("readonly", Some("readonly")),
         ("deprecated", Some("deprecated")),
         ("defaultLibrary", Some("defaultLibrary")),
-        ("host", None),
         ("unresolved", None),
         ("source", None),
         ("public", None),

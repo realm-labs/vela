@@ -5,14 +5,14 @@ use vela_hir::body::{HirAssignOp, HirExprKind, HirField, HirIndex, HirLiteral};
 use vela_hir::ids::{HirDeclId, HirExprId};
 
 use crate::{
-    CompileFieldTarget, CompileMemberTarget, CompileStateDescriptor, CompileStateStorage,
-    MirBinaryOp, MirBuildError, MirDynamicBinaryOp, MirEffect, MirFieldTarget, MirImmediate,
-    MirIndexKey, MirIndexOperation, MirNumericBinaryOp, MirOperand, MirPlace, MirSafepoint,
-    MirSourceOrigin, MirStateOperation, MirStatement, MirStatementKind,
+    CompileFieldTarget, CompileMemberTarget, CompileStateDescriptor, MirBinaryOp, MirBuildError,
+    MirDynamicBinaryOp, MirEffect, MirFieldTarget, MirImmediate, MirIndexKey, MirIndexOperation,
+    MirNumericBinaryOp, MirOperand, MirPlace, MirSafepoint, MirSourceOrigin, MirStateOperation,
+    MirStatement, MirStatementKind,
 };
 
 use super::core::{FunctionBuilder, operand_value_type, value_type};
-use super::host::PreparedHostValueWriteback;
+
 use super::tuple_assignments::PreparedTupleProjection;
 
 #[derive(Clone, Debug)]
@@ -57,7 +57,6 @@ enum PreparedFieldRoot {
     Value,
     Local(crate::MirLocalId),
     Index(PreparedIndexTarget),
-    Host(PreparedHostValueWriteback),
 }
 
 struct AssignmentValueInput {
@@ -100,10 +99,6 @@ enum Prepared<T> {
 
 impl FunctionBuilder<'_> {
     /// Lower a script-local, script-field, or script-index assignment.
-    ///
-    /// Exact host-path placements route directly to the HostAccess builder as
-    /// explicit operations; defensive routing errors below prevent a host
-    /// target from ever becoming an ordinary MIR place or script heap write.
     pub(super) fn lower_assignment(
         &mut self,
         expression: HirExprId,
@@ -118,15 +113,6 @@ impl FunctionBuilder<'_> {
             .ok_or_else(|| self.inconsistent(origin, "assignment expression has no target"))?;
         let value =
             value.ok_or_else(|| self.inconsistent(origin, "assignment expression has no value"))?;
-        if let Some(path) = self
-            .input
-            .targets()
-            .host_path(target)
-            .filter(|path| !path.segments.is_empty())
-            .cloned()
-        {
-            return self.lower_host_assignment(expression, operation, target, value, &path, origin);
-        }
 
         let operator_mode = self.assignment_operator_mode(expression, operation, origin)?;
 
@@ -160,20 +146,6 @@ impl FunctionBuilder<'_> {
         field: &HirField,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
-        if let Some(CompileMemberTarget::HostProperty(method)) =
-            self.input.targets().member(expression).cloned()
-        {
-            return self.lower_host_property(
-                expression,
-                field.receiver,
-                &field.name,
-                &method,
-                origin,
-            );
-        }
-        if let Some(path) = self.input.targets().host_path(expression).cloned() {
-            return self.lower_host_read(expression, &path, origin);
-        }
         let receiver = self.lower_expression(field.receiver)?;
         if self.current_is_terminated()? {
             return Ok(unit());
@@ -204,9 +176,6 @@ impl FunctionBuilder<'_> {
         index: &HirIndex,
         origin: MirSourceOrigin,
     ) -> Result<MirOperand, MirBuildError> {
-        if let Some(path) = self.input.targets().host_path(expression).cloned() {
-            return self.lower_host_read(expression, &path, origin);
-        }
         let receiver = self.lower_expression(index.receiver)?;
         if self.current_is_terminated()? {
             return Ok(unit());
@@ -267,12 +236,7 @@ impl FunctionBuilder<'_> {
                                     "assignment declaration has no state compile target",
                                 )
                             })?;
-                        if descriptor.storage == CompileStateStorage::Extern {
-                            return Err(self.inconsistent(
-                                origin,
-                                "direct assignment to extern state reached MIR",
-                            ));
-                        }
+
                         Ok(Prepared::Ready(PreparedAssignmentTarget::State {
                             declaration: *declaration,
                             descriptor,
@@ -302,11 +266,8 @@ impl FunctionBuilder<'_> {
     fn prepare_index_target(
         &mut self,
         index: &HirIndex,
-        origin: MirSourceOrigin,
+        _origin: MirSourceOrigin,
     ) -> Result<Prepared<PreparedIndexTarget>, MirBuildError> {
-        if self.input.targets().host_path(index.expression).is_some() {
-            return Err(self.host_assignment_route_error(origin));
-        }
         let expression = index.expression;
         let receiver = self.lower_expression(index.receiver)?;
         if self.current_is_terminated()? {
@@ -367,49 +328,6 @@ impl FunctionBuilder<'_> {
             return Err(self.inconsistent(origin, "field assignment has no field steps"));
         }
 
-        let host_prefix_len = field_expressions
-            .iter()
-            .take_while(|expression| self.input.targets().host_path(**expression).is_some())
-            .count();
-        if field_expressions[host_prefix_len..]
-            .iter()
-            .any(|expression| self.input.targets().host_path(*expression).is_some())
-        {
-            return Err(self.inconsistent(
-                origin,
-                "host assignment path placements do not form one leading prefix",
-            ));
-        }
-        let host_prefix = host_prefix_len.checked_sub(1).map_or_else(
-            || {
-                self.input
-                    .targets()
-                    .host_path(base)
-                    .cloned()
-                    .map(|target| (base, target))
-            },
-            |index| {
-                let expression = field_expressions[index];
-                let target = self
-                    .input
-                    .targets()
-                    .host_path(expression)
-                    .expect("leading host prefix was checked")
-                    .clone();
-                Some((expression, target))
-            },
-        );
-        let field_expressions = field_expressions
-            .into_iter()
-            .skip(host_prefix_len)
-            .collect::<Vec<_>>();
-        if field_expressions.is_empty() {
-            return Err(self.inconsistent(
-                origin,
-                "host assignment prefix has no script-value projection suffix",
-            ));
-        }
-
         let mut fields = Vec::with_capacity(field_expressions.len());
         for expression in field_expressions {
             let member = match self.member_target(expression, origin)? {
@@ -427,15 +345,7 @@ impl FunctionBuilder<'_> {
             fields.push(PreparedFieldStep { expression, member });
         }
 
-        let (root, root_target) = if let Some((expression, target)) = host_prefix {
-            let prefix_origin = self.assignment_expression_origin(expression)?;
-            let Some((root, writeback)) =
-                self.prepare_host_value_writeback(expression, &target, prefix_origin)?
-            else {
-                return Ok(Prepared::Diverged);
-            };
-            (root, PreparedFieldRoot::Host(writeback))
-        } else {
+        let (root, root_target) = {
             let base_kind = self.expression_kind(base, origin)?;
             let root_local = if matches!(base_kind, HirExprKind::Path(_)) {
                 self.assignment_root_local(base, origin)?
@@ -450,7 +360,7 @@ impl FunctionBuilder<'_> {
             {
                 return Err(self.inconsistent(
                     origin,
-                    "tuple projection assignment requires a writable local, index, or HostAccess root",
+                    "tuple projection assignment requires a writable local or index root",
                 ));
             }
             match base_kind {
@@ -639,9 +549,7 @@ impl FunctionBuilder<'_> {
                     ),
                 )?;
             }
-            PreparedFieldRoot::Host(writeback) => {
-                self.write_host_value_back(writeback, rebuilt, origin)?;
-            }
+
             PreparedFieldRoot::Value | PreparedFieldRoot::Local(_) => {}
         }
         Ok(assigned)
@@ -802,10 +710,8 @@ impl FunctionBuilder<'_> {
                     name: name.clone(),
                 }))
             }
-            CompileMemberTarget::HostField(_) => Err(self.host_read_route_error(origin)),
-            CompileMemberTarget::HostProperty(_)
-            | CompileMemberTarget::ScriptMethod { .. }
-            | CompileMemberTarget::ValueMethod { .. } => {
+
+            CompileMemberTarget::ScriptMethod { .. } | CompileMemberTarget::ValueMethod { .. } => {
                 let HirExprKind::Field(field) = self.expression_kind(expression, origin)? else {
                     return Err(self.inconsistent(
                         origin,
@@ -977,20 +883,6 @@ impl FunctionBuilder<'_> {
             expression,
             record.origin.span,
         ))
-    }
-
-    fn host_assignment_route_error(&self, origin: MirSourceOrigin) -> MirBuildError {
-        self.inconsistent(
-            origin,
-            "compile host-path assignment must be lowered by builder::host as an explicit HostAccess operation",
-        )
-    }
-
-    fn host_read_route_error(&self, origin: MirSourceOrigin) -> MirBuildError {
-        self.inconsistent(
-            origin,
-            "compile host-path read must be lowered by builder::host as an explicit HostAccess operation",
-        )
     }
 }
 

@@ -246,7 +246,7 @@ pub fn main() -> i64 {
 }";
     let rewards_text = "\
 pub const BASE_REWARD = 4
-pub extern state reward_scale: i64;";
+pub state reward_scale: i64 = 1;";
     let main_uri = "file:///workspace/scripts/game/main.vela";
     let rewards_uri = "file:///workspace/scripts/game/rewards.vela";
     for (uri, text) in [(rewards_uri, rewards_text), (main_uri, main_text)] {

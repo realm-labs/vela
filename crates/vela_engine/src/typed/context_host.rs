@@ -8,13 +8,13 @@ use super::{IntoNativeReturn, TypedContextHostNativeFunction, expect_arity};
 
 impl<F, R> TypedContextHostNativeFunction<()> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>) -> R + Send + Sync + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>) -> R + Send + Sync + 'static,
     R: IntoNativeReturn,
 {
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 0)?;
         (self)(ctx).into_native_return()
@@ -23,14 +23,14 @@ where
 
 impl<F, A, R> TypedContextHostNativeFunction<(A,)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A) -> R + Send + Sync + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     R: IntoNativeReturn,
 {
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 1)?;
         (self)(ctx, A::from_script_arg(&args[0])?).into_native_return()
@@ -39,7 +39,7 @@ where
 
 impl<F, A, B, R> TypedContextHostNativeFunction<(A, B)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B) -> R + Send + Sync + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A, B) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     B: FromScriptArg,
     R: IntoNativeReturn,
@@ -47,7 +47,7 @@ where
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 2)?;
         (self)(
@@ -61,10 +61,7 @@ where
 
 impl<F, A, B, C, R> TypedContextHostNativeFunction<(A, B, C)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B, C) -> R
-        + Send
-        + Sync
-        + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A, B, C) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     B: FromScriptArg,
     C: FromScriptArg,
@@ -73,7 +70,7 @@ where
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 3)?;
         (self)(
@@ -88,10 +85,7 @@ where
 
 impl<F, A, B, C, D, R> TypedContextHostNativeFunction<(A, B, C, D)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B, C, D) -> R
-        + Send
-        + Sync
-        + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A, B, C, D) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     B: FromScriptArg,
     C: FromScriptArg,
@@ -101,7 +95,7 @@ where
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 4)?;
         (self)(
@@ -117,10 +111,7 @@ where
 
 impl<F, A, B, C, D, E, R> TypedContextHostNativeFunction<(A, B, C, D, E)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B, C, D, E) -> R
-        + Send
-        + Sync
-        + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A, B, C, D, E) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     B: FromScriptArg,
     C: FromScriptArg,
@@ -131,7 +122,7 @@ where
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 5)?;
         (self)(
@@ -148,10 +139,7 @@ where
 
 impl<F, A, B, C, D, E, G, R> TypedContextHostNativeFunction<(A, B, C, D, E, G)> for F
 where
-    F: for<'ctx, 'host> Fn(&mut NativeCallContext<'ctx, 'host>, A, B, C, D, E, G) -> R
-        + Send
-        + Sync
-        + 'static,
+    F: for<'ctx> Fn(&mut NativeCallContext<'ctx>, A, B, C, D, E, G) -> R + Send + Sync + 'static,
     A: FromScriptArg,
     B: FromScriptArg,
     C: FromScriptArg,
@@ -163,7 +151,7 @@ where
     fn call_context(
         &self,
         args: &[OwnedValue],
-        ctx: &mut NativeCallContext<'_, '_>,
+        ctx: &mut NativeCallContext<'_>,
     ) -> VmResult<OwnedValue> {
         expect_arity(args, 6)?;
         (self)(

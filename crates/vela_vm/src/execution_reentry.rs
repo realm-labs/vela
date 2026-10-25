@@ -24,7 +24,7 @@ impl Vm {
         &self,
         session: &mut LinkedExecutionSession,
         reentry: LinkedExecutionReentry<'_, '_, '_>,
-        host: Option<&HostExecution<'_>>,
+        _host: Option<&HostExecution<'_>>,
         heap: &mut HeapExecution<'_>,
         budget: &mut ExecutionBudget,
     ) -> VmResult<()> {
@@ -88,7 +88,6 @@ impl Vm {
                 target: PendingReturnTarget::Reentry,
                 protected_root_len,
             }),
-            host.map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             Some(heap),
             Some(budget),
             Some(&mut session.frame_pool),

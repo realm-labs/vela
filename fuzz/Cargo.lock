@@ -273,12 +273,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
-name = "self_cell"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b12e76d157a900eb52e81bc6e9f3069344290341720e9178cde2407113ac8d89"
-
-[[package]]
 name = "serde"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -419,7 +413,6 @@ dependencies = [
  "vela_common",
  "vela_def",
  "vela_hir",
- "vela_host",
  "vela_mir",
  "vela_package",
  "vela_registry",
@@ -478,10 +471,6 @@ dependencies = [
 name = "vela_host"
 version = "0.1.0"
 dependencies = [
- "parking_lot",
- "self_cell",
- "serde",
- "smallvec",
  "vela_common",
  "vela_def",
 ]

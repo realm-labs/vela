@@ -46,12 +46,12 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [
@@ -120,9 +120,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_member_uses() {
         .expect("semantic token legend should list token modifiers");
     let property = token_type_index(token_types, "property");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -225,12 +224,12 @@ fn lsp_semantic_tokens_classify_host_and_builtin_function_calls() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -238,7 +237,7 @@ fn lsp_semantic_tokens_classify_host_and_builtin_function_calls() {
                         "name": "grant_reward",
                         "fact": {
                             "kind": "function",
-                            "params": [{ "kind": "host", "name": "Player" }],
+                            "params": [{ "kind": "record", "name": "Player" }],
                             "returns": { "kind": "primitive", "name": "i64" }
                         }
                     }
@@ -273,9 +272,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_function_calls() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let function = token_type_index(token_types, "function");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -357,12 +355,12 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_function_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -371,7 +369,7 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_function_return() {
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Player" }
+                            "returns": { "kind": "record", "name": "Player" }
                         }
                     }
                 ],
@@ -417,9 +415,8 @@ fn lsp_semantic_tokens_classify_schema_method_on_schema_function_return() {
         .expect("semantic token legend should list token modifiers");
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main() -> i64 {
@@ -501,7 +498,7 @@ fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
@@ -558,9 +555,8 @@ fn lsp_semantic_tokens_classify_schema_enum_variant_uses() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let enum_member = token_type_index(token_types, "enumMember");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main(state: QuestState) -> QuestState {
@@ -639,12 +635,12 @@ fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ]
             }
@@ -678,9 +674,8 @@ fn lsp_semantic_tokens_classify_host_and_builtin_type_hints() {
         .expect("semantic token legend should list token modifiers");
     let type_token = token_type_index(token_types, "type");
     let builtin_type = token_type_index(token_types, "builtinType");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
 
     let text = "\
@@ -785,12 +780,12 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "SchemaPlayer",
-                        "fact": { "kind": "host", "name": "SchemaPlayer" }
+                        "fact": { "kind": "record", "name": "SchemaPlayer" }
                     }
                 ],
                 "traits": [
@@ -865,9 +860,8 @@ fn lsp_semantic_tokens_highlighting_showcase_pins_current_legend() {
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
     let unresolved_reference = token_type_index(token_types, "unresolvedReference");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
     let builtin = token_modifier_bit(token_modifiers, "defaultLibrary");
     let source = token_modifier_bit(token_modifiers, "source");
     let unresolved = token_modifier_bit(token_modifiers, "unresolved");

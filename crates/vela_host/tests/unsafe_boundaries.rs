@@ -14,11 +14,7 @@ use syn::visit::{self, Visit};
 /// entry must carry a module-level safety invariant explaining what proves the
 /// unchecked operation sound, and every `unsafe` block needs a `SAFETY:`
 /// comment (enforced separately by `clippy::undocumented_unsafe_blocks`).
-const REVIEWED_UNSAFE_BOUNDARIES: &[&str] = &[
-    "crates/vela_host/src/erased_reborrow.rs",
-    "crates/vela_host/src/erased_slice.rs",
-    "crates/vela_vm/src/scalar_blocks.rs",
-];
+const REVIEWED_UNSAFE_BOUNDARIES: &[&str] = &["crates/vela_vm/src/scalar_blocks.rs"];
 
 #[test]
 fn unsafe_rust_is_confined_to_reviewed_boundary_files() {

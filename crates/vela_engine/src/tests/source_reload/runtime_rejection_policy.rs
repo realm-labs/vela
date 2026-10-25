@@ -25,8 +25,6 @@ fn main() {
     );
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     let report = runtime
         .apply_reload_result_for_test(hot_reload_result(update))
@@ -34,7 +32,7 @@ fn main() {
     assert!(!report.accepted);
     assert_eq!(report.to_version, None);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }

@@ -210,16 +210,16 @@ fn open_schema_method_return_fixture() -> SchemaReturnFixture {
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -229,7 +229,7 @@ fn open_schema_method_return_fixture() -> SchemaReturnFixture {
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     },
                     {
@@ -267,12 +267,12 @@ fn open_schema_trait_method_return_fixture() -> SchemaReturnFixture {
     open_fixture(
         schema_text,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [

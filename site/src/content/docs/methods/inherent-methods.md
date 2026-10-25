@@ -37,4 +37,4 @@ A type cannot define multiple methods with the same receiver/name pair. Paramete
 
 ## Host Boundary
 
-Registered host types can also expose methods, but those calls execute through HostAccess and registered host metadata. Script methods never expose a Rust `&mut T` to script code.
+Borrowed Host construction and method registrations are removed. Ordinary script impl methods remain; no replacement opaque method API is provided.

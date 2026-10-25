@@ -1,20 +1,12 @@
 use std::sync::Arc;
 
-use crate::test_compile_support::{compile_test_program, compile_test_program_with_registry};
-use vela_bytecode::{
-    CacheSiteKind, Constant, InstructionOffset, Linker, Register, UnlinkedCodeObject,
-    UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedProgram,
-};
-use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
-use vela_def::{DefPath, FieldId, TypeId};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::resolved::HostMutationOp;
-use vela_host::target::HostTargetPlan;
-use vela_host::value::HostValue;
+use crate::test_compile_support::compile_test_program;
+use vela_bytecode::{Linker, UnlinkedProgram};
+use vela_common::SourceId;
+use vela_def::{FieldId, TypeId};
+
 use vela_reflect::access::FieldAccess;
-use vela_reflect::permissions::{ReflectPermission, ReflectPermissionSet};
+use vela_reflect::permissions::ReflectPermissionSet;
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
 use vela_vm::budget::ExecutionBudget;
 use vela_vm::owned_value::OwnedValue;
@@ -26,22 +18,6 @@ const RUNTIME_DIVISION_BY_ZERO: &str =
     include_str!("../../../tests/fixtures/diagnostics/runtime_division_by_zero.vela");
 const RUNTIME_DIVISION_BY_ZERO_EXPECTED: &str =
     include_str!("../../../tests/fixtures/diagnostics/runtime_division_by_zero.expected");
-const HOST_PERMISSION_DENIED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.vela");
-const HOST_PERMISSION_DENIED_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_permission_denied.expected");
-const COMPILED_HOST_PERMISSION_DENIED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/compiled_host_permission_denied.vela");
-const COMPILED_HOST_PERMISSION_DENIED_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/compiled_host_permission_denied.expected");
-const HOST_COMPOUND_WRITE_DENIED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_compound_write_denied.vela");
-const HOST_COMPOUND_WRITE_DENIED_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/host_compound_write_denied.expected");
-const STALE_HOST_REF: &str =
-    include_str!("../../../tests/fixtures/diagnostics/stale_host_ref.vela");
-const STALE_HOST_REF_EXPECTED: &str =
-    include_str!("../../../tests/fixtures/diagnostics/stale_host_ref.expected");
 const REFLECTION_UNKNOWN_FIELD: &str =
     include_str!("../../../tests/fixtures/diagnostics/reflection_unknown_field.vela");
 const REFLECTION_UNKNOWN_FIELD_EXPECTED: &str =
@@ -67,290 +43,8 @@ fn runtime_division_by_zero_fixture_renders_source_span_and_call_stack() {
 }
 
 #[test]
-fn host_permission_denied_fixture_renders_source_span() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let level_field = FieldId::new(1);
-    let level_path = HostPath::new(host_ref).field(level_field);
-    let source_span = Span::new(SourceId::new(1), 29, 41);
-
-    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
-    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::HostRead {
-            dst: Register(1),
-            root: Register(0),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site,
-        })
-        .with_span(source_span),
-    );
-    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(1),
-    }));
-
-    let mut program = UnlinkedProgram::new();
-    program.insert_function(code);
-
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    adapter.deny_diagnostic_path_read(level_path);
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    let linked = link_fixture_program(&program);
-    let mut budget = ExecutionBudget::unbounded();
-    let error = Vm::new()
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-            &mut budget,
-            None,
-        )
-        .expect_err("fixture should fail at the host boundary");
-
-    let rendered = render_diagnostic(
-        &error.to_diagnostic(),
-        [diagnostic_source(
-            "host_permission_denied.vela",
-            normalized_fixture(HOST_PERMISSION_DENIED),
-        )],
-    )
-    .join("\n");
-
-    assert_rendered_eq(&rendered, HOST_PERMISSION_DENIED_EXPECTED);
-}
-
-#[test]
-fn compiled_host_permission_denied_fixture_renders_source_span_and_call_stack() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let level_field = FieldId::new(1);
-    let level_path = HostPath::new(host_ref).field(level_field);
-    let source = normalized_fixture(COMPILED_HOST_PERMISSION_DENIED);
-
-    let mut registry = vela_registry::DefinitionRegistry::new();
-    let player = registry
-        .register_type(
-            vela_registry::TypeDef::new(DefPath::ty("host", std::iter::empty::<&str>(), "Player"))
-                .host_runtime_id(host_ref.type_id.get().into()),
-        )
-        .expect("Player host type should register");
-    registry
-        .register_field(
-            vela_registry::FieldDef::new(
-                DefPath::field("host", std::iter::empty::<&str>(), "Player", "level"),
-                player,
-            )
-            .host_runtime_id(level_field.get())
-            .type_hint(Some("i64")),
-        )
-        .expect("Player::level host field should register");
-    let program =
-        compile_test_program_with_registry(SourceId::new(1), &source, registry.compile_view())
-            .expect("compiled host diagnostic fixture should compile");
-
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    adapter.deny_diagnostic_path_read(level_path);
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    let linked = link_fixture_program(&program);
-    let mut budget = ExecutionBudget::unbounded();
-    let error = Vm::new()
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            &mut host,
-            &mut budget,
-            None,
-        )
-        .expect_err("compiled fixture should fail at the host read boundary");
-
-    let rendered = render_diagnostic(
-        &error.to_diagnostic(),
-        [diagnostic_source(
-            "compiled_host_permission_denied.vela",
-            source,
-        )],
-    )
-    .join("\n");
-
-    assert_rendered_eq(&rendered, COMPILED_HOST_PERMISSION_DENIED_EXPECTED);
-}
-
-#[test]
-fn host_compound_write_denied_fixture_renders_source_span() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let level_field = FieldId::new(1);
-    let level_path = HostPath::new(host_ref).field(level_field);
-    let source_span = Span::new(SourceId::new(1), 22, 34);
-
-    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
-    let one = code.push_constant(Constant::Scalar(vela_common::ScalarValue::I64(1)));
-    let target = code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field));
-    let mutate_cache = code.push_cache_site(CacheSiteKind::HostPathMutate, InstructionOffset(1));
-    let read_cache = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(2));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadConst {
-            dst: Register(1),
-            constant: one,
-        },
-    ));
-    code.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::HostMutate {
-            root: Register(0),
-            target,
-            dynamic_args: Vec::new(),
-            op: HostMutationOp::Add,
-            rhs: Register(1),
-            cache_site: mutate_cache,
-        })
-        .with_span(source_span),
-    );
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(1),
-            root: Register(0),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site: read_cache,
-        },
-    ));
-    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(1),
-    }));
-
-    let mut program = UnlinkedProgram::new();
-    program.insert_function(code);
-
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    adapter.deny_diagnostic_path_write(level_path.clone());
-    let mut tx = HostAccess::new();
-    let error = {
-        let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut tx,
-            state_values: None,
-        };
-        let linked = link_fixture_program(&program);
-        let mut budget = ExecutionBudget::unbounded();
-        Vm::new()
-            .run_linked_program_with_host_budget_and_caches(
-                &linked,
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-                None,
-            )
-            .expect_err("fixture should fail on immediate host write")
-    };
-
-    let rendered = render_diagnostic(
-        &error.to_diagnostic(),
-        [diagnostic_source(
-            "host_compound_write_denied.vela",
-            normalized_fixture(HOST_COMPOUND_WRITE_DENIED),
-        )],
-    )
-    .join("\n");
-
-    assert_rendered_eq(&rendered, HOST_COMPOUND_WRITE_DENIED_EXPECTED);
-}
-
-#[test]
-fn stale_host_ref_fixture_renders_source_span() {
-    let stale_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let fresh_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 2);
-    let level_field = FieldId::new(1);
-    let level_path = HostPath::new(fresh_ref).field(level_field);
-    let source_span = Span::new(SourceId::new(1), 29, 41);
-
-    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".to_owned()]);
-    let target = code.intern_host_target(HostTargetPlan::new(stale_ref.type_id).field(level_field));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(
-        UnlinkedInstruction::new(UnlinkedInstructionKind::HostRead {
-            dst: Register(1),
-            root: Register(0),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site,
-        })
-        .with_span(source_span),
-    );
-    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(1),
-    }));
-
-    let mut program = UnlinkedProgram::new();
-    program.insert_function(code);
-
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    let linked = link_fixture_program(&program);
-    let mut budget = ExecutionBudget::unbounded();
-    let error = Vm::new()
-        .run_linked_program_with_host_budget_and_caches(
-            &linked,
-            "main",
-            &[OwnedValue::HostRef(stale_ref)],
-            &mut host,
-            &mut budget,
-            None,
-        )
-        .expect_err("fixture should fail on stale host ref generation");
-
-    let rendered = render_diagnostic(
-        &error.to_diagnostic(),
-        [diagnostic_source(
-            "stale_host_ref.vela",
-            normalized_fixture(STALE_HOST_REF),
-        )],
-    )
-    .join("\n");
-
-    assert_rendered_eq(&rendered, STALE_HOST_REF_EXPECTED);
-}
-
-#[test]
 fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
     let level_field = FieldId::new(1);
-    let level_path = HostPath::new(host_ref).field(level_field);
 
     let source = normalized_fixture(REFLECTION_UNKNOWN_FIELD);
     let program = compile_test_program(SourceId::new(1), &source)
@@ -358,7 +52,7 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
+            .kind(vela_reflect::registry::TypeKind::ScriptStruct)
             .field(FieldDesc::new(level_field, "level"))
             .field(
                 FieldDesc::new(FieldId::new(2), "lever")
@@ -370,22 +64,12 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
             ),
     );
 
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path,
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_permissions(
         Arc::new(registry),
-        ReflectPermissionSet::read_only().with(ReflectPermission::InspectHostPath),
+        ReflectPermissionSet::read_only(),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     let linked = link_fixture_program_with_vm(&program, &vm);
     let mut budget = ExecutionBudget::unbounded();
@@ -393,7 +77,10 @@ fn reflection_unknown_field_fixture_renders_candidates_and_source_span() {
         .run_linked_program_with_host_budget_and_caches(
             &linked,
             "main",
-            &[OwnedValue::HostRef(host_ref)],
+            &[OwnedValue::record(
+                "Player",
+                [("level", OwnedValue::i64(9))],
+            )],
             &mut host,
             &mut budget,
             None,

@@ -1,9 +1,8 @@
 use std::collections::BTreeMap;
 
 use super::*;
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_common::{SourceId, Span};
 use vela_def::{FieldId, MethodId, TypeId, VariantId};
-use vela_host::path::HostRef;
 
 use crate::permissions::ReflectPolicy;
 use crate::registry::{
@@ -11,15 +10,17 @@ use crate::registry::{
     VariantDesc,
 };
 
-fn player_ref() -> HostRef {
-    HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
+fn player_value() -> ReflectValue {
+    ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::new(),
+    }
 }
 
 fn registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
             .docs("A player host object.")
             .attr("domain", "gameplay")
             .field(FieldDesc::new(FieldId::new(1), "id"))
@@ -32,7 +33,7 @@ fn registry() -> TypeRegistry {
                     .attr("unit", "level"),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(5), "grant_exp")
+                MethodDesc::new(MethodId::new(5), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .source_span(Span::new(SourceId::new(8), 60, 80))

@@ -8,8 +8,8 @@ use crate::linked::{
 };
 use crate::{
     CacheSiteId, CacheSiteInstruction, CacheSiteKind, CacheSiteStorage, CallArgument, ConstantId,
-    DynamicCallArgument, FormatStringPart, HostTargetPlanId, InstructionOffset, ProgramImage,
-    Register, TypeGuardPlanId, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
+    DynamicCallArgument, FormatStringPart, InstructionOffset, ProgramImage, Register,
+    TypeGuardPlanId, UnlinkedCodeObject, UnlinkedInstruction, UnlinkedInstructionKind,
     UnlinkedProgram,
 };
 
@@ -113,17 +113,7 @@ pub enum VerificationErrorKind {
         expected: CacheSiteKind,
         actual: Option<CacheSiteKind>,
     },
-    HostTargetOutOfBounds {
-        target: HostTargetPlanId,
-        target_count: usize,
-    },
-    HostTargetDynamicArgMismatch {
-        expected: usize,
-        actual: usize,
-    },
-    HostTargetDynamicArgGap {
-        index: u8,
-    },
+
     DebugNameOutOfBounds {
         debug_name: DebugNameId,
         debug_name_count: usize,
@@ -236,12 +226,6 @@ fn verify_state_descriptors(states: &[crate::StateDescriptor]) -> Result<(), Ver
                 "duplicate qualified name `{}`",
                 state.qualified_name
             ))
-        } else if state.storage == crate::StateStorage::Extern && state.initializer.is_some() {
-            Some("extern state carries an initializer".to_owned())
-        } else if state.storage == crate::StateStorage::Extern
-            && !matches!(state.type_contract, vela_mir::MirTypeContract::Host(_))
-        {
-            Some("extern state requires a host type contract".to_owned())
         } else {
             None
         };
@@ -299,11 +283,7 @@ fn verify_program_instruction_metadata(
                 slot: Some(slot),
                 ..
             } => Some((state, *slot, crate::StateStorage::Vm)),
-            UnlinkedInstructionKind::LoadExternState {
-                state,
-                slot: Some(slot),
-                ..
-            } => Some((state, *slot, crate::StateStorage::Extern)),
+
             _ => None,
         };
         if let Some((state, slot, expected_storage)) = target {
@@ -365,11 +345,7 @@ fn verify_program_image_instruction_metadata(
                 slot: Some(slot),
                 ..
             } => Some((state, *slot, crate::StateStorage::Vm)),
-            UnlinkedInstructionKind::LoadExternState {
-                state,
-                slot: Some(slot),
-                ..
-            } => Some((state, *slot, crate::StateStorage::Extern)),
+
             _ => None,
         };
         if let Some((state, slot, expected_storage)) = target {
@@ -549,8 +525,6 @@ fn verify_instruction(
         | UnlinkedInstructionKind::Not { dst, src }
         | UnlinkedInstructionKind::Truthy { dst, src }
         | UnlinkedInstructionKind::Negate { dst, src }
-        | UnlinkedInstructionKind::ReleaseBorrowLease { dst, src }
-        | UnlinkedInstructionKind::TryReleaseBorrowLease { dst, src }
         | UnlinkedInstructionKind::TryPropagate { dst, src, .. } => {
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *src)
@@ -778,105 +752,13 @@ fn verify_instruction(
             verify_register(function, instruction_index, code, *dst)?;
             verify_register(function, instruction_index, code, *value)
         }
-        UnlinkedInstructionKind::LoadState { dst, .. }
-        | UnlinkedInstructionKind::LoadExternState { dst, .. } => {
+        UnlinkedInstructionKind::LoadState { dst, .. } => {
             verify_register(function, instruction_index, code, *dst)
         }
         UnlinkedInstructionKind::StoreState { src, .. } => {
             verify_register(function, instruction_index, code, *src)
         }
-        UnlinkedInstructionKind::HostRead {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => {
-            verify_register(function, instruction_index, code, *dst)?;
-            verify_register(function, instruction_index, code, *root)?;
-            verify_registers(function, instruction_index, code, dynamic_args)?;
-            verify_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        UnlinkedInstructionKind::HostWrite {
-            root,
-            target,
-            dynamic_args,
-            src,
-            ..
-        } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_register(function, instruction_index, code, *src)?;
-            verify_registers(function, instruction_index, code, dynamic_args)?;
-            verify_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        UnlinkedInstructionKind::HostMutate {
-            root,
-            target,
-            dynamic_args,
-            rhs,
-            ..
-        } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_register(function, instruction_index, code, *rhs)?;
-            verify_registers(function, instruction_index, code, dynamic_args)?;
-            verify_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        UnlinkedInstructionKind::HostRemove {
-            root,
-            target,
-            dynamic_args,
-            ..
-        } => {
-            verify_register(function, instruction_index, code, *root)?;
-            verify_registers(function, instruction_index, code, dynamic_args)?;
-            verify_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
-        UnlinkedInstructionKind::HostCall {
-            dst,
-            root,
-            target,
-            dynamic_args,
-            args,
-            ..
-        } => {
-            if let Some(dst) = dst {
-                verify_register(function, instruction_index, code, *dst)?;
-            }
-            verify_register(function, instruction_index, code, *root)?;
-            verify_registers(function, instruction_index, code, dynamic_args)?;
-            verify_registers(function, instruction_index, code, args)?;
-            verify_host_target(
-                function,
-                instruction_index,
-                code,
-                *target,
-                dynamic_args.len(),
-            )
-        }
+
         UnlinkedInstructionKind::Return { src } => {
             verify_register(function, instruction_index, code, *src)
         }
@@ -900,17 +782,6 @@ fn verify_instruction_cache_site(
             instruction_index,
             code,
             instruction.kind.cache_site(),
-            policy.kind,
-            cache_scope,
-        ),
-        CacheSiteStorage::RequiredOperand => verify_cache_site(
-            function,
-            instruction_index,
-            code,
-            instruction
-                .kind
-                .cache_site()
-                .expect("required cache policy exposes its operand"),
             policy.kind,
             cache_scope,
         ),
@@ -1094,58 +965,6 @@ fn constant_kind(constant: &crate::Constant) -> &'static str {
     }
 }
 
-fn verify_host_target(
-    function: &str,
-    instruction: Option<usize>,
-    code: &UnlinkedCodeObject,
-    target: HostTargetPlanId,
-    dynamic_arg_count: usize,
-) -> Result<(), VerificationError> {
-    let Some(plan) = code.host_target(target) else {
-        return Err(error(
-            function,
-            instruction,
-            VerificationErrorKind::HostTargetOutOfBounds {
-                target,
-                target_count: code.host_targets.len(),
-            },
-        ));
-    };
-    let expected = plan.parts.dynamic_arg_count();
-    if expected != dynamic_arg_count {
-        return Err(error(
-            function,
-            instruction,
-            VerificationErrorKind::HostTargetDynamicArgMismatch {
-                expected,
-                actual: dynamic_arg_count,
-            },
-        ));
-    }
-    for expected_index in 0..expected {
-        let expected_index =
-            u8::try_from(expected_index).expect("host target dynamic arg index exceeds u8::MAX");
-        let has_placeholder = plan.parts.as_slice().iter().any(|part| match part {
-            vela_host::target::HostPathPart::DynIndex { arg }
-            | vela_host::target::HostPathPart::DynKey { arg } => *arg == expected_index,
-            vela_host::target::HostPathPart::Field(_)
-            | vela_host::target::HostPathPart::VariantField(_)
-            | vela_host::target::HostPathPart::ConstIndex(_)
-            | vela_host::target::HostPathPart::ConstKey(_) => false,
-        });
-        if !has_placeholder {
-            return Err(error(
-                function,
-                instruction,
-                VerificationErrorKind::HostTargetDynamicArgGap {
-                    index: expected_index,
-                },
-            ));
-        }
-    }
-    Ok(())
-}
-
 fn verify_function_index(
     function: &str,
     instruction: Option<usize>,
@@ -1232,24 +1051,6 @@ fn verify_optional_cache_site(
         ));
     }
     Ok(())
-}
-
-fn verify_cache_site(
-    function: &str,
-    instruction: Option<usize>,
-    code: &UnlinkedCodeObject,
-    site: CacheSiteId,
-    expected: CacheSiteKind,
-    cache_scope: CacheIndexScope<'_>,
-) -> Result<(), VerificationError> {
-    verify_optional_cache_site(
-        function,
-        instruction,
-        code,
-        Some(site),
-        expected,
-        cache_scope,
-    )
 }
 
 fn verify_cache_site_layout(

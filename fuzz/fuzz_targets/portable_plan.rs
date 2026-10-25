@@ -14,7 +14,7 @@ use vela_bytecode::{
 use vela_engine::engine::Engine;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-const FORMAT_VERSION: u32 = 7;
+const FORMAT_VERSION: u32 = 8;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -43,7 +43,7 @@ fuzz_target!(|input: &[u8]| {
 
     let mut payload: PortableProgramPayload = codec()
         .deserialize(&base[HEADER_LEN..])
-        .expect("the static fuzz seed is a valid v7 payload");
+        .expect("the static fuzz seed is a valid v8 payload");
     let value = fuzz_value(bytes);
 
     match kind {

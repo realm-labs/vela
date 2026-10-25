@@ -52,12 +52,7 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
             docs.as_deref(),
             &classified,
         ));
-        let adapter = emission::function_value_adapter(function, &classified).ok_or_else(|| {
-            syn::Error::new_spanned(
-                &function.sig,
-                "this export-module signature has no supported synchronous adapter",
-            )
-        })?;
+        let adapter = emission::function_value_adapter(function, &classified);
         generated.push(adapter);
         contract_functions.push(format_ident!(
             "vela_callable_contract_{}",

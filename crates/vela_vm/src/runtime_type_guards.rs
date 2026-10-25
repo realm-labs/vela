@@ -2,8 +2,7 @@ use vela_bytecode::{
     GuardKind, LinkedCodeObject, LinkedProgram, Register, StandardTypeGuard, TypeGuard,
     TypeGuardPlan, TypeGuardPlanId,
 };
-use vela_common::{HostTypeId, PrimitiveTag};
-use vela_host::adapter::ScriptStateAdapter;
+use vela_common::PrimitiveTag;
 
 use crate::budget::ExecutionBudget;
 use crate::container_contracts::{
@@ -19,7 +18,6 @@ use crate::{CallFrame, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 pub(crate) struct GuardExecutionContext<'a, 'heap> {
     heap: Option<&'a mut HeapExecution<'heap>>,
     budget: Option<&'a mut ExecutionBudget>,
-    host: Option<&'a (dyn ScriptStateAdapter + Send)>,
 }
 
 impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
@@ -27,19 +25,7 @@ impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
         heap: Option<&'a mut HeapExecution<'heap>>,
         budget: Option<&'a mut ExecutionBudget>,
     ) -> Self {
-        Self {
-            heap,
-            budget,
-            host: None,
-        }
-    }
-
-    pub(crate) fn new_with_host(
-        heap: Option<&'a mut HeapExecution<'heap>>,
-        budget: Option<&'a mut ExecutionBudget>,
-        host: Option<&'a (dyn ScriptStateAdapter + Send)>,
-    ) -> Self {
-        Self { heap, budget, host }
+        Self { heap, budget }
     }
 
     fn heap(&self) -> Option<&HeapExecution<'heap>> {
@@ -48,10 +34,6 @@ impl<'a, 'heap> GuardExecutionContext<'a, 'heap> {
 
     fn heap_mut(&mut self) -> Option<&mut HeapExecution<'heap>> {
         self.heap.as_deref_mut()
-    }
-
-    fn host(&self) -> Option<&(dyn ScriptStateAdapter + Send)> {
-        self.host
     }
 
     fn charge_scan_item(&mut self) -> VmResult<()> {
@@ -75,7 +57,7 @@ pub(crate) fn execute_linked_guard(
     }
 
     let heap = context.heap();
-    let host = context.host();
+
     match guard.plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, expected, heap, debug_name)
@@ -178,21 +160,6 @@ pub(crate) fn execute_linked_guard(
                 debug_name,
             )
         }
-        TypeGuardPlan::HostType { ty, host_type_id } => {
-            let expected = program.ty(ty).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                    opcode: "host_type_guard",
-                })
-            })?;
-            execute_host_type_guard(
-                value,
-                host_type_id,
-                program.debug_name(expected.debug_name),
-                heap,
-                host,
-                debug_name,
-            )
-        }
     }
 }
 
@@ -285,7 +252,7 @@ pub(crate) fn execute_linked_return_guard(
 pub(crate) fn execute_iterator_item_guard(
     value: &Value,
     guard: &IteratorItemGuard,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
 ) -> VmResult<()> {
     let mut context =
         GuardExecutionContext::new(runtime.heap.as_deref_mut(), runtime.budget.as_deref_mut());
@@ -515,7 +482,6 @@ fn try_linked_container_contract_fast_path(
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
-    let host = context.host;
     let Some(heap) = context.heap_mut() else {
         return Ok(false);
     };
@@ -526,7 +492,7 @@ fn try_linked_container_contract_fast_path(
         .heap
         .container_value_summary(reference)
         .unwrap_or(ContainerTypeSummary::Unknown);
-    match linked_summary_proof(summary, element, program, host) {
+    match linked_summary_proof(summary, element, program) {
         ContainerSummaryProof::Proven => {
             heap.heap
                 .install_container_contract_stamp(reference, stamp.clone());
@@ -552,7 +518,6 @@ fn try_linked_map_contract_fast_path(
     context: &mut GuardExecutionContext<'_, '_>,
     debug_name: &str,
 ) -> VmResult<bool> {
-    let host = context.host;
     let Some(heap) = context.heap_mut() else {
         return Ok(false);
     };
@@ -566,7 +531,6 @@ fn try_linked_map_contract_fast_path(
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
             program,
-            host,
             debug_name,
         )
     })?;
@@ -577,7 +541,6 @@ fn try_linked_map_contract_fast_path(
                 .unwrap_or(ContainerTypeSummary::Unknown),
             plan,
             program,
-            host,
             debug_name,
         )
     })?;
@@ -593,10 +556,10 @@ fn map_summary_proof_linked(
     summary: ContainerTypeSummary,
     plan: &TypeGuardPlan,
     program: &LinkedProgram,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
+
     debug_name: &str,
 ) -> VmResult<ContainerSummaryProof> {
-    match linked_summary_proof(summary, plan, program, host) {
+    match linked_summary_proof(summary, plan, program) {
         ContainerSummaryProof::Mismatch(actual) => {
             Err(VmError::new(VmErrorKind::TypeContractViolation {
                 expected: linked_plan_expected_name(plan, program),
@@ -612,25 +575,7 @@ fn linked_summary_proof(
     summary: ContainerTypeSummary,
     plan: &TypeGuardPlan,
     program: &LinkedProgram,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
 ) -> ContainerSummaryProof {
-    if let (
-        ContainerTypeSummary::Exact(ShallowTypeKey::HostSlot(handle)),
-        TypeGuardPlan::HostType { host_type_id, .. },
-    ) = (summary, plan)
-    {
-        let Some(actual) = host
-            .and_then(|host| host.resolve_host_ref(handle).ok())
-            .map(|reference| reference.type_id)
-        else {
-            return ContainerSummaryProof::Unknown;
-        };
-        return if actual == *host_type_id {
-            ContainerSummaryProof::Proven
-        } else {
-            ContainerSummaryProof::Mismatch(ShallowTypeKey::Host(actual))
-        };
-    }
     if let Some(key) = linked_exact_shallow_key(plan, program) {
         return summary.prove_exact_key(key);
     }
@@ -648,16 +593,13 @@ fn linked_exact_shallow_key(
         TypeGuardPlan::Variant(variant) => program
             .variant(*variant)
             .map(|variant| ShallowTypeKey::Variant(variant.id)),
-        TypeGuardPlan::HostType { host_type_id, .. } => Some(ShallowTypeKey::Host(*host_type_id)),
         _ => None,
     }
 }
 
 fn linked_plan_expected_name(plan: &TypeGuardPlan, program: &LinkedProgram) -> String {
     match plan {
-        TypeGuardPlan::Shape { ty, .. }
-        | TypeGuardPlan::Type(ty)
-        | TypeGuardPlan::HostType { ty, .. } => program
+        TypeGuardPlan::Shape { ty, .. } | TypeGuardPlan::Type(ty) => program
             .ty(*ty)
             .map(|ty| program.debug_name(ty.debug_name).to_owned())
             .unwrap_or_else(|| linked_plan_type_name(plan).to_owned()),
@@ -901,7 +843,7 @@ fn execute_linked_guard_plan(
     debug_name: &str,
 ) -> VmResult<()> {
     let heap = context.heap();
-    let host = context.host();
+
     match plan {
         TypeGuardPlan::Primitive(expected) => {
             execute_primitive_guard(value, *expected, heap, debug_name)
@@ -1001,21 +943,6 @@ fn execute_linked_guard_plan(
                 debug_name,
             )
         }
-        TypeGuardPlan::HostType { ty, host_type_id } => {
-            let expected = program.ty(*ty).ok_or_else(|| {
-                VmError::new(VmErrorKind::UnsupportedLinkedInstruction {
-                    opcode: "host_type_guard",
-                })
-            })?;
-            execute_host_type_guard(
-                value,
-                *host_type_id,
-                program.debug_name(expected.debug_name),
-                heap,
-                host,
-                debug_name,
-            )
-        }
     }
 }
 
@@ -1080,20 +1007,6 @@ fn execute_shape_id_guard(
         return Ok(());
     }
     if runtime_record_debug_shape(value, heap) == Some((expected_name, expected_shape)) {
-        return Ok(());
-    }
-    Err(type_contract_error(value, expected_name, heap, debug_name))
-}
-
-fn execute_host_type_guard(
-    value: &Value,
-    expected: HostTypeId,
-    expected_name: &str,
-    heap: Option<&HeapExecution<'_>>,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
-    debug_name: &str,
-) -> VmResult<()> {
-    if runtime_host_type_id(value, host) == Some(expected) {
         return Ok(());
     }
     Err(type_contract_error(value, expected_name, heap, debug_name))
@@ -1176,7 +1089,6 @@ fn linked_plan_type_name(plan: &TypeGuardPlan) -> &'static str {
         TypeGuardPlan::Result { .. } => "Result",
         TypeGuardPlan::Type(_) | TypeGuardPlan::Shape { .. } => "record",
         TypeGuardPlan::Variant(_) => "enum",
-        TypeGuardPlan::HostType { .. } => "host",
     }
 }
 
@@ -1219,7 +1131,7 @@ macro_rules! define_runtime_type_helpers {
                     Some(HeapValue::Bytes(_)) => Some(PrimitiveTag::Bytes),
                     _ => None,
                 },
-                Value::Missing | Value::HostRef(_) => None,
+                Value::Missing => None,
             }
         }
 
@@ -1235,7 +1147,6 @@ macro_rules! define_runtime_type_helpers {
                 $(
                     Value::$value_variant(_) => primitive_type_name(PrimitiveTag::$primitive_tag),
                 )*
-                Value::HostRef(_) => "host",
                 Value::HeapRef(reference) => match heap.and_then(|heap| heap.heap.get(*reference)) {
                     Some(HeapValue::Range(_)) => "Range",
                     Some(HeapValue::String(_)) => primitive_type_name(PrimitiveTag::String),
@@ -1247,7 +1158,6 @@ macro_rules! define_runtime_type_helpers {
                     Some(HeapValue::Record { .. }) => "record",
                     Some(HeapValue::Enum { .. }) => "enum",
                     Some(HeapValue::Closure(_)) => "Closure",
-                    Some(HeapValue::PathProxy(_)) => "host_path",
                     Some(HeapValue::Iterator(_)) => "Iterator",
                     None => "heap",
                 },
@@ -1302,18 +1212,6 @@ fn runtime_variant_id(
     }
 }
 
-fn runtime_host_type_id(
-    value: &Value,
-    host: Option<&(dyn ScriptStateAdapter + Send)>,
-) -> Option<HostTypeId> {
-    match value {
-        Value::HostRef(reference) => host
-            .and_then(|host| host.resolve_host_ref(*reference).ok())
-            .map(|reference| reference.type_id),
-        _ => None,
-    }
-}
-
 fn runtime_record_shape(
     value: &Value,
     heap: Option<&HeapExecution<'_>>,
@@ -1352,10 +1250,7 @@ fn runtime_record_debug_shape<'a>(
 #[cfg(test)]
 mod tests {
     use vela_bytecode::{LinkedCodeObject, LinkedProgram, LinkedType, TypeGuardPlan};
-    use vela_common::{HostObjectId, HostTypeId, PrimitiveTag};
-    use vela_host::adapter::ScriptStateAdapter;
-    use vela_host::mock::MockStateAdapter;
-    use vela_host::path::HostRef;
+    use vela_common::PrimitiveTag;
 
     use super::*;
     use crate::collection_mutation::{
@@ -1495,85 +1390,6 @@ mod tests {
 
         execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
             .expect("record shape summary should prove map key contract");
-
-        assert_eq!(budget.execution_units_consumed(), 0);
-    }
-
-    #[test]
-    fn exact_container_summary_proves_host_ref_set_contract_without_scan() {
-        let mut program = LinkedProgram::new();
-        let player_name = program.intern_debug_name("Player");
-        let player_type =
-            program.push_type(LinkedType::new(vela_def::TypeId::new(0x703), player_name));
-        let host_type_id = HostTypeId::new(77);
-        let player = HostRef::new(host_type_id, HostObjectId::new(7), 1);
-        let mut adapter = MockStateAdapter::new();
-        let player = adapter
-            .intern_host_ref(player)
-            .expect("player should intern");
-
-        let mut set = ScriptSet::new();
-        set.insert_keyed(ValueKey::HostIdentity(player), Value::HostRef(player));
-        let mut heap = ScriptHeap::new();
-        let value = Value::HeapRef(heap.allocate(HeapValue::Set(set)));
-        let plan = TypeGuardPlan::Set {
-            element: Some(Box::new(TypeGuardPlan::HostType {
-                ty: player_type,
-                host_type_id,
-            })),
-        };
-        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut context = GuardExecutionContext::new_with_host(
-            Some(&mut heap_execution),
-            Some(&mut budget),
-            Some(&adapter),
-        );
-
-        execute_linked_guard_plan(&value, &plan, &program, &mut context, "players")
-            .expect("host-ref summary should prove set element contract");
-
-        assert_eq!(budget.execution_units_consumed(), 0);
-    }
-
-    #[test]
-    fn exact_container_summary_proves_host_ref_map_key_contract_without_scan() {
-        let mut program = LinkedProgram::new();
-        let player_name = program.intern_debug_name("Player");
-        let player_type =
-            program.push_type(LinkedType::new(vela_def::TypeId::new(0x704), player_name));
-        let host_type_id = HostTypeId::new(77);
-        let player = HostRef::new(host_type_id, HostObjectId::new(7), 1);
-        let mut adapter = MockStateAdapter::new();
-        let player = adapter
-            .intern_host_ref(player)
-            .expect("player should intern");
-
-        let mut map = ScriptMap::new();
-        map.insert_keyed(
-            ValueKey::HostIdentity(player),
-            Value::HostRef(player),
-            Value::I64(42),
-        );
-        let mut heap = ScriptHeap::new();
-        let value = Value::HeapRef(heap.allocate(HeapValue::Map(map)));
-        let plan = TypeGuardPlan::Map {
-            key: Some(Box::new(TypeGuardPlan::HostType {
-                ty: player_type,
-                host_type_id,
-            })),
-            value: Some(Box::new(TypeGuardPlan::Primitive(PrimitiveTag::I64))),
-        };
-        let mut budget = ExecutionBudget::new(0, usize::MAX, usize::MAX);
-        let mut heap_execution = HeapExecution::new(&mut heap);
-        let mut context = GuardExecutionContext::new_with_host(
-            Some(&mut heap_execution),
-            Some(&mut budget),
-            Some(&adapter),
-        );
-
-        execute_linked_guard_plan(&value, &plan, &program, &mut context, "scores")
-            .expect("host-ref summary should prove map key contract");
 
         assert_eq!(budget.execution_units_consumed(), 0);
     }

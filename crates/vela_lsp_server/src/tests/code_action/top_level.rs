@@ -128,7 +128,7 @@ fn top_level_actions_publish_no_placeholder_or_duplicate_edits() {
                 .as_array()
                 .expect("state diagnostics")
                 .len(),
-            3
+            4
         );
         assert_eq!(
             legacy_open["params"]["diagnostics"][0]["code"],
@@ -136,8 +136,7 @@ fn top_level_actions_publish_no_placeholder_or_duplicate_edits() {
         );
         assert_eq!(
             legacy_open["params"]["diagnostics"][0]["data"]["candidates"],
-            json!([{"replacement":"state name: Type = expression;"},
-                {"replacement":"extern state name: Type;"}])
+            json!([{"replacement":"state name: Type = expression;"}])
         );
 
         let entire_valid = json!({"start":{"line":0,"character":0},

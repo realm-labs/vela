@@ -1,96 +1,47 @@
 use crate::collection_mutation;
 use crate::heap::HeapValue;
 use crate::{
-    CallFrame, ExecutionBudget, HeapExecution, HostExecution, Value, VmError, VmErrorKind,
-    VmInlineCaches, VmResult, host_access, store_runtime_value, stored_runtime_value,
+    CallFrame, ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult,
+    store_runtime_value, stored_runtime_value,
 };
 use vela_bytecode::Register;
-use vela_common::Span;
 
-pub(crate) struct IndexRuntime<'a, 'host, 'heap> {
+pub(crate) struct IndexRuntime<'a, 'heap> {
     pub(crate) frame: &'a mut CallFrame,
     pub(crate) heap: Option<&'a mut HeapExecution<'heap>>,
     pub(crate) budget: Option<&'a mut ExecutionBudget>,
-    pub(crate) host: Option<&'a mut HostExecution<'host>>,
-    pub(crate) inline_caches: Option<&'a dyn VmInlineCaches>,
-    pub(crate) source_span: Option<Span>,
 }
 
 pub(crate) fn dispatch_get_index(
-    mut runtime: IndexRuntime<'_, '_, '_>,
+    runtime: IndexRuntime<'_, '_>,
     dst: Register,
     base: Register,
     index: Register,
 ) -> VmResult<()> {
-    let value = if matches!(runtime.frame.read(base)?, Value::HostRef(_)) {
-        host_access::execute_host_collection_index_read(
-            host_access::HostAccessRuntime {
-                frame: runtime.frame,
-                heap: runtime.heap.as_deref_mut(),
-                budget: runtime.budget.as_deref_mut(),
-                host: runtime.host.as_deref_mut(),
-                inline_caches: runtime.inline_caches,
-                source_span: runtime.source_span,
-            },
-            base,
-            index,
-        )?
-    } else {
-        get_index(
-            &runtime.frame.read(base)?,
-            &runtime.frame.read(index)?,
-            runtime.heap.as_deref(),
-        )?
-    };
+    let value = get_index(
+        &runtime.frame.read(base)?,
+        &runtime.frame.read(index)?,
+        runtime.heap.as_deref(),
+    )?;
     runtime.frame.write(dst, value)
 }
 
 pub(crate) fn dispatch_get_string_key_index(
-    mut runtime: IndexRuntime<'_, '_, '_>,
+    runtime: IndexRuntime<'_, '_>,
     dst: Register,
     base: Register,
     key: &str,
 ) -> VmResult<()> {
-    let value = if matches!(runtime.frame.read(base)?, Value::HostRef(_)) {
-        host_access::execute_host_collection_string_key_read(
-            host_access::HostAccessRuntime {
-                frame: runtime.frame,
-                heap: runtime.heap.as_deref_mut(),
-                budget: runtime.budget.as_deref_mut(),
-                host: runtime.host.as_deref_mut(),
-                inline_caches: runtime.inline_caches,
-                source_span: runtime.source_span,
-            },
-            base,
-            key,
-        )?
-    } else {
-        get_string_key_index(&runtime.frame.read(base)?, key, runtime.heap.as_deref())?
-    };
+    let value = get_string_key_index(&runtime.frame.read(base)?, key, runtime.heap.as_deref())?;
     runtime.frame.write(dst, value)
 }
 
 pub(crate) fn dispatch_set_index(
-    mut runtime: IndexRuntime<'_, '_, '_>,
+    runtime: IndexRuntime<'_, '_>,
     base: Register,
     index: Register,
     src: Register,
 ) -> VmResult<()> {
-    if matches!(runtime.frame.read(base)?, Value::HostRef(_)) {
-        return host_access::execute_host_collection_index_write(
-            host_access::HostAccessRuntime {
-                frame: runtime.frame,
-                heap: runtime.heap.as_deref_mut(),
-                budget: runtime.budget.as_deref_mut(),
-                host: runtime.host.as_deref_mut(),
-                inline_caches: runtime.inline_caches,
-                source_span: runtime.source_span,
-            },
-            base,
-            index,
-            src,
-        );
-    }
     let mut base_value = runtime.frame.read(base)?;
     set_index(
         &mut base_value,
@@ -103,26 +54,11 @@ pub(crate) fn dispatch_set_index(
 }
 
 pub(crate) fn dispatch_set_string_key_index(
-    mut runtime: IndexRuntime<'_, '_, '_>,
+    runtime: IndexRuntime<'_, '_>,
     base: Register,
     key: &str,
     src: Register,
 ) -> VmResult<()> {
-    if matches!(runtime.frame.read(base)?, Value::HostRef(_)) {
-        return host_access::execute_host_collection_string_key_write(
-            host_access::HostAccessRuntime {
-                frame: runtime.frame,
-                heap: runtime.heap.as_deref_mut(),
-                budget: runtime.budget.as_deref_mut(),
-                host: runtime.host.as_deref_mut(),
-                inline_caches: runtime.inline_caches,
-                source_span: runtime.source_span,
-            },
-            base,
-            key,
-            src,
-        );
-    }
     set_string_key_index(
         &runtime.frame.read(base)?,
         key,
@@ -181,8 +117,7 @@ pub(crate) fn get_index(
                 | HeapValue::Record { .. }
                 | HeapValue::Enum { .. }
                 | HeapValue::Closure(_)
-                | HeapValue::Iterator(_)
-                | HeapValue::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+                | HeapValue::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
                     operation: "index",
                 })),
             }
@@ -223,8 +158,7 @@ pub(crate) fn get_string_key_index(
         | HeapValue::Record { .. }
         | HeapValue::Enum { .. }
         | HeapValue::Closure(_)
-        | HeapValue::Iterator(_)
-        | HeapValue::PathProxy(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
+        | HeapValue::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index",
         })),
     }
@@ -258,8 +192,7 @@ pub(crate) fn set_index(
                     | HeapValue::Record { .. }
                     | HeapValue::Enum { .. }
                     | HeapValue::Closure(_)
-                    | HeapValue::Iterator(_)
-                    | HeapValue::PathProxy(_),
+                    | HeapValue::Iterator(_),
                 )
                 | None => Err(VmError::new(VmErrorKind::TypeMismatch {
                     operation: "index assignment",
@@ -303,8 +236,7 @@ pub(crate) fn set_string_key_index(
             | HeapValue::Record { .. }
             | HeapValue::Enum { .. }
             | HeapValue::Closure(_)
-            | HeapValue::Iterator(_)
-            | HeapValue::PathProxy(_),
+            | HeapValue::Iterator(_),
         )
         | None => Err(VmError::new(VmErrorKind::TypeMismatch {
             operation: "index assignment",

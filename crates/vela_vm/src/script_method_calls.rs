@@ -15,7 +15,7 @@ use crate::{
 use crate::{
     DynamicMethodInlineCacheEntry, DynamicMethodInlineCacheTarget, DynamicReceiverGuard,
     MethodInlineCacheEntry, MethodInlineCacheTarget, StandardMethodReceiver, VmError, VmErrorKind,
-    VmInlineCaches, array_methods, callback_method_dispatch, host_access, script_builtin_methods,
+    VmInlineCaches, array_methods, callback_method_dispatch, script_builtin_methods,
     script_function_calls,
 };
 
@@ -93,9 +93,6 @@ pub(crate) enum LinkedDynamicResolution {
 }
 
 pub(crate) enum LinkedDynamicNonScriptTarget {
-    Host {
-        method_id: vela_common::HostMethodId,
-    },
     StandardValue {
         method_id: MethodId,
         standard_method: Option<crate::StandardMethodInlineCacheEntry>,
@@ -123,11 +120,6 @@ pub(crate) fn resolve_linked_dynamic_script_target(
     )?;
     let function = match target {
         DynamicMethodInlineCacheTarget::Script { function, .. } => function,
-        DynamicMethodInlineCacheTarget::Host { method_id } => {
-            return Ok(LinkedDynamicResolution::Other(
-                LinkedDynamicNonScriptTarget::Host { method_id },
-            ));
-        }
         DynamicMethodInlineCacheTarget::StandardValue {
             method_id,
             standard_method,
@@ -177,203 +169,6 @@ pub(crate) fn dispatch_linked_method_call(
             method_id,
             standard_method,
         } => {
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(query) = crate::std_method_ids::host_collection_query(method_id)
-            {
-                let result = host_access::execute_host_root_collection_query(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    query,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(lookup) = crate::std_method_ids::host_collection_lookup(method_id)
-            {
-                let result = crate::host_collection_lookup::execute_host_root_collection_lookup(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    lookup,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(transform) = crate::std_method_ids::host_array_transform(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_array_transform(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    transform,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(mutation) = crate::std_method_ids::host_collection_mutation(method_id)
-            {
-                let result = host_access::execute_host_root_collection_mutation(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    mutation,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && crate::std_method_ids::is_host_array_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_array_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(iteration) = crate::std_method_ids::host_map_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_map_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    iteration,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && crate::std_method_ids::is_host_set_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_set_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(projection) =
-                    crate::std_method_ids::host_collection_projection(method_id)
-            {
-                let result =
-                    crate::host_collection_projection::execute_host_root_collection_projection(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: context.inline_caches,
-                            source_span: context.call_site,
-                        },
-                        call.receiver,
-                        projection,
-                        values,
-                        context.cache_site,
-                    )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && crate::std_method_ids::is_host_map_merge(method_id)
-            {
-                let result = crate::host_map_merge::execute_host_root_map_merge(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
-            if matches!(frame.read(call.receiver)?, Value::HostRef(_))
-                && let Some(algebra) = crate::std_method_ids::host_set_algebra(method_id)
-            {
-                let result = crate::host_set_algebra::execute_host_root_set_algebra(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    algebra,
-                    values,
-                    context.cache_site,
-                )?;
-                frame.write(call.dst, result)?;
-                return Ok(());
-            }
             if let Some(result) = linked_standard_value_method_result(
                 &context,
                 frame,
@@ -472,29 +267,6 @@ pub(crate) fn dispatch_linked_method_call(
                 },
             )
         }
-        MethodInlineCacheTarget::Host { method_id } => {
-            let return_value = host_access::execute_host_root_method_call(
-                host_access::HostAccessRuntime {
-                    frame,
-                    heap: heap.as_deref_mut(),
-                    budget: budget.as_deref_mut(),
-                    host: host.as_deref_mut(),
-                    inline_caches: context.inline_caches,
-                    source_span: context.call_site,
-                },
-                call.receiver,
-                host_access::HostRootMethodCall {
-                    method: method_id,
-                    args: values,
-                    wants_return: true,
-                    cache_site: context.cache_site,
-                },
-            )?;
-            if let Some(return_value) = return_value {
-                frame.write(call.dst, return_value)?;
-            }
-            Ok(())
-        }
     }
 }
 
@@ -502,7 +274,7 @@ pub(crate) fn dispatch_linked_method_call(
 pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
     _vm: &Vm,
     context: LinkedScriptMethodCallContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
+    _host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &mut CallFrame,
@@ -512,222 +284,11 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
     let method = context.program.debug_name(call.method_name);
     let receiver = frame.read(call.receiver)?;
     match target {
-        LinkedDynamicNonScriptTarget::Host { method_id } => {
-            let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
-            let return_value = host_access::execute_host_root_method_call(
-                host_access::HostAccessRuntime {
-                    frame,
-                    heap: heap.as_deref_mut(),
-                    budget: budget.as_deref_mut(),
-                    host: host.as_deref_mut(),
-                    inline_caches: context.inline_caches,
-                    source_span: context.call_site,
-                },
-                call.receiver,
-                host_access::HostRootMethodCall {
-                    method: method_id,
-                    args: values_storage.as_slice(),
-                    wants_return: true,
-                    cache_site: context.cache_site,
-                },
-            )?;
-            if let Some(return_value) = return_value {
-                frame.write(call.dst, return_value)?;
-            }
-            Ok(())
-        }
         LinkedDynamicNonScriptTarget::StandardValue {
             method_id,
             standard_method,
         } => {
             let values_storage = dynamic_value_args_from_linked_arguments(frame, call.args)?;
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(query) = crate::std_method_ids::host_collection_query(method_id)
-            {
-                let result = host_access::execute_host_root_collection_query(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    query,
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && crate::std_method_ids::is_host_set_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_set_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(iteration) = crate::std_method_ids::host_map_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_map_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    iteration,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(lookup) = crate::std_method_ids::host_collection_lookup(method_id)
-            {
-                let result = crate::host_collection_lookup::execute_host_root_collection_lookup(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    lookup,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(transform) = crate::std_method_ids::host_array_transform(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_array_transform(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    transform,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(mutation) = crate::std_method_ids::host_collection_mutation(method_id)
-            {
-                let result = host_access::execute_host_root_collection_mutation(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    mutation,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && crate::std_method_ids::is_host_array_iteration(method_id)
-            {
-                let result = crate::host_collection_projection::execute_host_root_array_iteration(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values_storage.as_slice(),
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(projection) =
-                    crate::std_method_ids::host_collection_projection(method_id)
-            {
-                let result =
-                    crate::host_collection_projection::execute_host_root_collection_projection(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: context.inline_caches,
-                            source_span: context.call_site,
-                        },
-                        call.receiver,
-                        projection,
-                        values_storage.as_slice(),
-                        context.cache_site,
-                    )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && crate::std_method_ids::is_host_map_merge(method_id)
-            {
-                let result = crate::host_map_merge::execute_host_root_map_merge(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
-            if matches!(receiver, Value::HostRef(_))
-                && let Some(algebra) = crate::std_method_ids::host_set_algebra(method_id)
-            {
-                let result = crate::host_set_algebra::execute_host_root_set_algebra(
-                    host_access::HostAccessRuntime {
-                        frame,
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: host.as_deref_mut(),
-                        inline_caches: context.inline_caches,
-                        source_span: context.call_site,
-                    },
-                    call.receiver,
-                    algebra,
-                    values_storage.as_slice(),
-                    context.cache_site,
-                )?;
-                return frame.write(call.dst, result);
-            }
             let contextual_result = contextual_array_standard_value_method(
                 &receiver,
                 method_id,
@@ -764,9 +325,6 @@ pub(crate) fn dispatch_resolved_linked_dynamic_method_call(
                 program: context.program,
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
-                host: host
-                    .as_deref_mut()
-                    .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
             };
             let result = callback_method_dispatch::call_by_id(
                 method_id,
@@ -843,9 +401,6 @@ fn dynamic_cache_target_from_resolved(
         DynamicMethodTarget::Script { dispatch, function } => {
             DynamicMethodInlineCacheTarget::Script { dispatch, function }
         }
-        DynamicMethodTarget::Host { method_id } => {
-            DynamicMethodInlineCacheTarget::Host { method_id }
-        }
         DynamicMethodTarget::StandardValue { method_id } => {
             DynamicMethodInlineCacheTarget::StandardValue {
                 method_id,
@@ -861,14 +416,13 @@ fn dynamic_receiver_guard_for_target(
     target: &DynamicMethodInlineCacheTarget,
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
-    host: Option<&HostExecution<'_>>,
+    _host: Option<&HostExecution<'_>>,
 ) -> Option<DynamicReceiverGuard> {
     match target {
         DynamicMethodInlineCacheTarget::StandardValue { .. } => {
-            standard_receiver_guard(receiver, heap).or_else(|| host_receiver_guard(receiver, host))
+            standard_receiver_guard(receiver, heap)
         }
         DynamicMethodInlineCacheTarget::Script { .. } => script_receiver_guard(receiver, heap),
-        DynamicMethodInlineCacheTarget::Host { .. } => host_receiver_guard(receiver, host),
     }
 }
 
@@ -876,7 +430,7 @@ fn dynamic_receiver_guard_matches(
     guard: &DynamicReceiverGuard,
     receiver: &Value,
     heap: Option<&HeapExecution<'_>>,
-    host: Option<&HostExecution<'_>>,
+    _host: Option<&HostExecution<'_>>,
 ) -> bool {
     match guard {
         DynamicReceiverGuard::StdValue { receiver: expected } => {
@@ -896,22 +450,7 @@ fn dynamic_receiver_guard_matches(
                 } if actual_type == *type_name && actual_shape == *shape_id
             )
         }),
-        DynamicReceiverGuard::HostType {
-            type_id,
-            schema_epoch,
-            lease_kind,
-        } => host_receiver_guard(receiver, host).is_some_and(|actual| {
-            matches!(
-                actual,
-                DynamicReceiverGuard::HostType {
-                    type_id: actual_type,
-                    schema_epoch: actual_epoch,
-                    lease_kind: actual_lease,
-                } if actual_type == *type_id
-                    && actual_epoch == *schema_epoch
-                    && actual_lease == *lease_kind
-            )
-        }),
+
     }
 }
 
@@ -935,7 +474,6 @@ fn standard_receiver_guard(
         }
         dynamic_method_resolution::DynamicReceiverKind::ScriptRecord { .. }
         | dynamic_method_resolution::DynamicReceiverKind::ScriptEnum { .. }
-        | dynamic_method_resolution::DynamicReceiverKind::Host { .. }
         | dynamic_method_resolution::DynamicReceiverKind::Unsupported => return None,
     };
     Some(DynamicReceiverGuard::StdValue { receiver })
@@ -969,24 +507,6 @@ fn script_receiver_guard(
         }),
         _ => None,
     }
-}
-
-fn host_receiver_guard(
-    receiver: &Value,
-    host: Option<&HostExecution<'_>>,
-) -> Option<DynamicReceiverGuard> {
-    let Value::HostRef(reference) = receiver else {
-        return None;
-    };
-    let host = host?;
-    let schema_epoch = host.adapter.host_schema_epoch();
-    let reference = host.resolve_host_ref(*reference).ok()?;
-    let lease_kind = host.adapter.host_receiver_access(reference);
-    Some(DynamicReceiverGuard::HostType {
-        type_id: reference.type_id,
-        schema_epoch,
-        lease_kind,
-    })
 }
 
 fn dynamic_script_call_args_from_linked_arguments(
@@ -1153,9 +673,6 @@ fn method_inline_cache_target(kind: &LinkedMethodDispatchKind) -> MethodInlineCa
             method_id: *method_id,
             standard_method: None,
         },
-        LinkedMethodDispatchKind::Host { method_id } => MethodInlineCacheTarget::Host {
-            method_id: *method_id,
-        },
     }
 }
 
@@ -1309,7 +826,7 @@ struct LinkedCallbackValueMethodCall<'a> {
 fn linked_callback_value_method_result(
     _vm: &Vm,
     context: &LinkedScriptMethodCallContext<'_>,
-    host: &mut Option<&mut HostExecution<'_>>,
+    _host: &mut Option<&mut HostExecution<'_>>,
     heap: &mut Option<&mut HeapExecution<'_>>,
     budget: &mut Option<&mut ExecutionBudget>,
     frame: &CallFrame,
@@ -1323,9 +840,6 @@ fn linked_callback_value_method_result(
         program: context.program,
         heap: heap.as_deref_mut(),
         budget: budget.as_deref_mut(),
-        host: host
-            .as_deref_mut()
-            .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
     };
     if let Some(callback_method) = call.callback_method
         && callback_method_dispatch::callback_cache_entry_matches_method_id(

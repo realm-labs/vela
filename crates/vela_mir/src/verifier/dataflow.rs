@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
-    MirAggregate, MirBlockId, MirCall, MirDynamicArgument, MirFormatPart, MirHostOperation,
-    MirHostPathSegment, MirImmediate, MirIndexKey, MirIndexOperation, MirIteratorOperation,
-    MirLocalId, MirOperand, MirPatternPredicate, MirPlace, MirReflectionOperation, MirRvalue,
-    MirScriptArgument, MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind,
-    MirTempId, MirTerminatorKind, MirValueType,
+    MirAggregate, MirBlockId, MirCall, MirDynamicArgument, MirFormatPart, MirImmediate,
+    MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLocalId, MirOperand,
+    MirPatternPredicate, MirPlace, MirReflectionOperation, MirRvalue, MirScriptArgument,
+    MirSourceOrigin, MirStateOperation, MirStatementId, MirStatementKind, MirTempId,
+    MirTerminatorKind, MirValueType,
 };
 
 use super::cfg::FunctionGraph;
@@ -436,9 +436,7 @@ pub(crate) fn visit_statement_operands(
             }
         },
         MirStatementKind::State(MirStateOperation::WriteVmState { value, .. }) => visitor(value)?,
-        MirStatementKind::State(
-            MirStateOperation::ReadVmState { .. } | MirStateOperation::ReadExternState { .. },
-        )
+        MirStatementKind::State(MirStateOperation::ReadVmState { .. })
         | MirStatementKind::MaterializeConstant(_) => {}
         MirStatementKind::Allocate(aggregate) => visit_aggregate(aggregate, &mut visitor)?,
         MirStatementKind::FormatString { parts } => {
@@ -453,7 +451,7 @@ pub(crate) fn visit_statement_operands(
             visitor(end)?;
         }
         MirStatementKind::Call(call) => visit_call(call, &mut visitor)?,
-        MirStatementKind::Host(operation) => visit_host(operation, &mut visitor)?,
+
         MirStatementKind::Reflect(operation) => match operation {
             MirReflectionOperation::Read { target, member, .. } => {
                 visitor(target)?;
@@ -640,47 +638,6 @@ fn visit_dynamic_args(
 ) -> Result<(), MirVerifyError> {
     for argument in arguments {
         visitor(&argument.value)?;
-    }
-    Ok(())
-}
-
-fn visit_host(
-    operation: &MirHostOperation,
-    visitor: &mut impl FnMut(&MirOperand) -> Result<(), MirVerifyError>,
-) -> Result<(), MirVerifyError> {
-    if let MirHostOperation::ReleaseBorrowLease { root }
-    | MirHostOperation::TryReleaseBorrowLease { root } = operation
-    {
-        return visitor(root);
-    }
-    let (root, path) = match operation {
-        MirHostOperation::ReleaseBorrowLease { .. }
-        | MirHostOperation::TryReleaseBorrowLease { .. } => unreachable!(),
-        MirHostOperation::Read { root, path }
-        | MirHostOperation::Remove { root, path }
-        | MirHostOperation::Call { root, path, .. } => (root, path),
-        MirHostOperation::Write {
-            root, path, value, ..
-        }
-        | MirHostOperation::Mutate {
-            root, path, value, ..
-        } => {
-            visitor(value)?;
-            (root, path)
-        }
-    };
-    visitor(root)?;
-    for segment in &path.segments {
-        if let MirHostPathSegment::Index { value, .. } | MirHostPathSegment::Key { value, .. } =
-            segment
-        {
-            visitor(value)?;
-        }
-    }
-    if let MirHostOperation::Call { arguments, .. } = operation {
-        for argument in arguments {
-            visitor(argument)?;
-        }
     }
     Ok(())
 }

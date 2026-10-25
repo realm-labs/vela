@@ -1,58 +1,14 @@
 ---
 title: "快速开始"
-description: "Vela 快速开始文档。"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-最快的体验方式是 [Playground](../playground/)。它在浏览器里运行 WASM 版 engine，适合尝试语法、集合、方法、诊断和返回值。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 一个小脚本
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-```vela
-fn main() {
-    let rewards = { "gold": 10, "xp": 25 };
-    let tags = ["daily", "vip"];
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-    if tags.contains("vip") {
-        return rewards["gold"] + rewards["xp"];
-    }
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-    return rewards["gold"];
-}
-```
-
-在 Playground 中运行 `main`，结果会以 JSON 形式展示。
-
-## 宿主持有状态
-
-Vela 真正的使用场景通常是在 Rust 中嵌入。脚本看起来可以很直接：
-
-```vela
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-```
-
-但 `Player` 仍然由 Rust 宿主拥有。调用边界传入 host object binding，字段读写通过 HostAccess 路由：
-
-```rust
-let output = runtime.call(
-    "main",
-    CallArgs::new().with_host_mut("player", &mut player),
-    CallOptions::new(10_000, 1024 * 1024, 64),
-)?;
-```
-
-完整可运行版本在 `examples/src/bin/level_up`。
-
-## 运行本地示例
-
-在仓库根目录可以用 Cargo 运行独立示例：
-
-```bash
-cargo run -p vela_examples --bin level_up
-cargo run -p vela_examples --bin native_function
-cargo run -p vela_examples --bin hot_reload_function_swap
-```
-
-如果需要真实 Rust host object、native 函数、文件系统 capability 或热更新行为，请使用这些本地示例。浏览器 Playground 有意不暴露这些宿主资源。
+详情与现有调用示例见 [English reference](/quickstart/)。

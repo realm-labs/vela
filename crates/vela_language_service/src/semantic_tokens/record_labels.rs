@@ -84,11 +84,7 @@ pub(super) fn collect(
             (site.range.start, site.range.end),
             C::new(
                 if known { T::Property } else { T::Variable },
-                if known {
-                    M::HOST.union(M::SCHEMA)
-                } else {
-                    M::NONE
-                },
+                if known { M::SCHEMA } else { M::NONE },
             ),
         );
     }

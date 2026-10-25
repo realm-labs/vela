@@ -1,0 +1,23 @@
+error[E0599]: no method named `with_host_ref` found for struct `CallArgs` in the current scope
+ --> tests/ui/removed/borrow_apis.rs:5:29
+  |
+5 |     let _ = CallArgs::new().with_host_ref("values", &values);
+  |                             ^^^^^^^^^^^^^ method not found in `CallArgs`
+
+error[E0599]: no method named `with_host_mut` found for struct `CallArgs` in the current scope
+ --> tests/ui/removed/borrow_apis.rs:6:29
+  |
+6 |     let _ = CallArgs::new().with_host_mut("values", &mut values);
+  |                             ^^^^^^^^^^^^^ method not found in `CallArgs`
+
+error[E0599]: no method named `push_host_ref` found for struct `CallArgs` in the current scope
+ --> tests/ui/removed/borrow_apis.rs:8:10
+  |
+8 |     args.push_host_ref("values", &values);
+  |          ^^^^^^^^^^^^^ method not found in `CallArgs`
+
+error[E0599]: no method named `push_host_mut` found for struct `CallArgs` in the current scope
+ --> tests/ui/removed/borrow_apis.rs:9:10
+  |
+9 |     args.push_host_mut("values", &mut values);
+  |          ^^^^^^^^^^^^^ method not found in `CallArgs`

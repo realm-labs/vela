@@ -116,9 +116,6 @@ fn owned_value_matches_contract(
         MirTypeContract::Variant { type_id, variant } => {
             nominal_value_matches(value, *type_id, Some(*variant), program)
         }
-        MirTypeContract::Host(expected) => {
-            matches!(value, OwnedValue::HostRef(host) if host.type_id == expected.runtime)
-        }
     }
 }
 
@@ -353,9 +350,6 @@ fn contract_name(contract: &MirTypeContract, program: &LinkedProgram) -> String 
             })
             .or_else(|| linked_type_name(program, *type_id).map(str::to_owned))
             .unwrap_or_else(|| format!("{type_id:?}::{variant:?}")),
-        MirTypeContract::Host(target) => linked_type_name(program, target.semantic)
-            .map(str::to_owned)
-            .unwrap_or_else(|| format!("host({:?})", target.runtime)),
     }
 }
 
@@ -392,8 +386,7 @@ fn owned_value_type_name(value: &OwnedValue) -> String {
         } => format!("{enum_name}::{variant}"),
         OwnedValue::Closure(_) => "Closure".to_owned(),
         OwnedValue::Range(_) => "Range".to_owned(),
-        OwnedValue::HostRef(_) => "host_ref".to_owned(),
-        OwnedValue::PathProxy(_) => "path_proxy".to_owned(),
+
         OwnedValue::Iterator(_) => "Iterator".to_owned(),
     }
 }

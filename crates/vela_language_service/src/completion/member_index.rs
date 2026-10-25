@@ -116,7 +116,6 @@ impl MemberCompletionIndex {
                 candidate.item,
                 MemberCompletionSurface::Source,
                 Some(candidate.symbol),
-                None,
             );
             if method {
                 let mut parts = crate::DisplayParts::new();
@@ -146,18 +145,7 @@ impl MemberCompletionIndex {
             return;
         }
         for (item, symbol) in schema_member_completion_candidates(schema, receiver) {
-            let resource = match receiver {
-                TypeFact::Host { name } | TypeFact::Record { name } => {
-                    schema.method_scoped_resource(name, &item.label)
-                }
-                _ => None,
-            };
-            self.push_analysis(
-                item,
-                MemberCompletionSurface::Schema,
-                Some(symbol),
-                resource,
-            );
+            self.push_analysis(item, MemberCompletionSurface::Schema, Some(symbol));
         }
     }
 
@@ -169,7 +157,7 @@ impl MemberCompletionIndex {
                 fact: TypeFact::function(fact.params, fact.returns),
             };
             let symbol = builtin_member_symbol(&fact.receiver.display_name(), fact.method);
-            self.push_analysis(item, MemberCompletionSurface::Builtin, Some(symbol), None);
+            self.push_analysis(item, MemberCompletionSurface::Builtin, Some(symbol));
         }
     }
 
@@ -178,21 +166,9 @@ impl MemberCompletionIndex {
         item: AnalysisCompletionItem,
         surface: MemberCompletionSurface,
         symbol: Option<CompletionSymbol>,
-        scoped_resource: Option<vela_analysis::registry::ScopedResourceReturnDef>,
     ) -> &mut CompletionItem {
-        let scoped_detail = scoped_resource.and_then(|resource| match &item.fact {
-            TypeFact::Function { returns, .. } => Some(format!(
-                "{}; {}",
-                crate::callable_context::scoped_resource_display_name(returns, resource),
-                crate::callable_context::scoped_resource_detail(resource)
-            )),
-            _ => None,
-        });
         let mut item = service_item_from_analysis_completion(item, &self.prefix);
         item.insert_text.get_or_insert_with(|| item.label.clone());
-        if let Some(detail) = scoped_detail {
-            item = item.with_detail_parts(crate::DisplayParts::plain(detail));
-        }
         if let Some(symbol) = symbol {
             item = item.with_symbol(symbol);
         }
@@ -215,9 +191,7 @@ fn schema_member_completion_candidates(
     receiver: &TypeFact,
 ) -> Vec<(AnalysisCompletionItem, CompletionSymbol)> {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } => {
-            owner_member_completion_candidates(schema, name)
-        }
+        TypeFact::Record { name } => owner_member_completion_candidates(schema, name),
         TypeFact::Enum {
             name,
             variant: Some(variant),

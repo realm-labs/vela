@@ -18,8 +18,6 @@ fn main() -> i64 {
 }
 "#,
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -41,7 +39,7 @@ fn main() -> i64 {
 
     assert!(report.accepted);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -64,8 +62,6 @@ fn main() -> i64 {
 }
 "#,
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -80,7 +76,7 @@ fn main() -> i64 {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -106,7 +102,7 @@ fn main() -> i64 {
     assert_eq!(new.as_deref(), Some("Option<(String, i64, bool)>"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }

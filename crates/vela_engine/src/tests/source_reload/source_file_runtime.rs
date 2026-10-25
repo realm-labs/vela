@@ -12,8 +12,6 @@ fn runtime_compiles_hot_reload_update_from_active_version() {
     assert!(initial.linked_program().function_count() > 0);
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     let first_update = runtime
         .compile_reload_with_id(
@@ -44,7 +42,7 @@ fn main() {
             > 0
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -90,10 +88,8 @@ fn runtime_compiles_hot_reload_update_file_from_active_version() {
         .expect("runtime should apply file update");
     assert!(report.accepted);
 
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
@@ -113,11 +109,9 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
         .expect("initial hot reload file compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -131,7 +125,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
             .expect("file update should be pending")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -148,7 +142,7 @@ fn runtime_stages_hot_reload_file_until_check_reload_safe_point() {
             .expect("safe point should consume file update")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 }
@@ -160,8 +154,6 @@ fn runtime_stages_source_file_private_helper_addition_until_safe_point() {
         .build()
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -176,7 +168,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -188,7 +180,7 @@ fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
@@ -200,8 +192,6 @@ fn runtime_stages_source_file_public_function_addition_until_safe_point() {
         .build()
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "pub fn main() { return 1; }");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -216,7 +206,7 @@ pub fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -228,17 +218,11 @@ pub fn main() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["helper", "main"]);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
     assert_eq!(
-        runtime.call_raw(
-            "helper",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("helper", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }
@@ -261,8 +245,6 @@ fn main() {
 }
 "#,
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -273,7 +255,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 
@@ -291,7 +273,7 @@ fn main() {
     };
     assert_eq!(function, "helper");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(7)))
     );
 }

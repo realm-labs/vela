@@ -5,25 +5,24 @@ fn methods_with_policy_hide_inaccessible_methods() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(500), "Player"))
-            .host_type(HostTypeId::new(5))
-            .method(MethodDesc::new(HostMethodId::new(1), "visible"))
+            .method(MethodDesc::new(MethodId::new(1), "visible"))
             .method(
-                MethodDesc::new(HostMethodId::new(2), "hidden")
+                MethodDesc::new(MethodId::new(2), "hidden")
                     .access(crate::access::MethodAccess::new().reflect_callable(false)),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(3), "private").access(
+                MethodDesc::new(MethodId::new(3), "private").access(
                     crate::access::MethodAccess::new()
                         .public(false)
                         .reflect_callable(true),
                 ),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(4), "admin")
+                MethodDesc::new(MethodId::new(4), "admin")
                     .access(crate::access::MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(5), HostObjectId::new(1), 1));
+    let target = player_value();
 
     let ReflectValue::Array(raw_methods) = methods(&registry, &target).expect("raw methods") else {
         panic!("methods should be an array");
@@ -125,25 +124,24 @@ fn method_policy_filters_unknown_candidates() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(501), "Player"))
-            .host_type(HostTypeId::new(5))
-            .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
+            .method(MethodDesc::new(MethodId::new(1), "grant_exp"))
             .method(
-                MethodDesc::new(HostMethodId::new(2), "grant_exp_hidden")
+                MethodDesc::new(MethodId::new(2), "grant_exp_hidden")
                     .access(crate::access::MethodAccess::new().reflect_callable(false)),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(3), "grant_exp_private").access(
+                MethodDesc::new(MethodId::new(3), "grant_exp_private").access(
                     crate::access::MethodAccess::new()
                         .public(false)
                         .reflect_callable(true),
                 ),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(4), "grant_exp_admin")
+                MethodDesc::new(MethodId::new(4), "grant_exp_admin")
                     .access(crate::access::MethodAccess::new().require_permission("player.admin")),
             ),
     );
-    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(5), HostObjectId::new(1), 1));
+    let target = player_value();
 
     let error = method_with_policy(
         &registry,
@@ -173,14 +171,13 @@ fn fields_with_policy_hide_non_reflect_readable_fields() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(600), "Player"))
-            .host_type(HostTypeId::new(6))
             .field(FieldDesc::new(FieldId::new(1), "level"))
             .field(
                 FieldDesc::new(FieldId::new(2), "secret")
                     .access(crate::access::FieldAccess::new().reflect_readable(false)),
             ),
     );
-    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+    let target = player_value();
 
     assert!(has_field(&registry, &target, "secret").expect("raw has field"));
     let ReflectValue::Array(fields) =
@@ -262,7 +259,6 @@ fn field_policy_filters_unknown_candidates() {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(602), "Player"))
-            .host_type(HostTypeId::new(6))
             .field(FieldDesc::new(FieldId::new(1), "level"))
             .field(
                 FieldDesc::new(FieldId::new(2), "level_secret")
@@ -272,7 +268,7 @@ fn field_policy_filters_unknown_candidates() {
                 crate::access::FieldAccess::new().require_permission("player.level.admin"),
             )),
     );
-    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+    let target = player_value();
 
     let error = field_with_policy(
         &registry,
@@ -303,7 +299,6 @@ fn fields_with_policy_require_field_permissions() {
     let title_span = Span::new(SourceId::new(9), 30, 45);
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(601), "Player"))
-            .host_type(HostTypeId::new(6))
             .field(FieldDesc::new(FieldId::new(1), "level"))
             .field(
                 FieldDesc::new(FieldId::new(2), "title")
@@ -314,7 +309,7 @@ fn fields_with_policy_require_field_permissions() {
                     ),
             ),
     );
-    let target = ReflectValue::HostRef(HostRef::new(HostTypeId::new(6), HostObjectId::new(1), 1));
+    let target = player_value();
 
     let ReflectValue::Array(fields) =
         fields_with_policy(&registry, &target, &ReflectPolicy::read_only())

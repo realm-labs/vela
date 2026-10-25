@@ -161,7 +161,6 @@ pub enum SchemaKindAbi {
     Range,
     Function,
     Closure,
-    Host,
     ScriptStruct,
     ScriptEnum,
 }
@@ -192,7 +191,6 @@ impl SchemaKindAbi {
             TypeKind::Range => Self::Range,
             TypeKind::Function => Self::Function,
             TypeKind::Closure => Self::Closure,
-            TypeKind::Host => Self::Host,
             TypeKind::ScriptStruct => Self::ScriptStruct,
             TypeKind::ScriptEnum => Self::ScriptEnum,
         }
@@ -223,7 +221,6 @@ impl SchemaKindAbi {
             Self::Range => "range",
             Self::Function => "function",
             Self::Closure => "closure",
-            Self::Host => "host",
             Self::ScriptStruct => "script_struct",
             Self::ScriptEnum => "script_enum",
         }

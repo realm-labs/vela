@@ -166,82 +166,6 @@ fn engine_compile_file_reports_io_errors() {
 }
 
 #[test]
-fn engine_exposes_registry_hot_reload_abi() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let method = HostMethodId::new(9);
-    let engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            TypeDesc::new(player_key.clone())
-                .schema_hash(SchemaHash::new(0xfeed))
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(method, "grant_exp")
-                        .effects(MethodEffectSet::host_write())
-                        .access(MethodAccess::new().reflect_callable(true)),
-                ),
-        )
-        .register_native_fn(
-            NativeFunctionDesc::new("game::reward::grant", NativeFunctionId::new(22))
-                .param("player", TypeHint::Host(player_key))
-                .returns(TypeHint::unit())
-                .effects(EffectSet::event_emit())
-                .access(FunctionAccess::public().reflect_callable(true)),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build()
-        .expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player: Player) {
-    player.grant_exp(10);
-    return 1;
-}
-"#,
-        )
-        .expect("initial hot reload compile");
-    let update = engine
-        .compile_reload_with_id(
-            &initial,
-            SourceId::new(2),
-            r#"
-fn main(player: Player) {
-    player.grant_exp(11);
-    return 2;
-}
-"#,
-        )
-        .expect("unchanged engine ABI should be hot-reload compatible");
-    let mut runtime = HotReloadRuntime::new(initial);
-    let version = runtime.apply_hot_update(update).expect("apply update");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
-
-    let mut budget = vela_vm::budget::ExecutionBudget::unbounded();
-    assert_eq!(
-        engine
-            .into_vm()
-            .run_linked_program_with_host_budget_and_caches(
-                version.linked_artifact(),
-                "main",
-                &[OwnedValue::HostRef(host_ref)],
-                &mut host,
-                &mut budget,
-                None
-            ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-}
-
-#[test]
 fn runtime_applies_engine_hot_reload_updates() {
     let engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
@@ -257,11 +181,9 @@ fn runtime_applies_engine_hot_reload_updates() {
     assert!(update.linked_program().function_count() > 0);
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -278,7 +200,7 @@ fn runtime_applies_engine_hot_reload_updates() {
         report.to_version.expect("accepted version id")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -633,8 +555,6 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_update(update)
@@ -645,7 +565,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -670,7 +590,7 @@ fn runtime_stages_engine_hot_reload_until_check_reload_safe_point() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -686,8 +606,6 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload("fn main() { return 2; }")
@@ -698,7 +616,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
             .expect("hot reload runtime should report pending update")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -710,7 +628,7 @@ fn runtime_stages_source_text_hot_reload_until_check_reload_safe_point() {
     assert!(report.accepted);
     assert_eq!(report.changed_functions, vec!["main".to_owned()]);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -726,14 +644,12 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
         .expect("initial hot reload compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload("pub fn main() -> f64 { return 2.0; }")
         .expect("stage rejected source text update");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -757,7 +673,7 @@ fn runtime_stages_source_text_hot_reload_rejection_until_check_reload_safe_point
     assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_some());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -776,14 +692,12 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_update(update)
         .expect("stage pending update");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -800,7 +714,7 @@ fn runtime_tick_boundary_safe_point_consumes_staged_reload() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
     assert_eq!(
@@ -828,8 +742,6 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
     .expect_err("return hint change should be rejected");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_result_for_test(Err(update))
@@ -859,7 +771,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_reload_rejection() {
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -890,11 +802,9 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     runtime
         .stage_reload_result_for_test(Err(update))
         .expect("stage rejected module export update");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -914,7 +824,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_module_export_rejection() {
     assert_eq!(old, &vec![ModuleExportAbi::function("grant_reward", 11)]);
     assert_eq!(new, &Vec::<ModuleExportAbi>::new());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -946,11 +856,9 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     runtime
         .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed function update");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -973,7 +881,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_function_abi_rejectio
     };
     assert_eq!(function, "host::reward::grant");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -1006,11 +914,9 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     runtime
         .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed method update");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -1033,7 +939,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_method_abi_rejection(
     assert_eq!(type_name, "Player");
     assert_eq!(method, "grant_exp");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -1061,11 +967,9 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     runtime
         .stage_reload_result_for_test(Err(update))
         .expect("stage rejected removed module update");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -1084,7 +988,7 @@ fn runtime_tick_boundary_safe_point_reports_staged_removed_module_rejection() {
     };
     assert_eq!(module, "host::reward");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -1103,14 +1007,12 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_update(update)
         .expect("stage pending update");
     let value = runtime
-        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw("main", &[], CallOptions::unbounded())
         .expect("event call should run");
     let reload = runtime
         .activate_reload()
@@ -1126,7 +1028,7 @@ fn explicit_event_end_reload_check_consumes_staged_update_after_call() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -1168,14 +1070,12 @@ fn main() {
         .expect("compatible update should compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_update(update)
         .expect("stage pending update");
     let value = runtime
-        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw("main", &[], CallOptions::unbounded())
         .expect("event call should run on the old version");
     let reload = runtime
         .activate_reload()
@@ -1194,7 +1094,7 @@ fn main() {
             .expect("pending update should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -1216,14 +1116,12 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
     .expect_err("return hint change should be rejected");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     runtime
         .stage_reload_result_for_test(Err(update))
         .expect("stage rejected update");
     let value = runtime
-        .call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx)
+        .call_raw("main", &[], CallOptions::unbounded())
         .expect("event call should run before reporting reload rejection");
     let reload = runtime
         .activate_reload()
@@ -1251,151 +1149,7 @@ fn explicit_event_end_reload_check_reports_staged_rejection_after_call() {
             .expect("pending rejection should be consumed")
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-}
-
-#[test]
-fn runtime_checks_reload_at_explicit_safe_point() {
-    let engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .build()
-        .expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-"#,
-        )
-        .expect("initial hot reload compile");
-    let update = engine
-        .compile_reload_with_id(
-            &initial,
-            SourceId::new(2),
-            r#"
-fn main(player: Player) {
-    player.level += 2;
-    return player.level + 100;
-}
-"#,
-        )
-        .expect("compatible update should compile");
-    let mut runtime =
-        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let level_path = HostPath::new(host_ref).field(FieldId::new(1));
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path,
-        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
-    );
-    let mut tx = HostAccess::new();
-
-    assert_eq!(
-        runtime.call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
-    );
-    runtime
-        .stage_reload_update(update)
-        .expect("stage pending update");
-
-    let report = runtime
-        .activate_reload()
-        .expect("reload check should run")
-        .expect("pending update should be consumed");
-    assert!(report.accepted);
-    assert_eq!(report.changed_functions, vec!["main".to_owned()]);
-
-    let mut next_tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut next_tx,
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(113)))
-    );
-}
-
-#[test]
-fn runtime_write_error_does_not_consume_pending_reload() {
-    let engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .build()
-        .expect("engine should build");
-    let initial = engine
-        .compile_hot_reload_initial_with_id(
-            SourceId::new(1),
-            r#"
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-"#,
-        )
-        .expect("initial hot reload compile");
-    let update = engine
-        .compile_reload_with_id(
-            &initial,
-            SourceId::new(2),
-            r#"
-fn main(player: Player) {
-    player.level += 2;
-    return player.level;
-}
-"#,
-        )
-        .expect("compatible update should compile");
-    let mut runtime =
-        Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let level_path = HostPath::new(host_ref).field(FieldId::new(1));
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        level_path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(10)),
-    );
-    runtime
-        .stage_reload_update(update)
-        .expect("stage pending update");
-    adapter.deny_diagnostic_path_write(level_path.clone());
-    let mut tx = HostAccess::new();
-
-    let error = runtime
-        .call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx,
-        )
-        .expect_err("denied host write should fail during call");
-
-    assert!(matches!(
-        error.kind(),
-        VmErrorKind::Host(HostErrorKind::PermissionDenied {
-            path,
-            action: "write",
-        }) if path == level_path
-    ));
-    assert!(
-        runtime
-            .has_pending_reload()
-            .expect("failed write should not consume pending reload")
     );
 }

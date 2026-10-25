@@ -54,8 +54,7 @@ impl TryLayouts {
                 | MirTypeContract::Callable { .. }
                 | MirTypeContract::Definition(_)
                 | MirTypeContract::Shape { .. }
-                | MirTypeContract::Variant { .. }
-                | MirTypeContract::Host(_),
+                | MirTypeContract::Variant { .. },
             )
             | None => CompileTryTarget::Dynamic {
                 option: self.option,

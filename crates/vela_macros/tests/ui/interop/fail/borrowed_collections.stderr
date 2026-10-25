@@ -1,0 +1,55 @@
+error: borrowed collection parameters are removed; pass an owned collection value
+ --> tests/ui/interop/fail/borrowed_collections.rs:5:21
+  |
+5 | pub fn vec(_values: &Vec<i64>) {}
+  |                     ^^^^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+ --> tests/ui/interop/fail/borrowed_collections.rs:8:23
+  |
+8 | pub fn slice(_values: &[i64]) {}
+  |                       ^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+  --> tests/ui/interop/fail/borrowed_collections.rs:11:23
+   |
+11 | pub fn array(_values: &[i64; 2]) {}
+   |                       ^^^^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+  --> tests/ui/interop/fail/borrowed_collections.rs:14:21
+   |
+14 | pub fn map(_values: &BTreeMap<String, i64>) {}
+   |                     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+  --> tests/ui/interop/fail/borrowed_collections.rs:17:26
+   |
+17 | pub fn hash_map(_values: &HashMap<String, i64>) {}
+   |                          ^^^^^^^^^^^^^^^^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+  --> tests/ui/interop/fail/borrowed_collections.rs:20:21
+   |
+20 | pub fn set(_values: &BTreeSet<String>) {}
+   |                     ^^^^^^^^^^^^^^^^^
+
+error: borrowed collection parameters are removed; pass an owned collection value
+  --> tests/ui/interop/fail/borrowed_collections.rs:23:26
+   |
+23 | pub fn hash_set(_values: &HashSet<String>) {}
+   |                          ^^^^^^^^^^^^^^^^
+
+error: mutable borrowed parameters are not supported at the Vela value boundary
+  --> tests/ui/interop/fail/borrowed_collections.rs:26:25
+   |
+26 | pub fn mutable(_values: &mut Vec<i64>) {}
+   |                         ^^^^^^^^^^^^^
+
+warning: unused imports: `BTreeMap`, `BTreeSet`, `HashMap`, and `HashSet`
+ --> tests/ui/interop/fail/borrowed_collections.rs:1:24
+  |
+1 | use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+  |                        ^^^^^^^^  ^^^^^^^^  ^^^^^^^  ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default

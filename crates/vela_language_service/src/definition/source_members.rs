@@ -13,6 +13,15 @@ pub(super) fn source_member_definition_for_target(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<Definition> {
+    if target.member_receiver_declaration().is_none()
+        && target
+            .possible_member_targets()
+            .iter()
+            .all(|candidate| candidate.member_receiver_declaration().is_none())
+        && matches!(target.member_receiver_fact(), Some(TypeFact::Record { name }) if databases.schema_db().facts().type_fact(name).is_some())
+    {
+        return None;
+    }
     if target.has_incomplete_member_origins() {
         return None;
     }
@@ -31,6 +40,11 @@ fn source_member_definition_for_owner(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<Definition> {
+    if target.member_receiver_declaration().is_none()
+        && matches!(target.member_receiver_fact(), Some(TypeFact::Record { name }) if databases.schema_db().facts().type_fact(name).is_some())
+    {
+        return None;
+    }
     let receiver = target.member_receiver_fact()?;
     let graph = databases.hir_db().graph();
     source_field_definition_for_target(databases, graph, target, receiver)
@@ -58,6 +72,11 @@ fn source_field_type_fact_for_owner(
     databases: &LanguageServiceDatabases,
     target: &SymbolTarget,
 ) -> Option<TypeFact> {
+    if target.member_receiver_declaration().is_none()
+        && matches!(target.member_receiver_fact(), Some(TypeFact::Record { name }) if databases.schema_db().facts().type_fact(name).is_some())
+    {
+        return None;
+    }
     let receiver = target.member_receiver_fact()?;
     let graph = databases.hir_db().graph();
     let owner_names = record_owner_names(receiver);
@@ -289,16 +308,9 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -308,7 +320,6 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -336,16 +347,9 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -355,7 +359,6 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Record { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)

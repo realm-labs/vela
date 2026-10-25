@@ -23,12 +23,10 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -57,7 +55,7 @@ fn runtime_stages_source_file_native_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -85,12 +83,10 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -117,7 +113,7 @@ fn runtime_stages_source_file_native_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -145,12 +141,10 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -184,7 +178,7 @@ fn runtime_stages_source_file_native_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -212,12 +206,10 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -244,7 +236,7 @@ fn runtime_stages_source_file_native_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -267,12 +259,10 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -299,7 +289,7 @@ fn runtime_stages_source_file_removed_native_function_rejection_until_safe_point
     assert_eq!(function, "game::reward::grant");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -327,12 +317,10 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -359,7 +347,7 @@ fn runtime_stages_source_file_native_stable_id_churn_rejection_until_safe_point(
     assert_eq!(function, "game::reward::grant");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -396,11 +384,9 @@ fn main() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -413,7 +399,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -425,7 +411,7 @@ fn main() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(6)))
     );
 }
@@ -437,25 +423,22 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
             TypeDesc::new(player_key.clone())
-                .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp")),
+                .method(MethodDesc::new(MethodId::new(9), "grant_exp")),
         )
         .build()
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(TypeDesc::new(player_key).host_type(HostTypeId::new(1)))
+        .register_type_desc(TypeDesc::new(player_key))
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -481,7 +464,7 @@ fn runtime_stages_source_file_removed_method_rejection_until_safe_point() {
     assert_eq!(method, "grant_exp");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -491,7 +474,7 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(type_with_reload_method(MethodDesc::new(
-            HostMethodId::new(9),
+            MethodId::new(9),
             "grant_exp",
         )))
         .build()
@@ -500,19 +483,17 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(type_with_reload_method(MethodDesc::new(
-            HostMethodId::new(10),
+            MethodId::new(10),
             "grant_exp",
         )))
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -538,98 +519,9 @@ fn runtime_stages_source_file_method_stable_id_churn_rejection_until_safe_point(
     assert_eq!(method, "grant_exp");
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
-}
-
-#[test]
-fn runtime_stages_source_file_method_stable_id_rename_until_safe_point() {
-    let method = HostMethodId::new(9);
-    let old_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(type_with_reload_method(MethodDesc::new(
-            method,
-            "grant_exp",
-        )))
-        .build()
-        .expect("old engine should build");
-    let initial = hot_reload_initial_from_source(
-        &old_engine,
-        r#"
-fn main(player: Player) {
-    player.grant_exp(7);
-    return 1;
-}
-"#,
-    );
-    let new_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(type_with_reload_method(MethodDesc::new(
-            method,
-            "award_exp",
-        )))
-        .build()
-        .expect("new engine should build");
-    let mut runtime =
-        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-    assert_host_method_access(&tx, method, 7);
-
-    stage_source_update(
-        &mut runtime,
-        r#"
-fn main(player: Player) {
-    player.award_exp(7);
-    return 2;
-}
-"#,
-    );
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-    assert_host_method_access(&tx, method, 7);
-
-    let report = runtime
-        .activate_reload()
-        .expect("check reload at safe point")
-        .expect("staged source-file method stable-ID rename report");
-
-    assert!(report.accepted);
-    assert!(report.errors.is_empty());
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
-    );
-    assert_host_method_access(&tx, method, 7);
 }
 
 #[test]
@@ -637,37 +529,25 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     let player_key = TypeKey::new(TypeId::new(1), "Player");
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            TypeDesc::new(player_key.clone())
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .effects(MethodEffectSet::host_read()),
-                ),
-        )
+        .register_type_desc(TypeDesc::new(player_key.clone()).method(
+            MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
+        ))
         .build()
         .expect("old engine should build");
     let initial = hot_reload_initial_from_source(&old_engine, "fn main() { return 1; }");
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            TypeDesc::new(player_key)
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .effects(MethodEffectSet::host_write()),
-                ),
-        )
+        .register_type_desc(TypeDesc::new(player_key).method(
+            MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
+        ))
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -698,7 +578,7 @@ fn runtime_stages_source_file_method_effect_rejection_until_safe_point() {
     assert!(new.writes_host);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -709,12 +589,10 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
-            TypeDesc::new(player_key.clone())
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .access(MethodAccess::new().reflect_callable(true)),
-                ),
+            TypeDesc::new(player_key.clone()).method(
+                MethodDesc::new(MethodId::new(9), "grant_exp")
+                    .access(MethodAccess::new().reflect_callable(true)),
+            ),
         )
         .build()
         .expect("old engine should build");
@@ -722,23 +600,19 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
-            TypeDesc::new(player_key)
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .access(MethodAccess::new().reflect_callable(false)),
-                ),
+            TypeDesc::new(player_key).method(
+                MethodDesc::new(MethodId::new(9), "grant_exp")
+                    .access(MethodAccess::new().reflect_callable(false)),
+            ),
         )
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -767,7 +641,7 @@ fn runtime_stages_source_file_method_access_rejection_until_safe_point() {
     assert!(!new.callable);
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -778,12 +652,10 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let old_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
-            TypeDesc::new(player_key.clone())
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .param(MethodParamDesc::new("amount").type_hint("i64")),
-                ),
+            TypeDesc::new(player_key.clone()).method(
+                MethodDesc::new(MethodId::new(9), "grant_exp")
+                    .param(MethodParamDesc::new("amount").type_hint("i64")),
+            ),
         )
         .build()
         .expect("old engine should build");
@@ -791,23 +663,19 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     let new_engine = Engine::builder()
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
-            TypeDesc::new(player_key)
-                .host_type(HostTypeId::new(1))
-                .method(
-                    MethodDesc::new(HostMethodId::new(9), "grant_exp")
-                        .param(MethodParamDesc::new("amount").type_hint("f64")),
-                ),
+            TypeDesc::new(player_key).method(
+                MethodDesc::new(MethodId::new(9), "grant_exp")
+                    .param(MethodParamDesc::new("amount").type_hint("f64")),
+            ),
         )
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -840,7 +708,7 @@ fn runtime_stages_source_file_method_parameter_rejection_until_safe_point() {
     assert_eq!(new[0].type_hint.as_deref(), Some("f64"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -852,8 +720,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
             TypeDesc::new(player_key.clone())
-                .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64")),
+                .method(MethodDesc::new(MethodId::new(9), "grant_exp").return_type("i64")),
         )
         .build()
         .expect("old engine should build");
@@ -862,19 +729,16 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
         .execution_profile(ExecutionProfile::trusted())
         .register_type_desc(
             TypeDesc::new(player_key)
-                .host_type(HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()")),
+                .method(MethodDesc::new(MethodId::new(9), "grant_exp").return_type("()")),
         )
         .build()
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(&mut runtime, "fn main() { return 2; }");
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -903,7 +767,7 @@ fn runtime_stages_source_file_method_return_rejection_until_safe_point() {
     assert_eq!(new.as_deref(), Some("()"));
     assert!(source_span.is_none());
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -916,8 +780,6 @@ fn runtime_stages_file_hot_reload_rejection_until_safe_point() {
         .build()
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     stage_source_update(
         &mut runtime,
@@ -932,7 +794,7 @@ fn main() {
 "#,
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -949,7 +811,7 @@ fn main() {
             if function == "helper"
     ));
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }
@@ -961,8 +823,6 @@ fn runtime_returns_source_text_frontend_rejection_immediately() {
         .build()
         .expect("engine should build");
     let mut runtime = runtime_from_hot_reload_source(engine, "fn main() { return 1; }");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     let error = runtime
         .stage_reload(
@@ -977,7 +837,7 @@ fn main() {
         .expect_err("front-end rejection should return immediately");
     assert_top_level_side_effect_source_error(&error);
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 
@@ -988,7 +848,7 @@ fn main() {
         None
     );
     assert_eq!(
-        runtime.call_raw("main", &[], CallOptions::unbounded(), &mut adapter, &mut tx),
+        runtime.call_raw("main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
     );
 }

@@ -1,42 +1,14 @@
 ---
-title: "Host 对象生命周期"
-description: "宿主状态的 object identity、generation 和 lifetime boundaries。"
+title: "已移除的 Host 对象接口"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-Host objects 由 Rust 拥有。Vela 存储的是指向它们的 handles，不是对象本身。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## 调用作用域 Handle
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-`CallArgs::with_host_ref` 和 `CallArgs::with_host_mut` 会为一次调用绑定 Rust
-值。VM 看到的是 `HostRef` handle 和 call-local adapter binding。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```rust
-runtime.call(
-    "main",
-    CallArgs::new().with_host_mut("player", &mut player),
-    CallOptions::unbounded(),
-)?;
-```
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-调用返回后，direct binding 就结束了。持久状态仍在 Rust 里，不在脚本 heap
-里。
-
-## 持久 Extern State
-
-`extern state` binding 保存 Rust 拥有的 persistent host object。对象必须是
-`Send`，因为 runtime 可以被移动到 worker 线程。
-
-```rust
-let runtime = Runtime::builder(engine, program)?
-    .bind_extern_state("main::player", player)?
-    .build()?;
-```
-
-VM `state` 不同：records、arrays、maps、sets、enums 和 scalars 由 Runtime
-的脚本 heap root 并追踪。
-
-## Stale References
-
-`HostRef` 包含 generation。如果对象被移除或替换后 slot 被复用，adapter 可以
-拒绝 stale handle，而不是静默写入错误对象。拒绝是 runtime diagnostic，不是
-best-effort fallback。
+详情与现有调用示例见 [English reference](/host/host-object-lifetime/)。

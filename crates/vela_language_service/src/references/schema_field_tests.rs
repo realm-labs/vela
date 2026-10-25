@@ -31,12 +31,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -121,12 +121,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -206,12 +206,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "level".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -290,7 +290,7 @@ pub fn main(state: QuestState) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "count".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {

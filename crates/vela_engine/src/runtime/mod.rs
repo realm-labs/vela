@@ -1,8 +1,5 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_host::access::HostAccess;
-#[cfg(test)]
-use vela_host::adapter::ScriptStateAdapter;
 use vela_hot_reload::runtime::HotReloadRuntime;
 pub use vela_hot_reload::runtime::HotReloadStagingHandle;
 use vela_hot_reload::version::ProgramVersion;
@@ -10,7 +7,7 @@ use vela_vm::HostExecution;
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::heap_execution::HeapExecution;
 use vela_vm::owned_value::OwnedValue;
-use vela_vm::{LinkedDriveOutcome, LinkedExecutionStart, persistent_value_to_owned_with_slots};
+use vela_vm::{LinkedDriveOutcome, LinkedExecutionStart, persistent_value_to_owned};
 #[cfg(test)]
 use vela_vm::{
     LinkedProgramHostBudgetCall, LinkedProgramHostCall, LinkedRuntimeCodeCall,
@@ -27,14 +24,10 @@ mod control;
 #[cfg(test)]
 mod control_tests;
 pub(crate) mod execution_data;
-mod execution_host;
-mod extern_state_bindings;
 pub(crate) mod handles;
-mod host_arena;
 mod image;
 mod initialization;
 mod inline_cache;
-mod lifetime;
 mod metadata;
 mod options;
 mod profile_api;
@@ -55,9 +48,8 @@ pub use bytecode_profile::{
     BytecodeProfileSnapshot, BytecodeProfileSummary, FunctionBytecodeProfile,
     ScalarLoopBytecodeProfile, ScalarUnitBytecodeProfile, SuperinstructionBytecodeProfile,
 };
-pub use call_args::{CallArgs, DirectHostIdentity};
+pub use call_args::CallArgs;
 pub use control::{CallControl, CallSnapshot, CallStatus};
-pub use extern_state_bindings::RuntimeExternStateBindings;
 pub use handles::{
     RuntimeCallTarget, RuntimeMethodSelector, VelaFunction, VelaMethod, VelaMethodTarget,
 };
@@ -67,12 +59,10 @@ pub use reload_api::{ReloadSource, RuntimeReloadError};
 pub use vm_states::{IntoStateValue, RuntimeVmStateStore, VelaValue};
 
 use call_args::call_args_type_error;
-use execution_host::ExecutionHost;
 use handles::{
     RuntimeCallExecution, RuntimeCallTargetKind, RuntimeMethodResolveContext,
     RuntimeMethodSelectorKind,
 };
-use host_arena::RuntimeHostArena;
 use reentry::{ActiveNativeReentry, invoke_prepared_context};
 use state::RuntimeState;
 use value_support::{runtime_vm, unknown_function, unknown_method, value_type_id};
@@ -265,12 +255,7 @@ where
         })
     }
 
-    pub fn call<'host, T>(
-        &mut self,
-        entry: T,
-        args: CallArgs<'host>,
-        options: CallOptions,
-    ) -> VmResult<VelaValue>
+    pub fn call<T>(&mut self, entry: T, args: CallArgs, options: CallOptions) -> VmResult<VelaValue>
     where
         T: RuntimeCallTarget,
     {
@@ -290,9 +275,6 @@ where
                 registry_image: self.image.program_image(),
                 artifact: self.image.linked_artifact(),
                 hot_reload: self.hot_reload.as_ref(),
-                extern_states: &mut state.extern_states,
-                host_arena: &mut state.host_arena,
-                host_slots: &mut state.host_slots,
                 vm_states: &mut state.vm_states,
                 generations: &mut state.generations,
                 target,
@@ -342,11 +324,7 @@ where
     /// heap objects, 65,536 values, or 16 MiB of copied storage return a VM error.
     pub fn value_to_owned(&mut self, value: &VelaValue) -> VmResult<OwnedValue> {
         self.check_vela_value_runtime(value)?;
-        persistent_value_to_owned_with_slots(
-            &value.value,
-            &mut self.state.vm_states.heap,
-            &self.state.host_slots,
-        )
+        persistent_value_to_owned(&value.value, &mut self.state.vm_states.heap)
     }
 
     #[cfg(feature = "serde")]
@@ -364,23 +342,11 @@ where
         entry: &str,
         args: &[OwnedValue],
         options: CallOptions,
-        adapter: &mut (dyn ScriptStateAdapter + Send),
-        access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
-        let execution_args =
-            CallArgs::from_positional(args.iter().cloned()).with_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(
-            execution_args,
-            &mut self.state.extern_states,
-            &mut self.state.host_arena,
-            &mut self.state.host_slots,
-        );
         let roots = self.state.vm_states.roots();
         let use_persistent_heap = options.managed_heap || !self.state.vm_states.is_empty();
         let mut host = HostExecution {
-            adapter: &mut execution_host,
-            access,
             state_values: Some(&mut self.state.vm_states.values),
         };
         let vm = if let Some(hot_reload) = self.hot_reload.as_ref() {
@@ -431,18 +397,11 @@ where
     }
 
     #[cfg(test)]
-    pub(crate) fn retains_extern_state_id(&self, state: vela_def::StateId) -> bool {
-        self.state.extern_states.contains_state_id(state)
-    }
-
-    #[cfg(test)]
-    pub(crate) fn call_args_raw<'host>(
+    pub(crate) fn call_args_raw(
         &mut self,
         entry: &str,
-        mut args: CallArgs<'host>,
+        args: CallArgs,
         options: CallOptions,
-        adapter: &'host mut (dyn ScriptStateAdapter + Send),
-        access: &mut HostAccess,
     ) -> VmResult<OwnedValue> {
         let mut budget = options.budget();
         let linked_program = self.image.linked_program();
@@ -462,18 +421,11 @@ where
             .map(|param| linked_program.debug_name(*param).to_owned())
             .collect::<Vec<_>>();
         let roots = self.state.vm_states.roots();
-        args.set_fallback_adapter(adapter);
-        let mut execution_host = ExecutionHost::new(
-            args,
-            &mut self.state.extern_states,
-            &mut self.state.host_arena,
-            &mut self.state.host_slots,
-        );
-        let resolved = execution_host.resolve_values(
+        let resolved = args.resolve_values(
             entry,
             &params,
             &code.param_defaults,
-            call_args::CallArgRuntime::new(
+            &mut call_args::CallArgRuntime::new(
                 self.state.id,
                 linked_program,
                 &mut self.state.vm_states.heap,
@@ -492,8 +444,6 @@ where
         };
         let value = {
             let mut host = HostExecution {
-                adapter: &mut execution_host,
-                access,
                 state_values: Some(&mut self.state.vm_states.values),
             };
             vm.run_linked_runtime_code_call(LinkedRuntimeCodeCall {
@@ -510,33 +460,23 @@ where
                 bytecode_profiler: self.state.generations.bytecode_profiler(),
             })
         }?;
-        vela_vm::persistent_value_to_owned_with_host(
-            &value,
-            &mut self.state.vm_states.heap,
-            &execution_host,
-        )
+        vela_vm::persistent_value_to_owned(&value, &mut self.state.vm_states.heap)
     }
 
-    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_, '_>) -> VmResult<VelaValue> {
+    fn call_runtime_args(call: RuntimeCallExecution<'_, '_, '_>) -> VmResult<VelaValue> {
         let budget = call.budget;
-        let mut execution_host = ExecutionHost::new(
-            call.args,
-            call.extern_states,
-            call.host_arena,
-            call.host_slots,
-        );
-        let resolved = execution_host.resolve_values(
+        let resolved = call.args.resolve_values(
             &call.target.name,
             &call.target.params,
             &call.target.param_defaults,
-            call_args::CallArgRuntime::new(
+            &mut call_args::CallArgRuntime::new(
                 call.runtime_id,
                 call.artifact.program(),
                 &mut call.vm_states.heap,
                 budget,
             ),
         )?;
-        let mut access = HostAccess::new();
+
         let vm = runtime_vm(call.engine, call.artifact, call.hot_reload);
         let roots = call.vm_states.roots();
         let retained_values = std::sync::Arc::clone(&call.vm_states.retained_values);
@@ -552,8 +492,6 @@ where
         entry_args.extend_from_slice(&resolved);
         let mut heap = HeapExecution::new(&mut call.vm_states.heap);
         let initial_host = HostExecution {
-            adapter: &mut execution_host,
-            access: &mut access,
             state_values: Some(&mut *vm_state_values),
         };
         let mut session = vm.start_linked_execution(
@@ -574,8 +512,6 @@ where
         loop {
             let outcome = {
                 let mut host = HostExecution {
-                    adapter: &mut execution_host,
-                    access: &mut access,
                     state_values: Some(&mut *vm_state_values),
                 };
                 vm.drive_linked_execution(
@@ -590,7 +526,6 @@ where
             match outcome {
                 LinkedDriveOutcome::Complete(value) => {
                     let value = vm.finish_linked_execution(value, &mut heap, &roots, budget);
-                    lifetime::validate_root_return(&value, heap.heap, &execution_host)?;
                     drop(heap);
                     return Ok(RuntimeValueRoots::retain(
                         &retained_values,
@@ -612,8 +547,7 @@ where
                             artifact: call.artifact,
                             vm: &vm,
                             session: &mut session,
-                            host: &mut execution_host,
-                            access: &mut access,
+
                             heap: &mut heap,
                             budget,
                             vm_state_values,
@@ -623,8 +557,6 @@ where
                         invoke_prepared_context(&prepared, &mut active)
                     };
                     let mut host = HostExecution {
-                        adapter: &mut execution_host,
-                        access: &mut access,
                         state_values: Some(&mut *vm_state_values),
                     };
                     vm.resume_linked_context_call(
@@ -660,8 +592,6 @@ where
                     linked_program: self.image.linked_program(),
                     version_id: self.current_program_version_id(),
                     script_heap: &self.state.vm_states.heap,
-                    engine: self.image.engine(),
-                    host: handles::RuntimeHostResolver::Slots(&self.state.host_slots),
                 },
             ),
         }

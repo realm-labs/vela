@@ -16,7 +16,6 @@ use crate::{
 };
 
 mod calls;
-mod host;
 mod identity;
 mod lambdas;
 mod origins;
@@ -29,10 +28,6 @@ use origins::CompileTargetOrigins;
 pub use calls::{
     CompileCallArguments, CompileCallTarget, CompileCalleeTarget, CompileDynamicCallArgument,
     CompilePlacedCallArgument, CompilePlacedCallValue, CompileReflectionCall,
-};
-pub use host::{
-    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, HostFieldTarget,
-    HostMethodTarget,
 };
 pub use lambdas::{CompileLambdaParameterTarget, CompileLambdaTarget};
 pub use placements::{
@@ -145,7 +140,6 @@ pub struct CompileTargetSnapshot {
     members: BTreeMap<(FunctionId, HirExprId), CompileMemberTarget>,
     constructors: BTreeMap<(FunctionId, HirExprId), CompileConstructorTarget>,
     pattern_constructors: BTreeMap<(FunctionId, HirPatternId), CompilePatternConstructorTarget>,
-    host_paths: BTreeMap<(FunctionId, HirExprId), CompileHostPathTarget>,
     try_targets: BTreeMap<(FunctionId, HirExprId), CompileTryTarget>,
     states: BTreeMap<HirDeclId, StateId>,
     evaluated_constants: BTreeMap<HirDeclId, MirEvaluatedConstant>,
@@ -594,9 +588,7 @@ impl<'a> MirLoweringInput<'a> {
                         function_descriptor.canonical_symbol
                     )));
                 }
-                CompileMethodClass::Host { .. }
-                | CompileMethodClass::Value
-                | CompileMethodClass::Registry => {
+                CompileMethodClass::Value | CompileMethodClass::Registry => {
                     return Err(inconsistent(format!(
                         "method descriptor #{} is not a script method",
                         method.method.get()

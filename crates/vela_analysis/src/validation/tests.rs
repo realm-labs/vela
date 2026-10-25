@@ -443,33 +443,31 @@ fn assert_array_ordering(
 }
 
 #[test]
-fn direct_extern_state_assignment_is_rejected_but_vm_state_assignment_is_allowed() {
-    let source = SourceId::new(109);
-    let text = r#"
-extern state hosted: i64
-state owned: i64 = 0
-fn main() {
-    hosted = 1;
-    (hosted) += 1;
-    owned = 2;
-}
-"#;
-    let (graph, main) = graph(source, text);
-    let generation = generation(&graph, main, FunctionId::new(10_109));
-    let view = generation.view(FunctionId::new(10_109)).expect("main view");
-    let diagnostics = view.validation_diagnostics();
-
-    assert_eq!(
-        diagnostic_codes(diagnostics),
-        [
-            "analysis::extern_state_assignment",
-            "analysis::extern_state_assignment"
-        ]
-    );
+fn extern_state_is_rejected_before_validation_and_owned_state_is_assignable() {
+    let mut removed = ModuleGraph::new();
+    removed.add_source(ModuleSource::new(
+        SourceId::new(109),
+        vela_package::PackageId::anonymous(),
+        ModulePath::from_qualified("game"),
+        "extern state hosted: i64; fn main() { hosted = 1; }",
+    ));
     assert!(
-        diagnostics
+        removed
+            .diagnostics()
             .iter()
-            .all(|diagnostic| diagnostic.message.contains("extern state"))
+            .any(|diagnostic| diagnostic.message.contains("extern state"))
+    );
+    let (graph, main) = graph(
+        SourceId::new(110),
+        "state owned: i64 = 0; fn main() { owned = 2; (owned) += 1; }",
+    );
+    let generation = generation(&graph, main, FunctionId::new(10_109));
+    assert!(
+        generation
+            .view(FunctionId::new(10_109))
+            .expect("executable main view")
+            .validation_diagnostics()
+            .is_empty()
     );
 }
 

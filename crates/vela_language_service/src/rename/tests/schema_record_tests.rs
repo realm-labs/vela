@@ -26,8 +26,8 @@ fn source_backed_schema_record_labels_produce_complete_owned_edits() {
             SourceFileSnapshot::new(schema.clone(), schema_text),
         ]);
         let source = db.source_db().records()[&schema].source_id().get();
-        let artifact = serde_json::json!({"formatVersion":3,"facts":{
-            "types":[{"name":"host::Record","fact":{"kind":"host","name":"host::Record"}}, {"name":"other::Record","fact":{"kind":"host","name":"other::Record"}}],
+        let artifact = serde_json::json!({"formatVersion":4,"facts":{
+            "types":[{"name":"host::Record","fact":{"kind":"record","name":"host::Record"}}, {"name":"other::Record","fact":{"kind":"record","name":"other::Record"}}],
             "fields":[{"owner":"host::Record","name":"value","fact":{"kind":"primitive","name":"i64"},"sourceSpan":{"source":source,"start":7,"end":12}},
                 {"owner":"host::Record","name":"spare","fact":{"kind":"primitive","name":"i64"}}, {"owner":"other::Record","name":"value","fact":{"kind":"primitive","name":"i64"}}]
         }});

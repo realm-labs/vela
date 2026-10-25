@@ -296,18 +296,6 @@ impl FunctionBuilder<'_> {
         iterable: HirExprId,
         origin: MirSourceOrigin,
     ) -> Result<Option<LoweredLoopIterable>, MirBuildError> {
-        let host_collection = match self.input.analysis().expression(iterable) {
-            Some(
-                TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. },
-            ) => Some(vela_common::HostCollectionIteration::ArrayValues),
-            Some(TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. }) => {
-                Some(vela_common::HostCollectionIteration::MapEntries)
-            }
-            Some(TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. }) => {
-                Some(vela_common::HostCollectionIteration::SetValues)
-            }
-            _ => None,
-        };
         let iterable = self.lower_expression(iterable)?;
         if self.current_is_terminated()? {
             return Ok(None);
@@ -319,10 +307,7 @@ impl FunctionBuilder<'_> {
             MirStatement::new(
                 origin,
                 Some(MirPlace::temp(iterator)),
-                MirStatementKind::Iterator(MirIteratorOperation::Create {
-                    iterable,
-                    host_collection,
-                }),
+                MirStatementKind::Iterator(MirIteratorOperation::Create { iterable }),
                 MirEffect::allocation(),
                 Some(safepoint),
             ),

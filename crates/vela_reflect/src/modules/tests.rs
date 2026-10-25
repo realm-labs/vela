@@ -92,7 +92,7 @@ fn registers_and_filters_script_state_metadata() {
         ModulePath::from_qualified("game::session"),
         r#"
 pub state counter: i64 = 1;
-extern state player: Player;
+state player: i64 = 2;
 "#,
     ));
     let mut registry = TypeRegistry::new();
@@ -102,7 +102,6 @@ extern state player: Player;
         .state_by_name("game::session::counter")
         .expect("VM state metadata");
     assert!(counter.public);
-    assert_eq!(counter.storage, StateStorage::Vm);
     assert_eq!(counter.type_contract, "i64");
     assert!(counter.has_initializer);
     assert_eq!(counter.origin, DeclOrigin::Script);
@@ -114,11 +113,10 @@ extern state player: Player;
 
     let player = registry
         .state_by_name("game::session::player")
-        .expect("extern state metadata");
+        .expect("private state metadata");
     assert!(!player.public);
-    assert_eq!(player.storage, StateStorage::Extern);
-    assert_eq!(player.type_contract, "Player");
-    assert!(!player.has_initializer);
+    assert_eq!(player.type_contract, "i64");
+    assert!(player.has_initializer);
 
     let ReflectValue::ScriptRecord { type_name, fields } =
         state(&registry, "game::session::counter").expect("state record")
@@ -126,10 +124,7 @@ extern state player: Player;
         panic!("state metadata should be a record");
     };
     assert_eq!(type_name, "ReflectState");
-    assert_eq!(
-        fields.get("storage"),
-        Some(&ReflectValue::Host(HostValue::String("vm".to_owned())))
-    );
+    assert!(!fields.contains_key("storage"));
     assert_eq!(
         fields.get("has_initializer"),
         Some(&ReflectValue::Host(HostValue::Bool(true)))

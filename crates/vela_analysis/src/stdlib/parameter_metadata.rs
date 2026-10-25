@@ -37,10 +37,10 @@ pub(super) fn method_parameters(
     arity: usize,
 ) -> Option<Vec<StdlibParameterMetadata>> {
     let owner = match receiver {
-        TypeFact::Array { .. } | TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => "Array",
-        TypeFact::Map { .. } | TypeFact::MapView { .. } | TypeFact::MapMut { .. } => "Map",
-        TypeFact::Set { .. } | TypeFact::SetView { .. } | TypeFact::SetMut { .. } => "Set",
-        TypeFact::Iterator { .. } | TypeFact::ScopedIterator { .. } => "Iterator",
+        TypeFact::Array { .. } => "Array",
+        TypeFact::Map { .. } => "Map",
+        TypeFact::Set { .. } => "Set",
+        TypeFact::Iterator { .. } => "Iterator",
         TypeFact::Option { .. } | TypeFact::OptionSome { .. } | TypeFact::OptionNone => "Option",
         TypeFact::Result { .. } | TypeFact::ResultOk { .. } | TypeFact::ResultErr { .. } => {
             "Result"

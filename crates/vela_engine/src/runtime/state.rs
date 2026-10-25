@@ -5,19 +5,14 @@ use vela_bytecode::{
     CacheSiteId, DebugNameId, ExecutableGenerationId, InstructionOffset, LinkedArtifact,
     LinkedProgram,
 };
-use vela_host::slot::HostRefSlots;
 
 use super::{
-    RuntimeExternStateBindings, RuntimeVmStateStore, bytecode_profile::BytecodeProfileSnapshot,
-    execution_data::SharedGenerationExecutionData, host_arena::RuntimeHostArena,
-    image::RuntimeImage, next_runtime_id,
+    RuntimeVmStateStore, bytecode_profile::BytecodeProfileSnapshot,
+    execution_data::SharedGenerationExecutionData, image::RuntimeImage, next_runtime_id,
 };
 
 pub(super) struct RuntimeState {
     pub(super) id: u64,
-    pub(super) extern_states: RuntimeExternStateBindings,
-    pub(super) host_arena: RuntimeHostArena,
-    pub(super) host_slots: HostRefSlots,
     pub(super) vm_states: RuntimeVmStateStore,
     pub(super) generations: RuntimeGenerations,
 }
@@ -34,7 +29,6 @@ pub(super) struct RuntimeGenerations {
 struct ActorGenerationState {
     artifact: Weak<LinkedArtifact>,
     vm_states: BTreeSet<vela_def::StateId>,
-    extern_states: BTreeSet<vela_def::StateId>,
     execution_data: SharedGenerationExecutionData,
 }
 
@@ -45,9 +39,6 @@ impl RuntimeState {
         entries.insert(active_generation, ActorGenerationState::for_image(image));
         Self {
             id: next_runtime_id(),
-            extern_states: RuntimeExternStateBindings::new(),
-            host_arena: RuntimeHostArena::new(),
-            host_slots: HostRefSlots::new(),
             vm_states: RuntimeVmStateStore::new(),
             generations: RuntimeGenerations {
                 active_generation,
@@ -69,9 +60,8 @@ impl RuntimeState {
     pub(super) fn reclaim_dead_generations(&mut self) {
         self.vm_states.collect();
         self.generations.prune_dead_generations(&self.vm_states);
-        let (vm_states, extern_states) = self.generations.retained_state_ids();
+        let vm_states = self.generations.retained_state_ids();
         self.vm_states.retain_state_ids(&vm_states);
-        self.extern_states.retain_state_ids(&extern_states);
     }
 
     pub(super) fn bytecode_profile_snapshot(&self) -> Option<BytecodeProfileSnapshot> {
@@ -145,14 +135,12 @@ impl RuntimeGenerations {
             .retain(|generation, _| live.contains(generation));
     }
 
-    fn retained_state_ids(&self) -> (BTreeSet<vela_def::StateId>, BTreeSet<vela_def::StateId>) {
+    fn retained_state_ids(&self) -> BTreeSet<vela_def::StateId> {
         let mut vm_states = BTreeSet::new();
-        let mut extern_states = BTreeSet::new();
         for state in self.entries.values() {
             vm_states.extend(state.vm_states.iter().copied());
-            extern_states.extend(state.extern_states.iter().copied());
         }
-        (vm_states, extern_states)
+        vm_states
     }
 
     #[cfg(test)]
@@ -177,18 +165,7 @@ impl ActorGenerationState {
     ) -> Self {
         Self {
             artifact: Arc::downgrade(artifact),
-            vm_states: program
-                .states()
-                .iter()
-                .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
-                .map(|state| state.id)
-                .collect(),
-            extern_states: program
-                .states()
-                .iter()
-                .filter(|state| state.storage == vela_bytecode::StateStorage::Extern)
-                .map(|state| state.id)
-                .collect(),
+            vm_states: program.states().iter().map(|state| state.id).collect(),
             execution_data: Arc::clone(execution_data),
         }
     }
@@ -204,18 +181,6 @@ impl vela_vm::VmInlineCaches for RuntimeGenerations {
 
     fn len(&self) -> usize {
         self.active().execution_data.inline_caches().len()
-    }
-
-    fn host_access(&self, site: CacheSiteId) -> Option<vela_vm::HostInlineCacheEntry> {
-        vela_vm::VmInlineCaches::host_access(self.active().execution_data.as_ref(), site)
-    }
-
-    fn set_host_access(&self, site: CacheSiteId, entry: vela_vm::HostInlineCacheEntry) {
-        vela_vm::VmInlineCaches::set_host_access(
-            self.active().execution_data.as_ref(),
-            site,
-            entry,
-        );
     }
 
     fn record_field(&self, site: CacheSiteId) -> Option<vela_vm::RecordFieldInlineCacheEntry> {
@@ -402,7 +367,6 @@ mod tests {
             &second_generation.execution_data
         ));
         assert_eq!(first_generation.vm_states.len(), 0);
-        assert_eq!(first_generation.extern_states.len(), 0);
         assert_eq!(
             first_generation.execution_data.inline_caches().len(),
             first_image.cache_site_count()

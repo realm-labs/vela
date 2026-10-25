@@ -1,4 +1,4 @@
-use vela_common::{HostTypeId, PrimitiveTag, ScalarValue, SourceId, Span};
+use vela_common::{PrimitiveTag, ScalarValue, SourceId, Span};
 use vela_def::{FunctionId, MethodId, StateId, TypeId};
 use vela_hir::ids::{HirBodyId, HirDeclId, HirExprId, HirLocalId, HirNodeId};
 
@@ -117,7 +117,6 @@ fn mir_model_requires_safepoints_for_calls_even_with_incomplete_effect_metadata(
                 effect: MirEffect::PURE,
             },
             arguments: Vec::new(),
-            scoped_borrow_return: false,
         }),
         MirEffect::may_trap(),
         None,
@@ -228,66 +227,13 @@ fn mir_model_rejects_effect_and_destination_contradictions() {
 }
 
 #[test]
-fn mir_model_exposes_allocating_host_reflection_and_dynamic_boundaries() {
+fn mir_model_exposes_allocating_reflection_and_dynamic_boundaries() {
     let body = HirBodyId::new(28);
     let origin = origin(body);
     let mut function = test_function(body, MirFunctionOwner::Function(FunctionId::new(280)));
     let entry = function.entry_block();
-    let host_type = HostTypeTarget {
-        semantic: TypeId::new(281),
-        runtime: HostTypeId::new(282),
-    };
-    let root = function.add_synthetic_local(MirValueType::Host(host_type), origin);
-    let host_result = function.add_temp(MirValueType::Dynamic, origin);
-    let host_read = MirStatement::new(
-        origin,
-        Some(MirPlace::temp(host_result)),
-        MirStatementKind::Host(MirHostOperation::Read {
-            root: MirOperand::Local(root),
-            path: MirHostPath {
-                root_type: host_type,
-                segments: vec![MirHostPathSegment::Field(HostFieldTarget {
-                    owner: host_type,
-                    semantic: vela_def::FieldId::new(283),
-                    runtime: vela_def::FieldId::new(284),
-                    access: CompileFieldAccess::new(true, false, true, false, Vec::new()),
-                })],
-            },
-        }),
-        MirEffect {
-            may_trap: true,
-            host_read: true,
-            ..MirEffect::PURE
-        },
-        None,
-    );
-    assert_eq!(
-        function.append_statement(entry, host_read.clone()),
-        Err(MirBuildError::IncompleteEffect {
-            origin,
-            required: MirEffect::host_read(),
-            actual: host_read.effect,
-        })
-    );
-    let host_read = MirStatement {
-        effect: MirEffect::host_read(),
-        ..host_read
-    };
-    assert_eq!(
-        function.append_statement(entry, host_read.clone()),
-        Err(MirBuildError::MissingSafepoint { origin })
-    );
+    let root = function.add_synthetic_local(MirValueType::Dynamic, origin);
     let safepoint = function.add_safepoint(MirSafepoint::new(origin));
-    function
-        .append_statement(
-            entry,
-            MirStatement {
-                safepoint: Some(safepoint),
-                ..host_read
-            },
-        )
-        .expect("host reads can materialize host strings/bytes in the script heap");
-
     let static_member = function.add_temp(MirValueType::Primitive(PrimitiveTag::String), origin);
     function
         .append_statement(
@@ -601,7 +547,7 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
         }],
         positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
         return_contract: Some(MirTypeContract::Primitive(PrimitiveTag::Bool)),
-        effect: MirEffect::host_read(),
+        effect: MirEffect::may_trap(),
     };
     let descriptor = CompileMethodDescriptor {
         id: method,
@@ -635,20 +581,6 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     snapshot
         .insert_method_descriptor(second_owner_descriptor.clone(), fact_origin)
         .expect("one trait MethodId may describe a distinct receiver owner");
-    let host_method_descriptor = CompileMethodDescriptor {
-        id: MethodId::new(216),
-        owner: TypeId::new(300),
-        member_name: "award".to_owned(),
-        debug_name: "HostPlayer::award".to_owned(),
-        class: CompileMethodClass::Host {
-            runtime: vela_common::HostMethodId::new(301),
-        },
-        signature: signature.clone(),
-        access: CompileMethodAccess::new(false, false, vec!["player.admin".to_owned()]),
-    };
-    snapshot
-        .insert_method_descriptor(host_method_descriptor.clone(), fact_origin)
-        .expect("host method descriptor should retain its runtime ID");
     snapshot
         .insert_guard(guard_key, guard.clone(), fact_origin)
         .expect("guard target should be unique");
@@ -688,7 +620,6 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
                 contract: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
                 declaration_order: 0,
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             fact_origin,
         )
@@ -715,10 +646,6 @@ fn mir_model_snapshot_owns_method_signatures_and_guard_contracts() {
     assert_eq!(
         snapshot.method_descriptor(second_owner_descriptor.owner, method),
         Some(&second_owner_descriptor)
-    );
-    assert_eq!(
-        snapshot.method_descriptor(host_method_descriptor.owner, host_method_descriptor.id),
-        Some(&host_method_descriptor)
     );
     assert_eq!(snapshot.guard(guard_key), Some(&guard));
     assert_eq!(
@@ -1084,7 +1011,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
             debug_name: "native::limit".to_owned(),
             signature: external_signature.clone(),
             arguments: Vec::new(),
-            scoped_borrow_return: false,
         }),
         MirEffect::external_call(),
         Some(safepoint),
@@ -1102,7 +1028,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                     debug_name: "native::limit".to_owned(),
                     signature: external_signature.clone(),
                     arguments: vec![MirOperand::Immediate(MirImmediate::Unit)],
-                    scoped_borrow_return: false,
                 }),
                 ..external_call
             },
@@ -1128,7 +1053,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                         MirOperand::Immediate(MirImmediate::Unit),
                         MirOperand::Immediate(MirImmediate::Unit),
                     ],
-                    scoped_borrow_return: false,
                 }),
                 MirEffect::external_call(),
                 Some(safepoint),
@@ -1148,7 +1072,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                 ..external_signature
             },
             arguments: vec![MirOperand::Immediate(MirImmediate::Unit)],
-            scoped_borrow_return: false,
         }),
         MirEffect::external_call(),
         Some(safepoint),
@@ -1174,7 +1097,6 @@ fn mir_model_calls_encode_receivers_and_default_delivery_contracts() {
                         MirOperand::Immediate(MirImmediate::Unit),
                         MirOperand::Immediate(MirImmediate::Unit),
                     ],
-                    scoped_borrow_return: false,
                 }),
                 ..variadic_call
             },

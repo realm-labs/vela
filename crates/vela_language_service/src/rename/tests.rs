@@ -518,12 +518,12 @@ pub fn spawn(player: Player) -> Player {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("Player").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" },
+                    "fact": { "kind": "record", "name": "Player" },
                     "sourceSpan": {
                         "source": schema_record.source_id().get(),
                         "start": target_start,
@@ -593,7 +593,7 @@ pub fn main(amount: i64) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "functions": [
                 {
@@ -674,7 +674,7 @@ pub fn main(state: QuestState) -> i64 {
     let target_start = schema_text.find("Active").expect("schema marker");
     let done_start = schema_text.find("Done").expect("schema Done marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -781,12 +781,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("level").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -862,12 +862,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema source should be indexed");
     let target_start = schema_text.find("grant").expect("schema marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "methods": [
@@ -1030,7 +1030,7 @@ fn host_schema_rename_is_not_editable() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { return player.level }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     let databases = databases_for_with_schema(
         vec![SourceFileSnapshot::new(document.clone(), text)],

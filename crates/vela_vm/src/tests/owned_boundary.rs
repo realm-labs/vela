@@ -32,6 +32,22 @@ fn identity(value) {
 }
 
 #[test]
+fn script_mutation_of_owned_argument_has_no_implicit_rust_writeback() {
+    let program = compile_test_program(
+        SourceId::new(96),
+        "fn update(value) { value[0] = 42; return value; }",
+    )
+    .expect("compile owned argument mutation");
+    let linked = link_test_program(&program);
+    let input = OwnedValue::array([1_i64]);
+    let result = Vm::new()
+        .run_linked_program(&linked, "update", std::slice::from_ref(&input))
+        .expect("mutate the script-owned copy");
+    assert_eq!(result, OwnedValue::array([42_i64]));
+    assert_eq!(input, OwnedValue::array([1_i64]));
+}
+
+#[test]
 fn public_program_entrypoint_preserves_owned_non_string_map_keys() {
     let program = compile_test_program(
         SourceId::new(1),
@@ -88,7 +104,7 @@ fn identity(value) {
 "#,
     )
     .expect("compile identity program");
-    let value = OwnedValue::map([(OwnedValue::PathProxy(path_proxy()), "level")]);
+    let value = OwnedValue::map([(OwnedValue::tuple([] as [OwnedValue; 0]), "level")]);
     let linked = link_test_program(&program);
 
     let error = Vm::new()
@@ -112,7 +128,7 @@ fn identity(value) {
 "#,
     )
     .expect("compile identity program");
-    let value = OwnedValue::set([OwnedValue::PathProxy(path_proxy())]);
+    let value = OwnedValue::set([OwnedValue::tuple([] as [OwnedValue; 0])]);
     let linked = link_test_program(&program);
 
     let error = Vm::new()
@@ -154,9 +170,4 @@ fn identity(value) {
 
     assert_eq!(result, value);
     assert_eq!(budget.memory_bytes_allocated(), 0);
-}
-
-fn path_proxy() -> PathProxy {
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 1);
-    PathProxy::from_diagnostic_path(HostPath::new(host_ref).field(FieldId::new(2)))
 }

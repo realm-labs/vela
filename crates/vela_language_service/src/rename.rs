@@ -574,7 +574,12 @@ fn rename_target<'a>(
                 token,
             }));
         }
-        if let Some(target) = member_receiver_fact.and_then(|receiver| {
+        let source_receiver_fact = member_receiver_fact.filter(|receiver| {
+            query.member_receiver_range().or_else(|| query.call_member_receiver_range())
+                .and_then(|range| query.source_type_for_range(databases, range)).is_some()
+                || !matches!(receiver, TypeFact::Record { name } if databases.schema_db().facts().type_fact(name).is_some())
+        });
+        if let Some(target) = source_receiver_fact.and_then(|receiver| {
             token_text(text, token.range).and_then(|field| {
                 fields::script_field_target_for_receiver_fact(graph, receiver, field, &token)
             })
@@ -592,7 +597,7 @@ fn rename_target<'a>(
                         &token,
                     )
                 } else {
-                    member_receiver_fact.and_then(|receiver| {
+                    source_receiver_fact.and_then(|receiver| {
                         methods::script_method_target_for_receiver_fact(
                             graph, receiver, method, &token,
                         )

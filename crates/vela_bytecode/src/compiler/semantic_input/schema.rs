@@ -18,15 +18,15 @@ use vela_mir::{
     CompileFunctionDescriptor, CompileGuardKey, CompileGuardTarget, CompileMethodAccess,
     CompileMethodClass, CompileMethodDescriptor, CompileParameter, CompileParameterDefault,
     CompilePositionalPolicy, CompileSignature, CompileStateDescriptor, CompileStateStorage,
-    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, HostTypeTarget,
-    MethodExecutableTarget, MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
+    CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor, MethodExecutableTarget,
+    MirEffect, MirGuardLocation, MirSourceOrigin, MirTypeContract,
 };
 use vela_registry::{TypeHintDef, TypeKindDef};
 
 use super::contracts::ContractBoundary;
 use super::external::ExternalCatalog;
 use super::{GenerationBuilder, SemanticRoots, input_error, registry_input_error};
-use crate::compiler::error::{CompileError, CompileErrorKind, CompileResult};
+use crate::compiler::error::CompileResult;
 
 impl GenerationBuilder<'_, '_> {
     pub(super) fn insert_script_schema(&mut self) -> CompileResult<()> {
@@ -153,7 +153,6 @@ impl GenerationBuilder<'_, '_> {
                                 contract: contract.clone(),
                                 declaration_order: checked_index(order, origin, "field order")?,
                                 access: CompileFieldAccess::script(),
-                                host_runtime: None,
                             },
                             origin,
                         )
@@ -224,7 +223,6 @@ impl GenerationBuilder<'_, '_> {
                                         "variant field order",
                                     )?,
                                     access: CompileFieldAccess::script(),
-                                    host_runtime: None,
                                 },
                                 origin,
                             )
@@ -314,17 +312,6 @@ impl GenerationBuilder<'_, '_> {
             let initializer = (state.storage == StateStorage::Vm)
                 .then(|| script_state_initializer_id(package.as_str(), &symbol));
             let origin = MirSourceOrigin::declaration(declaration, metadata.span);
-            if state.storage == StateStorage::Extern
-                && !matches!(contract, MirTypeContract::Host(_))
-            {
-                return Err(
-                    CompileError::new(CompileErrorKind::InvalidExternStateContract {
-                        state: symbol,
-                        actual: state.type_hint.display(),
-                    })
-                    .with_span(metadata.span),
-                );
-            }
             self.remember_contract(&contract, origin);
             self.targets
                 .insert_state(
@@ -334,7 +321,6 @@ impl GenerationBuilder<'_, '_> {
                         name: symbol.clone(),
                         storage: match state.storage {
                             StateStorage::Vm => CompileStateStorage::Vm,
-                            StateStorage::Extern => CompileStateStorage::Extern,
                         },
                         contract: contract.clone(),
                         initializer,
@@ -799,7 +785,7 @@ pub(super) fn contract_from_fact(
     script_types: &BTreeMap<HirDeclId, TypeId>,
     script_shapes: &BTreeMap<TypeId, ShapeId>,
 ) -> Option<MirTypeContract> {
-    structural_contract(fact, |name, host| {
+    structural_contract(fact, |name| {
         if let Some((_, type_id)) = script_types.iter().find(|(declaration, _)| {
             graph.qualified_declaration_name(**declaration).as_deref() == Some(name)
                 || graph
@@ -815,14 +801,7 @@ pub(super) fn contract_from_fact(
             ));
         }
         let target = registry.type_target_fact(name)?;
-        if host {
-            Some(MirTypeContract::Host(HostTypeTarget {
-                semantic: target.semantic,
-                runtime: target.host_runtime?,
-            }))
-        } else {
-            Some(MirTypeContract::Definition(target.semantic))
-        }
+        Some(MirTypeContract::Definition(target.semantic))
     })
 }
 
@@ -830,22 +809,15 @@ fn external_contract_from_fact(
     fact: &TypeFact,
     catalog: &ExternalCatalog,
 ) -> Option<MirTypeContract> {
-    structural_contract(fact, |name, host| {
+    structural_contract(fact, |name| {
         let ty = catalog.type_by_source(name)?;
-        if host {
-            Some(MirTypeContract::Host(HostTypeTarget {
-                semantic: ty.id,
-                runtime: vela_common::HostTypeId::new(u64::try_from(ty.host_runtime_id?).ok()?),
-            }))
-        } else {
-            Some(MirTypeContract::Definition(ty.id))
-        }
+        Some(MirTypeContract::Definition(ty.id))
     })
 }
 
 fn structural_contract(
     fact: &TypeFact,
-    mut definition: impl FnMut(&str, bool) -> Option<MirTypeContract> + Copy,
+    mut definition: impl FnMut(&str) -> Option<MirTypeContract> + Copy,
 ) -> Option<MirTypeContract> {
     Some(match fact {
         TypeFact::Unknown | TypeFact::Any | TypeFact::Union(_) => MirTypeContract::Any,
@@ -853,17 +825,15 @@ fn structural_contract(
         TypeFact::Primitive(tag) => MirTypeContract::Primitive(*tag),
         TypeFact::Range => MirTypeContract::Range,
         TypeFact::Array { element } => MirTypeContract::Array(contract_box(element, definition)),
-        TypeFact::ArrayView { .. } | TypeFact::ArrayMut { .. } => MirTypeContract::Any,
+
         TypeFact::Map { key, value } => MirTypeContract::Map {
             key: contract_box(key, definition),
             value: contract_box(value, definition),
         },
-        TypeFact::MapView { .. } | TypeFact::MapMut { .. } => MirTypeContract::Any,
+
         TypeFact::Set { element } => MirTypeContract::Set(contract_box(element, definition)),
-        TypeFact::SetView { .. } | TypeFact::SetMut { .. } => MirTypeContract::Any,
-        TypeFact::Iterator { item } | TypeFact::ScopedIterator { item } => {
-            MirTypeContract::Iterator(contract_box(item, definition))
-        }
+
+        TypeFact::Iterator { item } => MirTypeContract::Iterator(contract_box(item, definition)),
         TypeFact::Tuple { elements } => MirTypeContract::Tuple(
             elements
                 .iter()
@@ -904,15 +874,15 @@ fn structural_contract(
             type_id: record.type_id(),
             shape: record.shape(),
         },
-        TypeFact::Record { name } | TypeFact::Enum { name, .. } => definition(name, false)?,
-        TypeFact::Host { name } => definition(name, true)?,
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } => definition(name)?,
+
         TypeFact::Trait { .. } | TypeFact::Module { .. } => MirTypeContract::Any,
     })
 }
 
 fn contract_box(
     fact: &TypeFact,
-    definition: impl FnMut(&str, bool) -> Option<MirTypeContract> + Copy,
+    definition: impl FnMut(&str) -> Option<MirTypeContract> + Copy,
 ) -> Option<Box<MirTypeContract>> {
     if matches!(fact, TypeFact::Unknown | TypeFact::Any) {
         None
@@ -958,7 +928,7 @@ fn registered_type_fact(
         TypeKindDef::Range => TypeFact::Range,
         TypeKindDef::Function => TypeFact::function(Vec::new(), TypeFact::Any),
         TypeKindDef::Closure => TypeFact::Closure,
-        TypeKindDef::Host => TypeFact::host(name),
+
         TypeKindDef::ScriptStruct => TypeFact::record(name),
         TypeKindDef::ScriptEnum => TypeFact::enum_type(name, None::<String>),
     }

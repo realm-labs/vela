@@ -1,54 +1,14 @@
 ---
-title: "Host 类型和 Schema"
-description: "Rust host types 如何成为稳定的脚本可见 schema。"
+title: "已注册的 Value 类型元数据"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-Host schemas 定义脚本可以看到什么。它们描述类型名、字段、方法、index
-capability、effects、stable IDs 和 reflection access。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## Schema Surface
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-```rust
-#[derive(Debug, ScriptHost)]
-#[script(path = "examples::host_type_methods::ItemStack")]
-struct ItemStack {
-    #[script(get, set, hint = "i64")]
-    count: i64,
-}
-```
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-脚本会看到 `ItemStack.count` 是一个可读可写的 `i64` 字段。Rust 仍然拥有
-对象本身。读写必须经过 host access checks。
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-## 具体 Host 类型
-
-脚本不看到 Rust 泛型。宿主可以注册一个 map-like 具体类型，给它
-script-facing 名称和 index capability。
-
-```rust
-fn string_item_map_type() -> HostTypeSpec {
-    HostTypeSpec::new(
-        TypeDesc::new(TypeKey::new(TypeId::new(8_801), "StringItemMap"))
-            .index_capability(
-                HostIndexCapability::new()
-                    .readable(true)
-                    .writable(true)
-                    .key_type("string")
-                    .value_type("ItemStack"),
-            ),
-    )
-}
-```
-
-```vela
-player.inventory.items["gold"].count += amount;
-```
-
-VM 不把它当作 Rust `BTreeMap` 特判，而是把它当作一个带 keyed path 能力的
-已注册 host type。
-
-## 兼容性
-
-Stable IDs 和 schema hashes 是 hot reload 与 reflection 的一部分。修改字段
-可写性、type hint、method effect 或 callable surface，都可能让新的 program
-image 和现有 runtime 不兼容。
+详情与现有调用示例见 [English reference](/host/host-types-schemas/)。

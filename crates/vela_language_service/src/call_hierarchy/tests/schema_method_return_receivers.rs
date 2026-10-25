@@ -187,16 +187,16 @@ pub fn grant() { return 1 }";
     let inventory_start = schema_text.find("inventory").expect("inventory marker");
     let grant_start = schema_text.find("grant").expect("grant marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 },
                 {
                     "name": "Inventory",
-                    "fact": { "kind": "host", "name": "Inventory" }
+                    "fact": { "kind": "record", "name": "Inventory" }
                 }
             ],
             "methods": [
@@ -206,7 +206,7 @@ pub fn grant() { return 1 }";
                     "fact": {
                         "kind": "function",
                         "params": [],
-                        "returns": { "kind": "host", "name": "Inventory" }
+                        "returns": { "kind": "record", "name": "Inventory" }
                     },
                     "sourceSpan": {
                         "source": schema_record.source_id().get(),
@@ -265,12 +265,12 @@ pub fn preview() { return 1 }";
     let rewardable_start = schema_text.find("rewardable").expect("rewardable marker");
     let preview_start = schema_text.find("preview").expect("preview marker");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "traits": [

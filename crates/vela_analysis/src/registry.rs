@@ -1,15 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_common::{
-    CollectionViewCapabilities, HostConstructorBinding, HostTypeId, InteropTypeId,
-    ReceiverCapabilities, ReceiverCapability, Span, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum,
-};
-use vela_def::{FieldId, FunctionId, TypeId};
+use vela_common::{InteropTypeId, Span, TypeAbiFingerprint, TypeBindingRegistryChecksum};
+use vela_def::{FieldId, TypeId};
 use vela_reflect::access::{FunctionAccess, MethodAccess};
 use vela_reflect::modules::{DeclOrigin, ModuleDesc};
-use vela_reflect::registry::{FieldDesc, TypeRegistry};
-pub use vela_registry::{ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef};
+use vela_reflect::registry::FieldDesc;
 
 use crate::type_fact::TypeFact;
 
@@ -58,31 +53,20 @@ pub struct RegistryFieldAccessFact {
 pub struct RegistryTypeTargetFact {
     pub name: String,
     pub semantic: TypeId,
-    pub host_runtime: Option<HostTypeId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RegistryTypeBindingFact {
     pub id: InteropTypeId,
-    pub storage: StoragePolicy,
-    pub capabilities: ReceiverCapabilities,
-    pub collection_views: Option<CollectionViewCapabilities>,
-    pub constructor_ids: Vec<FunctionId>,
-    pub host_constructors: Vec<HostConstructorBinding>,
     pub abi_fingerprint: TypeAbiFingerprint,
 }
 
 impl RegistryTypeTargetFact {
     #[must_use]
-    pub fn new(
-        name: impl Into<String>,
-        semantic: TypeId,
-        host_runtime: Option<HostTypeId>,
-    ) -> Self {
+    pub fn new(name: impl Into<String>, semantic: TypeId) -> Self {
         Self {
             name: name.into(),
             semantic,
-            host_runtime,
         }
     }
 }
@@ -93,7 +77,6 @@ pub struct RegistryFieldTargetFact {
     pub owner_name: String,
     pub name: String,
     pub semantic: FieldId,
-    pub host_runtime: Option<FieldId>,
     pub variant_field: bool,
     pub declaration_order: u32,
     pub has_default: bool,
@@ -107,7 +90,6 @@ impl RegistryFieldTargetFact {
         owner_name: impl Into<String>,
         name: impl Into<String>,
         semantic: FieldId,
-        host_runtime: Option<FieldId>,
         variant_field: bool,
         access: RegistryFieldAccessFact,
     ) -> Self {
@@ -116,7 +98,6 @@ impl RegistryFieldTargetFact {
             owner_name: owner_name.into(),
             name: name.into(),
             semantic,
-            host_runtime,
             variant_field,
             declaration_order: 0,
             has_default: false,
@@ -155,7 +136,6 @@ impl RegistryFieldAccessFact {
 pub struct RegistryMethodAccessFact {
     pub owner: String,
     pub name: String,
-    pub receiver: ReceiverCapability,
     pub public: bool,
     pub reflect_callable: bool,
     pub required_permissions: Vec<String>,
@@ -181,54 +161,13 @@ impl RegistryFunctionAccessFact {
 }
 
 impl RegistryMethodAccessFact {
-    fn new(
-        owner: impl Into<String>,
-        name: impl Into<String>,
-        receiver: ReceiverCapability,
-        access: &MethodAccess,
-    ) -> Self {
+    fn new(owner: impl Into<String>, name: impl Into<String>, access: &MethodAccess) -> Self {
         Self {
             owner: owner.into(),
             name: name.into(),
-            receiver,
             public: access.public,
             reflect_callable: access.reflect_callable,
             required_permissions: access.required_permissions().to_vec(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RegistryIndexCapabilityFact {
-    pub owner: String,
-    pub readable: bool,
-    pub writable: bool,
-    pub addable: bool,
-    pub removable: bool,
-    pub key: TypeFact,
-    pub value: TypeFact,
-}
-
-impl RegistryIndexCapabilityFact {
-    fn new(
-        owner: impl Into<String>,
-        capability: &vela_reflect::registry::HostIndexCapability,
-        registry: &TypeRegistry,
-    ) -> Self {
-        Self {
-            owner: owner.into(),
-            readable: capability.readable,
-            writable: capability.writable,
-            addable: capability.addable,
-            removable: capability.removable,
-            key: capability
-                .key_type
-                .as_deref()
-                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
-            value: capability
-                .value_type
-                .as_deref()
-                .map_or(TypeFact::Unknown, |hint| registry_hint_fact(registry, hint)),
         }
     }
 }
@@ -303,7 +242,6 @@ pub struct RegistryFacts {
     methods: BTreeMap<(String, String), TypeFact>,
     method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     method_docs: BTreeMap<(String, String), String>,
-    method_scoped_resources: BTreeMap<(String, String), ScopedResourceReturnDef>,
     trait_methods: BTreeMap<(String, String), TypeFact>,
     trait_method_signatures: BTreeMap<(String, String), CallableSignatureFact>,
     trait_method_docs: BTreeMap<(String, String), String>,
@@ -312,9 +250,7 @@ pub struct RegistryFacts {
     function_signatures: BTreeMap<String, CallableSignatureFact>,
     function_origins: BTreeMap<String, DeclOrigin>,
     function_docs: BTreeMap<String, String>,
-    function_scoped_resources: BTreeMap<String, ScopedResourceReturnDef>,
     function_access: BTreeMap<String, RegistryFunctionAccessFact>,
-    index_capabilities: BTreeMap<String, RegistryIndexCapabilityFact>,
     method_effects: BTreeMap<(String, String), RegistryEffectFact>,
     method_access: BTreeMap<(String, String), RegistryMethodAccessFact>,
     trait_method_effects: BTreeMap<(String, String), RegistryEffectFact>,
@@ -401,46 +337,6 @@ impl RegistryFacts {
     pub fn field_target_fact(&self, owner: &str, field: &str) -> Option<&RegistryFieldTargetFact> {
         self.field_targets
             .get(&(owner.to_owned(), field.to_owned()))
-    }
-
-    /// Resolves a host-visible field with the same direct-then-unique-variant
-    /// policy as the authoritative definition registry.
-    ///
-    /// A plain field always wins. If no plain field exists, a field exposed by
-    /// exactly one variant is available through the host target path. The
-    /// fallback deliberately rejects two variants exposing the same name.
-    #[must_use]
-    pub fn host_field_target_fact(
-        &self,
-        owner: &str,
-        field: &str,
-    ) -> Option<&RegistryFieldTargetFact> {
-        let semantic_owner = self.type_target_fact(owner)?.semantic;
-        let matching = |target: &&RegistryFieldTargetFact| {
-            target.owner == semantic_owner && target.name == field
-        };
-        let mut direct = self
-            .field_targets
-            .values()
-            .filter(matching)
-            .filter(|target| !target.variant_field);
-        if let Some(target) = direct.next() {
-            return direct.next().is_none().then_some(target);
-        }
-        let mut variants = self
-            .field_targets
-            .values()
-            .filter(matching)
-            .filter(|target| target.variant_field);
-        let target = variants.next()?;
-        variants.next().is_none().then_some(target)
-    }
-
-    #[must_use]
-    pub fn host_field_fact(&self, owner: &str, field: &str) -> Option<&TypeFact> {
-        let target = self.host_field_target_fact(owner, field)?;
-        self.fields
-            .get(&(target.owner_name.clone(), target.name.clone()))
     }
 
     #[must_use]
@@ -541,11 +437,6 @@ impl RegistryFacts {
             }));
         }
         fields
-    }
-
-    #[must_use]
-    pub fn index_capability_fact(&self, owner: &str) -> Option<&RegistryIndexCapabilityFact> {
-        self.index_capabilities.get(owner)
     }
 
     #[must_use]
@@ -668,17 +559,6 @@ impl RegistryFacts {
     }
 
     #[must_use]
-    pub fn method_scoped_resource(
-        &self,
-        owner: &str,
-        method: &str,
-    ) -> Option<ScopedResourceReturnDef> {
-        self.method_scoped_resources
-            .get(&(owner.to_owned(), method.to_owned()))
-            .copied()
-    }
-
-    #[must_use]
     pub fn method_effect_fact(&self, owner: &str, method: &str) -> Option<&RegistryEffectFact> {
         self.method_effects
             .get(&(owner.to_owned(), method.to_owned()))
@@ -750,11 +630,6 @@ impl RegistryFacts {
     }
 
     #[must_use]
-    pub fn function_scoped_resource(&self, name: &str) -> Option<ScopedResourceReturnDef> {
-        self.function_scoped_resources.get(name).copied()
-    }
-
-    #[must_use]
     pub fn function_origin(&self, name: &str) -> Option<DeclOrigin> {
         self.function_origins.get(name).copied()
     }
@@ -811,10 +686,6 @@ impl RegistryFacts {
 
     pub fn function_accesses(&self) -> impl Iterator<Item = RegistryFunctionAccessFact> + '_ {
         self.function_access.values().cloned()
-    }
-
-    pub fn index_capabilities(&self) -> impl Iterator<Item = RegistryIndexCapabilityFact> + '_ {
-        self.index_capabilities.values().cloned()
     }
 
     pub fn method_effects(
@@ -962,16 +833,6 @@ impl RegistryFacts {
             .insert((owner.into(), name.into()), docs.into());
     }
 
-    pub fn insert_method_scoped_resource(
-        &mut self,
-        owner: impl Into<String>,
-        name: impl Into<String>,
-        resource: ScopedResourceReturnDef,
-    ) {
-        self.method_scoped_resources
-            .insert((owner.into(), name.into()), resource);
-    }
-
     pub fn insert_method_effect(
         &mut self,
         owner: impl Into<String>,
@@ -1050,25 +911,12 @@ impl RegistryFacts {
         self.function_docs.insert(name.into(), docs.into());
     }
 
-    pub fn insert_function_scoped_resource(
-        &mut self,
-        name: impl Into<String>,
-        resource: ScopedResourceReturnDef,
-    ) {
-        self.function_scoped_resources.insert(name.into(), resource);
-    }
-
     pub fn insert_function_effect(&mut self, name: impl Into<String>, effect: RegistryEffectFact) {
         self.function_effects.insert(name.into(), effect);
     }
 
     pub fn insert_function_access(&mut self, access: RegistryFunctionAccessFact) {
         self.function_access.insert(access.name.clone(), access);
-    }
-
-    pub fn insert_index_capability(&mut self, capability: RegistryIndexCapabilityFact) {
-        self.index_capabilities
-            .insert(capability.owner.clone(), capability);
     }
 
     fn rebuild_owner_indexes(&mut self) {
@@ -1105,5 +953,7 @@ impl RegistryFacts {
     }
 }
 
+#[cfg(test)]
+mod abi_tests;
 #[cfg(test)]
 mod registry_tests;

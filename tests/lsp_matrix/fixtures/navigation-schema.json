@@ -259,7 +259,7 @@
         {
           "name": "HostBox",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostBox"
           },
           "sourceSpan": {
@@ -270,7 +270,7 @@
         {
           "name": "HostCell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -281,7 +281,7 @@
         {
           "name": "MetadataOnly",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "MetadataOnly"
           }
         },
@@ -321,7 +321,7 @@
         {
           "name": "item",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "sourceSpan": {
@@ -374,7 +374,7 @@
           "owner": "HostChoice::Record",
           "name": "cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           }
         }
@@ -386,7 +386,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "HostCell"
             }
           },
@@ -402,7 +402,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "HostCell"
             }
           },
@@ -416,7 +416,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "HostCell"
             }
           },
@@ -434,7 +434,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "HostBox"
             }
           },

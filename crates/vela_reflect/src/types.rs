@@ -115,7 +115,6 @@ fn kind_name(kind: TypeKind) -> String {
         TypeKind::Range => "range",
         TypeKind::Function => "function",
         TypeKind::Closure => "closure",
-        TypeKind::Host => "host",
         TypeKind::ScriptStruct => "script_struct",
         TypeKind::ScriptEnum => "script_enum",
     }
@@ -124,9 +123,8 @@ fn kind_name(kind: TypeKind) -> String {
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{HostObjectId, HostTypeId, SourceId, Span};
+    use vela_common::{SourceId, Span};
     use vela_def::{FieldId, TypeId, VariantId};
-    use vela_host::path::HostRef;
     use vela_host::value::HostValue;
 
     use super::*;
@@ -138,7 +136,6 @@ mod tests {
         let mut registry = TypeRegistry::new();
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
                 .docs("A host player.")
                 .attr("domain", "gameplay")
                 .source_span(Span::new(SourceId::new(7), 10, 20))
@@ -185,28 +182,28 @@ mod tests {
         );
         assert_eq!(
             fields.get("kind"),
-            Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
+            Some(&ReflectValue::Host(HostValue::String(
+                "script_struct".to_owned()
+            )))
         );
         assert_eq!(
             fields.get("origin"),
             Some(&ReflectValue::Host(HostValue::String("host".to_owned())))
         );
         let metadata = type_by_name(&registry, "Player").expect("type metadata");
-        let type_of_metadata = type_of_value(
-            &registry,
-            &ReflectValue::HostRef(HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 0)),
-        );
-        assert_eq!(type_of_metadata, option_some(metadata.clone()));
         assert_eq!(
             type_of_value(
                 &registry,
-                &ReflectValue::HostRef(HostRef::new(HostTypeId::new(999), HostObjectId::new(7), 0))
+                &ReflectValue::ScriptRecord {
+                    type_name: "Player".to_owned(),
+                    fields: BTreeMap::new()
+                }
             ),
-            option_none()
+            option_some(metadata.clone())
         );
         assert_eq!(
             kind(&registry, &metadata).expect("metadata kind"),
-            ReflectValue::Host(HostValue::String("host".to_owned()))
+            ReflectValue::Host(HostValue::String("script_struct".to_owned()))
         );
         assert_eq!(
             origin(&registry, &metadata).expect("metadata origin"),

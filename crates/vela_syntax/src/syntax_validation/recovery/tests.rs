@@ -53,7 +53,7 @@ fn missing_required_declaration_parts_are_diagnosed_without_discarding_recovered
         }
     }
     for source in [
-        "const LIMIT = 1; state value: i64 = 1; extern state live: i64;",
+        "const LIMIT = 1; state value: i64 = 1; state live: i64 = 2;",
         "fn read(value: i64 = 1) { let row = Row { value }; row.value; row.0; read(value = 1); }",
         "struct Row { value: i64 } enum Choice { Pair(value: i64) }",
         "trait Read { fn read(self); } impl Row { fn read(self) {} }",
@@ -107,7 +107,7 @@ fn recovered_header_names_do_not_borrow_later_identifiers() {
         "pub trait = Ghost",
         "pub const : Ghost = 1;",
         "pub state :: Ghost: i64 = 1;",
-        "pub extern state :: Ghost: i64;",
+        "pub state : Ghost = 1;",
         "use module::value as = Ghost;",
     ] {
         let parsed = parse_source(source);

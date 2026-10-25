@@ -1,6 +1,6 @@
 use super::RegistryFacts;
 use crate::type_fact::TypeFact;
-use vela_common::{CollectionViewMutation, PrimitiveTag};
+use vela_common::PrimitiveTag;
 use vela_registry::TypeHintDef;
 
 impl RegistryFacts {
@@ -31,33 +31,15 @@ pub(super) fn type_hint_fact(
         ("Bytes", []) => TypeFact::BYTES,
         ("Array", []) => TypeFact::array(TypeFact::Unknown),
         ("Array", [element]) => TypeFact::array(type_hint_fact(element, resolve)),
-        ("ArrayView", [element]) => TypeFact::array_view(type_hint_fact(element, resolve)),
-        ("ArrayMut", [element]) => TypeFact::array_mut(
-            type_hint_fact(element, resolve),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Fixed),
-        ),
+
         ("Map", []) => TypeFact::map(TypeFact::Unknown, TypeFact::Unknown),
         ("Map", [key, value]) => {
             TypeFact::map(type_hint_fact(key, resolve), type_hint_fact(value, resolve))
         }
-        ("MapView", [key, value]) => {
-            TypeFact::map_view(type_hint_fact(key, resolve), type_hint_fact(value, resolve))
-        }
-        ("MapMut", [key, value]) => TypeFact::map_mut(
-            type_hint_fact(key, resolve),
-            type_hint_fact(value, resolve),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Growable),
-        ),
+
         ("Set", []) => TypeFact::set(TypeFact::Unknown),
         ("Set", [element]) => TypeFact::set(type_hint_fact(element, resolve)),
-        ("SetView", [element]) => TypeFact::set_view(type_hint_fact(element, resolve)),
-        ("SetMut", [element]) => TypeFact::set_mut(
-            type_hint_fact(element, resolve),
-            hint.collection_mutation
-                .unwrap_or(CollectionViewMutation::Growable),
-        ),
+
         ("Iterator", []) => TypeFact::iterator(TypeFact::Unknown),
         ("Iterator", [item]) => TypeFact::iterator(type_hint_fact(item, resolve)),
         ("Function", []) => TypeFact::function(Vec::new(), TypeFact::Unknown),

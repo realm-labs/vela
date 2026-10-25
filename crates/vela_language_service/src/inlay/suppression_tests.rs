@@ -14,14 +14,17 @@ fn inlay_hints_suppress_any_schema_function_parameters() {
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function(
         "host_dynamic",
         TypeFact::function(vec![TypeFact::Any, TypeFact::I64], TypeFact::I64),
     );
     schema.insert_function(
         "host_stable",
-        TypeFact::function(vec![TypeFact::host("Player"), TypeFact::I64], TypeFact::I64),
+        TypeFact::function(
+            vec![TypeFact::record("Player"), TypeFact::I64],
+            TypeFact::I64,
+        ),
     );
     schema.insert_method(
         "Player",
@@ -55,10 +58,10 @@ fn inlay_hints_suppress_any_schema_method_parameters_on_schema_function_return_r
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function(
         "current_player",
-        TypeFact::function(Vec::new(), TypeFact::host("Player")),
+        TypeFact::function(Vec::new(), TypeFact::record("Player")),
     );
     schema.insert_method(
         "Player",
@@ -96,12 +99,12 @@ fn inlay_hints_suppress_any_schema_method_parameters_on_schema_method_return_rec
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_type("Player", TypeFact::record("Player"));
+    schema.insert_type("Inventory", TypeFact::record("Inventory"));
     schema.insert_method(
         "Player",
         "inventory",
-        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+        TypeFact::function(Vec::new(), TypeFact::record("Inventory")),
     );
     schema.insert_method(
         "Inventory",
@@ -138,7 +141,7 @@ fn inlay_hints_suppress_schema_method_parameters_on_schema_any_return_receiver()
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_function("host_any", TypeFact::function(Vec::new(), TypeFact::Any));
     schema.insert_method(
         "Player",
@@ -212,7 +215,7 @@ fn inlay_hints_suppress_any_schema_trait_method_parameters_on_schema_method_retu
 }"#;
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
     schema.insert_method(
         "Player",
@@ -556,7 +559,7 @@ fn inlay_hints_suppress_any_lambda_parameter_facts() {
     let mapped_line = line(text, 4);
     let mut databases = databases_for(vec![SourceFileSnapshot::new(document.clone(), text)]);
     let mut schema = vela_analysis::registry::RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "values", TypeFact::array(TypeFact::Any));
     schema.insert_field(
         "Player",

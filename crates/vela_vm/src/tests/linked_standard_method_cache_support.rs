@@ -26,7 +26,7 @@ pub(super) fn run_linked_method_cache_owned_program_with_budget(
     let mut heap_execution = HeapExecution::new(&mut heap);
     let result =
         run_linked_method_cache_with_heap_and_budget(program, caches, &mut heap_execution, budget)?;
-    crate::heap_values::value_to_owned(&result, Some(&heap_execution), None)
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
 }
 
 pub(super) fn run_linked_method_cache_program_with_standard_natives(
@@ -106,11 +106,8 @@ pub(super) struct RecordingMethodCaches {
     dynamic_entries: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
     dynamic_site_get_counts: RefCell<Vec<usize>>,
     dynamic_site_set_counts: RefCell<Vec<usize>>,
-    host_entries: RefCell<Vec<Option<HostInlineCacheEntry>>>,
-    host_site_set_counts: RefCell<Vec<usize>>,
     set_count: Cell<usize>,
     dynamic_set_count: Cell<usize>,
-    host_set_count: Cell<usize>,
 }
 
 impl RecordingMethodCaches {
@@ -121,11 +118,8 @@ impl RecordingMethodCaches {
             dynamic_entries: RefCell::new(vec![None; len]),
             dynamic_site_get_counts: RefCell::new(vec![0; len]),
             dynamic_site_set_counts: RefCell::new(vec![0; len]),
-            host_entries: RefCell::new(vec![None; len]),
-            host_site_set_counts: RefCell::new(vec![0; len]),
             set_count: Cell::new(0),
             dynamic_set_count: Cell::new(0),
-            host_set_count: Cell::new(0),
         }
     }
 
@@ -164,18 +158,6 @@ impl RecordingMethodCaches {
     pub(super) fn dynamic_set_count_for(&self, site: CacheSiteId) -> usize {
         self.dynamic_site_set_counts.borrow()[site.index()]
     }
-
-    pub(super) fn host_entry(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        self.host_entries
-            .borrow()
-            .get(site.index())
-            .copied()
-            .flatten()
-    }
-
-    pub(super) fn host_set_count_for(&self, site: CacheSiteId) -> usize {
-        self.host_site_set_counts.borrow()[site.index()]
-    }
 }
 
 pub(super) fn owned_option_some(value: OwnedValue) -> OwnedValue {
@@ -210,15 +192,5 @@ impl VmInlineCaches for RecordingMethodCaches {
         self.dynamic_entries.borrow_mut()[site.index()] = Some(entry);
         self.dynamic_site_set_counts.borrow_mut()[site.index()] += 1;
         self.dynamic_set_count.set(self.dynamic_set_count.get() + 1);
-    }
-
-    fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        self.host_entry(site)
-    }
-
-    fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        self.host_entries.borrow_mut()[site.index()] = Some(entry);
-        self.host_site_set_counts.borrow_mut()[site.index()] += 1;
-        self.host_set_count.set(self.host_set_count.get() + 1);
     }
 }

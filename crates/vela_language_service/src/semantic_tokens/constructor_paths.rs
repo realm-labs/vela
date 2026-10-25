@@ -228,7 +228,7 @@ fn owner(db: &LanguageServiceDatabases, module: ModuleId, path: &[String]) -> Op
     db.schema_db()
         .facts()
         .type_fact(&path.join("::"))
-        .map(|_| C::new(T::Type, M::HOST.union(M::SCHEMA)))
+        .map(|_| C::new(T::Type, M::SCHEMA))
 }
 
 fn insert(

@@ -17,9 +17,8 @@ use vela_def::{
 pub use declaration_slots::{RegistryDeclarationSlotError, RegistryDeclarationSlots};
 pub use defs::{
     Def, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef, FunctionDef, FunctionSignature,
-    IndexCapabilityDef, MethodAccessDef, MethodDef, ParamDef, ScopedResourceKindDef,
-    ScopedResourceParentDef, ScopedResourceReturnDef, SemanticKey, TraitDef, TypeBindingDef,
-    TypeDef, TypeHintDef, TypeKindDef, VariantDef,
+    MethodAccessDef, MethodDef, ParamDef, SemanticKey, TraitDef, TypeBindingDef, TypeDef,
+    TypeHintDef, TypeKindDef, VariantDef,
 };
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
@@ -258,45 +257,6 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
-    pub fn resolve_host_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
-        self.resolve_method(owner, name)
-    }
-
-    #[must_use]
-    pub fn host_method_runtime_id(&self, id: MethodId) -> Option<u128> {
-        self.registry
-            .get(id.def_id())
-            .and_then(Def::host_method_runtime_id)
-    }
-
-    #[must_use]
-    pub fn resolve_host_field(&self, owner: TypeId, name: &str) -> Option<FieldId> {
-        let key = SemanticKey::Field {
-            owner,
-            variant: None,
-            name: name.to_owned(),
-        };
-        let direct = self
-            .registry
-            .id_for_semantic_key(&key)
-            .and_then(|id| self.registry.get(id))
-            .and_then(Def::field_id);
-        if direct.is_some() {
-            return direct;
-        }
-
-        let mut matches = self.registry.defs_by_id.values().filter_map(|definition| {
-            let Def::Field(field) = definition else {
-                return None;
-            };
-            (field.owner == owner && field.variant.is_some() && field.path.name == name)
-                .then_some(field.id)
-        });
-        let field = matches.next()?;
-        matches.next().is_none().then_some(field)
-    }
-
-    #[must_use]
     pub fn resolve_variant_field(
         &self,
         owner: TypeId,
@@ -324,13 +284,6 @@ impl<'registry> RegistryCompileView<'registry> {
         self.registry
             .get(id.def_id())
             .and_then(Def::field_type_hint)
-    }
-
-    #[must_use]
-    pub fn field_host_runtime_id(&self, id: FieldId) -> Option<u128> {
-        self.registry
-            .get(id.def_id())
-            .and_then(Def::field_host_runtime_id)
     }
 
     #[must_use]
@@ -368,21 +321,6 @@ impl<'registry> RegistryCompileView<'registry> {
     }
 
     #[must_use]
-    pub fn type_host_runtime_id(&self, id: TypeId) -> Option<u128> {
-        self.registry
-            .get(id.def_id())
-            .and_then(Def::type_host_runtime_id)
-    }
-
-    #[must_use]
-    pub fn type_index_capability(&self, id: TypeId) -> Option<&'registry IndexCapabilityDef> {
-        match self.registry.get(id.def_id()) {
-            Some(Def::Type(definition)) => definition.index_capability.as_ref(),
-            _ => None,
-        }
-    }
-
-    #[must_use]
     pub fn type_primitive_kind(&self, id: TypeId) -> Option<PrimitiveTag> {
         self.registry.type_primitive_kind(id)
     }
@@ -414,20 +352,6 @@ impl<'registry> RegistryCompileView<'registry> {
             .get(id.def_id())
             .and_then(Def::method_signature)
             .map(|signature| signature.params.as_slice())
-    }
-
-    #[must_use]
-    pub fn host_method_params_by_runtime_id(
-        &self,
-        runtime_id: u128,
-    ) -> Option<&'registry [ParamDef]> {
-        self.registry.defs_by_id.values().find_map(|def| {
-            let Def::Method(method) = def else {
-                return None;
-            };
-            (method.host_runtime_id == Some(runtime_id))
-                .then_some(method.signature.params.as_slice())
-        })
     }
 
     fn resolve_method(&self, owner: TypeId, name: &str) -> Option<MethodId> {
@@ -880,7 +804,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_view_resolves_value_and_host_methods_with_params() {
+    fn compile_view_resolves_value_methods_with_params() {
         let mut registry = DefinitionRegistry::new();
         let owner = registry
             .register_type(type_def("Player"))
@@ -896,10 +820,7 @@ mod tests {
             view.resolve_value_method(owner, "grant_exp"),
             Some(method_id)
         );
-        assert_eq!(
-            view.resolve_host_method(owner, "grant_exp"),
-            Some(method_id)
-        );
+        assert_eq!(view.resolve_method(owner, "grant_exp"), Some(method_id));
         assert_eq!(view.resolve_value_method(owner, "missing"), None);
         assert_eq!(
             view.method_params(method_id),
@@ -908,7 +829,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_view_resolves_host_fields_and_types() {
+    fn compile_view_resolves_value_fields_and_types() {
         let mut registry = DefinitionRegistry::new();
         let type_path = DefPath::ty("com.example.test", ["combat"], "Player");
         let owner = registry
@@ -923,8 +844,7 @@ mod tests {
         let view = registry.compile_view();
 
         assert_eq!(view.resolve_type(&type_path), Some(owner));
-        assert_eq!(view.resolve_host_field(owner, "level"), Some(field_id));
-        assert_eq!(view.resolve_host_field(owner, "missing"), None);
+        assert!(registry.get(field_id.def_id()).is_some());
         assert_eq!(view.resolve_type(&function_path("score")), None);
     }
 
@@ -972,19 +892,10 @@ mod tests {
     #[test]
     fn compile_view_preserves_exact_schema_ownership_order_and_access() {
         let mut registry = DefinitionRegistry::new();
-        let index_capability = IndexCapabilityDef::new()
-            .readable(true)
-            .writable(false)
-            .addable(true)
-            .removable(false)
-            .key_type(TypeHintDef::named("String"))
-            .value_type(TypeHintDef::named("Outcome"));
         let owner = registry
             .register_type(
                 TypeDef::new(DefPath::ty("host", ["combat"], "Outcome"))
-                    .kind(TypeKindDef::ScriptEnum)
-                    .host_runtime_id(101)
-                    .index_capability(index_capability.clone()),
+                    .kind(TypeKindDef::ScriptEnum),
             )
             .expect("type registration should succeed");
         let granted = registry
@@ -1096,8 +1007,6 @@ mod tests {
                     && definition.effects.reflection_write)
         }));
         let view = registry.compile_view();
-        assert_eq!(view.type_host_runtime_id(owner), Some(101));
-        assert_eq!(view.type_index_capability(owner), Some(&index_capability));
         assert_eq!(view.field_has_default(granted_value), Some(true));
         assert_eq!(view.field_has_default(denied_value), Some(false));
         assert_eq!(
@@ -1108,8 +1017,10 @@ mod tests {
             view.resolve_variant_field(owner, denied, "value"),
             Some(denied_value)
         );
-        assert_eq!(view.resolve_host_field(owner, "value"), None);
-        assert_eq!(view.resolve_host_field(owner, "code"), Some(granted_code));
+        assert_eq!(
+            view.resolve_variant_field(owner, granted, "code"),
+            Some(granted_code)
+        );
     }
 
     #[test]

@@ -55,6 +55,10 @@ fn verify_fixture(name: &str, expected_count: usize) {
             for case in spec.oracle["queries"].as_array().expect("queries") {
                 total += 1;
                 let file = case["file"].as_str().expect("file");
+                if case["removedBoundary"] == true {
+                    crate::matrix_fixture::assert_removed_borrowed_source(&fixture.disk[file].text);
+                    continue;
+                }
                 let point = hover_signature::position(
                     &fixture.disk[file],
                     case["marker"].as_str().expect("marker"),

@@ -4,13 +4,8 @@ use std::any::TypeId as RustTypeId;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::hash::Hash;
 
-use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation, HostTypeId,
-};
 use vela_def::TypeId;
-use vela_reflect::registry::{
-    HostIndexCapability, SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeKind,
-};
+use vela_reflect::registry::{SchemaHash, TraitDesc, TypeDesc, TypeKey, TypeKind};
 
 use crate::args::{FromScriptArg, IntoScriptArg};
 use crate::interop::{VelaValueBoundary, VelaValueKeyBoundary};
@@ -32,25 +27,6 @@ where
     T: StandardTypeBinding,
 {
     T::standard_type_binding()
-}
-
-/// Returns a standard collection view's call-scoped HostRef identity. Standard
-/// IDs are 64-bit stable IDs and therefore map losslessly to `HostTypeId`.
-#[doc(hidden)]
-#[must_use]
-pub fn standard_collection_host_type_id<T>() -> HostTypeId
-where
-    T: StandardTypeBinding,
-{
-    let binding = T::standard_type_binding();
-    assert!(
-        binding.collection_views().is_some(),
-        "standard collection HostRef identity requires advertised views"
-    );
-    HostTypeId::new(
-        u64::try_from(binding.type_desc().key.id.get())
-            .expect("standard collection type IDs are generated from 64-bit stable IDs"),
-    )
 }
 
 macro_rules! primitive_standard_binding {
@@ -91,12 +67,7 @@ where
     T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(vec_type_desc::<T>()).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Array,
-                CollectionViewMutation::Growable,
-            ),
-        )
+        TypeBinding::value(vec_type_desc::<T>())
     }
 }
 
@@ -158,12 +129,7 @@ where
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(map_type_desc::<K, V>(MapFamily::BTree)).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Map,
-                CollectionViewMutation::Growable,
-            ),
-        )
+        TypeBinding::value(map_type_desc::<K, V>(MapFamily::BTree))
     }
 }
 
@@ -173,12 +139,7 @@ where
     V: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(map_type_desc::<K, V>(MapFamily::Hash)).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Map,
-                CollectionViewMutation::Growable,
-            ),
-        )
+        TypeBinding::value(map_type_desc::<K, V>(MapFamily::Hash))
     }
 }
 
@@ -187,12 +148,7 @@ where
     T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Ord + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(set_type_desc::<T>(SetFamily::BTree)).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Set,
-                CollectionViewMutation::Growable,
-            ),
-        )
+        TypeBinding::value(set_type_desc::<T>(SetFamily::BTree))
     }
 }
 
@@ -201,12 +157,7 @@ where
     T: VelaValueKeyBoundary + IntoScriptArg + FromScriptArg + Eq + Hash + Ord + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(set_type_desc::<T>(SetFamily::Hash)).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Set,
-                CollectionViewMutation::Growable,
-            ),
-        )
+        TypeBinding::value(set_type_desc::<T>(SetFamily::Hash))
     }
 }
 
@@ -252,15 +203,6 @@ where
     )
     .trait_impl(TraitDesc::new("Sequence"))
     .trait_impl(TraitDesc::new("Iterable"))
-    .index_capability(
-        HostIndexCapability::new()
-            .readable(true)
-            .writable(true)
-            .addable(true)
-            .removable(true)
-            .key_type("i64")
-            .value_type(element.clone()),
-    )
     .docs(format!(
         "Concrete Rust Vec<{element}> value binding using growable Vela Array behavior."
     ))
@@ -396,15 +338,6 @@ where
 
     concrete_type_desc(family.abi_name(), path, &facts, TypeKind::Map)
         .trait_impl(TraitDesc::new("MapLike"))
-        .index_capability(
-            HostIndexCapability::new()
-                .readable(true)
-                .writable(true)
-                .addable(true)
-                .removable(true)
-                .key_type(key.clone())
-                .value_type(value.clone()),
-        )
         .docs(format!(
             "Concrete Rust {}<{key}, {value}> value binding using Vela Map behavior.",
             family.rust_name()
@@ -454,28 +387,15 @@ pub(super) fn concrete_type_desc(
 }
 
 #[cfg(test)]
-#[path = "bindings_byte_view_tests.rs"]
-mod byte_view_tests;
-
-#[cfg(test)]
-#[path = "bindings_identity_tests.rs"]
-mod identity_tests;
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use vela_analysis::registry::RegistryFacts;
     use vela_analysis::type_fact::TypeFact;
-    use vela_common::{InteropBindingContract, InteropRepresentation, ScalarValue, SourceId};
+    use vela_common::{ScalarValue, SourceId};
     use vela_vm::owned_value::OwnedValue;
 
     use crate::engine::Engine;
-    use crate::error::EngineErrorKind;
-    use crate::interop::{
-        BoundaryMode, CallableAccess, CallableContract, CallableIdentity, CallableKind,
-        CallableLanguage, CallableOrigin, CallableParameter, CallableReturn, ErrorMode, ReturnMode,
-    };
-    use crate::native::{EffectSet, TypeHint};
+
     use crate::runtime::{CallArgs, CallOptions, Runtime};
 
     #[test]
@@ -691,7 +611,6 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         assert_eq!(btree.kind, TypeKind::Map);
         assert_eq!(hash.kind, TypeKind::Map);
         assert_eq!(btree.traits, hash.traits);
-        assert_eq!(btree.index_capability, hash.index_capability);
         assert_eq!(btree.attrs.get("vela_collection_protocol"), Some("MapLike"));
         assert_eq!(hash.attrs.get("vela_collection_protocol"), Some("MapLike"));
     }
@@ -702,179 +621,10 @@ fn reverse_and_increment(value: (i64, String)) -> (String, i64) {
         let integers = map_type_desc::<i64, i64>(MapFamily::BTree);
 
         assert_ne!(strings.key, integers.key);
-        assert_eq!(
-            strings
-                .index_capability
-                .as_ref()
-                .and_then(|index| index.key_type.as_deref()),
-            Some("String")
+        assert_ne!(
+            strings.attrs.get("vela_collection_key"),
+            integers.attrs.get("vela_collection_key")
         );
-        assert_eq!(
-            integers
-                .index_capability
-                .as_ref()
-                .and_then(|index| index.key_type.as_deref()),
-            Some("i64")
-        );
-    }
-
-    #[test]
-    fn vec_and_set_bindings_preserve_representation_capabilities() {
-        let vector = vec_type_desc::<i64>();
-        let bytes = vec_type_desc::<u8>();
-        let ordered = set_type_desc::<i64>(SetFamily::BTree);
-        let hashed = set_type_desc::<i64>(SetFamily::Hash);
-        assert_eq!(vector.kind, TypeKind::Array);
-        assert_eq!(vector.attrs.get("vela_collection_growth"), Some("growable"));
-        let index = vector.index_capability.expect("Vec index capability");
-        assert!(index.readable && index.writable && index.addable && index.removable);
-        assert_eq!(bytes.kind, TypeKind::Bytes);
-        assert!(bytes.index_capability.is_none());
-        assert_eq!(
-            bytes.attrs.get("vela_collection_growth"),
-            Some("immutable_bytes")
-        );
-        assert_ne!(ordered.key, hashed.key);
-        assert_eq!(ordered.traits, hashed.traits);
-        assert_eq!(
-            ordered.attrs.get("vela_collection_protocol"),
-            Some("SetLike,Iterable")
-        );
-
-        assert_eq!(
-            standard_type_binding::<Vec<i64>>().collection_views(),
-            Some(CollectionViewCapabilities::mutable(
-                CollectionViewKind::Array,
-                CollectionViewMutation::Growable,
-            ))
-        );
-        assert_eq!(
-            standard_type_binding::<BTreeSet<i64>>().collection_views(),
-            Some(CollectionViewCapabilities::mutable(
-                CollectionViewKind::Set,
-                CollectionViewMutation::Growable,
-            ))
-        );
-    }
-
-    #[test]
-    fn collection_binding_contracts_preserve_identity_and_exact_representation() {
-        let binding = standard_type_binding::<Vec<i64>>();
-        let owned = binding
-            .interop_contract(InteropRepresentation::Owned)
-            .expect("owned Vec representation");
-        let shared = binding
-            .interop_contract(InteropRepresentation::CollectionView(
-                CollectionViewKind::Array,
-            ))
-            .expect("shared Vec view");
-        let mutable = binding
-            .interop_contract(InteropRepresentation::CollectionMut {
-                kind: CollectionViewKind::Array,
-                mutation: CollectionViewMutation::Growable,
-            })
-            .expect("growable Vec view");
-        assert_eq!(owned.type_id, shared.type_id);
-        assert_eq!(shared.type_id, mutable.type_id);
-        assert_eq!(owned.abi_fingerprint, mutable.abi_fingerprint);
-        assert!(
-            binding
-                .interop_contract(InteropRepresentation::CollectionMut {
-                    kind: CollectionViewKind::Array,
-                    mutation: CollectionViewMutation::Fixed,
-                })
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn engine_seal_rejects_a_forged_callable_binding_representation() {
-        let binding = standard_type_binding::<Vec<i64>>();
-        let owned = binding
-            .interop_contract(InteropRepresentation::Owned)
-            .expect("owned Vec contract");
-        let forged = InteropBindingContract::new(
-            owned.type_id,
-            InteropRepresentation::CollectionMut {
-                kind: CollectionViewKind::Array,
-                mutation: CollectionViewMutation::Fixed,
-            },
-            owned.abi_fingerprint,
-        );
-        let contract = CallableContract {
-            identity: CallableIdentity::new(CallableKind::RustFunction, 901),
-            public_path: "test::fixed_vec".to_owned(),
-            parameters: vec![
-                CallableParameter::new(
-                    1,
-                    "values",
-                    TypeHint::array_of(TypeHint::i64()),
-                    BoundaryMode::ExclusiveHost,
-                )
-                .with_binding(forged),
-            ],
-            returns: CallableReturn::new(
-                TypeHint::unit(),
-                ReturnMode::OwnedValue,
-                ErrorMode::Value,
-            ),
-            effects: EffectSet::host_write(),
-            access: CallableAccess::default(),
-            docs: None,
-            attrs: std::collections::BTreeMap::new(),
-            origin: CallableOrigin {
-                language: CallableLanguage::Rust,
-                source_span: None,
-            },
-        };
-
-        let result = Engine::builder()
-            .install_type_binding::<Vec<i64>>(binding)
-            .register_native_fn(contract.native_function_desc(), |_| Ok(OwnedValue::Unit))
-            .build();
-        let error = match result {
-            Ok(_) => panic!("fixed view must not match a growable Vec binding"),
-            Err(error) => error,
-        };
-        assert!(matches!(
-            error.kind,
-            EngineErrorKind::InvalidCallableTypeBinding { .. }
-        ));
-    }
-
-    #[test]
-    fn collection_view_capabilities_keep_one_identity_across_registry_views() {
-        type Scores = BTreeMap<String, i64>;
-
-        let engine = Engine::builder()
-            .install_type_binding::<Scores>(standard_type_binding::<Scores>())
-            .build()
-            .expect("map view capabilities should seal");
-        let expected = CollectionViewCapabilities::mutable(
-            CollectionViewKind::Map,
-            CollectionViewMutation::Growable,
-        );
-        let binding = engine
-            .type_bindings()
-            .get_for::<Scores>()
-            .expect("map binding")
-            .clone();
-        assert_eq!(binding.collection_views, Some(expected));
-
-        let reflected = engine.registry();
-        let reflection_binding = reflected
-            .type_binding_for_key(&binding.key)
-            .expect("reflection binding");
-        assert_eq!(reflection_binding.id, binding.id);
-        assert_eq!(reflection_binding.collection_views, Some(expected));
-
-        let compiler_facts = RegistryFacts::from_compile_view(engine.compiler_registry())
-            .expect("compiler registry facts");
-        let compiler_binding = compiler_facts
-            .type_binding_fact(&binding.key.name)
-            .expect("compiler binding");
-        assert_eq!(compiler_binding.id, binding.id);
-        assert_eq!(compiler_binding.collection_views, Some(expected));
     }
 
     #[test]

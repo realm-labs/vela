@@ -1,19 +1,17 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use vela_host::target::HostTargetPlan;
 use vela_mir::{
     CompileTryFamily, CompileTryTarget, DebugLocalKind, MirAggregate, MirBackendHandoff,
     MirBinaryOp, MirBlockId, MirCall, MirContextualBinaryOp, MirDynamicUnaryOp, MirFieldTarget,
     MirFormatPart, MirFunction, MirFunctionAnalyses, MirFunctionId, MirGuardAssumption,
-    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirImmediate, MirIndexKey,
-    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirOperand, MirPatternPredicate,
-    MirPlace, MirProgram, MirReflectionOperation, MirRvalue, MirScriptParameterGuardMode,
-    MirStateOperation, MirStatementId, MirStatementKind, MirSwitchValue, MirTerminatorKind,
-    MirUnaryOp,
+    MirIdentityOp, MirImmediate, MirIndexKey, MirIndexOperation, MirIteratorOperation,
+    MirLiteralSide, MirOperand, MirPatternPredicate, MirPlace, MirProgram, MirReflectionOperation,
+    MirRvalue, MirScriptParameterGuardMode, MirStateOperation, MirStatementId, MirStatementKind,
+    MirSwitchValue, MirTerminatorKind, MirUnaryOp,
 };
 
 use crate::{
-    BinaryLiteralOp, BinaryLiteralSide, CacheSiteId, CallArgument, Constant, DynamicCallArgument,
+    BinaryLiteralOp, BinaryLiteralSide, CallArgument, Constant, DynamicCallArgument,
     FormatStringPart, FrameSlotInfo, FrameSlotKind, FunctionIndex, GuardKind, GuardLocation,
     InstructionOffset, Register, ScriptCallMode, TryPropagateFamily, UnlinkedCodeObject,
     UnlinkedInstruction, UnlinkedInstructionKind, UnlinkedParameterTypeGuard,
@@ -43,7 +41,6 @@ pub(crate) enum MirBackendError {
     MissingDestination,
     MissingTarget(&'static str),
     RegisterOverflow,
-    DynamicHostArgumentOverflow,
 }
 
 pub(crate) fn compile(
@@ -527,8 +524,7 @@ impl<'a> FunctionBackend<'a> {
             MirStatementKind::State(operation) => {
                 let state = match operation {
                     MirStateOperation::ReadVmState { state }
-                    | MirStateOperation::WriteVmState { state, .. }
-                    | MirStateOperation::ReadExternState { state } => *state,
+                    | MirStateOperation::WriteVmState { state, .. } => *state,
                 };
                 let target = self
                     .program
@@ -547,14 +543,6 @@ impl<'a> FunctionBackend<'a> {
                             state: target.name.clone(),
                             slot: self.state_slot(state),
                             src: self.operand(value, span)?,
-                        }
-                    }
-                    MirStateOperation::ReadExternState { .. } => {
-                        UnlinkedInstructionKind::LoadExternState {
-                            dst: dst.ok_or(MirBackendError::MissingDestination)?,
-                            state: target.name.clone(),
-                            slot: self.state_slot(state),
-                            cache_site: None,
                         }
                     }
                 };
@@ -616,7 +604,7 @@ impl<'a> FunctionBackend<'a> {
             MirStatementKind::Call(call) => {
                 self.call(dst.ok_or(MirBackendError::MissingDestination)?, call, span)?
             }
-            MirStatementKind::Host(operation) => self.host(dst, operation, span)?,
+
             MirStatementKind::Reflect(operation) => self.reflect(
                 dst.ok_or(MirBackendError::MissingDestination)?,
                 operation,
@@ -655,16 +643,12 @@ impl<'a> FunctionBackend<'a> {
                     }
                 }
             }
-            MirStatementKind::Iterator(MirIteratorOperation::Create {
-                iterable,
-                host_collection,
-            }) => {
+            MirStatementKind::Iterator(MirIteratorOperation::Create { iterable }) => {
                 let iterable = self.operand(iterable, span)?;
                 self.emit(
                     UnlinkedInstructionKind::IterInit {
                         dst: dst.ok_or(MirBackendError::MissingDestination)?,
                         iterable,
-                        host_collection: *host_collection,
                     },
                     span,
                 );

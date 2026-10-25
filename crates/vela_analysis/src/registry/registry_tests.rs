@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use vela_common::{HostMethodId, HostTypeId, SourceId, Span};
+    use vela_common::{SourceId, Span};
     use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
     use vela_reflect::access::{MethodAccess, MethodEffectSet};
     use vela_reflect::modules::{FunctionDesc, FunctionParamDesc, ModuleDesc};
@@ -16,7 +16,6 @@ mod tests {
     #[test]
     fn registry_facts_cover_types_fields_methods_functions_and_modules() {
         let player = TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-            .host_type(HostTypeId::new(1))
             .docs("Player host object.")
             .field(
                 FieldDesc::new(FieldId::new(1), "level")
@@ -25,7 +24,7 @@ mod tests {
             )
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Inventory"))
             .method(
-                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                MethodDesc::new(vela_def::MethodId::new(1), "grant_exp")
                     .param(
                         MethodParamDesc::new("amount")
                             .type_hint("i64")
@@ -84,14 +83,10 @@ mod tests {
 
         let facts = RegistryFacts::from_registry(&registry);
 
-        assert_eq!(facts.type_fact("Player"), Some(&TypeFact::host("Player")));
+        assert_eq!(facts.type_fact("Player"), Some(&TypeFact::record("Player")));
         assert_eq!(
             facts.type_target_fact("Player"),
-            Some(&RegistryTypeTargetFact::new(
-                "Player",
-                TypeId::new(1),
-                Some(HostTypeId::new(1)),
-            ))
+            Some(&RegistryTypeTargetFact::new("Player", TypeId::new(1),))
         );
         assert_eq!(
             facts.type_fact("Inventory"),
@@ -107,7 +102,6 @@ mod tests {
             Some(target)
                 if target.owner == TypeId::new(1)
                     && target.semantic == FieldId::new(1)
-                    && target.host_runtime == Some(FieldId::new(1))
                     && !target.variant_field
                     && target.access.readable
                     && !target.access.writable
@@ -130,7 +124,6 @@ mod tests {
             Some(target)
                 if target.owner == TypeId::new(3)
                     && target.semantic == FieldId::new(1)
-                    && target.host_runtime.is_none()
                     && target.variant_field
         ));
         assert_eq!(
@@ -160,7 +153,7 @@ mod tests {
         assert_eq!(
             facts.function_fact("game::reward::grant"),
             Some(&TypeFact::function(
-                vec![TypeFact::host("Player"), TypeFact::I64],
+                vec![TypeFact::record("Player"), TypeFact::I64],
                 TypeFact::BOOL,
             ))
         );
@@ -262,7 +255,7 @@ mod tests {
                 FieldDesc::new(FieldId::new(2), "outcome").type_hint("Result<(String, i64), ()>"),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(1), "join")
+                MethodDesc::new(vela_def::MethodId::new(1), "join")
                     .param(MethodParamDesc::new("parts").type_hint("(String, String)"))
                     .return_type("Option<(String, String)>"),
             );
@@ -423,25 +416,13 @@ mod tests {
         use vela_def::DefPath;
         use vela_registry::{
             DefinitionRegistry, EffectSet, FieldAccessDef, FieldDef, FunctionAccessDef,
-            FunctionDef, FunctionSignature, IndexCapabilityDef, MethodAccessDef, MethodDef,
-            ParamDef, TypeDef, TypeHintDef,
+            FunctionDef, FunctionSignature, MethodAccessDef, MethodDef, ParamDef, TypeDef,
+            TypeHintDef,
         };
 
         let mut registry = DefinitionRegistry::new();
         let player = registry
-            .register_type(
-                TypeDef::new(DefPath::ty("host", ["game"], "Player"))
-                    .host_runtime_id(7)
-                    .index_capability(
-                        IndexCapabilityDef::new()
-                            .readable(true)
-                            .writable(false)
-                            .addable(true)
-                            .removable(false)
-                            .key_type("String")
-                            .value_type(TypeHintDef::new(["game", "Reward"])),
-                    ),
-            )
+            .register_type(TypeDef::new(DefPath::ty("host", ["game"], "Player")))
             .expect("Player registration");
         registry
             .register_type(TypeDef::new(DefPath::ty(
@@ -461,7 +442,6 @@ mod tests {
                             .reflect_writable(false)
                             .require_permission("player.inspect"),
                     )
-                    .host_runtime_id(81)
                     .declaration_order(3)
                     .defaulted(true)
                     .type_hint(Some("i64")),
@@ -536,39 +516,21 @@ mod tests {
 
         assert_eq!(
             facts.type_fact("game::Player"),
-            Some(&TypeFact::host("game::Player"))
+            Some(&TypeFact::record("game::Player"))
         );
         assert_eq!(
             facts.type_fact("Player"),
-            Some(&TypeFact::host("game::Player"))
+            Some(&TypeFact::record("game::Player"))
         );
         assert!(matches!(
             facts.type_target_fact("game::Player"),
             Some(target)
                 if target.semantic == player
-                    && target.host_runtime == Some(HostTypeId::new(7))
         ));
         assert_eq!(
             facts.type_fact("game::Reward"),
             Some(&TypeFact::record("game::Reward"))
         );
-        assert!(matches!(
-            facts.index_capability_fact("game::Player"),
-            Some(capability)
-                if capability.readable
-                    && !capability.writable
-                    && capability.addable
-                    && !capability.removable
-                    && capability.key == TypeFact::STRING
-                    && capability.value == TypeFact::record("game::Reward")
-        ));
-        assert!(matches!(
-            facts.index_capability_fact("Player"),
-            Some(capability)
-                if capability.owner == "Player"
-                    && capability.key == TypeFact::STRING
-                    && capability.value == TypeFact::record("game::Reward")
-        ));
         assert_eq!(
             facts.field_fact("game::Player", "level"),
             Some(&TypeFact::I64)
@@ -592,7 +554,6 @@ mod tests {
             facts.field_target_fact("game::Player", "level"),
             Some(target)
                 if target.owner == player
-                    && target.host_runtime == Some(FieldId::new(81))
                     && !target.variant_field
                     && target.declaration_order == 1
                     && target.has_default
@@ -628,7 +589,7 @@ mod tests {
         assert_eq!(
             facts.function_fact("game::grant"),
             Some(&TypeFact::function(
-                vec![TypeFact::host("game::Player")],
+                vec![TypeFact::record("game::Player")],
                 TypeFact::result(TypeFact::BOOL, TypeFact::STRING),
             ))
         );
@@ -638,7 +599,7 @@ mod tests {
         assert_eq!(function_signature.parameters[0].name, "player");
         assert_eq!(
             function_signature.parameters[0].type_fact,
-            TypeFact::host("game::Player")
+            TypeFact::record("game::Player")
         );
         assert_eq!(
             function_signature.parameters[0].requirement,
@@ -753,7 +714,7 @@ mod tests {
         assert!(body.expressions.values().any(|expression| {
             matches!(
                 analysis.call_target(expression.id),
-                Some(crate::semantic_facts::CallTargetFact::HostMethod { owner, name })
+                Some(crate::semantic_facts::CallTargetFact::RegistryMethod { owner, name })
                     if owner == "game::Player" && name == "save"
             ) && analysis
                 .effect(expression.id)
@@ -767,58 +728,8 @@ mod tests {
             })
             .expect("level field");
         assert_eq!(analysis.expression(level.id), Some(&TypeFact::I64));
-        assert!(matches!(
-            analysis.member_target(level.id),
-            Some(crate::semantic_facts::MemberTargetFact::HostField(target))
-                if target.owner_name == "game::Player" && target.name == "level"
-                    && target.owner == player
-        ));
-    }
-
-    #[test]
-    fn compile_view_preserves_exact_collection_view_mutation_facts() {
-        use vela_common::CollectionViewMutation;
-        use vela_def::DefPath;
-        use vela_registry::{
-            DefinitionRegistry, FunctionDef, FunctionSignature, ParamDef, TypeHintDef,
-        };
-
-        let array_fixed = TypeHintDef::named("ArrayMut")
-            .with_args([TypeHintDef::named("i64")])
-            .with_collection_mutation(CollectionViewMutation::Fixed);
-        let array_growable = TypeHintDef::named("ArrayMut")
-            .with_args([TypeHintDef::named("i64")])
-            .with_collection_mutation(CollectionViewMutation::Growable);
-        let map_view = TypeHintDef::named("MapView")
-            .with_args([TypeHintDef::named("String"), TypeHintDef::named("i64")]);
-
-        let mut registry = DefinitionRegistry::new();
-        registry
-            .register_function(FunctionDef::new(
-                DefPath::function("host", ["interop"], "inspect"),
-                FunctionSignature::new(
-                    [
-                        ParamDef::new("fixed", Some(array_fixed)),
-                        ParamDef::new("growable", Some(array_growable)),
-                        ParamDef::new("map", Some(map_view)),
-                    ],
-                    Some(TypeHintDef::named("()")),
-                ),
-            ))
-            .expect("function registration");
-
-        let facts = RegistryFacts::from_compile_view(registry.compile_view())
-            .expect("registry declaration slots");
-        assert_eq!(
-            facts.function_fact("interop::inspect"),
-            Some(&TypeFact::function(
-                vec![
-                    TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed),
-                    TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Growable),
-                    TypeFact::map_view(TypeFact::STRING, TypeFact::I64),
-                ],
-                TypeFact::UNIT,
-            ))
+        assert!(
+            matches!(analysis.member_target(level.id), Some(crate::semantic_facts::MemberTargetFact::RegistryField { owner, name }) if owner == "game::Player" && name == "level")
         );
     }
 }

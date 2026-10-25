@@ -87,7 +87,6 @@ pub(super) fn state_record(desc: &StateDesc) -> ReflectValue {
             ("name".to_owned(), string(desc.name.clone())),
             ("module".to_owned(), optional_string(desc.module.as_deref())),
             ("public".to_owned(), bool_value(desc.public)),
-            ("storage".to_owned(), string(desc.storage.as_str())),
             ("type".to_owned(), string(desc.type_contract.clone())),
             (
                 "type_desc".to_owned(),

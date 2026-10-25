@@ -469,7 +469,7 @@
         {
           "name": "host::Parcel",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Parcel"
           },
           "sourceSpan": {
@@ -491,7 +491,7 @@
         {
           "name": "host::Opaque",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Opaque"
           }
         }

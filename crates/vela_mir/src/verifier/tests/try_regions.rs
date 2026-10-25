@@ -54,7 +54,6 @@ fn try_table() -> MirTargetTable {
         contract: None,
         declaration_order: 0,
         access: CompileFieldAccess::script(),
-        host_runtime: None,
     }));
     table
 }

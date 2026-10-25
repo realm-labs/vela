@@ -1,10 +1,6 @@
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId};
-use vela_def::{FieldId, TypeId};
-use vela_host::access::HostAccess;
-use vela_host::error::HostErrorKind;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::value::HostValue;
+use vela_common::SourceId;
+use vela_def::MethodId;
+use vela_def::TypeId;
 use vela_hot_reload::abi::{AccessAbi, EffectAbi, FunctionAbi, HotReloadAbi, MethodAbi};
 use vela_hot_reload::compile::{initial_version_from_linked_artifact, update_from_linked_artifact};
 use vela_hot_reload::error::HotReloadErrorKind;
@@ -14,9 +10,7 @@ use vela_hot_reload::report::HotReloadReport;
 use vela_hot_reload::report_render::HotReloadReportLineKind;
 use vela_hot_reload::runtime::HotReloadRuntime;
 use vela_reflect::access::{MethodAccess, MethodEffectSet};
-use vela_reflect::registry::{MethodDesc, MethodParamDesc, SchemaHash, TypeDesc, TypeKey};
-use vela_vm::HostExecution;
-use vela_vm::error::VmErrorKind;
+use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey};
 use vela_vm::owned_value::OwnedValue;
 
 use crate::engine::Engine;
@@ -25,8 +19,6 @@ use crate::permission::ExecutionProfile;
 use crate::reload::EngineHotReloadSourceErrorKind;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 use crate::source::EngineSourceErrorKind;
-
-use super::player_type;
 
 fn hot_reload_result<T>(
     result: crate::reload::EngineHotReloadSourceResult<T>,
@@ -72,7 +64,6 @@ fn compile_update_with_abi(
 }
 
 mod changed_file_functions;
-mod changed_file_native_method;
 mod changed_file_schema_trait;
 mod dir_basic;
 mod dir_function_abi;
@@ -84,7 +75,6 @@ mod report_helpers;
 mod runtime_rejection_policy;
 mod runtime_safe_points;
 mod source_diagnostics;
-mod source_file_native_method;
 mod source_file_runtime;
 mod source_file_schema_trait;
 mod source_file_tuple_abi;
@@ -93,3 +83,6 @@ use fixtures::*;
 use function_abi_helpers::*;
 use host_method_and_source_helpers::*;
 use report_helpers::*;
+
+mod changed_file_native_method;
+mod source_file_native_method;

@@ -1,6 +1,5 @@
 use vela_bytecode::{StandardTypeGuard, TypeGuardPlan};
-use vela_common::{HostTypeId, PrimitiveTag};
-use vela_host::path::HostSlotRef;
+use vela_common::PrimitiveTag;
 
 use crate::heap::{HeapValue, ScriptHeap};
 use crate::option_result::{StdEnumKind, std_enum_tag};
@@ -194,8 +193,6 @@ pub(crate) enum ShallowTypeKey {
     Standard(StandardTypeGuard),
     Shape(vela_def::TypeId, vela_common::ShapeId),
     Variant(vela_def::VariantId),
-    Host(HostTypeId),
-    HostSlot(HostSlotRef),
 }
 
 impl ShallowTypeKey {
@@ -215,7 +212,6 @@ impl ShallowTypeKey {
             Self::Standard(StandardTypeGuard::Result) => "Result",
             Self::Shape(_, _) => "record",
             Self::Variant(_) => "enum",
-            Self::Host(_) | Self::HostSlot(_) => "host",
         }
     }
 
@@ -261,9 +257,7 @@ impl ShallowTypeKey {
                     None => Some(Self::Variant(identity.variant_id)),
                 },
                 HeapValue::Record { .. } | HeapValue::Enum { .. } => None,
-                HeapValue::PathProxy(_) => None,
             },
-            Value::HostRef(reference) => Some(Self::HostSlot(*reference)),
             Value::Missing => None,
         }
     }
@@ -293,7 +287,6 @@ fn linked_complete_shallow_key(plan: &TypeGuardPlan) -> Option<ShallowTypeKey> {
             ok: None,
             err: None,
         } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Result)),
-        TypeGuardPlan::HostType { host_type_id, .. } => Some(ShallowTypeKey::Host(*host_type_id)),
         _ => None,
     }
 }
@@ -310,7 +303,6 @@ fn linked_required_shallow_key(plan: &TypeGuardPlan) -> Option<ShallowTypeKey> {
         }
         TypeGuardPlan::Option { .. } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Option)),
         TypeGuardPlan::Result { .. } => Some(ShallowTypeKey::Standard(StandardTypeGuard::Result)),
-        TypeGuardPlan::HostType { host_type_id, .. } => Some(ShallowTypeKey::Host(*host_type_id)),
         _ => None,
     }
 }

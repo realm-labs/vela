@@ -39,7 +39,7 @@ impl ResumableIteratorNext {
     pub(crate) fn step(
         &mut self,
         program_owner: &Arc<LinkedArtifact>,
-        host: &mut Option<&mut dyn crate::method_runtime::HostIteratorAccess>,
+
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
@@ -52,7 +52,6 @@ impl ResumableIteratorNext {
                 program: program_owner.program(),
                 heap: heap.as_deref_mut(),
                 budget: budget.as_deref_mut(),
-                host: host.as_deref_mut(),
             };
             iterator.poll_next(&mut runtime, self.operation, charge_step, returned)
         };

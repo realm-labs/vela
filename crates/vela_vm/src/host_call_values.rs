@@ -57,13 +57,11 @@ pub fn owned_to_host_call_value(value: &OwnedValue) -> VmResult<HostCallValue> {
                 .map(|(name, value)| Ok(HostCallField::new(name, owned_to_host_call_value(value)?)))
                 .collect::<VmResult<Vec<_>>>()?,
         }),
-        OwnedValue::HostRef(value) => Ok(HostCallValue::HostRef(*value)),
-        OwnedValue::Closure(_)
-        | OwnedValue::Range(_)
-        | OwnedValue::PathProxy(_)
-        | OwnedValue::Iterator(_) => Err(VmError::new(VmErrorKind::TypeMismatch {
-            operation: "non-detached Host boundary value",
-        })),
+        OwnedValue::Closure(_) | OwnedValue::Range(_) | OwnedValue::Iterator(_) => {
+            Err(VmError::new(VmErrorKind::TypeMismatch {
+                operation: "non-detached Host boundary value",
+            }))
+        }
     }
 }
 
@@ -113,6 +111,5 @@ pub fn host_call_to_owned_value(value: HostCallValue) -> OwnedValue {
                 .into_iter()
                 .map(|field| (field.name, host_call_to_owned_value(field.value))),
         ),
-        HostCallValue::HostRef(value) => OwnedValue::HostRef(value),
     }
 }

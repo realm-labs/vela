@@ -280,61 +280,6 @@ fn target_diagnostic_contract_pins_unresolved_compile_target() {
 }
 
 #[test]
-fn target_diagnostic_contract_pins_analysis_host_access_denial() {
-    const SOURCE_ID: SourceId = SourceId::new(704);
-    const SOURCE: &str = "fn bump(player: ReadOnlyPlayer) { player.level = 2; return 1; }";
-    let mut registry = vela_registry::DefinitionRegistry::new();
-    let player = registry
-        .register_type(
-            vela_registry::TypeDef::new(DefPath::ty(
-                "host",
-                std::iter::empty::<&str>(),
-                "ReadOnlyPlayer",
-            ))
-            .host_runtime_id(51),
-        )
-        .expect("ReadOnlyPlayer type should register");
-    registry
-        .register_field(
-            vela_registry::FieldDef::new(
-                DefPath::field(
-                    "host",
-                    std::iter::empty::<&str>(),
-                    "ReadOnlyPlayer",
-                    "level",
-                ),
-                player,
-            )
-            .type_hint(Some("i64"))
-            .writable(false)
-            .host_runtime_id(52),
-        )
-        .expect("ReadOnlyPlayer::level field should register");
-    let error = compile_test_program_with_registry(SOURCE_ID, SOURCE, registry.compile_view())
-        .expect_err("read-only host field assignment should fail during analysis");
-    let diagnostic = only_semantic_diagnostic(error);
-
-    assert_diagnostic_contract(
-        &diagnostic,
-        SOURCE_ID,
-        SOURCE,
-        "analysis::field_not_writable",
-        "field is read-only for script writes",
-        "player.level = 2",
-        &[
-            ExpectedLabel {
-                span_text: "player.level = 2",
-                message: "assignment targets a read-only field",
-            },
-            ExpectedLabel {
-                span_text: "player.level = 2",
-                message: "write through an exposed method or a writable field instead",
-            },
-        ],
-    );
-}
-
-#[test]
 fn type_contract_diagnostic_contract_pins_expected_and_actual_types() {
     const SOURCE_ID: SourceId = SourceId::new(705);
     const SOURCE: &str =

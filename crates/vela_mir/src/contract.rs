@@ -1,12 +1,5 @@
-use vela_common::{HostTypeId, PrimitiveTag, ShapeId};
+use vela_common::{PrimitiveTag, ShapeId};
 use vela_def::{TypeId, VariantId};
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct HostTypeTarget {
-    pub semantic: TypeId,
-    pub runtime: HostTypeId,
-}
 
 /// Source-language callable category checked by a backend-neutral contract.
 ///
@@ -92,5 +85,4 @@ pub enum MirTypeContract {
         type_id: TypeId,
         variant: VariantId,
     },
-    Host(HostTypeTarget),
 }

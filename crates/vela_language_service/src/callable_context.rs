@@ -1,11 +1,9 @@
 use vela_analysis::facts::AnalysisFacts;
 use vela_analysis::hints::type_fact_from_hint;
-use vela_analysis::registry::{
-    RegistryFacts, ScopedResourceKindDef, ScopedResourceParentDef, ScopedResourceReturnDef,
-};
+use vela_analysis::registry::RegistryFacts;
 use vela_analysis::stdlib::{
-    LambdaFact, StdlibFunctionFact, StdlibMethodFact, scoped_iterator_resource,
-    stdlib_function_completion_facts, stdlib_method_fact_with_lambda_arity,
+    LambdaFact, StdlibFunctionFact, StdlibMethodFact, stdlib_function_completion_facts,
+    stdlib_method_fact_with_lambda_arity,
 };
 use vela_analysis::type_fact::TypeFact;
 use vela_common::SourceId;
@@ -41,7 +39,6 @@ pub struct CallableFacts {
     name: String,
     params: Vec<CallableParameterFacts>,
     returns: TypeFact,
-    scoped_resource: Option<ScopedResourceReturnDef>,
 
     origin: CallableOrigin,
     parameters_named: bool,
@@ -65,13 +62,8 @@ impl CallableFacts {
     }
 
     #[must_use]
-    pub const fn scoped_resource(&self) -> Option<ScopedResourceReturnDef> {
-        self.scoped_resource
-    }
-
-    #[must_use]
     pub fn return_display_name(&self) -> String {
-        scoped_return_display_name(&self.returns, self.scoped_resource)
+        self.returns.display_name()
     }
 
     #[must_use]
@@ -210,7 +202,6 @@ pub(crate) fn source_callable_facts_for_declaration(
         name: declaration.name.clone(),
         params,
         returns,
-        scoped_resource: None,
 
         origin: CallableOrigin::Source,
         parameters_named: true,
@@ -481,7 +472,6 @@ fn schema_method_callable_facts(
             || returns.as_ref().clone(),
             |signature| signature.returns.clone(),
         ),
-        scoped_resource: schema.method_scoped_resource(&owner, method),
 
         origin: CallableOrigin::SchemaMethod,
         parameters_named: signature.is_some(),
@@ -500,8 +490,7 @@ fn stdlib_method_callable_facts(
     else {
         return Vec::new();
     };
-    let resource = scoped_iterator_resource(receiver, method);
-    vec![stdlib_method_callable_fact(fact, resource)]
+    vec![stdlib_method_callable_fact(fact)]
 }
 
 fn source_variant_callable_facts(
@@ -565,7 +554,6 @@ pub(crate) fn source_variant_callable_fact(
         name: format!("{owner}::{name}"),
         params,
         returns: TypeFact::enum_type(&owner, Some(name)),
-        scoped_resource: None,
 
         origin: CallableOrigin::SourceVariant,
         parameters_named: false,
@@ -614,7 +602,6 @@ fn schema_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<CallableFa
                     registry_callable_parameters,
                 ),
                 returns: signature.map_or_else(|| *returns, |signature| signature.returns.clone()),
-                scoped_resource: schema.function_scoped_resource(&function.name),
 
                 origin: CallableOrigin::Schema,
                 parameters_named: signature.is_some(),
@@ -640,7 +627,6 @@ fn schema_variant_callable_facts(schema: &RegistryFacts, callee: &str) -> Vec<Ca
                 name: owner.clone(),
                 params,
                 returns: variant.fact,
-                scoped_resource: None,
 
                 origin: CallableOrigin::SchemaVariant,
                 parameters_named: false,
@@ -719,7 +705,6 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
             })
             .collect(),
         returns: fact.returns,
-        scoped_resource: None,
 
         origin: CallableOrigin::Stdlib,
         parameters_named: metadata.is_some(),
@@ -727,10 +712,7 @@ fn stdlib_callable_fact(fact: StdlibFunctionFact) -> CallableFacts {
     }
 }
 
-fn stdlib_method_callable_fact(
-    fact: StdlibMethodFact,
-    scoped_resource: Option<ScopedResourceReturnDef>,
-) -> CallableFacts {
+fn stdlib_method_callable_fact(fact: StdlibMethodFact) -> CallableFacts {
     let metadata = fact.parameter_metadata();
     let params = fact
         .params
@@ -754,7 +736,6 @@ fn stdlib_method_callable_fact(
         name: format!("{}.{}", fact.receiver.display_name(), fact.method),
         params,
         returns: fact.returns,
-        scoped_resource,
 
         origin: CallableOrigin::StdlibMethod,
         parameters_named: metadata.is_some(),
@@ -794,48 +775,10 @@ fn callable_facts_from_signature(
         name,
         params,
         returns,
-        scoped_resource: None,
 
         origin,
         parameters_named: true,
     }
-}
-
-fn scoped_return_display_name(
-    returns: &TypeFact,
-    resource: Option<ScopedResourceReturnDef>,
-) -> String {
-    let Some(resource) = resource else {
-        return returns.display_name();
-    };
-    let wrapper = match resource.kind {
-        ScopedResourceKindDef::View => "View",
-        ScopedResourceKindDef::MutView => "MutView",
-        ScopedResourceKindDef::Iterator => "ScopedIterator",
-    };
-    format!("{wrapper}<{}>", returns.display_name())
-}
-
-pub(crate) fn scoped_resource_display_name(
-    returns: &TypeFact,
-    resource: ScopedResourceReturnDef,
-) -> String {
-    scoped_return_display_name(returns, Some(resource))
-}
-
-pub(crate) fn scoped_resource_detail(resource: ScopedResourceReturnDef) -> String {
-    let kind = match resource.kind {
-        ScopedResourceKindDef::View => "View",
-        ScopedResourceKindDef::MutView => "MutView",
-        ScopedResourceKindDef::Iterator => "ScopedIterator",
-    };
-    let parent = match resource.parent {
-        ScopedResourceParentDef::Receiver => "receiver".to_owned(),
-        ScopedResourceParentDef::Parameter(index) => {
-            format!("parameter #{}", usize::from(index) + 1)
-        }
-    };
-    format!("scoped {kind}; parent: {parent}; explicit release")
 }
 
 fn indexed_callable_parameters(params: Vec<TypeFact>) -> Vec<CallableParameterFacts> {
@@ -922,7 +865,7 @@ fn declaration_name_matches(
 
 fn owner_names(receiver: &TypeFact) -> Vec<String> {
     let mut owners = record_owner_names(receiver);
-    if let TypeFact::Host { name } | TypeFact::Trait { name } = receiver {
+    if let TypeFact::Trait { name } = receiver {
         push_owner_name(&mut owners, name);
     }
     owners
@@ -956,16 +899,9 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -974,7 +910,6 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::ResultErr { .. }
         | TypeFact::Function { .. }
         | TypeFact::Closure
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -998,16 +933,9 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -1017,7 +945,6 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Record { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)

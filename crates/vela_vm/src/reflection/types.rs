@@ -8,7 +8,7 @@ use crate::{
     Vm, expect_arity, expect_string, runtime_value_to_reflect, value_from_reflect, value_to_reflect,
 };
 
-use super::common::{check_host_ref_inspection, check_reflect_policy};
+use super::common::check_reflect_policy;
 
 pub(super) fn register(
     vm: &mut Vm,
@@ -27,13 +27,13 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::type_of", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::type_of")?;
-        check_host_ref_inspection(&type_of_policy, &target)?;
+
         value_from_reflect(reflect::types::type_of_value(&type_of_registry, &target))
     });
     let borrowed_type_of_registry = Arc::clone(registry);
     let borrowed_type_of_policy = policy.clone();
     let borrowed_type_of_budget = Arc::clone(lookup_budget);
-    vm.register_borrowed_host_native("reflect::type_of", move |args, heap, host, _budget| {
+    vm.register_borrowed_host_native("reflect::type_of", move |args, heap, _host, _budget| {
         check_reflect_policy(
             &borrowed_type_of_policy,
             &borrowed_type_of_budget,
@@ -46,8 +46,8 @@ pub(super) fn register(
                 actual: args.len(),
             }));
         }
-        let target = runtime_value_to_reflect(&args[0], heap, Some(host), "reflect::type_of")?;
-        check_host_ref_inspection(&borrowed_type_of_policy, &target)?;
+        let target = runtime_value_to_reflect(&args[0], heap, "reflect::type_of")?;
+
         value_from_reflect(reflect::types::type_of_value(
             &borrowed_type_of_registry,
             &target,
@@ -121,7 +121,7 @@ fn register_named_metadata(
         )?;
         expect_arity("reflect::name", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::name")?;
-        check_host_ref_inspection(&name_policy, &target)?;
+
         value_from_reflect(reflect::members::name(&name_registry, &target)?)
     });
 
@@ -136,7 +136,7 @@ fn register_named_metadata(
         )?;
         expect_arity("reflect::id", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::id")?;
-        check_host_ref_inspection(&id_policy, &target)?;
+
         value_from_reflect(reflect::members::id(&id_registry, &target)?)
     });
 
@@ -151,7 +151,7 @@ fn register_named_metadata(
         )?;
         expect_arity("reflect::kind", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::kind")?;
-        check_host_ref_inspection(&kind_policy, &target)?;
+
         value_from_reflect(reflect::members::kind(&kind_registry, &target)?)
     });
 
@@ -166,7 +166,7 @@ fn register_named_metadata(
         )?;
         expect_arity("reflect::owner", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::owner")?;
-        check_host_ref_inspection(&owner_policy, &target)?;
+
         value_from_reflect(reflect::members::owner(&owner_registry, &target)?)
     });
 
@@ -191,7 +191,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::attrs", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::attrs")?;
-        check_host_ref_inspection(&attrs_policy, &target)?;
+
         value_from_reflect(reflect::members::attrs(&attrs_registry, &target)?)
     });
 
@@ -206,7 +206,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::attr", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::attr")?;
-        check_host_ref_inspection(&attr_policy, &target)?;
+
         let name = expect_string(&args[1], "reflect::attr")?;
         value_from_reflect(reflect::members::attr(&attr_registry, &target, name)?)
     });
@@ -222,7 +222,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::has_attr", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::has_attr")?;
-        check_host_ref_inspection(&has_attr_policy, &target)?;
+
         let name = expect_string(&args[1], "reflect::has_attr")?;
         Ok(OwnedValue::Bool(reflect::members::has_attr(
             &has_attr_registry,
@@ -242,7 +242,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::docs", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::docs")?;
-        check_host_ref_inspection(&docs_policy, &target)?;
+
         value_from_reflect(reflect::members::docs(&docs_registry, &target)?)
     });
 
@@ -257,7 +257,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::origin", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::origin")?;
-        check_host_ref_inspection(&origin_policy, &target)?;
+
         value_from_reflect(reflect::members::origin(&origin_registry, &target)?)
     });
 
@@ -272,7 +272,7 @@ fn register_attribute_metadata(
         )?;
         expect_arity("reflect::source_span", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::source_span")?;
-        check_host_ref_inspection(&source_span_policy, &target)?;
+
         value_from_reflect(reflect::members::source_span(
             &source_span_registry,
             &target,
@@ -297,7 +297,7 @@ fn register_signature_metadata(
         )?;
         expect_arity("reflect::access", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::access")?;
-        check_host_ref_inspection(&access_policy, &target)?;
+
         value_from_reflect(reflect::members::access(&access_registry, &target)?)
     });
 
@@ -312,7 +312,7 @@ fn register_signature_metadata(
         )?;
         expect_arity("reflect::required_permissions", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::required_permissions")?;
-        check_host_ref_inspection(&required_permissions_policy, &target)?;
+
         value_from_reflect(reflect::members::required_permissions(
             &required_permissions_registry,
             &target,
@@ -330,7 +330,7 @@ fn register_signature_metadata(
         )?;
         expect_arity("reflect::effects", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::effects")?;
-        check_host_ref_inspection(&effects_policy, &target)?;
+
         value_from_reflect(reflect::members::effects(&effects_registry, &target)?)
     });
 
@@ -345,7 +345,7 @@ fn register_signature_metadata(
         )?;
         expect_arity("reflect::params", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::params")?;
-        check_host_ref_inspection(&params_policy, &target)?;
+
         value_from_reflect(reflect::members::params(&params_registry, &target)?)
     });
 
@@ -360,7 +360,7 @@ fn register_signature_metadata(
         )?;
         expect_arity("reflect::returns", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::returns")?;
-        check_host_ref_inspection(&returns_policy, &target)?;
+
         value_from_reflect(reflect::members::returns(&returns_registry, &target)?)
     });
 }

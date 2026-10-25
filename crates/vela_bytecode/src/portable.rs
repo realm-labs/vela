@@ -13,9 +13,9 @@ use crate::{
 use vela_def::FunctionId;
 
 const MAGIC: &[u8; 8] = b"VELAPRG\0";
-// Version 7 removes task instructions/tables and executable async metadata.
+// Version 8 removes borrowed-host instructions, paths, contracts, and binding facts.
 // Old formats are rejected before decoding their incompatible payloads.
-const FORMAT_VERSION: u32 = 7;
+const FORMAT_VERSION: u32 = 8;
 const HEADER_LEN: usize = MAGIC.len() + size_of::<u32>() + size_of::<u64>() + 32;
 const MAX_PAYLOAD_BYTES: u64 = 64 * 1024 * 1024;
 
@@ -48,7 +48,7 @@ impl fmt::Display for PortableArtifactChecksum {
 ///
 /// Loading still binds stable native/type identities against the receiving
 /// Engine and runs the bytecode verifier. MIR and process-local executable
-/// generations are deliberately not portable in format version 7.
+/// generations are deliberately not portable in format version 8.
 #[derive(Debug)]
 pub struct PortableCompiledProgram {
     pub(crate) bytecode: UnlinkedProgram,
@@ -347,7 +347,7 @@ impl fmt::Display for PortableArtifactError {
                 write!(formatter, "portable artifact decode failed: {message}")
             }
             Self::UnsupportedPackageMetadata => formatter.write_str(
-                "portable artifact format 7 does not yet encode package runtime metadata",
+                "portable artifact format 8 does not yet encode package runtime metadata",
             ),
             Self::SelectedPlan(message) => {
                 write!(formatter, "portable selected plan is invalid: {message}")
@@ -438,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
+    fn portable_v8_round_trips_selected_physical_coverage_from_source_and_linked_artifacts() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(77),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -475,7 +475,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_rejects_checksum_valid_invalid_selected_coverage() {
+    fn portable_v8_rejects_checksum_valid_invalid_selected_coverage() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(78),
             "fn main(value: i64) -> i64 { if value > 4 { return 1; } return 0; }",
@@ -507,7 +507,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_round_trips_bounded_scalar_plan_tables() {
+    fn portable_v8_round_trips_bounded_scalar_plan_tables() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(79),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -546,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_round_trips_and_rejects_corrupted_scalar_range_loops() {
+    fn portable_v8_round_trips_and_rejects_corrupted_scalar_range_loops() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(82),
             "fn main(limit: i64) -> i64 { let total = 0; for value in 0..limit { total += value + 1 - 1; } return total; }",
@@ -612,7 +612,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_rejects_scalar_plan_count_above_format_limit() {
+    fn portable_v8_rejects_scalar_plan_count_above_format_limit() {
         let compiled =
             crate::compiler::compile_test_program(SourceId::new(80), "fn main() { return 1; }")
                 .expect("compile scalar program");
@@ -635,7 +635,7 @@ mod tests {
     }
 
     #[test]
-    fn portable_v7_rejects_checksum_valid_invalid_scalar_plan_handle() {
+    fn portable_v8_rejects_checksum_valid_invalid_scalar_plan_handle() {
         let compiled = crate::compiler::compile_test_program(
             SourceId::new(81),
             "fn main(value: i64) -> i64 { let next = value + 1; return next; }",
@@ -686,7 +686,7 @@ mod tests {
             Err(PortableArtifactError::ChecksumMismatch)
         );
 
-        for old_version in [1_u32, 2, 3, 4, 5, 6] {
+        for old_version in [1_u32, 2, 3, 4, 5, 6, 7] {
             let mut old = artifact.encode().expect("encode artifact");
             old[HEADER_LEN..].fill(0xff);
             old[MAGIC.len()..MAGIC.len() + size_of::<u32>()]

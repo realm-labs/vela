@@ -6,9 +6,9 @@
     "ux17-roots/left/cross.vela": "[[import-alpha:start]]use alpha::alpha;[[import-alpha:end]]\n[[import-beta:start]]use beta::beta;[[import-beta:end]]\nfn cross_main() { /* 中😀 */ [[alpha:start]]alpha[[alpha:end]](); [[beta:start]]beta[[beta:end]](); }\n",
     "ux17-roots/right/beta.vela": "// independent root\n// independent location\npub fn [[decl:start]]beta[[decl:end]]() -> i64 { return 2; }\n",
     "ux17-roots/right/other_caller.vela": "[[import:start]]use beta::beta;[[import:end]]\nfn right_main() { /* 中😀 */ [[call:start]]beta[[call:end]](); }\n",
-    "ux17-roots/left/schema-one.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
-    "ux17-roots/left/schema-two.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"host\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
-    "ux17-roots/left/schema-invalid.json": "{\"formatVersion\":99,\"facts\":{}}"
+    "ux17-roots/left/schema-one.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"record\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}},{\"owner\":\"HostCell\",\"name\":\"gone\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "ux17-roots/left/schema-two.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"HostCell\",\"fact\":{\"kind\":\"record\",\"name\":\"HostCell\"}}],\"fields\":[{\"owner\":\"HostCell\",\"name\":\"value\",\"fact\":{\"kind\":\"primitive\",\"name\":\"string\"}},{\"owner\":\"HostCell\",\"name\":\"rank\",\"fact\":{\"kind\":\"primitive\",\"name\":\"bool\"}}]}}",
+    "ux17-roots/left/schema-invalid.json": "{\"formatVersion\":4,\"facts\":{}}"
   },
   "actions": [],
   "oracle": {

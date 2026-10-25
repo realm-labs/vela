@@ -2,13 +2,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use vela_common::{HostObjectId, HostTypeId, ScalarValue};
-use vela_def::{FieldId, TypeId};
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::value::HostValue;
+use vela_common::ScalarValue;
 use vela_package::PackageId;
-use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey};
 use vela_vm::budget::ExecutionBudgetKind;
 use vela_vm::error::VmErrorKind;
 use vela_vm::owned_value::OwnedValue;
@@ -19,6 +14,8 @@ use crate::permission::ExecutionProfile;
 use crate::runtime::{CallArgs, CallOptions, Runtime};
 
 static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(1);
+
+mod native_capabilities;
 
 #[test]
 fn ordinary_package_imports_public_dependency_function() {
@@ -611,64 +608,6 @@ fn ordinary_package_call_uses_normal_execution_budget() {
             ..
         }
     ));
-    remove_fixture(root);
-}
-
-#[test]
-fn ordinary_package_call_uses_normal_budget_host_access_and_capability_checks() {
-    let root = package_fixture("package_host_access");
-    write_package(
-        &root,
-        "dev.vela.plugin",
-        "plugin",
-        "[capabilities]\nrequires = [\"host_read\", \"host_write\"]\n",
-        r#"pub fn level_up(player: Player) -> i64 {
-        player.level += 1;
-        return player.level;
-}
-"#,
-    );
-    let host_type = HostTypeId::new(1);
-    let field = FieldId::new(1);
-    let engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(host_type)
-                .field(FieldDesc::new(field, "level").writable(true)),
-        )
-        .build()
-        .expect("engine");
-    let snapshot = engine
-        .load_package_workspace(root.join("vela.toml"))
-        .expect("snapshot");
-    let artifact = engine
-        .compile_package(&snapshot, &package("dev.vela.plugin"))
-        .expect("ordinary package compiles");
-    let mut runtime =
-        Runtime::from_linked_artifact(engine, artifact).expect("runtime should initialize");
-    let player = HostRef::new(host_type, HostObjectId::new(42), 1);
-    let level = HostPath::new(player).field(field);
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level.clone(), HostValue::Scalar(ScalarValue::I64(9)));
-
-    let output = runtime
-        .call(
-            "api::level_up",
-            CallArgs::new()
-                .with_host_handle("player", player)
-                .with_fallback_adapter(&mut adapter),
-            CallOptions::new(1_000, usize::MAX, usize::MAX),
-        )
-        .expect("package host mutation runs");
-    assert_eq!(
-        runtime.value_to_owned(&output),
-        Ok(OwnedValue::Scalar(ScalarValue::I64(10)))
-    );
-    assert_eq!(
-        adapter.read_diagnostic_path(&level),
-        Ok(HostValue::Scalar(ScalarValue::I64(10)))
-    );
     remove_fixture(root);
 }
 

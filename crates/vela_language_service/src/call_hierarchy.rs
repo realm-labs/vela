@@ -991,16 +991,9 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -1010,7 +1003,6 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -1039,16 +1031,9 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -1058,7 +1043,6 @@ fn collect_trait_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Record { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)

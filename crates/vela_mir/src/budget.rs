@@ -12,7 +12,6 @@ pub enum MirBudgetClass {
     Call,
     DynamicWork,
     Allocation,
-    HostAccess,
     Reflection,
 }
 
@@ -142,7 +141,6 @@ pub(crate) fn analyze(function: &MirFunction, graph: &FunctionGraph) -> MirBudge
 
 fn statement_budget_class(kind: &MirStatementKind) -> Option<MirBudgetClass> {
     match kind {
-        MirStatementKind::Host(_) => Some(MirBudgetClass::HostAccess),
         MirStatementKind::Reflect(_) => Some(MirBudgetClass::Reflection),
         MirStatementKind::Call(_) => Some(MirBudgetClass::Call),
         MirStatementKind::Allocate(_) | MirStatementKind::FormatString { .. } => {

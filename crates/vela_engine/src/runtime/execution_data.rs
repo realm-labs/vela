@@ -67,21 +67,6 @@ impl vela_vm::VmInlineCaches for GenerationExecutionData {
         self.inline_caches.len()
     }
 
-    fn host_access(
-        &self,
-        site: vela_bytecode::CacheSiteId,
-    ) -> Option<vela_vm::HostInlineCacheEntry> {
-        self.inline_caches.host_access(site)
-    }
-
-    fn set_host_access(
-        &self,
-        site: vela_bytecode::CacheSiteId,
-        entry: vela_vm::HostInlineCacheEntry,
-    ) {
-        self.inline_caches.set_host_access(site, entry);
-    }
-
     fn record_field(
         &self,
         site: vela_bytecode::CacheSiteId,

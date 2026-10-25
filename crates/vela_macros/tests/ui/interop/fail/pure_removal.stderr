@@ -1,4 +1,4 @@
-error: effects(...) only adds effects; `pure` cannot remove an inferred host effect
+error: effects(...) only adds effects; `pure` cannot remove declared effects
  --> tests/ui/interop/fail/pure_removal.rs:5:40
   |
 5 | #[export(path = "game::grant", effects(pure))]

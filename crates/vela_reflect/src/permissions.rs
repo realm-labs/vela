@@ -16,11 +16,10 @@ pub enum ReflectPermission {
     CallHostWriteMethods,
     CallEventMethods,
     AccessPrivate,
-    InspectHostPath,
 }
 
 impl ReflectPermission {
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 8] = [
         Self::ReadTypeInfo,
         Self::ReadValueFields,
         Self::WriteValueFields,
@@ -29,7 +28,6 @@ impl ReflectPermission {
         Self::CallHostWriteMethods,
         Self::CallEventMethods,
         Self::AccessPrivate,
-        Self::InspectHostPath,
     ];
 
     #[must_use]
@@ -43,7 +41,6 @@ impl ReflectPermission {
             Self::CallHostWriteMethods => "reflect::call_host_write_methods",
             Self::CallEventMethods => "reflect::call_event_methods",
             Self::AccessPrivate => "reflect::access_private",
-            Self::InspectHostPath => "reflect::inspect_host_path",
         }
     }
 
@@ -514,36 +511,19 @@ mod tests {
 
     #[test]
     fn permission_metadata_reports_names_and_unknown_candidates() {
-        let policy = ReflectPolicy::new(
-            ReflectPermissionSet::new()
-                .with(ReflectPermission::ReadTypeInfo)
-                .with(ReflectPermission::InspectHostPath),
-        );
+        let policy =
+            ReflectPolicy::new(ReflectPermissionSet::new().with(ReflectPermission::ReadTypeInfo));
 
-        assert_eq!(
-            permission_names(&policy),
-            vec!["reflect::read_type_info", "reflect::inspect_host_path"]
-        );
-        assert_eq!(
-            has_permission(&policy, "reflect::inspect_host_path"),
-            Ok(true)
-        );
+        assert_eq!(permission_names(&policy), vec!["reflect::read_type_info"]);
+        assert!(has_permission(&policy, "reflect::inspect_host_path").is_err());
         assert_eq!(
             has_permission(&policy, "reflect::write_value_fields"),
             Ok(false)
         );
-        let error =
-            has_permission(&policy, "reflect::inspect_host").expect_err("unknown permission");
-        assert_eq!(
-            error.kind,
-            ReflectErrorKind::UnknownPermission {
-                permission: "reflect::inspect_host".to_owned(),
-                candidates: vec![
-                    "reflect::inspect_host_path".to_owned(),
-                    "reflect::call_methods".to_owned(),
-                    "reflect::access_private".to_owned()
-                ]
-            }
+        let error = has_permission(&policy, "reflect::read_type_inf")
+            .expect_err("unknown permission must be rejected");
+        assert!(
+            matches!(error.kind, ReflectErrorKind::UnknownPermission { candidates, .. } if candidates.contains(&"reflect::read_type_info".to_owned()))
         );
     }
 

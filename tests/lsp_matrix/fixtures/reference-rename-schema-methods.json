@@ -407,21 +407,21 @@
         {
           "name": "host::Counter",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "host::Counter"
           }
         },
         {
           "name": "third::Counter",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "third::Counter"
           }
         },
         {
           "name": "other::Counter",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "other::Counter"
           }
         }

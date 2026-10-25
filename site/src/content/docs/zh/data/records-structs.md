@@ -33,7 +33,7 @@ fn boost(reward: Reward) -> Reward {
 
 ## Struct 和宿主类型
 
-脚本 struct 是 GC 管理的脚本数据。注册宿主类型是 Rust 拥有的状态，通过 `HostRef`、`HostPath`、`PathProxy` 和 HostAccess 访问。源码层都可能出现点号语法，但运行时边界不同。
+脚本 struct 是 GC 管理的脚本数据。现有序列化转换产生脚本自有值，不隐式写回 Rust。借用的 Host 对象与透明路径已删除。
 
 ## 反射和热更新
 

@@ -151,8 +151,7 @@ fn placement_policy(
                 PlacementPolicy::External(signature)
             }
         }
-        CallTargetFact::HostMethod { owner, name }
-        | CallTargetFact::RegistryMethod { owner, name } => PlacementPolicy::External(
+        CallTargetFact::RegistryMethod { owner, name } => PlacementPolicy::External(
             schema.and_then(|schema| registry_method_signature(schema, owner, name)),
         ),
         CallTargetFact::StdlibMethod { name } => {

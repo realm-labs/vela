@@ -6,7 +6,6 @@ use vela_bytecode::{LinkedArtifact, ScriptFunctionHandle};
 
 use crate::equality::{ResumableComparison, ResumableComparisonStep};
 use crate::heap_execution::HeapExecution;
-use crate::host_collection_callback::HostRetainWriteback;
 use crate::option_result::{StdEnumKind, StdEnumVariant, option_value, result_value};
 use crate::runtime_checks::{expect_closure_ref, is_truthy};
 use crate::{
@@ -21,15 +20,12 @@ mod operations;
 mod retain;
 mod state;
 
-pub(crate) use retain::HostCollectionRetain;
 use state::{CallbackState, NumericTotal, SortByEntry, SortByState};
 
 pub(crate) struct ResumableCallbackMethod {
     callback_value: Value,
     callback: Option<PreparedCallback>,
     state: CallbackState,
-    host_retain_writeback: Option<HostRetainWriteback>,
-    completed_host_retain: Option<Box<HostCollectionRetain>>,
 }
 
 pub(crate) enum ResumableCallbackStep {
@@ -55,8 +51,6 @@ impl ResumableCallbackMethod {
         cache: CallbackMethodInlineCacheEntry,
         args: &[Value],
         heap: Option<&HeapExecution<'_>>,
-        host_retain_writeback: Option<HostRetainWriteback>,
-        mut host_sequence: Option<crate::iteration::IteratorState>,
     ) -> Option<VmResult<Self>> {
         if let Some(iterator) =
             crate::iteration::ResumableIteratorMethod::new(*receiver, cache, args)
@@ -69,8 +63,6 @@ impl ResumableCallbackMethod {
                 },
                 callback: None,
                 state: CallbackState::Iterator(Box::new(iterator)),
-                host_retain_writeback: None,
-                completed_host_retain: None,
             }));
         }
         let operation = operations::callback_operation(cache.receiver, cache.target)?;
@@ -107,16 +99,13 @@ impl ResumableCallbackMethod {
             (StandardMethodReceiver::Array, CallbackMethodInlineCacheTarget::GroupBy) => {
                 CallbackState::GroupBy {
                     operation,
-                    values: if host_sequence.is_some() {
-                        Vec::new()
-                    } else {
+                    values: {
                         match array_methods::array_values(receiver, heap, operation) {
                             Ok(values) => values,
                             Err(error) => return Some(Err(error)),
                         }
                     },
                     index: 0,
-                    host_sequence: host_sequence.take().map(Box::new),
                     groups: BTreeMap::new(),
                     awaiting: None,
                 }
@@ -124,16 +113,13 @@ impl ResumableCallbackMethod {
             (StandardMethodReceiver::Map, CallbackMethodInlineCacheTarget::GroupBy) => {
                 CallbackState::MapGroupBy {
                     operation,
-                    entries: if host_sequence.is_some() {
-                        Vec::new()
-                    } else {
+                    entries: {
                         match map_methods::map_entries(receiver, heap, operation) {
                             Ok(entries) => entries,
                             Err(error) => return Some(Err(error)),
                         }
                     },
                     index: 0,
-                    host_sequence: host_sequence.take().map(Box::new),
                     groups: BTreeMap::new(),
                     awaiting: None,
                 }
@@ -143,16 +129,13 @@ impl ResumableCallbackMethod {
                 source: *receiver,
                 target: cache.target,
                 operation,
-                values: if host_sequence.is_some() {
-                    Vec::new()
-                } else {
+                values: {
                     match array_methods::array_values(receiver, heap, operation) {
                         Ok(values) => values,
                         Err(error) => return Some(Err(error)),
                     }
                 },
                 index: 0,
-                host_sequence: host_sequence.take().map(Box::new),
                 output: Vec::new(),
                 count: 0,
                 total: NumericTotal::Int(0),
@@ -166,16 +149,13 @@ impl ResumableCallbackMethod {
                 source: *receiver,
                 target: cache.target,
                 operation,
-                values: if host_sequence.is_some() {
-                    Vec::new()
-                } else {
+                values: {
                     match set_methods::set_values(receiver, heap, operation) {
                         Ok(values) => values,
                         Err(error) => return Some(Err(error)),
                     }
                 },
                 index: 0,
-                host_sequence: host_sequence.take().map(Box::new),
                 output: Vec::new(),
                 count: 0,
                 total: NumericTotal::Int(0),
@@ -188,16 +168,13 @@ impl ResumableCallbackMethod {
                 source: *receiver,
                 target: cache.target,
                 operation,
-                entries: if host_sequence.is_some() {
-                    Vec::new()
-                } else {
+                entries: {
                     match map_methods::map_entries(receiver, heap, operation) {
                         Ok(entries) => entries,
                         Err(error) => return Some(Err(error)),
                     }
                 },
                 index: 0,
-                host_sequence: host_sequence.take().map(Box::new),
                 output: Vec::new(),
                 count: 0,
                 found: None,
@@ -229,29 +206,20 @@ impl ResumableCallbackMethod {
             callback_value: args[0],
             callback: None,
             state,
-            host_retain_writeback,
-            completed_host_retain: None,
         }))
-    }
-
-    pub(crate) fn take_completed_host_retain(&mut self) -> Option<HostCollectionRetain> {
-        self.completed_host_retain.take().map(|retain| *retain)
     }
 
     pub(crate) fn step(
         &mut self,
         vm: &crate::Vm,
         program_owner: &Arc<LinkedArtifact>,
-        mut host: Option<&mut crate::HostExecution<'_>>,
+        host: Option<&mut crate::HostExecution<'_>>,
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
     ) -> VmResult<ResumableCallbackStep> {
         if matches!(self.state, CallbackState::Iterator(_)) {
-            let mut iterator_host = host
-                .as_deref_mut()
-                .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess);
-            return self.step_iterator(program_owner, &mut iterator_host, heap, budget, returned);
+            return self.step_iterator(program_owner, heap, budget, returned);
         }
         if matches!(self.state, CallbackState::Enum { .. }) {
             return self.step_enum(heap, budget, returned);
@@ -389,30 +357,10 @@ impl ResumableCallbackMethod {
         }
 
         let has_next = match &self.state {
-            CallbackState::Sequence {
-                values,
-                index,
-                host_sequence,
-                ..
-            } => host_sequence.is_some() || *index < values.len(),
-            CallbackState::Map {
-                entries,
-                index,
-                host_sequence,
-                ..
-            } => host_sequence.is_some() || *index < entries.len(),
-            CallbackState::GroupBy {
-                values,
-                index,
-                host_sequence,
-                ..
-            } => host_sequence.is_some() || *index < values.len(),
-            CallbackState::MapGroupBy {
-                entries,
-                index,
-                host_sequence,
-                ..
-            } => host_sequence.is_some() || *index < entries.len(),
+            CallbackState::Sequence { values, index, .. } => *index < values.len(),
+            CallbackState::Map { entries, index, .. } => *index < entries.len(),
+            CallbackState::GroupBy { values, index, .. } => *index < values.len(),
+            CallbackState::MapGroupBy { entries, index, .. } => *index < entries.len(),
             CallbackState::Iterator(_) | CallbackState::SortBy(_) => false,
             CallbackState::Enum { .. } => false,
             CallbackState::Complete => false,
@@ -422,14 +370,13 @@ impl ResumableCallbackMethod {
         } else {
             None
         };
-        let callback_value = self.callback_value;
+        let _callback_value = self.callback_value;
         let next = match &mut self.state {
             CallbackState::Sequence {
                 target,
-                operation,
+                operation: _,
                 values,
                 index,
-                host_sequence,
                 found,
                 decision,
                 awaiting,
@@ -441,26 +388,10 @@ impl ResumableCallbackMethod {
                         && *decision == Some(true)
                     || matches!(target, CallbackMethodInlineCacheTarget::All)
                         && *decision == Some(false);
-                if terminal || (host_sequence.is_none() && *index >= values.len()) {
+                if terminal || (*index >= values.len()) {
                     return self.finish(heap, budget);
                 }
-                let value = if let Some(iterator) = host_sequence {
-                    let iterator_host = host.as_mut().map(|host| {
-                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
-                    });
-                    let mut runtime = crate::method_runtime::MethodRuntime {
-                        program: program_owner.program(),
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: iterator_host,
-                    };
-                    let Some(value) =
-                        iterator.next_with_runtime(&mut runtime, operation, &[callback_value])?
-                    else {
-                        return self.finish(heap, budget);
-                    };
-                    value
-                } else {
+                let value = {
                     let value = values[*index];
                     *index = index.saturating_add(1);
                     value
@@ -470,10 +401,9 @@ impl ResumableCallbackMethod {
             }
             CallbackState::Map {
                 target,
-                operation,
+                operation: _,
                 entries,
                 index,
-                host_sequence,
                 found,
                 decision,
                 awaiting,
@@ -485,26 +415,10 @@ impl ResumableCallbackMethod {
                         && *decision == Some(true)
                     || matches!(target, CallbackMethodInlineCacheTarget::All)
                         && *decision == Some(false);
-                if terminal || (host_sequence.is_none() && *index >= entries.len()) {
+                if terminal || (*index >= entries.len()) {
                     return self.finish(heap, budget);
                 }
-                let entry = if let Some(iterator) = host_sequence {
-                    let iterator_host = host.as_mut().map(|host| {
-                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
-                    });
-                    let mut runtime = crate::method_runtime::MethodRuntime {
-                        program: program_owner.program(),
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: iterator_host,
-                    };
-                    let Some(entry) =
-                        iterator.next_host_map_entry_with_runtime(&mut runtime, operation)?
-                    else {
-                        return self.finish(heap, budget);
-                    };
-                    entry
-                } else {
+                let entry = {
                     let entry = entries[*index];
                     *index = index.saturating_add(1);
                     entry
@@ -517,33 +431,16 @@ impl ResumableCallbackMethod {
                 }
             }
             CallbackState::GroupBy {
-                operation,
+                operation: _,
                 values,
                 index,
-                host_sequence,
                 awaiting,
                 ..
             } => {
-                if host_sequence.is_none() && *index >= values.len() {
+                if *index >= values.len() {
                     return self.finish(heap, budget);
                 }
-                let value = if let Some(iterator) = host_sequence {
-                    let iterator_host = host.as_mut().map(|host| {
-                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
-                    });
-                    let mut runtime = crate::method_runtime::MethodRuntime {
-                        program: program_owner.program(),
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: iterator_host,
-                    };
-                    let Some(value) =
-                        iterator.next_with_runtime(&mut runtime, operation, &[callback_value])?
-                    else {
-                        return self.finish(heap, budget);
-                    };
-                    value
-                } else {
+                let value = {
                     let value = values[*index];
                     *index = index.saturating_add(1);
                     value
@@ -552,33 +449,16 @@ impl ResumableCallbackMethod {
                 vec![value]
             }
             CallbackState::MapGroupBy {
-                operation,
+                operation: _,
                 entries,
                 index,
-                host_sequence,
                 awaiting,
                 ..
             } => {
-                if host_sequence.is_none() && *index >= entries.len() {
+                if *index >= entries.len() {
                     return self.finish(heap, budget);
                 }
-                let entry = if let Some(iterator) = host_sequence {
-                    let iterator_host = host.as_mut().map(|host| {
-                        &mut **host as &mut dyn crate::method_runtime::HostIteratorAccess
-                    });
-                    let mut runtime = crate::method_runtime::MethodRuntime {
-                        program: program_owner.program(),
-                        heap: heap.as_deref_mut(),
-                        budget: budget.as_deref_mut(),
-                        host: iterator_host,
-                    };
-                    let Some(entry) =
-                        iterator.next_host_map_entry_with_runtime(&mut runtime, operation)?
-                    else {
-                        return self.finish(heap, budget);
-                    };
-                    entry
-                } else {
+                let entry = {
                     let entry = entries[*index];
                     *index = index.saturating_add(1);
                     entry
@@ -623,7 +503,6 @@ impl ResumableCallbackMethod {
             CallbackState::Sequence {
                 source,
                 values,
-                host_sequence,
                 output,
                 found,
                 awaiting,
@@ -631,9 +510,7 @@ impl ResumableCallbackMethod {
             } => {
                 heap.protect_values(&[*source]);
                 heap.protect_values(values);
-                if let Some(iterator) = host_sequence {
-                    heap.protect_values(&iterator.protected_values());
-                }
+
                 heap.protect_values(output);
                 if let Some(value) = found {
                     heap.protect_values(&[*value]);
@@ -645,16 +522,13 @@ impl ResumableCallbackMethod {
             CallbackState::Map {
                 source,
                 entries,
-                host_sequence,
                 output,
                 found,
                 awaiting,
                 ..
             } => {
                 heap.protect_values(&[*source]);
-                if let Some(iterator) = host_sequence {
-                    heap.protect_values(&iterator.protected_values());
-                }
+
                 for (key, value) in entries.iter().chain(output) {
                     heap.protect_values(&[*key, *value]);
                 }
@@ -667,30 +541,16 @@ impl ResumableCallbackMethod {
             }
             CallbackState::GroupBy {
                 values,
-                host_sequence,
                 groups,
                 awaiting,
                 ..
-            } => group_by::protect_values(
-                values,
-                host_sequence.as_deref(),
-                groups,
-                awaiting.as_ref(),
-                heap,
-            ),
+            } => group_by::protect_values(values, groups, awaiting.as_ref(), heap),
             CallbackState::MapGroupBy {
                 entries,
-                host_sequence,
                 groups,
                 awaiting,
                 ..
-            } => group_by::protect_entries(
-                entries,
-                host_sequence.as_deref(),
-                groups,
-                awaiting.as_ref(),
-                heap,
-            ),
+            } => group_by::protect_entries(entries, groups, awaiting.as_ref(), heap),
             CallbackState::SortBy(state) => {
                 heap.protect_values(&state.values);
                 for entry in &state.entries {
@@ -736,7 +596,7 @@ impl ResumableCallbackMethod {
     fn step_iterator(
         &mut self,
         program_owner: &Arc<LinkedArtifact>,
-        host: &mut Option<&mut dyn crate::method_runtime::HostIteratorAccess>,
+
         heap: &mut Option<&mut HeapExecution<'_>>,
         budget: &mut Option<&mut ExecutionBudget>,
         returned: Option<Value>,
@@ -744,7 +604,7 @@ impl ResumableCallbackMethod {
         let CallbackState::Iterator(iterator) = &mut self.state else {
             return Err(incomplete_callback());
         };
-        match iterator.step(program_owner, host, heap, budget, returned)? {
+        match iterator.step(program_owner, heap, budget, returned)? {
             crate::iteration::ResumableIteratorMethodStep::Complete(value) => {
                 Ok(ResumableCallbackStep::Complete(value))
             }
@@ -974,19 +834,17 @@ impl ResumableCallbackMethod {
                     }
                 }
                 CallbackMethodInlineCacheTarget::Retain => {
-                    self.completed_host_retain = retain::complete_sequence(
+                    retain::complete_sequence(
                         retain::SequenceCompletion {
                             receiver,
                             source,
                             values,
                             retain,
-                            writeback: self.host_retain_writeback.take(),
                         },
                         heap,
                         budget,
                         operation,
-                    )?
-                    .map(Box::new);
+                    )?;
                     Value::Unit
                 }
                 CallbackMethodInlineCacheTarget::Find => {
@@ -1015,18 +873,16 @@ impl ResumableCallbackMethod {
                     map_methods::make_map_from_entries(output, heap, budget, operation)?
                 }
                 CallbackMethodInlineCacheTarget::Retain => {
-                    self.completed_host_retain = retain::complete_map(
+                    retain::complete_map(
                         retain::MapCompletion {
                             source,
                             entries,
                             retain,
-                            writeback: self.host_retain_writeback.take(),
                         },
                         heap,
                         budget,
                         operation,
-                    )?
-                    .map(Box::new);
+                    )?;
                     Value::Unit
                 }
                 CallbackMethodInlineCacheTarget::Find => {

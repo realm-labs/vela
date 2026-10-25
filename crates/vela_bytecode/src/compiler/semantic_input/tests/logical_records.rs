@@ -144,7 +144,6 @@ fn assert_standard_descriptor(
         assert_eq!(descriptor.variant, None);
         assert_eq!(descriptor.name, field.name());
         assert_eq!(descriptor.declaration_order, field.canonical_slot());
-        assert_eq!(descriptor.host_runtime, None);
     }
     manifest
 }

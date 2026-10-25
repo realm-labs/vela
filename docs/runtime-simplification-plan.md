@@ -1,8 +1,9 @@
 # Runtime Simplification And Feature Removal Plan
 
-Status: checkpoints A-C implemented and focused gates pass. Service/Provider,
-script task/async surfaces are removed; D-E remain open. Full repository
-acceptance is still pending. R02 replacement interop is deferred.
+Status: checkpoints A-D implemented and affected gates pass. Service/Provider,
+script task/async, borrowed-host and transparent-path surfaces are removed.
+E repository cleanup and acceptance remain open. R02 replacement interop is
+deferred; no independent opaque-object runtime remains after D.
 
 ## Target And Authority
 
@@ -15,8 +16,8 @@ This scope supersedes conflicting Service, Provider, async, borrowed-host, and
 JIT requirements in the previous roadmap and architecture. Existing code,
 tests, milestone acceptance records, and subsystem contracts still describe the
 previous implementation until their corresponding removal checkpoint lands.
-Checkpoints B-C remove Service/Provider and script tasks/async; borrowed-host
-and path removal must still land with checkpoint D. Historical records are not current support.
+Checkpoints B-D remove Service/Provider, script tasks/async, borrowed-host and
+transparent paths. Historical records are not current support.
 
 Keep repository artifacts domain-neutral. The purpose of this plan is to reduce
 the language and embedding contract, without reproducing another host ABI.
@@ -111,8 +112,8 @@ is an audit starting point, not proof that the future boundary is implemented.
 
 ## Removal Checklist
 
-R01 and R03-R07 are implemented at checkpoints A-C; R02 is deferred. R08-R16
-remain open; full repository acceptance belongs to E. Remove a
+R01 and R03-R13 are implemented at checkpoints A-D; R02 is deferred. R14-R16
+final audits and repository acceptance belong to E. Remove a
 feature's declarations, public exports, compiler metadata, runtime dispatch,
 portable encoding, tooling projection, examples, and build registrations
 together with its implementation.

@@ -16,7 +16,7 @@ fn bodyless_function_headers_do_not_borrow_following_declaration_bodies() {
             "use helper::helper;",
             "const LIMIT = 1;",
             "state value: i64 = 1;",
-            "extern state value: i64;",
+            "state value: i64 = 0;",
         ] {
             let header = "fn broken(\n value: i64\n)".replace('\n', newline);
             let neighbor = neighbor.replace('\n', newline);

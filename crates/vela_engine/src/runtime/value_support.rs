@@ -18,12 +18,7 @@ pub(super) fn runtime_vm(
     }
 }
 
-pub(super) fn value_type_id(
-    value: &Value,
-    heap: &ScriptHeap,
-    registry: &vela_reflect::registry::TypeRegistry,
-    resolve_host: impl FnOnce(vela_host::path::HostSlotRef) -> Option<vela_host::path::HostRef>,
-) -> Option<vela_def::TypeId> {
+pub(super) fn value_type_id(value: &Value, heap: &ScriptHeap) -> Option<vela_def::TypeId> {
     match value {
         Value::HeapRef(reference) => match heap.get(*reference)? {
             HeapValue::Record {
@@ -36,9 +31,6 @@ pub(super) fn value_type_id(
             } => Some(identity.type_id),
             _ => None,
         },
-        Value::HostRef(reference) => resolve_host(*reference)
-            .and_then(|reference| registry.type_of_host(reference))
-            .map(|desc| desc.key.id),
         _ => None,
     }
 }

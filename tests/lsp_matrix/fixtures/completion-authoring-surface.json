@@ -67,7 +67,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -99,39 +98,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
-              "fn",
-              "impl",
-              "pub",
-              "state",
-              "struct",
-              "trait",
-              "use"
-            ]
-          },
-          {
-            "label": "extern state",
-            "detail": "host-owned extern state declaration",
-            "insert": "extern state ${1:name}: ${2:Type};",
-            "expanded": "extern state score: i64;",
-            "fills": [
-              [
-                "${1:name}",
-                "score"
-              ],
-              [
-                "${2:Type}",
-                "i64"
-              ]
-            ],
-            "kind": "Snippet",
-            "lspKind": 15,
-            "format": 2,
-            "applied": "struct Holder {}\n/* 中😀 */ extern state score: i64;\n",
-            "requery": [
-              "const",
-              "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -167,7 +133,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -199,7 +164,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -227,7 +191,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -263,7 +226,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -295,7 +257,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -327,7 +288,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -355,7 +315,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -398,7 +357,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",
@@ -430,7 +388,6 @@
             "requery": [
               "const",
               "enum",
-              "extern state",
               "fn",
               "impl",
               "pub",

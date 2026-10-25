@@ -109,7 +109,7 @@ mod tests {
         let text = "pub struct Player { level: i64 }\npub fn helper() { return 1 }\npub fn main(player: Pl) { return 1 }";
         let mut databases = databases_for(document.clone(), text);
         let mut schema = RegistryFacts::default();
-        schema.insert_type("Planet", TypeFact::host("Planet"));
+        schema.insert_type("Planet", TypeFact::record("Planet"));
         schema.insert_function("play", TypeFact::function(Vec::new(), TypeFact::UNIT));
         databases.set_schema_facts(schema);
         databases.update(&project_for(document.clone(), text));

@@ -362,7 +362,6 @@ fn insert_field(
             contract: None,
             declaration_order: 0,
             access: CompileFieldAccess::script(),
-            host_runtime: None,
         },
         origin,
     )
@@ -429,11 +428,11 @@ fn mir_builder_expected_option_try_is_explicit_cfg() {
     assert_eq!(
         fixture.program.dump(),
         r#"mir {
-  target function#9200 CompileFunctionDescriptor { id: FunctionId(9200), class: Script, canonical_symbol: "try_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: Some(MirSourceOrigin { body: Some(HirBodyId(0)), node: Body(HirBodyId(0)), span: Span { source: SourceId(92), start: 8, end: 13 } }) }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#9200 CompileFunctionDescriptor { id: FunctionId(9200), class: Script, canonical_symbol: "try_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: Some(MirSourceOrigin { body: Some(HirBodyId(0)), node: Body(HirBodyId(0)), span: Span { source: SourceId(92), start: 8, end: 13 } }) }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   target type#9210 CompileTypeDescriptor { id: TypeId(9210), canonical_name: "std::Option", runtime_name: "std::Option", class: Standard, shape: None, fields: [], variants: [VariantId(9211), VariantId(9212)] }
   target variant#9211 CompileVariantDescriptor { id: VariantId(9211), owner: TypeId(9210), name: "Some", fields: [FieldId(9213)], declaration_order: 0 }
   target variant#9212 CompileVariantDescriptor { id: VariantId(9212), owner: TypeId(9210), name: "None", fields: [], declaration_order: 1 }
-  target field#9213 CompileFieldDescriptor { id: FieldId(9213), owner: TypeId(9210), variant: Some(VariantId(9211)), name: "0", contract: None, declaration_order: 0, access: CompileFieldAccess { readable: true, writable: true, reflect_readable: true, reflect_writable: true, required_permissions: [] }, host_runtime: None }
+  target field#9213 CompileFieldDescriptor { id: FieldId(9213), owner: TypeId(9210), variant: Some(VariantId(9211)), name: "0", contract: None, declaration_order: 0, access: CompileFieldAccess { readable: true, writable: true, reflect_readable: true, reflect_writable: true, required_permissions: [] } }
   fn f0 body h0 owner function#9200 symbol="try_builder::main" @92:15..52/h0 {
     param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @92:8..13/h0
     local l0: Script(HirLocalId(0)) Dynamic @92:8..13/h0

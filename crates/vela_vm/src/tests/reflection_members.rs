@@ -52,15 +52,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown type metadata source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -83,15 +78,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown trait metadata source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -128,15 +118,10 @@ fn main() {
 "#,
     )
     .expect("compile policy variant reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -156,15 +141,10 @@ fn main() {
 "#,
     )
     .expect("compile hidden variant field reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -197,18 +177,13 @@ fn main() {
 "#,
     )
     .expect("compile denied variant field permission source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_variant_field_reflection_registry()),
         reflect::permissions::ReflectPolicy::read_only(),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -242,19 +217,14 @@ fn main() {
 "#,
     )
     .expect("compile granted variant field permission source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_variant_field_reflection_registry()),
         reflect::permissions::ReflectPolicy::read_only()
             .with_field_permission("quest.admin.inspect"),
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -264,7 +234,6 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_methods_respect_method_policy() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
@@ -286,33 +255,35 @@ fn main(player) {
 "#,
     )
     .expect("compile policy methods reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     let policy = reflect::permissions::ReflectPolicy::new(
         reflect::permissions::ReflectPermissionSet::new()
             .with(reflect::permissions::ReflectPermission::ReadTypeInfo)
-            .with(reflect::permissions::ReflectPermission::InspectHostPath),
+            .with(reflect::permissions::ReflectPermission::ReadTypeInfo),
     );
     vm.register_reflection_natives_with_policy(
         Arc::new(policy_method_reflection_registry()),
         policy,
     );
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
-        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_member_program(
+            &vm,
+            &program,
+            &[OwnedValue::record(
+                "Player",
+                [("level", OwnedValue::i64(9))]
+            )],
+            &mut host
+        ),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(11)))
     );
 }
 
 #[test]
 fn compiled_source_reflect_method_reports_unknown_method_candidates() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
@@ -322,18 +293,13 @@ fn main(player) {
 "#,
     )
     .expect("compile unknown method reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
-        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_member_program(&vm, &program, &[OwnedValue::record("Player", [("level", OwnedValue::i64(9))])], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownMethod {
             type_name: "Player".to_owned(),
             method: "grant_xp".to_owned(),
@@ -355,15 +321,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown variant reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -391,15 +352,10 @@ fn main() {
 "#,
     )
     .expect("compile unknown variant info reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(member_reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),
@@ -417,7 +373,6 @@ fn main() {
 
 #[test]
 fn compiled_source_reflect_implements_reports_unknown_trait_candidates() {
-    let host_ref = player_ref(3);
     let program = compile_reflection_member_source(
         SourceId::new(1),
         r#"
@@ -427,18 +382,13 @@ fn main(player) {
 "#,
     )
     .expect("compile unknown trait reflection source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert!(matches!(
-        exec_reflection_member_program(&vm, &program, &[OwnedValue::HostRef(host_ref)], &mut host),
+        exec_reflection_member_program(&vm, &program, &[OwnedValue::record("Player", [("level", OwnedValue::i64(9))])], &mut host),
         Err(error) if error.kind() == VmErrorKind::Reflect(ReflectErrorKind::UnknownTrait {
             trait_name: "Damagable".to_owned(),
             candidates: vec!["Damageable".to_owned()],
@@ -455,7 +405,7 @@ fn compiled_source_reflect_implements_accepts_type_descriptor() {
 fn main() {
     let player_type = reflect::type_info("Player");
     let damageable = reflect::trait_info("Damageable");
-    if reflect::kind(player_type) == "host" && reflect::implements(player_type, damageable) {
+    if reflect::kind(player_type) == "script_struct" && reflect::implements(player_type, damageable) {
         return reflect::id(player_type);
     }
     return 0;
@@ -463,15 +413,10 @@ fn main() {
 "#,
     )
     .expect("compile type descriptor implements source");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
+
     let mut vm = Vm::new();
     vm.register_reflection_natives(Arc::new(reflection_registry()));
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         exec_reflection_member_program(&vm, &program, &[], &mut host),

@@ -56,8 +56,6 @@ let score = runtime.call_method(
 )?;
 ```
 
-## When To Use HostRef Instead
+## Ownership
 
-Use serde when copying is the intended behavior: events, config snapshots,
-request payloads, and return DTOs. Use `HostRef` and `HostAccess` when script
-writes must update durable Rust state immediately.
+Use existing serde conversion when copying is intended. The result is script-owned; script changes do not implicitly update the Rust source. Borrowed-host alternatives are removed, not replaced with a new opaque API.

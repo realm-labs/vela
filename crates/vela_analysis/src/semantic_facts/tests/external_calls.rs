@@ -13,7 +13,7 @@ use vela_package::{ModulePath, PackageId};
 
 #[test]
 fn external_function_aliases_preserve_returns_effects_and_ownership_boundaries() {
-    let host = TypeFact::host("HostCell");
+    let host = TypeFact::record("HostCell");
     for (imports, parameters, callee, expected, target) in [
         ("", "", "bridge::make", Some(host.clone()), "registry"),
         (
@@ -194,7 +194,7 @@ fn external_function_aliases_preserve_returns_effects_and_ownership_boundaries()
         assert_eq!(
             facts.expression(field.id),
             match expected {
-                Some(TypeFact::Host { .. }) => Some(&TypeFact::BOOL),
+                Some(TypeFact::Record { .. }) => Some(&TypeFact::BOOL),
                 Some(TypeFact::Any) => Some(&TypeFact::Any),
                 _ => None,
             },
@@ -243,13 +243,13 @@ fn aliased_schema_callbacks_seed_current_facts_without_guessing_missing_or_any_m
     ));
     graph.resolve_imports();
     for parameter in [
-        Some(TypeFact::host("HostCell")),
+        Some(TypeFact::record("HostCell")),
         Some(TypeFact::Any),
         None,
-        Some(TypeFact::host("HostCell")),
+        Some(TypeFact::record("HostCell")),
     ] {
         let mut schema = RegistryFacts::default();
-        schema.insert_type("HostCell", TypeFact::host("HostCell"));
+        schema.insert_type("HostCell", TypeFact::record("HostCell"));
         schema.insert_field("HostCell", "value", TypeFact::BOOL);
         if let Some(parameter) = &parameter {
             schema.insert_function(
@@ -279,7 +279,7 @@ fn aliased_schema_callbacks_seed_current_facts_without_guessing_missing_or_any_m
         assert_eq!(
             facts.expression(access.id),
             match parameter {
-                Some(TypeFact::Host { .. }) => Some(&TypeFact::BOOL),
+                Some(TypeFact::Record { .. }) => Some(&TypeFact::BOOL),
                 Some(TypeFact::Any) => Some(&TypeFact::Any),
                 _ => None,
             }

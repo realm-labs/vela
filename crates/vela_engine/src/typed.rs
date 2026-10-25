@@ -1,15 +1,10 @@
 mod context_host;
-mod host;
-mod method;
 mod native;
 mod returning;
 mod traits;
 
 pub use returning::IntoNativeReturn;
-pub use traits::{
-    TypedContextHostNativeFunction, TypedHostNativeFunction, TypedNativeFunction,
-    TypedNativeMethodFunction,
-};
+pub use traits::{TypedContextHostNativeFunction, TypedNativeFunction};
 
 use vela_vm::error::{VmError, VmErrorKind, VmResult};
 use vela_vm::owned_value::OwnedValue;

@@ -107,6 +107,11 @@ pub(super) fn verify_queries(
         }
         let file = case["file"].as_str().expect("file");
         let document = fixture.document(file).expect("current query document");
+        if case["removedBoundary"] == true {
+            crate::matrix_fixture::assert_removed_borrowed_source(&document.text);
+            positions += 1;
+            continue;
+        }
         let target = uri(root, file);
         if open_queries && !opened.contains_key(file) {
             let publication = sync_diagnostics::<n::DidOpenTextDocument>(

@@ -312,16 +312,9 @@ pub(super) fn field_fact(
         .as_deref()
         .and_then(|owner| {
             let schema = schema?;
-            if matches!(receiver, TypeFact::Host { .. }) {
-                schema
-                    .host_field_fact(owner, name)
-                    .or_else(|| schema.field_fact(owner, name))
-                    .or_else(|| schema.method_fact(owner, name))
-            } else {
-                schema
-                    .field_fact(owner, name)
-                    .or_else(|| schema.method_fact(owner, name))
-            }
+            schema
+                .field_fact(owner, name)
+                .or_else(|| schema.method_fact(owner, name))
         })
         .cloned()
         .unwrap_or({
@@ -341,24 +334,15 @@ pub(super) fn call_return_fact(callee: TypeFact) -> TypeFact {
     }
 }
 
-pub(super) fn index_fact(receiver: &TypeFact, schema: Option<&RegistryFacts>) -> TypeFact {
+pub(super) fn index_fact(receiver: &TypeFact, _schema: Option<&RegistryFacts>) -> TypeFact {
     match receiver {
-        TypeFact::Array { element }
-        | TypeFact::ArrayView { element }
-        | TypeFact::ArrayMut { element, .. }
-        | TypeFact::Set { element }
-        | TypeFact::SetView { element }
-        | TypeFact::SetMut { element, .. } => (**element).clone(),
-        TypeFact::Map { value, .. }
-        | TypeFact::MapView { value, .. }
-        | TypeFact::MapMut { value, .. } => (**value).clone(),
+        TypeFact::Array { element } | TypeFact::Set { element } => (**element).clone(),
+        TypeFact::Map { value, .. } => (**value).clone(),
         TypeFact::Tuple { elements } => TypeFact::union(elements.clone()),
         TypeFact::Primitive(PrimitiveTag::String) => TypeFact::CHAR,
         TypeFact::Primitive(PrimitiveTag::Bytes) => TypeFact::U8,
         TypeFact::Any => TypeFact::Any,
-        _ => type_owner(receiver)
-            .and_then(|owner| schema?.index_capability_fact(owner))
-            .map_or(TypeFact::Unknown, |capability| capability.value.clone()),
+        _ => TypeFact::Unknown,
     }
 }
 
@@ -367,9 +351,6 @@ pub(super) fn registry_method_fact<'a>(
     receiver: &TypeFact,
     method: &str,
 ) -> Option<&'a TypeFact> {
-    if is_borrowed_collection(receiver) && stdlib_method_fact(receiver, method, None).is_none() {
-        return None;
-    }
     let owner = registry_callable_owner(receiver)?;
     match receiver {
         TypeFact::Trait { .. } => schema
@@ -386,9 +367,6 @@ pub(super) fn registry_method_effect<'a>(
     receiver: &TypeFact,
     method: &str,
 ) -> Option<&'a RegistryEffectFact> {
-    if is_borrowed_collection(receiver) && stdlib_method_fact(receiver, method, None).is_none() {
-        return None;
-    }
     let owner = registry_callable_owner(receiver)?;
     match receiver {
         TypeFact::Trait { .. } => schema
@@ -398,18 +376,6 @@ pub(super) fn registry_method_effect<'a>(
             .method_effect_fact(owner, method)
             .or_else(|| schema.trait_method_effect_fact(owner, method)),
     }
-}
-
-fn is_borrowed_collection(fact: &TypeFact) -> bool {
-    matches!(
-        fact,
-        TypeFact::ArrayView { .. }
-            | TypeFact::ArrayMut { .. }
-            | TypeFact::MapView { .. }
-            | TypeFact::MapMut { .. }
-            | TypeFact::SetView { .. }
-            | TypeFact::SetMut { .. }
-    )
 }
 
 pub(super) fn schema_knows_owner(schema: &RegistryFacts, owner: &str) -> bool {
@@ -423,10 +389,9 @@ pub(super) fn schema_knows_owner(schema: &RegistryFacts, owner: &str) -> bool {
 
 pub(super) fn type_owner(fact: &TypeFact) -> Option<&str> {
     match fact {
-        TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Host { name }
-        | TypeFact::Trait { name } => Some(name),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Trait { name } => {
+            Some(name)
+        }
         TypeFact::LogicalRecord(record) => Some(record.runtime_name()),
         _ => None,
     }

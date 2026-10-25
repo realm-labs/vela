@@ -8,7 +8,7 @@ use syn::{
 };
 
 use crate::attrs::parse_qualified_name;
-use crate::script_host::type_identity;
+use crate::type_identity::type_identity;
 
 pub(crate) fn expand(input: TokenStream) -> TokenStream {
     match expand_result(input) {
@@ -109,14 +109,6 @@ fn expand_result(input: TokenStream) -> Result<TokenStream> {
             }
         }
 
-        impl ::vela_engine::interop::VelaSharedBoundary for #ty {
-            const STORAGE: ::vela_common::StoragePolicy =
-                ::vela_common::StoragePolicy::Value;
-
-            fn vela_shared_type_hint() -> ::vela_engine::native::TypeHint {
-                <Self as ::vela_engine::interop::VelaValueBoundary>::vela_type_hint()
-            }
-        }
 
         impl ::vela_engine::args::IntoScriptArg for #ty {
             fn into_script_arg(self) -> ::vela_vm::owned_value::OwnedValue {
@@ -266,12 +258,16 @@ mod tests {
         assert!(expanded.contains("ScriptValueSchema for crate :: Quality"));
         assert!(expanded.contains("Self :: Normal"));
         assert!(!expanded.contains("impl crate :: Quality {"));
-        assert!(expanded.contains("VelaSharedBoundary for crate :: Quality"));
-        assert!(expanded.contains("fn vela_shared_type_hint"));
+        assert!(expanded.contains("VelaValueBoundary for crate :: Quality"));
+        assert!(expanded.contains("ToScriptValueRef for crate :: Quality"));
         assert!(expanded.contains("register_value_type_closure"));
         assert!(expanded.contains("IntoScriptArg for crate :: Quality"));
         assert!(expanded.contains("FromScriptArg for crate :: Quality"));
         for removed in [
+            "VelaSharedBoundary",
+            "StoragePolicy",
+            "ScriptHostObject",
+            "HostTarget",
             "register_shared_type_closure",
             "push_shared_service_arg",
             "decode_shared_temporary",

@@ -3,8 +3,6 @@ use super::*;
 #[test]
 fn reflect_get_record_field_reads_value() {
     let registry = TypeRegistry::new();
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let mut record = BTreeMap::new();
     record.insert(
         "field".to_owned(),
@@ -12,8 +10,6 @@ fn reflect_get_record_field_reads_value() {
     );
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let value = get(&mut ctx, &ReflectValue::Record(record), "field").expect("record get");
@@ -27,8 +23,6 @@ fn reflect_get_record_field_reads_value() {
 #[test]
 fn reflect_get_map_string_key_reads_key_preserving_map() {
     let registry = TypeRegistry::new();
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let map = ReflectValue::Map(vec![
         crate::value::ReflectMapEntry::new(
             ReflectValue::Host(HostValue::String("field".to_owned())),
@@ -41,8 +35,6 @@ fn reflect_get_map_string_key_reads_key_preserving_map() {
     ]);
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let value = get(&mut ctx, &map, "field").expect("map string-key get");
@@ -62,8 +54,6 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
             .kind(TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(2), "level").source_span(field_span)),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let mut fields = BTreeMap::new();
     fields.insert(
         "level".to_owned(),
@@ -75,8 +65,6 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = get(&mut ctx, &record, "leve").expect_err("unknown field");
@@ -95,8 +83,6 @@ fn reflect_get_script_record_unknown_field_uses_schema_candidates() {
 #[test]
 fn reflect_set_script_record_returns_updated_copy() {
     let registry = TypeRegistry::new();
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let mut fields = BTreeMap::new();
     fields.insert(
         "level".to_owned(),
@@ -112,8 +98,6 @@ fn reflect_set_script_record_returns_updated_copy() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let updated = set(
@@ -142,8 +126,6 @@ fn reflect_set_script_record_returns_updated_copy() {
 #[test]
 fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
     let registry = TypeRegistry::new();
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "ReflectType".to_owned(),
         fields: BTreeMap::from([(
@@ -153,8 +135,6 @@ fn reflect_set_metadata_record_is_not_a_schema_mutation_path() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = set(
@@ -177,8 +157,6 @@ fn reflect_set_script_record_rejects_unknown_fields() {
             .kind(TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(2), "level").source_span(field_span)),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let mut fields = BTreeMap::new();
     fields.insert(
         "level".to_owned(),
@@ -190,8 +168,6 @@ fn reflect_set_script_record_rejects_unknown_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = set(
@@ -214,254 +190,6 @@ fn reflect_set_script_record_rejects_unknown_fields() {
 }
 
 #[test]
-fn reflect_get_denies_non_reflect_readable_host_fields() {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(
-                FieldDesc::new(FieldId::new(2), "secret")
-                    .access(FieldAccess::new().reflect_readable(false)),
-            ),
-    );
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(
-        HostPath::new(player_ref()).field(FieldId::new(2)),
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = get(&mut ctx, &ReflectValue::HostRef(player_ref()), "secret").expect_err("read");
-
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::FieldNotReflectReadable {
-            type_name: "Player".to_owned(),
-            field: "secret".to_owned(),
-            source_span: None,
-        }
-    );
-}
-
-#[test]
-fn reflect_set_denies_non_reflect_writable_host_fields() {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(
-                FieldDesc::new(FieldId::new(2), "level")
-                    .access(FieldAccess::new().writable(true).reflect_writable(false)),
-            ),
-    );
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = set(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level",
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-    )
-    .expect_err("write");
-
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::FieldNotReflectWritable {
-            type_name: "Player".to_owned(),
-            field: "level".to_owned(),
-            source_span: None,
-        }
-    );
-}
-
-#[test]
-fn reflect_get_and_set_with_policy_require_field_permission() {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(
-                FieldDesc::new(FieldId::new(2), "level").access(
-                    FieldAccess::new()
-                        .writable(true)
-                        .reflect_writable(true)
-                        .require_permission("player.level.reflect"),
-                ),
-            ),
-    );
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = get_with_policy(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level",
-        &ReflectPolicy::all(),
-    )
-    .expect_err("missing field read permission");
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::FieldPermissionDenied {
-            type_name: "Player".to_owned(),
-            field: "level".to_owned(),
-            permission: "player.level.reflect".to_owned(),
-            source_span: None,
-        }
-    );
-
-    let error = set_with_policy(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level",
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-        &ReflectPolicy::all(),
-    )
-    .expect_err("missing field write permission");
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::FieldPermissionDenied {
-            type_name: "Player".to_owned(),
-            field: "level".to_owned(),
-            permission: "player.level.reflect".to_owned(),
-            source_span: None,
-        }
-    );
-
-    let policy = ReflectPolicy::all().with_field_permission("player.level.reflect");
-    assert_eq!(
-        get_with_policy(
-            &mut ctx,
-            &ReflectValue::HostRef(player_ref()),
-            "level",
-            &policy,
-        )
-        .expect("field read permission"),
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(9)))
-    );
-    assert_eq!(
-        set_with_policy(
-            &mut ctx,
-            &ReflectValue::HostRef(player_ref()),
-            "level",
-            ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-            &policy,
-        )
-        .expect("field write permission"),
-        ReflectValue::Host(HostValue::Unit)
-    );
-}
-
-#[test]
-fn reflect_get_with_policy_filters_unknown_host_field_candidates() {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(101), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(FieldDesc::new(FieldId::new(1), "level"))
-            .field(
-                FieldDesc::new(FieldId::new(2), "level_secret")
-                    .access(FieldAccess::new().reflect_readable(false)),
-            )
-            .field(
-                FieldDesc::new(FieldId::new(3), "level_admin")
-                    .access(FieldAccess::new().require_permission("player.level.admin")),
-            ),
-    );
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = get_with_policy(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level_secrett",
-        &ReflectPolicy::read_only(),
-    )
-    .expect_err("unknown host field");
-
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::UnknownField {
-            type_name: "Player".to_owned(),
-            field: "level_secrett".to_owned(),
-            candidates: vec!["level".to_owned()],
-            related: vec![ReflectCandidate::new("level", None)],
-        }
-    );
-}
-
-#[test]
-fn reflect_set_with_policy_filters_unknown_host_field_candidates() {
-    let mut registry = TypeRegistry::new();
-    registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(102), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(
-                FieldDesc::new(FieldId::new(1), "level")
-                    .access(FieldAccess::new().writable(true).reflect_writable(true)),
-            )
-            .field(
-                FieldDesc::new(FieldId::new(2), "level_secret")
-                    .access(FieldAccess::new().writable(true).reflect_writable(false)),
-            )
-            .field(
-                FieldDesc::new(FieldId::new(3), "level_admin").access(
-                    FieldAccess::new()
-                        .writable(true)
-                        .reflect_writable(true)
-                        .require_permission("player.level.admin"),
-                ),
-            ),
-    );
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = set_with_policy(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level_secrett",
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-        &ReflectPolicy::read_only(),
-    )
-    .expect_err("unknown host field");
-
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::UnknownField {
-            type_name: "Player".to_owned(),
-            field: "level_secrett".to_owned(),
-            candidates: vec!["level".to_owned()],
-            related: vec![ReflectCandidate::new("level", None)],
-        }
-    );
-}
-
-#[test]
 fn reflect_get_and_set_with_policy_require_script_field_permission() {
     let mut registry = TypeRegistry::new();
     registry.register(
@@ -476,8 +204,6 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
                 ),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let mut fields = BTreeMap::new();
     fields.insert(
         "level".to_owned(),
@@ -489,8 +215,6 @@ fn reflect_get_and_set_with_policy_require_script_field_permission() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = get_with_policy(&mut ctx, &record, "level", &ReflectPolicy::all())
@@ -558,8 +282,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
                     .access(FieldAccess::new().writable(true).reflect_writable(false)),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
         fields: BTreeMap::from([(
@@ -569,8 +291,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = set_with_policy(
@@ -608,8 +328,6 @@ fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
                     .access(FieldAccess::new().require_permission("player.level.admin")),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
         fields: BTreeMap::from([(
@@ -619,8 +337,6 @@ fn reflect_get_with_policy_filters_unknown_script_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = get_with_policy(
@@ -662,8 +378,6 @@ fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
                 ),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let record = ReflectValue::ScriptRecord {
         type_name: "Player".to_owned(),
         fields: BTreeMap::from([(
@@ -673,8 +387,6 @@ fn reflect_set_with_policy_filters_unknown_script_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = set_with_policy(
@@ -716,8 +428,6 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
                     ),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let value = ReflectValue::ScriptEnum {
         enum_name: "QuestProgress".to_owned(),
         variant: "Active".to_owned(),
@@ -728,8 +438,6 @@ fn reflect_get_with_policy_filters_unknown_script_enum_field_candidates() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = get_with_policy(
@@ -764,8 +472,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
                 ),
             ),
     );
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
     let value = ReflectValue::ScriptEnum {
         enum_name: "QuestProgress".to_owned(),
         variant: "Active".to_owned(),
@@ -776,8 +482,6 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
     };
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
     let error = set_with_policy(
@@ -802,16 +506,11 @@ fn reflect_set_with_policy_denies_non_reflect_writable_script_enum_fields() {
 #[test]
 fn unknown_fields_include_candidate_hints() {
     let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
     let mut ctx = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
 
-    let error =
-        get(&mut ctx, &ReflectValue::HostRef(player_ref()), "levle").expect_err("unknown field");
+    let error = get(&mut ctx, &player_value(), "levle").expect_err("unknown field");
 
     assert_eq!(
         error.kind,
@@ -828,50 +527,12 @@ fn unknown_fields_include_candidate_hints() {
 }
 
 #[test]
-fn type_registry_exposes_host_type_fields() {
+fn type_registry_exposes_value_type_fields() {
     let registry = registry();
-    let desc = type_of(&registry, &ReflectValue::HostRef(player_ref())).expect("type desc");
+    let desc = type_of(&registry, &player_value()).expect("type desc");
     let fields = fields(&registry, &desc.key).expect("fields");
 
     assert_eq!(desc.key.name, "Player");
     assert_eq!(fields.len(), 2);
     assert_eq!(fields[1].name, "level");
-}
-
-#[test]
-fn reflect_get_propagates_host_generation_errors() {
-    let registry = registry();
-    let mut adapter = MockStateAdapter::new();
-    let fresh_ref = player_ref();
-    adapter.insert_diagnostic_path_value(
-        HostPath::new(fresh_ref).field(FieldId::new(2)),
-        HostValue::Scalar(vela_common::ScalarValue::I64(9)),
-    );
-    let stale_ref = HostRef::new(fresh_ref.type_id, fresh_ref.object_id, 2);
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = get(&mut ctx, &ReflectValue::HostRef(stale_ref), "level").expect_err("stale get");
-
-    assert!(matches!(error.kind, ReflectErrorKind::Host(_)));
-    assert_eq!(
-        vela_host::access::HostAccess::require_fresh_ref(
-            stale_ref,
-            &HostObjectSnapshot {
-                type_id: fresh_ref.type_id,
-                object_id: fresh_ref.object_id,
-                generation: 3,
-            }
-        )
-        .expect_err("stale ref")
-        .kind,
-        vela_host::error::HostErrorKind::StaleGeneration {
-            expected: 2,
-            actual: 3
-        }
-    );
 }

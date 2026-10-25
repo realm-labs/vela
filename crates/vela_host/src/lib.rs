@@ -1,39 +1,44 @@
+#![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::wildcard_imports))]
 
-//! Host reference, path, and direct host access model.
+//! Owned structural values shared by reflection and existing value conversion.
+//!
+//! Caller-borrowed references and transparent host paths are not supported.
+//!
+//! ```compile_fail,E0432
+//! use vela_host::adapter::ScriptStateAdapter;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_host::path::HostRef;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_host::lease::HostLeaseKind;
+//! ```
+//!
+//! ```compile_fail,E0599
+//! use vela_host::call_value::HostCallValue;
+//! let value = HostCallValue::HostRef(());
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_host::object::HostObject;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_host::slot::HostRefSlots;
+//! ```
+//!
+//! ```compile_fail,E0432
+//! use vela_host::proxy::PathProxy;
+//! ```
+//!
+//! ```compile_fail,E0599
+//! use vela_host::value::HostValue;
+//! let value = HostValue::HostRef(());
+//! ```
 
-#[forbid(unsafe_code)]
-pub mod access;
-#[forbid(unsafe_code)]
-pub mod adapter;
-#[forbid(unsafe_code)]
 pub mod call_value;
-#[allow(unsafe_code)]
-mod erased_slice;
-#[forbid(unsafe_code)]
 pub mod error;
-#[forbid(unsafe_code)]
-pub mod lease;
-#[forbid(unsafe_code)]
-pub mod mock;
-#[forbid(unsafe_code)]
-pub mod object;
-#[forbid(unsafe_code)]
-pub mod path;
-#[forbid(unsafe_code)]
-pub mod protocol;
-#[forbid(unsafe_code)]
-pub mod proxy;
-#[forbid(unsafe_code)]
-pub mod resolved;
-#[forbid(unsafe_code)]
-pub mod slot;
-#[forbid(unsafe_code)]
-pub mod target;
-#[forbid(unsafe_code)]
 pub mod value;
-
-pub(crate) use value::{add_values, div_values, mul_values, rem_values, sub_values};
-
-#[cfg(test)]
-mod tests;

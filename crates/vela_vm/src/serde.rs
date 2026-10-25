@@ -519,11 +519,9 @@ impl<'de> de::Deserializer<'de> for &'de OwnedValue {
                 visitor.visit_map(ValueMapAccess::from_fields(fields))
             }
             OwnedValue::Enum { .. } => self.deserialize_enum("", &[], visitor),
-            OwnedValue::Range(_)
-            | OwnedValue::HostRef(_)
-            | OwnedValue::PathProxy(_)
-            | OwnedValue::Closure(_)
-            | OwnedValue::Iterator(_) => Err(Error::custom("unsupported serde value")),
+            OwnedValue::Range(_) | OwnedValue::Closure(_) | OwnedValue::Iterator(_) => {
+                Err(Error::custom("unsupported serde value"))
+            }
         }
     }
 

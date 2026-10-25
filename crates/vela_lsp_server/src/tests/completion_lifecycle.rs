@@ -130,17 +130,17 @@ impl Fixture {
 
 fn write_schema(path: &std::path::Path, updated: bool) {
     let mut types = vec![
-        json!({"name":"Player","fact":{"kind":"host","name":"Player"},"docs":if updated {"Current Player docs."} else {"Original Player docs."}}),
-        json!({"name":"Photon","fact":{"kind":"host","name":"Photon"},"docs":"Photon docs."}),
+        json!({"name":"Player","fact":{"kind":"record","name":"Player"},"docs":if updated {"Current Player docs."} else {"Original Player docs."}}),
+        json!({"name":"Photon","fact":{"kind":"record","name":"Photon"},"docs":"Photon docs."}),
     ];
     if updated {
         types.push(
-            json!({"name":"Planet","fact":{"kind":"host","name":"Planet"},"docs":"Planet docs."}),
+            json!({"name":"Planet","fact":{"kind":"record","name":"Planet"},"docs":"Planet docs."}),
         );
     }
     std::fs::write(
         path,
-        json!({"formatVersion":3,"facts":{"types":types}}).to_string(),
+        json!({"formatVersion":4,"facts":{"types":types}}).to_string(),
     )
     .expect("schema");
 }

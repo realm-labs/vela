@@ -200,7 +200,7 @@ fn modifiers(origin: CallableOrigin) -> M {
             M::SOURCE
         }
         CallableOrigin::Schema | CallableOrigin::SchemaMethod | CallableOrigin::SchemaVariant => {
-            M::HOST.union(M::SCHEMA)
+            M::SCHEMA
         }
         CallableOrigin::Stdlib | CallableOrigin::StdlibMethod => M::BUILTIN,
     }

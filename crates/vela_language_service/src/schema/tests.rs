@@ -4,7 +4,7 @@ use super::*;
 
 fn sample_facts() -> RegistryFacts {
     let mut facts = RegistryFacts::default();
-    facts.insert_type("Player", TypeFact::host("Player"));
+    facts.insert_type("Player", TypeFact::record("Player"));
     facts.insert_type_docs("Player", "Player host object.");
     facts.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
     facts.insert_trait_docs("Rewardable", "Rewardable host trait.");
@@ -21,11 +21,7 @@ fn sample_facts() -> RegistryFacts {
         "split_name",
         TypeFact::option(TypeFact::tuple([TypeFact::STRING, TypeFact::STRING])),
     );
-    facts.insert_field(
-        "Player",
-        "scores",
-        TypeFact::array_mut(TypeFact::I64, CollectionViewMutation::Fixed),
-    );
+    facts.insert_field("Player", "scores", TypeFact::array(TypeFact::I64));
     facts.insert_field_docs("Player", "split_name", "Split player display name.");
     facts.insert_field_access(RegistryFieldAccessFact {
         owner: "Player".to_owned(),
@@ -42,19 +38,11 @@ fn sample_facts() -> RegistryFacts {
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
     facts.insert_method_docs("Player", "grant_exp", "Grant player experience.");
-    facts.insert_method_scoped_resource(
-        "Player",
-        "grant_exp",
-        ScopedResourceReturnDef {
-            kind: ScopedResourceKindDef::MutView,
-            parent: ScopedResourceParentDef::Receiver,
-        },
-    );
     facts.insert_method_effect("Player", "grant_exp", RegistryEffectFact::host_write());
     facts.insert_method_access(RegistryMethodAccessFact {
         owner: "Player".to_owned(),
         name: "grant_exp".to_owned(),
-        receiver: vela_common::ReceiverCapability::Exclusive,
+
         public: true,
         reflect_callable: true,
         required_permissions: vec!["player.reward".to_owned()],
@@ -62,18 +50,11 @@ fn sample_facts() -> RegistryFacts {
     facts.insert_function(
         "game::reward::grant",
         TypeFact::function(
-            vec![TypeFact::host("Player"), TypeFact::I64],
+            vec![TypeFact::record("Player"), TypeFact::I64],
             TypeFact::BOOL,
         ),
     );
     facts.insert_function_docs("game::reward::grant", "Grant reward.");
-    facts.insert_function_scoped_resource(
-        "game::reward::grant",
-        ScopedResourceReturnDef {
-            kind: ScopedResourceKindDef::View,
-            parent: ScopedResourceParentDef::Parameter(0),
-        },
-    );
     facts.insert_function_effect("game::reward::grant", RegistryEffectFact::host_write());
     facts.insert_variant(
         "QuestState",
@@ -87,35 +68,6 @@ fn sample_facts() -> RegistryFacts {
         TypeFact::function(vec![TypeFact::I64], TypeFact::BOOL),
     );
     facts.insert_trait_method_docs("Rewardable", "preview", "Preview reward.");
-    facts.insert_index_capability(RegistryIndexCapabilityFact {
-        owner: "Inventory".to_owned(),
-        readable: true,
-        writable: true,
-        addable: false,
-        removable: false,
-        key: TypeFact::STRING,
-        value: TypeFact::I64,
-    });
-    facts.set_type_binding_checksum(vela_common::TypeBindingRegistryChecksum::new(0xabc));
-    facts.insert_type_binding(
-        "Player",
-        vela_analysis::registry::RegistryTypeBindingFact {
-            id: vela_common::InteropTypeId::new(0x123),
-            storage: vela_common::StoragePolicy::Host,
-            capabilities: vela_common::ReceiverCapabilities::HOST_OBJECT
-                .with(vela_common::ReceiverCapability::Construct),
-            collection_views: Some(vela_common::CollectionViewCapabilities::mutable(
-                vela_common::CollectionViewKind::Map,
-                CollectionViewMutation::Growable,
-            )),
-            constructor_ids: vec![vela_def::FunctionId::new(0x456)],
-            host_constructors: vec![vela_common::HostConstructorBinding::new(
-                vela_def::FunctionId::new(0x456),
-                vela_common::HostConstructionLifetime::CallScoped,
-            )],
-            abi_fingerprint: vela_common::TypeAbiFingerprint::new(0x789),
-        },
-    );
     facts
 }
 
@@ -130,18 +82,16 @@ fn schema_export_round_trips_registry_facts() {
         json.contains(r#""kind": "tuple""#),
         "schema artifact should expose tuple facts structurally: {json}"
     );
-    assert!(
-        json.contains(r#""protocols": ["#)
-            && json.contains(r#""MapLike""#)
-            && json.contains(r#""constructorIds": ["#),
-        "schema artifact should expose TypeBinding constructors, views, and protocols: {json}"
-    );
-    assert!(
-        json.contains(r#""scoped_resource""#)
-            && json.contains(r#""kind": "mut_view""#)
-            && json.contains(r#""source": "parameter""#),
-        "schema artifact should preserve scoped resource kind and parent: {json}"
-    );
+    for removed in [
+        "scoped_resource",
+        "collectionView",
+        "constructorIds",
+        "hostConstructors",
+        "capabilities",
+        "storage",
+    ] {
+        assert!(!json.contains(removed), "removed metadata: {json}");
+    }
     let parsed = SchemaArtifact::from_json(&json).expect("schema artifact should decode from JSON");
     let round_tripped = parsed.to_registry_facts();
     let mut databases = LanguageServiceDatabases::new();
@@ -176,18 +126,7 @@ fn schema_export_round_trips_registry_facts() {
     );
     assert_eq!(
         round_tripped.field_fact("Player", "scores"),
-        Some(&TypeFact::array_mut(
-            TypeFact::I64,
-            CollectionViewMutation::Fixed,
-        ))
-    );
-    assert_eq!(
-        round_tripped.method_scoped_resource("Player", "grant_exp"),
-        facts.method_scoped_resource("Player", "grant_exp")
-    );
-    assert_eq!(
-        round_tripped.function_scoped_resource("game::reward::grant"),
-        facts.function_scoped_resource("game::reward::grant")
+        Some(&TypeFact::array(TypeFact::I64))
     );
 }
 
@@ -195,12 +134,12 @@ fn schema_export_round_trips_registry_facts() {
 fn schema_artifact_accepts_docs_metadata() {
     let artifact = SchemaArtifact::from_json(
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" },
+                        "fact": { "kind": "record", "name": "Player" },
                         "docs": "Player host object."
                     }
                 ],
@@ -225,7 +164,7 @@ fn schema_artifact_accepts_docs_metadata() {
                         "name": "game::reward::grant",
                         "fact": {
                             "kind": "function",
-                            "params": [{ "kind": "host", "name": "Player" }],
+                            "params": [{ "kind": "record", "name": "Player" }],
                             "returns": { "kind": "primitive", "name": "bool" }
                         },
                         "docs": "Grant reward."
@@ -304,11 +243,11 @@ fn schema_hash_compatibility_rejects_stale_facts() {
 
 #[test]
 fn schema_rejects_obsolete_format_and_removed_service_set() {
-    for version in [0, 1, 2, 4] {
+    for version in [0, 1, 2, 3, 5] {
         let json = serde_json::json!({"formatVersion": version, "facts": {}}).to_string();
         let error = SchemaArtifact::from_json(&json).expect_err("unsupported schema version");
         assert!(error.message().contains(&format!(
-            "unsupported schema artifact format version {version}; expected 3"
+            "unsupported schema artifact format version {version}; expected 4"
         )));
     }
     for service_set in [
@@ -317,7 +256,7 @@ fn schema_rejects_obsolete_format_and_removed_service_set() {
         serde_json::json!({"services": []}),
     ] {
         let json = serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {},
             "serviceSet": service_set,
         })
@@ -342,8 +281,8 @@ fn rejected_schema_clears_stale_facts_and_current_schema_restores_them() {
     let mut databases = LanguageServiceDatabases::new();
     for rejected in [
         r#"{"formatVersion":1,"facts":{}}"#,
-        r#"{"formatVersion":3,"serviceSet":null,"facts":{}}"#,
-        r#"{"formatVersion":3,"serviceSet":{"services":[]},"facts":{}}"#,
+        r#"{"formatVersion":4,"serviceSet":null,"facts":{}}"#,
+        r#"{"formatVersion":4,"serviceSet":{"services":[]},"facts":{}}"#,
     ] {
         databases.load_schema_artifact_json("/workspace/schema.json", &current);
         assert_eq!(databases.schema_db().facts(), &facts);
@@ -375,7 +314,7 @@ fn invalid_schema_metadata_reports_diagnostic() {
     let mut databases = LanguageServiceDatabases::new();
     databases.load_schema_artifact_json(
         "/workspace/target/vela/schema.json",
-        r#"{ "formatVersion": 3, "schemaVersion": " ", "facts": {} }"#,
+        r#"{ "formatVersion": 4, "schemaVersion": " ", "facts": {} }"#,
     );
 
     let diagnostics = databases.schema_db().diagnostics();

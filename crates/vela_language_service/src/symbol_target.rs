@@ -190,8 +190,20 @@ fn symbol_ref_for(
         .or_else(|| symbol_ref_for_source_declaration(databases, query, text))
         .or_else(|| symbol_ref_for_import(databases, query, text))
         .or_else(|| {
-            member_receiver_fact
-                .and_then(|receiver| script_member_symbol_ref(databases, text, receiver))
+            member_receiver_fact.and_then(|receiver| {
+                let has_source_owner = query
+                    .member_receiver_range()
+                    .and_then(|range| query.source_type_for_range(databases, range))
+                    .is_some();
+                if !has_source_owner
+                    && fact_owner_name(receiver).is_some_and(|owner| {
+                        databases.schema_db().facts().type_fact(&owner).is_some()
+                    })
+                {
+                    return None;
+                }
+                script_member_symbol_ref(databases, text, receiver)
+            })
         });
     if let Some(symbol) = paths::path_symbol_ref(databases, query, source.as_ref()) {
         return symbol;
@@ -487,16 +499,9 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -506,7 +511,6 @@ fn collect_record_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -534,16 +538,9 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -553,7 +550,6 @@ fn collect_trait_owner_names(fact: &TypeFact, names: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Record { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)
@@ -623,10 +619,9 @@ fn stdlib_function_symbol_ref(text: &str) -> Option<SymbolRef> {
 
 fn fact_owner_name(fact: &TypeFact) -> Option<String> {
     match fact {
-        TypeFact::Host { name }
-        | TypeFact::Record { name }
-        | TypeFact::Enum { name, .. }
-        | TypeFact::Trait { name } => Some(name.clone()),
+        TypeFact::Record { name } | TypeFact::Enum { name, .. } | TypeFact::Trait { name } => {
+            Some(name.clone())
+        }
         _ => None,
     }
 }

@@ -2,13 +2,9 @@
 
 use std::sync::Arc;
 
-use vela_host::protocol::HostCollectionKey;
-use vela_host::target::{HostPathArgOwned, HostPathPart, HostTargetPlan};
-
 use crate::error::{VmError, VmErrorKind, VmResult};
 use crate::heap::{GcRef, HeapValue};
 use crate::heap_execution::HeapExecution;
-use crate::heap_values::HostSlotResolver;
 use crate::owned_value::{OwnedClosureValue, OwnedIteratorState, OwnedMapEntry, OwnedValue};
 use crate::script_object::ScriptFields;
 use crate::value::Value;
@@ -18,17 +14,13 @@ const MAX_DEPTH: usize = 64;
 const MAX_VALUES: usize = 65_536;
 const MAX_BYTES: usize = 16 * 1024 * 1024;
 
-pub(crate) fn export(
-    value: &Value,
-    heap: Option<&HeapExecution<'_>>,
-    host: Option<HostSlotResolver<'_>>,
-) -> VmResult<OwnedValue> {
+pub(crate) fn export(value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<OwnedValue> {
     Export {
         path: Vec::new(),
         values_left: MAX_VALUES,
         bytes_left: MAX_BYTES,
     }
-    .value(value, heap, host)
+    .value(value, heap)
 }
 
 struct Export {
@@ -76,21 +68,15 @@ impl Export {
         values: impl Iterator<Item = &'a Value>,
         len: usize,
         heap: Option<&HeapExecution<'_>>,
-        host: Option<HostSlotResolver<'_>>,
     ) -> VmResult<Vec<OwnedValue>> {
         let mut result = self.storage(len, len)?;
         for value in values {
-            result.push(self.value(value, heap, host)?);
+            result.push(self.value(value, heap)?);
         }
         Ok(result)
     }
 
-    fn value(
-        &mut self,
-        value: &Value,
-        heap: Option<&HeapExecution<'_>>,
-        host: Option<HostSlotResolver<'_>>,
-    ) -> VmResult<OwnedValue> {
+    fn value(&mut self, value: &Value, heap: Option<&HeapExecution<'_>>) -> VmResult<OwnedValue> {
         self.values_left = self
             .values_left
             .checked_sub(1)
@@ -102,10 +88,6 @@ impl Export {
             Value::Unit => Ok(OwnedValue::Unit),
             Value::Bool(value) => Ok(OwnedValue::Bool(*value)),
             Value::Char(value) => Ok(OwnedValue::Char(*value)),
-            Value::HostRef(value) => host
-                .ok_or_else(|| type_error("host ref requires active slot resolver"))?
-                .resolve(*value)
-                .map(OwnedValue::HostRef),
             Value::HeapRef(reference) => {
                 if self.path.contains(reference) {
                     return Err(VmError::new(VmErrorKind::OwnedValueCycle));
@@ -117,7 +99,7 @@ impl Export {
                     .and_then(|heap| heap.heap.get(*reference))
                     .ok_or_else(|| type_error("heap ref"))?;
                 self.path.push(*reference);
-                let result = self.object(value, heap, host);
+                let result = self.object(value, heap);
                 self.path.pop();
                 result
             }
@@ -130,7 +112,6 @@ impl Export {
         &mut self,
         value: &HeapValue,
         heap: Option<&HeapExecution<'_>>,
-        host: Option<HostSlotResolver<'_>>,
     ) -> VmResult<OwnedValue> {
         match value {
             HeapValue::String(value) => self.string(value).map(OwnedValue::String),
@@ -140,27 +121,27 @@ impl Export {
             }
             HeapValue::Range(value) => Ok(OwnedValue::Range(*value)),
             HeapValue::Tuple(values) => self
-                .sequence(values.iter(), values.len(), heap, host)
+                .sequence(values.iter(), values.len(), heap)
                 .map(OwnedValue::Tuple),
             HeapValue::Array(values) => self
-                .sequence(values.iter(), values.len(), heap, host)
+                .sequence(values.iter(), values.len(), heap)
                 .map(OwnedValue::Array),
             HeapValue::Set(values) => self
-                .sequence(values.values(), values.len(), heap, host)
+                .sequence(values.values(), values.len(), heap)
                 .map(OwnedValue::Set),
             HeapValue::Map(values) => {
                 let mut result = self.storage(values.len(), values.len().saturating_mul(2))?;
                 for entry in values.entries() {
                     result.push(OwnedMapEntry::new(
-                        self.value(&entry.key, heap, host)?,
-                        self.value(&entry.value, heap, host)?,
+                        self.value(&entry.key, heap)?,
+                        self.value(&entry.value, heap)?,
                     ));
                 }
                 Ok(OwnedValue::Map(result))
             }
             HeapValue::Record { fields, .. } => {
                 let type_name = self.string(fields.owner_name())?;
-                let values = self.sequence(fields.values(), fields.len(), heap, host)?;
+                let values = self.sequence(fields.values(), fields.len(), heap)?;
                 Ok(OwnedValue::Record {
                     type_name,
                     fields: ScriptFields::from_shape(Arc::clone(fields.shape()), values),
@@ -174,7 +155,7 @@ impl Export {
             } => {
                 let enum_name = self.string(enum_name)?;
                 let variant = self.string(variant)?;
-                let values = self.sequence(fields.values(), fields.len(), heap, host)?;
+                let values = self.sequence(fields.values(), fields.len(), heap)?;
                 Ok(OwnedValue::Enum {
                     enum_name,
                     variant,
@@ -183,7 +164,7 @@ impl Export {
             }
             HeapValue::Closure(closure) => {
                 let values = closure.captures.as_slice();
-                let captures = self.sequence(values.iter(), values.len(), heap, host)?;
+                let captures = self.sequence(values.iter(), values.len(), heap)?;
                 Ok(OwnedValue::Closure(OwnedClosureValue {
                     owner: Arc::clone(&closure.owner),
                     function: closure.function,
@@ -191,47 +172,11 @@ impl Export {
                 }))
             }
             HeapValue::Iterator(iterator) => {
-                if iterator.is_host_backed() {
-                    return Err(type_error("host-backed iterator escape"));
-                }
                 let values = iterator.values();
-                let values = self.sequence(values.iter(), values.len(), heap, host)?;
+                let values = self.sequence(values.iter(), values.len(), heap)?;
                 Ok(OwnedValue::Iterator(OwnedIteratorState::from_runtime(
                     iterator, values,
                 )))
-            }
-            HeapValue::PathProxy(proxy) => {
-                self.bytes(size_of::<HostTargetPlan>())?;
-                self.bytes(
-                    proxy
-                        .target()
-                        .parts
-                        .len()
-                        .saturating_mul(size_of::<HostPathPart>()),
-                )?;
-                self.bytes(
-                    proxy
-                        .args()
-                        .len()
-                        .saturating_mul(size_of::<HostPathArgOwned>()),
-                )?;
-                for part in proxy.target().parts.as_slice() {
-                    if let HostPathPart::ConstKey(key) = part {
-                        self.bytes(key.len())?;
-                    }
-                }
-                for arg in proxy.args() {
-                    match arg {
-                        HostPathArgOwned::Key(HostCollectionKey::String(key)) => {
-                            self.bytes(key.len())?
-                        }
-                        HostPathArgOwned::Key(HostCollectionKey::Bytes(key)) => {
-                            self.bytes(key.len())?
-                        }
-                        _ => {}
-                    }
-                }
-                Ok(OwnedValue::PathProxy(proxy.clone()))
             }
         }
     }

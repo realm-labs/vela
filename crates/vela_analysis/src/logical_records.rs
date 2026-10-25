@@ -26,13 +26,16 @@ pub enum LogicalRecordKind {
     ReflectModule,
     ReflectParam,
     ReflectSourceSpan,
+    ReflectState,
     ReflectTrait,
+    ReflectTraitMethod,
     ReflectType,
+    ReflectTypeHint,
     ReflectVariant,
 }
 
 impl LogicalRecordKind {
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 17] = [
         Self::MapEntry,
         Self::ReflectEffectSet,
         Self::ReflectField,
@@ -44,8 +47,11 @@ impl LogicalRecordKind {
         Self::ReflectModule,
         Self::ReflectParam,
         Self::ReflectSourceSpan,
+        Self::ReflectState,
         Self::ReflectTrait,
+        Self::ReflectTraitMethod,
         Self::ReflectType,
+        Self::ReflectTypeHint,
         Self::ReflectVariant,
     ];
 
@@ -63,8 +69,11 @@ impl LogicalRecordKind {
             Self::ReflectModule => "ReflectModule",
             Self::ReflectParam => "ReflectParam",
             Self::ReflectSourceSpan => "ReflectSourceSpan",
+            Self::ReflectState => "ReflectState",
             Self::ReflectTrait => "ReflectTrait",
+            Self::ReflectTraitMethod => "ReflectTraitMethod",
             Self::ReflectType => "ReflectType",
+            Self::ReflectTypeHint => "ReflectTypeHint",
             Self::ReflectVariant => "ReflectVariant",
         }
     }
@@ -284,7 +293,8 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
     use LogicalRecordKind::{
         ReflectEffectSet, ReflectField, ReflectFieldAccess, ReflectFunction, ReflectFunctionAccess,
         ReflectMethod, ReflectMethodAccess, ReflectModule, ReflectParam, ReflectSourceSpan,
-        ReflectTrait, ReflectType, ReflectVariant,
+        ReflectState, ReflectTrait, ReflectTraitMethod, ReflectType, ReflectTypeHint,
+        ReflectVariant,
     };
 
     let attrs = || TypeFact::map(TypeFact::STRING, TypeFact::STRING);
@@ -309,7 +319,10 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("exports", strings()),
             ("name", TypeFact::STRING),
             ("origin", TypeFact::STRING),
-            ("source_span", fixed_record(ReflectSourceSpan)),
+            (
+                "source_span",
+                TypeFact::option(fixed_record(ReflectSourceSpan)),
+            ),
         ],
         ReflectField => vec![
             ("access", fixed_record(ReflectFieldAccess)),
@@ -391,10 +404,45 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("attrs", attrs()),
             ("docs", TypeFact::Any),
             ("id", TypeFact::I64),
-            ("methods", TypeFact::array(fixed_record(ReflectMethod))),
+            ("methods", TypeFact::array(fixed_record(ReflectTraitMethod))),
             ("name", TypeFact::STRING),
             ("origin", TypeFact::STRING),
-            ("source_span", fixed_record(ReflectSourceSpan)),
+            (
+                "source_span",
+                TypeFact::option(fixed_record(ReflectSourceSpan)),
+            ),
+        ],
+        ReflectState => vec![
+            ("has_initializer", TypeFact::BOOL),
+            ("id", TypeFact::I64),
+            ("module", TypeFact::Any),
+            ("name", TypeFact::STRING),
+            ("origin", TypeFact::STRING),
+            ("public", TypeFact::BOOL),
+            ("source_span", TypeFact::Any),
+            ("type", TypeFact::STRING),
+            ("type_desc", TypeFact::Any),
+        ],
+        ReflectTraitMethod => vec![
+            ("attrs", attrs()),
+            ("defaulted", TypeFact::BOOL),
+            ("docs", TypeFact::Any),
+            ("id", TypeFact::I64),
+            ("name", TypeFact::STRING),
+            ("origin", TypeFact::STRING),
+            ("owner", TypeFact::STRING),
+            ("params", TypeFact::array(fixed_record(ReflectParam))),
+            ("return", TypeFact::Any),
+            ("return_desc", TypeFact::Any),
+            ("returns", TypeFact::Any),
+            ("returns_desc", TypeFact::Any),
+            ("source_span", TypeFact::Any),
+        ],
+        ReflectTypeHint => vec![
+            ("args", TypeFact::array(TypeFact::Any)),
+            ("display", TypeFact::STRING),
+            ("kind", TypeFact::STRING),
+            ("name", TypeFact::option(TypeFact::STRING)),
         ],
         ReflectType => vec![
             ("attrs", attrs()),
@@ -406,7 +454,10 @@ fn fixed_fields(kind: LogicalRecordKind) -> Vec<(&'static str, TypeFact)> {
             ("name", TypeFact::STRING),
             ("origin", TypeFact::STRING),
             ("schema_hash", TypeFact::Any),
-            ("source_span", fixed_record(ReflectSourceSpan)),
+            (
+                "source_span",
+                TypeFact::option(fixed_record(ReflectSourceSpan)),
+            ),
             ("trait_count", TypeFact::I64),
             ("variant_count", TypeFact::I64),
         ],
@@ -463,7 +514,6 @@ mod tests {
 
     #[test]
     fn reflection_record_producers_match_logical_field_slots_and_shapes() {
-        use vela_common::HostMethodId;
         use vela_def::{FunctionId, TypeId};
         use vela_reflect::modules::{FunctionDesc, FunctionParamDesc};
         use vela_reflect::registry::{
@@ -479,7 +529,7 @@ mod tests {
         );
         registry.register(
             TypeDesc::new(TypeKey::new(TypeId::new(2), "Sample")).method(
-                MethodDesc::new(HostMethodId::new(3), "sample")
+                MethodDesc::new(vela_def::MethodId::new(3), "sample")
                     .param(MethodParamDesc::new("value").type_hint("i64"))
                     .return_type("i64"),
             ),
@@ -513,6 +563,112 @@ mod tests {
             };
             assert_record_layout(&params[0], LogicalRecordKind::ReflectParam);
         }
+    }
+
+    #[test]
+    fn all_reflection_producers_match_exact_logical_layouts_recursively() {
+        use std::collections::BTreeSet;
+        use vela_common::{SourceId, Span};
+        use vela_def::{FunctionId, MethodId, StateId, VariantId};
+        use vela_reflect::modules::{FunctionDesc, FunctionParamDesc, ModuleDesc, StateDesc};
+        use vela_reflect::registry::{
+            FieldDesc, MethodDesc, MethodParamDesc, TraitDesc, TraitMethodDesc, TypeDesc, TypeKey,
+            TypeRegistry, VariantDesc,
+        };
+        use vela_reflect::value::ReflectValue;
+
+        let span = Span::new(SourceId::new(1), 0, 10);
+        let mut registry = TypeRegistry::new();
+        registry.register_module(ModuleDesc::new("sample").source_span(span));
+        registry.register_function(
+            FunctionDesc::new(FunctionId::new(1), "sample::run")
+                .module("sample")
+                .param(FunctionParamDesc::new("value").type_hint("Option<i64>"))
+                .return_type("i64")
+                .source_span(span),
+        );
+        registry.register_state(
+            StateDesc::new(StateId::new(2), "sample::count")
+                .module("sample")
+                .type_contract("i64")
+                .initializer(true),
+        );
+        registry.register(
+            TypeDesc::new(TypeKey::new(TypeId::new(3), "Sample"))
+                .source_span(span)
+                .field(FieldDesc::new(FieldId::new(4), "count").type_hint("i64"))
+                .method(
+                    MethodDesc::new(MethodId::new(5), "run")
+                        .param(MethodParamDesc::new("value").type_hint("i64")),
+                )
+                .variant(
+                    VariantDesc::new(VariantId::new(6), "Ready")
+                        .field(FieldDesc::new(FieldId::new(7), "value").type_hint("String")),
+                )
+                .trait_impl(
+                    TraitDesc::new("Runnable").method(
+                        TraitMethodDesc::new(MethodId::new(8), "run")
+                            .param(MethodParamDesc::new("value").type_hint("i64")),
+                    ),
+                ),
+        );
+        fn visit(value: &ReflectValue, seen: &mut BTreeSet<LogicalRecordKind>) {
+            match value {
+                ReflectValue::ScriptRecord { type_name, fields } => {
+                    let kind = LogicalRecordKind::ALL
+                        .into_iter()
+                        .find(|kind| kind.runtime_name() == type_name)
+                        .unwrap_or_else(|| panic!("missing logical layout for {type_name}"));
+                    assert_record_layout(value, kind);
+                    seen.insert(kind);
+                    for value in fields.values() {
+                        visit(value, seen);
+                    }
+                }
+                ReflectValue::ScriptEnum { fields, .. } | ReflectValue::Record(fields) => {
+                    for value in fields.values() {
+                        visit(value, seen);
+                    }
+                }
+                ReflectValue::Array(values) | ReflectValue::Set(values) => {
+                    for value in values {
+                        visit(value, seen);
+                    }
+                }
+                ReflectValue::Map(entries) => {
+                    for entry in entries {
+                        visit(&entry.key, seen);
+                        visit(&entry.value, seen);
+                    }
+                }
+                ReflectValue::Host(_) | ReflectValue::Closure | ReflectValue::Range => {}
+            }
+        }
+        let mut seen = BTreeSet::new();
+        for value in [
+            vela_reflect::types::type_list(&registry),
+            vela_reflect::members::all_fields(&registry),
+            vela_reflect::members::all_methods(&registry),
+            vela_reflect::members::all_traits(&registry),
+            vela_reflect::members::all_variants(&registry),
+            vela_reflect::modules::modules(&registry),
+            vela_reflect::modules::functions(&registry),
+            vela_reflect::modules::states(&registry),
+        ] {
+            visit(&value, &mut seen);
+        }
+        assert_eq!(
+            seen,
+            LogicalRecordKind::ALL
+                .into_iter()
+                .filter(|kind| *kind != LogicalRecordKind::MapEntry)
+                .collect()
+        );
+        assert!(
+            LogicalRecordFact::fixed(LogicalRecordKind::ReflectState)
+                .field("storage")
+                .is_none()
+        );
     }
 
     fn assert_record_layout(value: &vela_reflect::value::ReflectValue, kind: LogicalRecordKind) {

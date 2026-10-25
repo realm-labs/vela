@@ -5,7 +5,6 @@ use crate::{CacheSiteId, CacheSiteKind, UnlinkedInstructionKind};
 pub enum CacheSiteStorage {
     Sidecar,
     OptionalOperand,
-    RequiredOperand,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -129,8 +128,6 @@ macro_rules! non_cache_instructions {
             | Self::I64RangeNext { .. }
             | Self::EnumTagEqual { .. }
             | Self::StoreState { .. }
-            | Self::ReleaseBorrowLease { .. }
-            | Self::TryReleaseBorrowLease { .. }
             | Self::Return { .. }
     };
 }
@@ -140,8 +137,6 @@ impl_cache_sites! {
     cache {
         Self::LoadState { .. } => (StateRead, OptionalOperand);
         Self::LoadState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
-        Self::LoadExternState { .. } => (ExternStateRead, OptionalOperand);
-        Self::LoadExternState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallNative { .. } => (NativeCall, OptionalOperand);
         Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallDynamicMethod { .. } | Self::CallMethodId { .. } => (MethodCall, Sidecar);
@@ -150,16 +145,6 @@ impl_cache_sites! {
         Self::GetRecordSlot { .. } => None, |_| {};
         Self::SetRecordSlot { .. } => (RecordFieldWrite, Sidecar);
         Self::SetRecordSlot { .. } => None, |_| {};
-        Self::HostRead { .. } => (HostPathRead, RequiredOperand);
-        Self::HostRead { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostWrite { .. } => (HostPathWrite, RequiredOperand);
-        Self::HostWrite { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostMutate { .. } => (HostPathMutate, RequiredOperand);
-        Self::HostMutate { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostRemove { .. } => (HostPathRemove, RequiredOperand);
-        Self::HostRemove { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostCall { .. } => (HostPathCall, RequiredOperand);
-        Self::HostCall { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
     }
     none { non_cache_instructions!() }
 }
@@ -169,8 +154,6 @@ impl_cache_sites! {
     cache {
         Self::LoadState { .. } => (StateRead, OptionalOperand);
         Self::LoadState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
-        Self::LoadExternState { .. } => (ExternStateRead, OptionalOperand);
-        Self::LoadExternState { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallNative { .. } => (NativeCall, OptionalOperand);
         Self::CallNative { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::CallDynamicMethod { .. } | Self::CallMethod { .. } => (MethodCall, OptionalOperand);
@@ -179,16 +162,6 @@ impl_cache_sites! {
         Self::GetRecordSlot { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
         Self::SetRecordSlot { .. } => (RecordFieldWrite, OptionalOperand);
         Self::SetRecordSlot { cache_site, .. } => *cache_site, |site| { *cache_site = Some(site) };
-        Self::HostRead { .. } => (HostPathRead, RequiredOperand);
-        Self::HostRead { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostWrite { .. } => (HostPathWrite, RequiredOperand);
-        Self::HostWrite { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostMutate { .. } => (HostPathMutate, RequiredOperand);
-        Self::HostMutate { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostRemove { .. } => (HostPathRemove, RequiredOperand);
-        Self::HostRemove { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
-        Self::HostCall { .. } => (HostPathCall, RequiredOperand);
-        Self::HostCall { cache_site, .. } => Some(*cache_site), |site| { *cache_site = site };
     }
     none { non_cache_instructions!() }
 }
@@ -196,11 +169,8 @@ impl_cache_sites! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        DebugNameId, FieldSlot, HostTargetPlanId, MethodDispatchHandle, NativeHandle, Register,
-        StateSlot,
-    };
-    use vela_common::HostMethodId;
+    use crate::{DebugNameId, FieldSlot, MethodDispatchHandle, NativeHandle, Register, StateSlot};
+
     use vela_def::{FunctionId, MethodId};
 
     #[test]
@@ -209,19 +179,19 @@ mod tests {
         use CacheSiteStorage as S;
         let rows = vec![
             (
-                UnlinkedInstructionKind::LoadExternState {
+                UnlinkedInstructionKind::LoadState {
                     dst: Register(0),
                     state: "g".into(),
                     slot: None,
                     cache_site: None,
                 },
-                InstructionKind::LoadExternState {
+                InstructionKind::LoadState {
                     dst: Register(0),
                     slot: StateSlot::new(0),
                     debug_name: DebugNameId::new(0),
                     cache_site: None,
                 },
-                K::ExternStateRead,
+                K::StateRead,
                 S::OptionalOperand,
                 S::OptionalOperand,
             ),
@@ -317,106 +287,6 @@ mod tests {
                 K::RecordFieldWrite,
                 S::Sidecar,
                 S::OptionalOperand,
-            ),
-            (
-                UnlinkedInstructionKind::HostRead {
-                    dst: Register(0),
-                    root: Register(1),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                InstructionKind::HostRead {
-                    dst: Register(0),
-                    root: Register(1),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                K::HostPathRead,
-                S::RequiredOperand,
-                S::RequiredOperand,
-            ),
-            (
-                UnlinkedInstructionKind::HostWrite {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    src: Register(1),
-                    cache_site: CacheSiteId::new(0),
-                },
-                InstructionKind::HostWrite {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    src: Register(1),
-                    cache_site: CacheSiteId::new(0),
-                },
-                K::HostPathWrite,
-                S::RequiredOperand,
-                S::RequiredOperand,
-            ),
-            (
-                UnlinkedInstructionKind::HostMutate {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    op: vela_host::resolved::HostMutationOp::Add,
-                    rhs: Register(1),
-                    cache_site: CacheSiteId::new(0),
-                },
-                InstructionKind::HostMutate {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    op: vela_host::resolved::HostMutationOp::Add,
-                    rhs: Register(1),
-                    cache_site: CacheSiteId::new(0),
-                },
-                K::HostPathMutate,
-                S::RequiredOperand,
-                S::RequiredOperand,
-            ),
-            (
-                UnlinkedInstructionKind::HostRemove {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                InstructionKind::HostRemove {
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                K::HostPathRemove,
-                S::RequiredOperand,
-                S::RequiredOperand,
-            ),
-            (
-                UnlinkedInstructionKind::HostCall {
-                    dst: None,
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    method: HostMethodId::new(1),
-                    args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                InstructionKind::HostCall {
-                    dst: None,
-                    root: Register(0),
-                    target: HostTargetPlanId::new(0),
-                    dynamic_args: vec![],
-                    method: MethodDispatchHandle::new(0),
-                    debug_name: DebugNameId::new(0),
-                    args: vec![],
-                    cache_site: CacheSiteId::new(0),
-                },
-                K::HostPathCall,
-                S::RequiredOperand,
-                S::RequiredOperand,
             ),
         ];
 

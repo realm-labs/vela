@@ -1,5 +1,5 @@
-error: a shared host origin cannot return a mutable host borrow
- --> tests/ui/interop/fail/shared_optional_borrow_upgrade.rs:7:31
+error: borrowed returns and nested references are removed; use owned values
+ --> tests/ui/interop/fail/shared_optional_borrow_upgrade.rs:7:41
   |
 7 | pub fn lookup(_table: &Table) -> Option<&mut Row> {
-  |                               ^^^^^^^^^^^^^^^^^^^
+  |                                         ^^^^^^^^

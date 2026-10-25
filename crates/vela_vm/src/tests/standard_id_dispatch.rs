@@ -88,7 +88,7 @@ pub(super) fn run_linked_standard_id_code_with_caches(
         Some(&mut heap_execution),
         Some(&mut budget),
     )?;
-    crate::heap_values::value_to_owned(&result, Some(&heap_execution), None)
+    crate::heap_values::value_to_owned(&result, Some(&heap_execution))
 }
 
 pub(super) struct RecordingNativeCaches {
@@ -272,13 +272,7 @@ fn call_native_uses_resolved_host_id_even_when_debug_name_differs() {
         src: Register(0),
     }));
 
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+    let mut host = HostExecution { state_values: None };
     assert_eq!(
         run_linked_standard_id_code_with_host(&vm, code, &mut host),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(3)))

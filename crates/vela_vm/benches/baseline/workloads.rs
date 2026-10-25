@@ -5,10 +5,7 @@ use crate::workload_sources::{
     BYTES_METHODS_SOURCE, CALLBACK_COLLECTIONS_SOURCE, DIRECT_CLOSURE_CALLS_SOURCE,
     DYNAMIC_METHOD_CACHE_MISS_SOURCE, DYNAMIC_METHOD_POLYMORPHIC_SOURCE,
     DYNAMIC_SCRIPT_METHOD_MONOMORPHIC_SOURCE, DYNAMIC_STRING_METHOD_MONOMORPHIC_SOURCE,
-    HOST_ACCESS_HOT_OFFSETS_SOURCE, HOST_DYNAMIC_KEY_ACCESS_SOURCE,
-    HOST_EXTERN_STATE_READ_WRITE_SOURCE, HOST_FIELD_READ_WRITE_SOURCE, HOST_METHOD_CALLS_SOURCE,
-    HOST_NESTED_READ_WRITE_SOURCE, HOST_RMW_MUTATION_SOURCE, MAP_CALLBACKS_SOURCE,
-    MAP_FIND_ENTRIES_SOURCE, MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE,
+    MAP_CALLBACKS_SOURCE, MAP_FIND_ENTRIES_SOURCE, MATERIALIZATION_SOURCE, METHOD_DISPATCH_SOURCE,
     NATIVE_CALL_WIDE_ARGS_SOURCE, RANGE_METHODS_SOURCE, RECORD_QUADS_SOURCE, RECORD_QUINTS_SOURCE,
     RECORD_SEXTETS_SOURCE, RECORD_TRIPLETS_SOURCE, SCRIPT_CALL_SMALL_ARGS_SOURCE,
     SCRIPT_CALL_WIDE_ARGS_SOURCE, SCRIPT_METHOD_DISPATCH_SOURCE, SET_CALLBACK_PREDICATES_SOURCE,
@@ -39,21 +36,12 @@ pub(crate) enum ExecutionMode {
     ScriptProgramCacheEnabled,
     ManagedHeap,
     VmState,
-    HostAccess,
-    HostAccessProfileOnly,
-    HostAccessCacheEnabled,
-    HostManagedHeapReadConversion,
-    HostManagedHeapHostAccess,
-    GameplayHost,
     GcPacing,
 }
 
 impl ExecutionMode {
     pub(crate) fn is_cache_enabled(self) -> bool {
-        matches!(
-            self,
-            Self::CacheEnabled | Self::ScriptProgramCacheEnabled | Self::HostAccessCacheEnabled
-        )
+        matches!(self, Self::CacheEnabled | Self::ScriptProgramCacheEnabled)
     }
 
     pub(crate) fn as_str(self) -> &'static str {
@@ -67,12 +55,6 @@ impl ExecutionMode {
             Self::ScriptProgramCacheEnabled => "script_program_cache_enabled",
             Self::ManagedHeap => "managed_heap",
             Self::VmState => "vm_state",
-            Self::HostAccess => "host_access",
-            Self::HostAccessProfileOnly => "host_access_profile_only",
-            Self::HostAccessCacheEnabled => "host_access_cache_enabled",
-            Self::HostManagedHeapReadConversion => "host_managed_heap_read_conversion",
-            Self::HostManagedHeapHostAccess => "host_managed_heap_access",
-            Self::GameplayHost => "gameplay_host",
             Self::GcPacing => "gc_pacing",
         }
     }
@@ -665,149 +647,6 @@ const POST_COLLECTION_WORKLOADS: &[Workload] = &[
         name: "vm_state_read_write",
         mode: ExecutionMode::VmState,
         source: VM_STATE_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_access",
-        mode: ExecutionMode::HostAccess,
-        source: r#"
-fn main(player: Player) {
-    player.level += 1;
-    player.exp += 10;
-    player.inventory.gold += 3;
-    return player.level + player.exp + player.inventory.gold;
-}
-"#,
-    },
-    Workload {
-        name: "host_field_read_write",
-        mode: ExecutionMode::HostAccess,
-        source: HOST_FIELD_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_field_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_FIELD_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_field_read_write_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_FIELD_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_state_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_EXTERN_STATE_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_state_read_write_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_EXTERN_STATE_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_nested_read_write",
-        mode: ExecutionMode::HostAccess,
-        source: HOST_NESTED_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_nested_read_write_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_NESTED_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_nested_read_write_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_NESTED_READ_WRITE_SOURCE,
-    },
-    Workload {
-        name: "host_rmw_mutation",
-        mode: ExecutionMode::HostAccess,
-        source: HOST_RMW_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "host_rmw_mutation_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_RMW_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "host_rmw_mutation_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_RMW_MUTATION_SOURCE,
-    },
-    Workload {
-        name: "host_dynamic_key_access",
-        mode: ExecutionMode::HostAccess,
-        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
-    },
-    Workload {
-        name: "host_dynamic_key_access_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
-    },
-    Workload {
-        name: "host_dynamic_key_access_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_DYNAMIC_KEY_ACCESS_SOURCE,
-    },
-    Workload {
-        name: "host_method_calls",
-        mode: ExecutionMode::HostAccess,
-        source: HOST_METHOD_CALLS_SOURCE,
-    },
-    Workload {
-        name: "host_method_calls_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_METHOD_CALLS_SOURCE,
-    },
-    Workload {
-        name: "host_method_calls_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_METHOD_CALLS_SOURCE,
-    },
-    Workload {
-        name: "host_access_hot_offsets",
-        mode: ExecutionMode::HostAccessProfileOnly,
-        source: HOST_ACCESS_HOT_OFFSETS_SOURCE,
-    },
-    Workload {
-        name: "host_access_cache_hot_offsets",
-        mode: ExecutionMode::HostAccessCacheEnabled,
-        source: HOST_ACCESS_HOT_OFFSETS_SOURCE,
-    },
-    Workload {
-        name: "managed_heap_host_conversion",
-        mode: ExecutionMode::HostManagedHeapHostAccess,
-        source: r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..24 {
-        player.level = tick + 3;
-        player.exp = tick + 1;
-        player.inventory.gold = tick + 2;
-        total += player.level + player.exp + player.inventory.gold;
-    }
-    return total;
-}
-"#,
-    },
-    Workload {
-        name: "managed_heap_host_read_conversion",
-        mode: ExecutionMode::HostManagedHeapReadConversion,
-        source: r#"
-fn main(player: Player) {
-    let total = 0;
-    for tick in 0..48 {
-        total += player.level + player.exp + player.inventory.gold + tick - tick;
-    }
-    return total;
-}
-"#,
-    },
-    Workload {
-        name: "gameplay_monster_kill",
-        mode: ExecutionMode::GameplayHost,
-        source: include_str!(
-            "../../../../examples/src/bin/monster_kill_reward/monster_kill_reward.vela"
-        ),
     },
     Workload {
         name: "managed_heap_array_sum",

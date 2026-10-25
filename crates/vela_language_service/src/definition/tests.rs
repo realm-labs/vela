@@ -362,12 +362,12 @@ fn type_definition_follows_schema_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "host_player_schema".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" },
+                    "fact": { "kind": "record", "name": "Player" },
                     "sourceSpan": {
                         "source": schema_record.source_id().get(),
                         "start": target_start,
@@ -403,7 +403,7 @@ fn schema_type_without_source_span_does_not_fabricate_definition() {
     let main_text = "pub fn main(player: Player) { return 1 }";
     let mut databases = databases_for(vec![SourceFileSnapshot::new(main.clone(), main_text)]);
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     databases.set_schema_facts(schema);
 
     let definition = databases.type_definition(
@@ -461,7 +461,7 @@ pub fn main() {
 return BASE_REWARD + reward_scale
 }"#;
     let rewards_text = r#"pub const BASE_REWARD = 4
-pub extern state reward_scale: i64;"#;
+pub state reward_scale: i64 = 1;"#;
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),
@@ -545,12 +545,12 @@ fn definition_follows_schema_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "host_player_schema".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" },
+                    "fact": { "kind": "record", "name": "Player" },
                     "sourceSpan": {
                         "source": schema_record.source_id().get(),
                         "start": target_start,
@@ -600,12 +600,12 @@ fn definition_follows_schema_field_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "level_marker".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [
@@ -661,12 +661,12 @@ fn definition_follows_schema_method_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "grant_marker".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "methods": [
@@ -726,7 +726,7 @@ fn definition_follows_schema_trait_method_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "preview_marker".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "traits": [
                 {
@@ -796,7 +796,7 @@ fn definition_follows_schema_variant_source_span() {
         .expect("schema marker should exist");
     let target_end = target_start + "active_marker".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -864,7 +864,7 @@ fn definition_follows_qualified_schema_variant_when_name_is_not_unique() {
         .expect("schema marker should exist");
     let target_end = target_start + "active_marker".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -937,11 +937,11 @@ fn type_definition_follows_schema_field_type_source_span() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" },
+                        "fact": { "kind": "record", "name": "Inventory" },
                         "sourceSpan": {
                             "source": source,
                             "start": start,
@@ -953,7 +953,7 @@ fn type_definition_follows_schema_field_type_source_span() {
                     {
                         "owner": "Player",
                         "name": "inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ]
             })
@@ -972,7 +972,7 @@ fn type_definition_returns_none_for_schema_primitive_field() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -1003,7 +1003,7 @@ fn type_definition_returns_none_for_schema_method() {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "methods": [
@@ -1123,7 +1123,7 @@ fn assert_schema_member_type_definition<F>(
         .expect("schema marker should exist");
     let target_end = target_start + schema_marker.len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": facts(schema_record.source_id().get(), target_start, target_end)
     })
     .to_string();
@@ -1161,7 +1161,7 @@ fn assert_schema_member_type_definition_none<F>(
         .get(&schema_source)
         .expect("schema source should be indexed");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": facts(
             schema_record.source_id().get(),
             0,

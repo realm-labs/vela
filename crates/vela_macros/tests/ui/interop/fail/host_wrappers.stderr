@@ -1,0 +1,35 @@
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+ --> tests/ui/interop/fail/host_wrappers.rs:4:21
+  |
+4 | pub fn host(_value: Host<Record>) {}
+  |                     ^^^^^^^^^^^^
+
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+ --> tests/ui/interop/fail/host_wrappers.rs:7:21
+  |
+7 | pub fn view(_value: View<i64>) {}
+  |                     ^^^^^^^^^
+
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+  --> tests/ui/interop/fail/host_wrappers.rs:10:25
+   |
+10 | pub fn mut_view(_value: MutView<i64>) {}
+   |                         ^^^^^^^^^^^^
+
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+  --> tests/ui/interop/fail/host_wrappers.rs:13:22
+   |
+13 | pub fn lease(_value: HostLeaseRef<Record>) {}
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+  --> tests/ui/interop/fail/host_wrappers.rs:16:28
+   |
+16 | pub fn path(_value: Option<HostPath>) {}
+   |                            ^^^^^^^^
+
+error: ordinary exported signatures cannot mention a Vela boundary wrapper
+  --> tests/ui/interop/fail/host_wrappers.rs:19:27
+   |
+19 | pub fn nested(_value: Vec<PathProxy>) {}
+   |                           ^^^^^^^^^

@@ -89,13 +89,13 @@ fn top_level_actions_keep_only_applicable_repairs() {
         let legacy = uri("scripts/legacy.vela");
         assert_eq!(db.diagnostics_for_document(&valid).diagnostics().len(), 0);
         assert_eq!(db.diagnostics_for_document(&invalid).diagnostics().len(), 7);
-        assert_eq!(db.diagnostics_for_document(&state).diagnostics().len(), 3);
+        assert_eq!(db.diagnostics_for_document(&state).diagnostics().len(), 4);
         let legacy_diagnostics = db.diagnostics_for_document(&legacy);
         let [legacy_diagnostic] = legacy_diagnostics.diagnostics() else {
             panic!("one legacy syntax diagnostic")
         };
         assert_eq!(legacy_diagnostic.code(), Some("syntax::legacy_global_decl"));
-        assert_eq!(legacy_diagnostic.candidates().len(), 2);
+        assert_eq!(legacy_diagnostic.candidates().len(), 1);
 
         let valid_text = &fixture.disk["scripts/valid.vela"].text;
         let whole_valid = DiagnosticRange::new(

@@ -1,4 +1,5 @@
 use vela_bytecode::{LinkedArtifact, PackageArtifactMetadata};
+use vela_common::Capability;
 
 use crate::error::{HotReloadError, HotReloadErrorKind, HotReloadResult};
 
@@ -46,9 +47,17 @@ fn ensure_compatible_metadata(
         let declared_expansion = new_package
             .declared_capabilities()
             .difference(old_package.declared_capabilities());
+        // Canonical native effects omit HostRead when HostWrite is present.
+        // Removing writes can therefore reveal an already-covered read capability.
+        let previous_observed = old_package.observed_capabilities();
+        let previous_observed = if previous_observed.contains(Capability::HostWrite) {
+            previous_observed.with(Capability::HostRead)
+        } else {
+            previous_observed
+        };
         let observed_expansion = new_package
             .observed_capabilities()
-            .difference(old_package.observed_capabilities());
+            .difference(previous_observed);
         if !declared_expansion.is_empty() || !observed_expansion.is_empty() {
             return incompatible(
                 &format!("package {}", old_package.id()),

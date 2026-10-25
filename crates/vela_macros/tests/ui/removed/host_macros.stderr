@@ -1,0 +1,35 @@
+error[E0433]: cannot find `ScriptHost` in `vela_macros`
+ --> tests/ui/removed/host_macros.rs:1:23
+  |
+1 | #[derive(vela_macros::ScriptHost)]
+  |                       ^^^^^^^^^^ could not find `ScriptHost` in `vela_macros`
+
+error[E0433]: cannot find `ScriptReflect` in `vela_macros`
+ --> tests/ui/removed/host_macros.rs:4:23
+  |
+4 | #[derive(vela_macros::ScriptReflect)]
+  |                       ^^^^^^^^^^^^^ could not find `ScriptReflect` in `vela_macros`
+
+error[E0433]: cannot find `external_host` in `vela_macros`
+ --> tests/ui/removed/host_macros.rs:7:16
+  |
+7 | #[vela_macros::external_host(path = "data::External", register = "register_external")]
+  |                ^^^^^^^^^^^^^ could not find `external_host` in `vela_macros`
+
+error[E0433]: cannot find `methods` in `vela_macros`
+  --> tests/ui/removed/host_macros.rs:10:16
+   |
+10 | #[vela_macros::methods(path = "data::Host")]
+   |                ^^^^^^^ could not find `methods` in `vela_macros`
+
+error[E0433]: cannot find `trait_export` in `vela_macros`
+  --> tests/ui/removed/host_macros.rs:13:16
+   |
+13 | #[vela_macros::trait_export(path = "data::Protocol")]
+   |                ^^^^^^^^^^^^ could not find `trait_export` in `vela_macros`
+
+error[E0433]: cannot find `export_external_trait_impl` in `vela_macros`
+  --> tests/ui/removed/host_macros.rs:18:14
+   |
+18 | vela_macros::export_external_trait_impl! {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ could not find `export_external_trait_impl` in `vela_macros`

@@ -8,15 +8,12 @@ then create one or more runtimes that execute calls against those definitions.
 
 ## Engine
 
-`Engine` stores registered host types, native functions, host methods,
+`Engine` stores registered Value types and independent synchronous native functions,
 reflection policy, capability defaults, standard natives, and hot-reload
 policy.
 
 ```rust
 let engine = Engine::builder()
-    .capability(Capability::HostRead)
-    .capability(Capability::HostWrite)
-    .register_script_host::<Player>()
     .register_typed_native_fn::<(i64, i64), _>(
         NativeFunctionDesc::new("game::bonus", NativeFunctionId::new(10_001))
             .param("amount", TypeHint::i64())
@@ -34,12 +31,12 @@ available before scripts run.
 ## Runtime
 
 `Runtime` owns execution state for one program image. It is mutable because a
-call can allocate script values, update VM state, access extern state, populate inline caches, apply
-hot reload, and mutate host state through call arguments or adapters.
+call can allocate script values, update VM state, populate inline caches, apply
+and activate script hot reload. Rust mutation is not exposed through call arguments or adapters.
 
 ```rust
 let program = engine.compile_source(source)?;
-let mut runtime = Runtime::new(engine, program);
+let mut runtime = Runtime::new(engine, program)?;
 let entry = runtime.entry("handle_tick")?;
 let value = runtime.call(&entry, CallArgs::new(), CallOptions::unbounded())?;
 let owned = runtime.value_to_owned(&value)?;

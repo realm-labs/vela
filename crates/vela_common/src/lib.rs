@@ -11,10 +11,7 @@ pub mod primitive;
 pub use capability::{Capability, CapabilitySet};
 
 pub use interop_type::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
-    HostCollectionIteration, HostConstructionLifetime, HostConstructorBinding,
-    InteropBindingContract, InteropRepresentation, InteropTypeId, ReceiverCapabilities,
-    ReceiverCapability, StoragePolicy, TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    InteropBindingContract, InteropTypeId, TypeAbiFingerprint, TypeBindingRegistryChecksum,
 };
 pub use primitive::{NumericTag, PrimitiveTag, ScalarValue};
 pub use vela_def::stable_id;
@@ -45,17 +42,14 @@ macro_rules! stable_id {
 }
 
 stable_id!(StateSlot, usize);
-stable_id!(HostMethodId, u128);
-stable_id!(HostObjectId, u64);
-stable_id!(HostTypeId, u64);
+
 stable_id!(ShapeId, u32);
 stable_id!(SourceId, u32);
 
 /// Returns the sealed identity used by one concrete Rust standard-library
 /// binding.
 ///
-/// Both reflection bindings and borrowed host views use this helper so a
-/// concrete collection cannot acquire a second runtime-only identity.
+/// Value conversion and reflection share the same concrete collection identity.
 #[doc(hidden)]
 #[must_use]
 pub const fn rust_standard_type_id(family: &str, facts: &str) -> u64 {

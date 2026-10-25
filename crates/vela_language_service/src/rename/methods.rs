@@ -230,6 +230,12 @@ fn script_method_target_for_call_field(
     }
     let receiver =
         query_context::type_fact_for_source_range(databases, source.source_id(), receiver_range)?;
+    if query_context::source_origins_for_source_range(databases, source.source_id(), receiver_range)
+        .is_none_or(|origins| origins.possible().is_empty())
+        && matches!(&receiver, TypeFact::Record { name } if databases.schema_db().facts().type_fact(name).is_some())
+    {
+        return None;
+    }
     let owner = script_method_owner(graph, &receiver, method)?;
     Some(ScriptMethodTarget {
         owner,
@@ -416,16 +422,9 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }
         | TypeFact::OptionNone
@@ -435,7 +434,6 @@ fn collect_record_owner_names(receiver: &TypeFact, owners: &mut Vec<String>) {
         | TypeFact::Function { .. }
         | TypeFact::Closure
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::LogicalRecord(_)

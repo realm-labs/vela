@@ -1,19 +1,17 @@
 use vela_analysis::executable::{ExecutableAnalysisGeneration, ExecutableAnalysisInput};
-use vela_common::{HostTypeId, PrimitiveTag, ShapeId, SourceId};
-use vela_def::{FieldId, FunctionId, TypeId, VariantId};
+use vela_common::{ShapeId, SourceId};
+use vela_def::{FieldId, FunctionId, TypeId};
 use vela_hir::body::{HirExprKind, HirField};
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
 use vela_package::ModulePath;
 
 use crate::{
     CompileFieldAccess, CompileFieldDescriptor, CompileFieldTarget, CompileFunctionAccess,
-    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity,
-    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget, CompileMemberTarget,
+    CompileFunctionClass, CompileFunctionDescriptor, CompileFunctionIdentity, CompileMemberTarget,
     CompileParameter, CompileParameterDefault, CompilePositionalPolicy, CompileSignature,
-    CompileTargetSnapshot, CompileTypeClass, CompileTypeDescriptor, CompileVariantDescriptor,
-    HostFieldTarget, HostTypeTarget, MirAggregate, MirBuildError, MirEffect, MirHostOperation,
-    MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace, MirProgram,
-    MirSourceOrigin, MirStatementKind, MirTypeContract,
+    CompileTargetSnapshot, CompileTypeClass, CompileTypeDescriptor, MirAggregate, MirBuildError,
+    MirEffect, MirIndexOperation, MirLoweringConfig, MirLoweringInput, MirOperand, MirPlace,
+    MirProgram, MirSourceOrigin, MirStatementKind,
 };
 
 const SOURCE: SourceId = SourceId::new(94);
@@ -24,15 +22,6 @@ const HOLDER_COORDS: FieldId = FieldId::new(9_412);
 const CELL_TYPE: TypeId = TypeId::new(9_420);
 const CELL_SHAPE: ShapeId = ShapeId::new(9_421);
 const CELL_VALUE: FieldId = FieldId::new(9_422);
-const HOST_TYPE_ID: TypeId = TypeId::new(9_430);
-const HOST_RUNTIME_ID: HostTypeId = HostTypeId::new(9_431);
-const HOST_COORDS: FieldId = FieldId::new(9_432);
-const HOST_TUPLES: FieldId = FieldId::new(9_433);
-const HOST_VARIANT: VariantId = VariantId::new(9_434);
-const HOST_TYPE: HostTypeTarget = HostTypeTarget {
-    semantic: HOST_TYPE_ID,
-    runtime: HOST_RUNTIME_ID,
-};
 
 #[derive(Clone, Copy)]
 enum NamedMemberPolicy {
@@ -221,7 +210,6 @@ fn insert_record_descriptors(
                 contract: None,
                 declaration_order: 0,
                 access: CompileFieldAccess::script(),
-                host_runtime: None,
             },
             origin,
         )?;
@@ -245,258 +233,6 @@ fn only_function(program: &MirProgram) -> &crate::MirFunction {
     function
 }
 
-#[derive(Clone)]
-enum HostPrefixKind {
-    Field {
-        variant: bool,
-    },
-    Index {
-        capability: CompileHostIndexCapability,
-    },
-}
-
-fn lower_host_tuple(
-    prefix: HostPrefixKind,
-    access: CompileFieldAccess,
-) -> Result<MirProgram, MirBuildError> {
-    let variant = matches!(&prefix, HostPrefixKind::Field { variant: true });
-    let (source, field_name, field_id, field_contract) = match &prefix {
-        HostPrefixKind::Field { .. } => (
-            "struct Root { coords: (i64, i64) } fn main(host: Root, rhs: i64) { return host.coords.1 = rhs; }",
-            "coords",
-            HOST_COORDS,
-            MirTypeContract::Tuple(vec![
-                Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-                Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-            ]),
-        ),
-        HostPrefixKind::Index { .. } => (
-            "struct Root { tuples: Array<(i64, i64)> } fn main(host: Root, index: i64, rhs: i64) { return host.tuples[index].1 = rhs; }",
-            "tuples",
-            HOST_TUPLES,
-            MirTypeContract::Array(Some(Box::new(MirTypeContract::Tuple(vec![
-                Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-                Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-            ])))),
-        ),
-    };
-    let mut graph = ModuleGraph::new();
-    graph.add_source(ModuleSource::new(
-        SOURCE,
-        vela_package::PackageId::anonymous(),
-        ModulePath::from_qualified("tuple_host_assignments"),
-        source,
-    ));
-    graph.resolve_imports();
-    assert_eq!(graph.diagnostics(), &[]);
-    let declaration = graph
-        .declarations()
-        .find(|declaration| declaration.name == "main")
-        .expect("host tuple main");
-    let body = graph
-        .function_body(declaration.id)
-        .expect("host tuple body");
-    let analysis = ExecutableAnalysisGeneration::from_module_graph(
-        &graph,
-        [ExecutableAnalysisInput::new(FUNCTION, body.id)],
-    )
-    .expect("host tuple analysis");
-    let origin = MirSourceOrigin::body(body.id, body.origin.span);
-    let host_field = body
-        .expressions
-        .values()
-        .find_map(|expression| {
-            let HirExprKind::Field(field) = &expression.kind else {
-                return None;
-            };
-            (field.name == field_name).then_some(field)
-        })
-        .expect("host prefix field");
-    let tuple_field = body
-        .expressions
-        .values()
-        .find_map(|expression| {
-            let HirExprKind::Field(field) = &expression.kind else {
-                return None;
-            };
-            (field.name == "1").then_some(field)
-        })
-        .expect("tuple suffix field");
-    let host_target = HostFieldTarget {
-        owner: HOST_TYPE,
-        semantic: field_id,
-        runtime: field_id,
-        access: access.clone(),
-    };
-    let mut targets = CompileTargetSnapshot::builder();
-    targets.insert_script_function(
-        declaration.id,
-        body.id,
-        CompileFunctionDescriptor {
-            id: FUNCTION,
-            class: CompileFunctionClass::Script,
-            canonical_symbol: "tuple_host_assignments::main".to_owned(),
-            debug_name: "main".to_owned(),
-            signature: CompileSignature {
-                parameters: parameters(&graph, body),
-                positional: CompilePositionalPolicy::ExactOrTrailingDefaults,
-                return_contract: None,
-                effect: MirEffect::PURE,
-            },
-            access: CompileFunctionAccess::script(false),
-        },
-        origin,
-    )?;
-    targets.insert_type_descriptor(
-        CompileTypeDescriptor {
-            id: HOST_TYPE_ID,
-            canonical_name: "host::TupleRoot".to_owned(),
-            runtime_name: "TupleRoot".to_owned(),
-            class: CompileTypeClass::Host {
-                runtime: HOST_RUNTIME_ID,
-            },
-            shape: None,
-            fields: if variant { Vec::new() } else { vec![field_id] },
-            variants: if variant {
-                vec![HOST_VARIANT]
-            } else {
-                Vec::new()
-            },
-        },
-        origin,
-    )?;
-    if variant {
-        targets.insert_variant_descriptor(
-            CompileVariantDescriptor {
-                id: HOST_VARIANT,
-                owner: HOST_TYPE_ID,
-                name: "TupleState".to_owned(),
-                fields: vec![field_id],
-                declaration_order: 0,
-            },
-            origin,
-        )?;
-    }
-    targets.insert_field_descriptor(
-        CompileFieldDescriptor {
-            id: field_id,
-            owner: HOST_TYPE_ID,
-            variant: variant.then_some(HOST_VARIANT),
-            name: field_name.to_owned(),
-            contract: Some(field_contract),
-            declaration_order: 0,
-            access: access.clone(),
-            host_runtime: Some(field_id),
-        },
-        origin,
-    )?;
-    targets.insert_host_path(
-        FUNCTION,
-        host_field.receiver,
-        CompileHostPathTarget {
-            root: host_field.receiver,
-            root_type: HOST_TYPE,
-            segments: Vec::new(),
-        },
-        expression_origin(body, host_field.receiver),
-    )?;
-    targets.insert_member(
-        FUNCTION,
-        host_field.expression,
-        CompileMemberTarget::HostField(host_target.clone()),
-        expression_origin(body, host_field.expression),
-    )?;
-    let field_segment = match &prefix {
-        HostPrefixKind::Field { variant: true } => {
-            CompileHostPathSegment::VariantField(host_target.clone())
-        }
-        HostPrefixKind::Field { variant: false } | HostPrefixKind::Index { .. } => {
-            CompileHostPathSegment::Field(host_target.clone())
-        }
-    };
-    let mut segments = vec![field_segment];
-    let prefix_expression = match prefix {
-        HostPrefixKind::Field { .. } => host_field.expression,
-        HostPrefixKind::Index { capability } => {
-            let index = body
-                .expressions
-                .values()
-                .find_map(|expression| {
-                    let HirExprKind::Index(index) = &expression.kind else {
-                        return None;
-                    };
-                    (index.receiver == host_field.expression).then_some(index)
-                })
-                .expect("host tuple index prefix");
-            segments.push(CompileHostPathSegment::DynamicIndex {
-                expression: index.index,
-                capability,
-            });
-            index.expression
-        }
-    };
-    assert_eq!(tuple_field.receiver, prefix_expression);
-    targets.insert_host_path(
-        FUNCTION,
-        host_field.expression,
-        CompileHostPathTarget {
-            root: host_field.receiver,
-            root_type: HOST_TYPE,
-            segments: vec![segments[0].clone()],
-        },
-        expression_origin(body, host_field.expression),
-    )?;
-    if prefix_expression != host_field.expression {
-        targets.insert_host_path(
-            FUNCTION,
-            prefix_expression,
-            CompileHostPathTarget {
-                root: host_field.receiver,
-                root_type: HOST_TYPE,
-                segments,
-            },
-            expression_origin(body, prefix_expression),
-        )?;
-    }
-    targets.insert_member(
-        FUNCTION,
-        tuple_field.expression,
-        CompileMemberTarget::TupleIndex(1),
-        expression_origin(body, tuple_field.expression),
-    )?;
-    let targets = targets.build()?;
-    let input = MirLoweringInput::new(
-        &graph,
-        CompileFunctionIdentity::Function(FUNCTION),
-        body.id,
-        analysis.view(FUNCTION).expect("host tuple analysis view"),
-        &targets,
-        MirLoweringConfig {
-            emit_debug_locals: true,
-            compute_liveness: false,
-        },
-    )?;
-    crate::build_mir(input)
-}
-
-fn host_access(readable: bool, writable: bool) -> CompileFieldAccess {
-    CompileFieldAccess::new(readable, writable, true, true, Vec::new())
-}
-
-fn tuple_index_capability(readable: bool, writable: bool) -> CompileHostIndexCapability {
-    CompileHostIndexCapability {
-        readable,
-        writable,
-        mutable: writable,
-        removable: writable,
-        key: Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-        value: Some(MirTypeContract::Tuple(vec![
-            Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-            Some(MirTypeContract::Primitive(PrimitiveTag::I64)),
-        ])),
-    }
-}
-
 fn statement_positions(
     function: &crate::MirFunction,
     predicate: impl Fn(&MirStatementKind) -> bool,
@@ -518,7 +254,7 @@ fn tuple_assignment_rebuilds_a_direct_local_and_returns_the_leaf() {
     assert_eq!(
         program.dump(),
         r#"mir {
-  target function#9400 CompileFunctionDescriptor { id: FunctionId(9400), class: Script, canonical_symbol: "tuple_assignments::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "pair", contract: None, default: Required, origin: None }, CompileParameter { name: "rhs", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#9400 CompileFunctionDescriptor { id: FunctionId(9400), class: Script, canonical_symbol: "tuple_assignments::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "pair", contract: None, default: Required, origin: None }, CompileParameter { name: "rhs", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#9400 symbol="tuple_assignments::main" @94:36..60/h0 {
     param p0: pair -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @94:8..12/h0
     param p1: rhs -> l1 kind=Explicit(HirParamId(1)) contract=None default=None hir=l1 @94:26..29/h0
@@ -820,115 +556,6 @@ fn main(items: Array<(i64, i64)>, index: i64, rhs: i64) {
             | MirStatementKind::Index(MirIndexOperation::Write { .. })
     )));
     assert!(!program.dump().contains("-> return 0i64"));
-}
-
-#[test]
-fn host_tuple_assignment_reads_rebuilds_and_writes_the_exact_prefix() {
-    for prefix in [
-        HostPrefixKind::Field { variant: false },
-        HostPrefixKind::Index {
-            capability: tuple_index_capability(true, true),
-        },
-    ] {
-        let program = lower_host_tuple(prefix, host_access(true, true))
-            .expect("writable HostAccess tuple prefix");
-        let function = only_function(&program);
-        let host = function
-            .statements()
-            .filter_map(|(_, statement)| match &statement.kind {
-                MirStatementKind::Host(operation) => Some((statement, operation)),
-                _ => None,
-            })
-            .collect::<Vec<_>>();
-        let [
-            (
-                read_statement,
-                MirHostOperation::Read {
-                    root: read_root,
-                    path: read_path,
-                },
-            ),
-            (
-                write_statement,
-                MirHostOperation::Write {
-                    root: write_root,
-                    path: write_path,
-                    value,
-                },
-            ),
-        ] = host.as_slice()
-        else {
-            panic!(
-                "expected one HostAccess read/write pair:\n{}",
-                program.dump()
-            )
-        };
-        assert_eq!(read_root, write_root);
-        assert_eq!(read_path, write_path);
-        assert!(matches!(value, MirOperand::Temp(_)));
-        assert!(read_statement.effect.host_read && read_statement.effect.may_allocate);
-        assert!(read_statement.safepoint.is_some());
-        assert!(write_statement.effect.host_read && write_statement.effect.host_write);
-        assert!(write_statement.safepoint.is_none());
-        let read = function
-            .statements()
-            .position(|(_, statement)| std::ptr::eq(statement, *read_statement))
-            .expect("host read order");
-        let allocate = statement_positions(function, |kind| {
-            matches!(kind, MirStatementKind::Allocate(MirAggregate::Tuple(_)))
-        })[0];
-        let write = function
-            .statements()
-            .position(|(_, statement)| std::ptr::eq(statement, *write_statement))
-            .expect("host write order");
-        assert!(read < allocate && allocate < write);
-        assert!(!function.statements().any(|(_, statement)| matches!(
-            statement.kind,
-            MirStatementKind::WriteField { .. }
-                | MirStatementKind::Index(MirIndexOperation::Write { .. })
-        )));
-    }
-}
-
-#[test]
-fn host_tuple_assignment_enforces_composite_read_and_write_access() {
-    let unreadable = lower_host_tuple(
-        HostPrefixKind::Field { variant: false },
-        host_access(false, true),
-    )
-    .expect_err("tuple writeback must read its host prefix");
-    assert_error_contains(unreadable, "prefix is not readable");
-
-    let readonly = lower_host_tuple(
-        HostPrefixKind::Field { variant: false },
-        host_access(true, false),
-    )
-    .expect_err("ordinary host field must be writable");
-    assert_error_contains(readonly, "prefix is not writable");
-
-    lower_host_tuple(
-        HostPrefixKind::Field { variant: true },
-        host_access(true, false),
-    )
-    .expect("variant-field write policy authorizes tuple writeback");
-
-    let unreadable_index = lower_host_tuple(
-        HostPrefixKind::Index {
-            capability: tuple_index_capability(false, true),
-        },
-        host_access(true, true),
-    )
-    .expect_err("host index prefix must be readable");
-    assert_error_contains(unreadable_index, "prefix is not readable");
-
-    let readonly_index = lower_host_tuple(
-        HostPrefixKind::Index {
-            capability: tuple_index_capability(true, false),
-        },
-        host_access(true, true),
-    )
-    .expect_err("host index prefix must be writable");
-    assert_error_contains(readonly_index, "prefix is not writable");
 }
 
 #[test]

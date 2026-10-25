@@ -111,7 +111,7 @@ fn record_field_completion_uses_schema_facts() {
     let project = assemble_project_sources(&config, &files, &Workspace::new().snapshot());
     let mut databases = LanguageServiceDatabases::new();
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_field_docs("Player", "level", "Current player level.");
     schema.insert_field("Player", "name", TypeFact::STRING);

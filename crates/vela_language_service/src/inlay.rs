@@ -5,7 +5,6 @@ use vela_common::SourceId;
 use vela_hir::{
     binding::LocalBindingKind,
     body::{HirBody, HirCall, HirExprKind, HirPathKind, HirPathOwner},
-    ids::HirExprId,
 };
 
 use crate::callable_context::{CallableParameterFacts, member_callable_facts_for_type};
@@ -183,7 +182,7 @@ impl LanguageServiceDatabases {
         &self,
         document_id: &DocumentId,
         source: SourceId,
-        source_text: &str,
+        _source_text: &str,
         line_index: &LineIndex,
         range: DiagnosticRangeOffsets,
         hints: &mut Vec<InlayHint>,
@@ -232,25 +231,6 @@ impl LanguageServiceDatabases {
         }
 
         for body in graph.bodies().filter(|body| body.origin.source == source) {
-            let scoped_locals = body
-                .statements
-                .values()
-                .filter_map(|statement| {
-                    let vela_hir::body::HirStmtKind::Let {
-                        pattern: Some(pattern),
-                        initializer: Some(initializer),
-                        ..
-                    } = statement.kind
-                    else {
-                        return None;
-                    };
-                    let local = body.patterns.get(&pattern)?.local()?;
-                    let expression = transparent_call_expression(body, initializer)?;
-                    let call = body.call(expression)?;
-                    let callable = hir_callable_for_call(self, body, call, source_text, facts)?;
-                    Some((local, callable.scoped_resource()?))
-                })
-                .collect::<BTreeMap<_, _>>();
             for local in &body.locals {
                 let Some(binding) = graph.local_binding(*local) else {
                     continue;
@@ -262,14 +242,7 @@ impl LanguageServiceDatabases {
                 let Some(fact) = fact else {
                     continue;
                 };
-                let label = scoped_locals.get(local).map_or_else(
-                    || type_hint_label(fact),
-                    |resource| {
-                        Some(DisplayParts::type_annotation(
-                            &crate::callable_context::scoped_resource_display_name(fact, *resource),
-                        ))
-                    },
-                );
+                let label = type_hint_label(fact);
                 let Some(label) = label else { continue };
                 let offset = binding.span.end as usize;
                 if !range.contains(offset) {
@@ -286,47 +259,7 @@ impl LanguageServiceDatabases {
                     )),
                 });
             }
-            for (expression, field) in body.fields() {
-                if body.calls().any(|(_, call)| call.callee == expression) {
-                    continue;
-                }
-                let Some(TypeFact::Host { name: owner }) = facts.expression(field.receiver) else {
-                    continue;
-                };
-                let Some(fact) = facts.expression(expression) else {
-                    continue;
-                };
-                let Some(label) = type_hint_label(fact) else {
-                    continue;
-                };
-                let offset = field.member_origin.span.end as usize;
-                if !range.contains(offset) {
-                    continue;
-                }
-                hints.push(InlayHint {
-                    position: line_index.position(offset),
-                    label,
-                    kind: InlayHintKind::Type,
-                    symbol: Some(schema_member_symbol(owner, &field.name)),
-                });
-            }
         }
-    }
-}
-
-pub(crate) fn transparent_call_expression(
-    body: &HirBody,
-    expression: HirExprId,
-) -> Option<HirExprId> {
-    match &body.expression(expression)?.kind {
-        HirExprKind::Call(_) => Some(expression),
-        HirExprKind::Paren {
-            expression: Some(inner),
-        }
-        | HirExprKind::Try {
-            expression: Some(inner),
-        } => transparent_call_expression(body, *inner),
-        _ => None,
     }
 }
 
@@ -428,20 +361,13 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
     match fact {
         TypeFact::Unknown | TypeFact::Any | TypeFact::Never => false,
         TypeFact::Array { element }
-        | TypeFact::ArrayView { element }
-        | TypeFact::ArrayMut { element, .. }
         | TypeFact::Set { element }
-        | TypeFact::SetView { element }
-        | TypeFact::SetMut { element, .. }
         | TypeFact::Iterator { item: element }
-        | TypeFact::ScopedIterator { item: element }
         | TypeFact::Option { some: element }
         | TypeFact::OptionSome { some: element }
         | TypeFact::ResultOk { ok: element }
         | TypeFact::ResultErr { err: element } => is_stable_type_fact(element),
         TypeFact::Map { key, value }
-        | TypeFact::MapView { key, value }
-        | TypeFact::MapMut { key, value, .. }
         | TypeFact::Result {
             ok: key,
             err: value,
@@ -462,7 +388,6 @@ fn is_stable_type_fact(fact: &TypeFact) -> bool {
         | TypeFact::Record { .. }
         | TypeFact::LogicalRecord(_)
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Module { .. } => true,
     }

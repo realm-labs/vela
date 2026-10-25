@@ -17,7 +17,7 @@ pub fn main() -> i64 {
 }";
     let rewards_text = "\
 pub const BASE_REWARD = 4
-pub extern state reward_scale: i64;";
+pub state reward_scale: i64 = 1;";
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),

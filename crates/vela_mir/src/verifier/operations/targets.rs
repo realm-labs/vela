@@ -232,21 +232,7 @@ pub(super) fn verify_field_operation(
                 origin,
             )?)
         }
-        MirFieldTarget::DynamicRecord { .. } | MirFieldTarget::DynamicVariant { .. } => {
-            if matches!(receiver_type, MirValueType::Host(_)) {
-                return Err(error(
-                    verifier,
-                    Some(block),
-                    Some(statement),
-                    origin,
-                    MirVerifyErrorKind::InvalidHostContract(
-                        "host member access cannot use an ordinary dynamic field operation"
-                            .to_owned(),
-                    ),
-                ));
-            }
-            None
-        }
+        MirFieldTarget::DynamicRecord { .. } | MirFieldTarget::DynamicVariant { .. } => None,
     };
     if written.is_some()
         && matches!(

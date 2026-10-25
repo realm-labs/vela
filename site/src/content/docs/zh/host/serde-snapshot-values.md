@@ -55,8 +55,6 @@ let score = runtime.call_method(
 )?;
 ```
 
-## 什么时候用 HostRef
+## 所有权
 
-复制是预期行为时使用 serde：events、config snapshots、request payloads 和
-return DTOs。脚本写入需要立即更新持久 Rust 状态时，使用 `HostRef` 和
-`HostAccess`。
+现有 serde 转换用于快照复制；结果由脚本拥有，不会隐式写回 Rust。借用宿主替代路径已删除，本轮不引入 opaque 或 codec 替代 API。

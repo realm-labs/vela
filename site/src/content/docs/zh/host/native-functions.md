@@ -1,66 +1,14 @@
 ---
-title: "Native 函数"
-description: "把 Rust 函数注册为 Vela 可调用函数，并显式声明 effects 和转换规则。"
+title: "Native Functions"
+description: "Vela 同步执行与脚本自有值边界。"
 ---
 
-Native functions 把 Rust 功能暴露给脚本，但不暴露 Rust 状态指针。注册时
-需要稳定名称、签名、effects 和 reflection access metadata。
+Vela 仅同步执行。保留普通模块、包、结构体、trait、脚本集合与迭代器、VM 自有 `state`、受控反射和精确旧代际热重载。
 
-## Pure Native Functions
+保留现有独立的同步 native/value 调用与 serde 快照转换。序列化输入由脚本拥有；脚本修改不会隐式写回 Rust，Rust 必须显式接收结果。`native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例继续可用。
 
-Pure functions 接收复制后的脚本值，并返回复制后的脚本值。
+已移除借用的 Rust 根、参数、返回值、view、租约及显式释放操作，透明 Host 路径、Host 构造器和方法，以及依赖这些能力的 `extern state` 绑定。普通 VM `state` 不受此删除影响。没有新的 opaque 对象、codec、转换或重入替代 API。
 
-```rust
-fn bonus_manual(amount: i64, multiplier: i64) -> i64 {
-    amount * multiplier
-}
+工具元数据格式为 **4**：拒绝旧格式 3、Host/view 类型、scoped-resource、构造器、storage/receiver 能力等已移除字段（包括 null 或空值）。注册 Value 类型仍保留标识与 ABI 校验。LSP 工作线程及请求调度不是脚本异步执行。
 
-let engine = Engine::builder()
-    .register_typed_native_fn::<(i64, i64), _>(
-        NativeFunctionDesc::new("game::bonus_manual", NativeFunctionId::new(10_001))
-            .param("amount", TypeHint::i64())
-            .param("multiplier", TypeHint::i64())
-            .returns(TypeHint::i64())
-            .effects(EffectSet::pure())
-            .access(FunctionAccess::public().reflect_callable(true)),
-        bonus_manual,
-    )
-    .build()?;
-```
-
-```vela
-fn main() {
-    return game::bonus_manual(3, 4);
-}
-```
-
-## Context Native Functions
-
-需要宿主服务的函数使用 `NativeCallContext`。这是 native 代码接触
-capabilities、budgets 和 `HostAccess` 的允许入口。
-
-```rust
-#[script_context_function(name = "game::grant_level", effect = "write_host")]
-fn grant_level(
-    ctx: &mut NativeCallContext<'_, '_>,
-    player: HostRef,
-    amount: i64,
-) -> vela_vm::error::VmResult<i64> {
-    let path = Player::vela_field_path_level(player);
-    ctx.add_path(
-        path.clone(),
-        HostValue::Scalar(vela_common::ScalarValue::I64(amount)),
-        None,
-    )?;
-    match ctx.read_path(&path, None)? {
-        HostValue::Scalar(vela_common::ScalarValue::I64(level)) => Ok(level),
-        _ => Ok(0),
-    }
-}
-```
-
-## 规则
-
-Native functions 不重载。每个 callable 使用一个公开名称。如果 native 需要
-修改宿主状态，它必须通过 `NativeCallContext`、`HostAccess`、已注册的
-adapter method，或者返回一个值让脚本之后通过普通 host path 写入。
+详情与现有调用示例见 [English reference](/host/native-functions/)。

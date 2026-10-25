@@ -1,0 +1,11 @@
+error: unsupported Vela callable effect
+ --> tests/ui/interop/fail/host_effects.rs:3:42
+  |
+3 | #[export(path = "removed::read", effects(host_read))]
+  |                                          ^^^^^^^^^
+
+error: unsupported Vela callable effect
+ --> tests/ui/interop/fail/host_effects.rs:6:43
+  |
+6 | #[export(path = "removed::write", effects(host_write))]
+  |                                           ^^^^^^^^^^

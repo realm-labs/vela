@@ -71,22 +71,23 @@ impl Rewardable for Player {
     assert_eq!(player_index.surfaces_for_label("rank"), vec![]);
     assert_eq!(player_index.surfaces_for_label("persist"), vec![]);
 
-    // Host facts retain these schema members; a source record cannot acquire them.
-    let host_index = MemberCompletionIndex::for_receiver(
+    // A registered Value record with a distinct owner uses schema fields.
+    let mut value_schema = RegistryFacts::default();
+    value_schema.insert_type("RegisteredPlayer", TypeFact::record("RegisteredPlayer"));
+    value_schema.insert_field("RegisteredPlayer", "rank", TypeFact::I64);
+    let value_index = MemberCompletionIndex::for_receiver(
         databases.hir_db().graph(),
-        databases.schema_db().facts(),
-        &TypeFact::host("Player"),
+        &value_schema,
+        &TypeFact::record("RegisteredPlayer"),
         None,
         TextRange::new(0, 0),
         "",
     );
-    for label in ["rank", "persist"] {
-        assert_eq!(
-            host_index.surfaces_for_label(label),
-            vec![MemberCompletionSurface::Schema]
-        );
-    }
-    assert!(host_index.surfaces_for_label("level").is_empty());
+    assert_eq!(
+        value_index.surfaces_for_label("rank"),
+        vec![MemberCompletionSurface::Schema]
+    );
+    assert!(value_index.surfaces_for_label("level").is_empty());
 
     let schema_trait_index = MemberCompletionIndex::for_receiver(
         databases.hir_db().graph(),

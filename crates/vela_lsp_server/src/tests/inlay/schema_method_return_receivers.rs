@@ -30,16 +30,16 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -49,7 +49,7 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     }
                 ],
@@ -92,20 +92,10 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
     player.inventory().slots += slots;
     let dynamic = player.inventory().mystery;
 }"#;
-    let first_line = text.lines().nth(1).expect("first slots line");
-    let second_line = text.lines().nth(2).expect("second slots line");
     let _ = notification_value(notify::<lsp_types::notification::DidOpenTextDocument>(
         &mut server,
-        serde_json::json!({
-            "textDocument": {
-                "uri": uri,
-                "languageId": "vela",
-                "version": 1,
-                "text": text
-            }
-        }),
+        serde_json::json!({"textDocument": {"uri": uri, "languageId": "vela", "version": 1, "text": text}}),
     ));
-
     let response = response_value(request::<lsp_types::request::InlayHintRequest>(
         &mut server,
         2,
@@ -123,26 +113,6 @@ fn lsp_inlay_hints_show_host_path_typefacts_on_schema_method_return_receiver() {
         serde_json::json!([
             {
                 "position": { "line": 1, "character": "    let slots".len() },
-                "label": ": i64",
-                "kind": 1,
-                "paddingRight": true
-            },
-            {
-                "position": {
-                    "line": 1,
-                    "character": first_line.find("slots +").expect("first slots field")
-                        + "slots".len()
-                },
-                "label": ": i64",
-                "kind": 1,
-                "paddingRight": true
-            },
-            {
-                "position": {
-                    "line": 2,
-                    "character": second_line.find("slots +=").expect("second slots field")
-                        + "slots".len()
-                },
                 "label": ": i64",
                 "kind": 1,
                 "paddingRight": true

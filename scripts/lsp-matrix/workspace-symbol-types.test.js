@@ -12,7 +12,7 @@ test("workspace symbol type corpus pins every primitive and structured hint with
   assert.equal(symbols.filter(row => row.ownership === "Schema").length, 17);
   const counts = {};
   for (const row of symbols) counts[row.kind] = (counts[row.kind] ?? 0) + 1;
-  assert.deepEqual(counts, { File: 3, Module: 3, Struct: 3, Enum: 2, Interface: 2, Constant: 1, Variable: 2, Function: 55, Class: 3, Field: 1, Method: 2, EnumMember: 1 });
+  assert.deepEqual(counts, { File: 3, Module: 3, Struct: 6, Enum: 2, Interface: 2, Constant: 1, Variable: 2, Function: 55, Field: 1, Method: 2, EnumMember: 1 });
   for (const row of cases) {
     const symbol = symbols.find(symbol => symbol.id === row.id);
     assert.equal(symbol.name, "types::accept_" + row.id.replaceAll("-", "_") + "_case");
@@ -29,7 +29,7 @@ test("workspace symbol type queries pin exact hint matches and exclude local bui
   assert.equal(queries.length, 80); assert.equal(new Set(queries.map(row => row.id)).size, 80);
   assert.deepEqual(ids("all"), symbols.map(row => row.id)); assert.deepEqual(ids("trim-empty"), ids("all"));
   for (const row of cases) assert.deepEqual(ids("function-" + row.id), [row.id]);
-  assert.deepEqual(ids("source-schema-collision"), ["schema-collision", "model-row"]);
+  assert.deepEqual(ids("source-schema-collision"), ["model-row", "schema-collision"]);
   assert.deepEqual(ids("imports-only"), ["imports-module", "imports-file"]);
   assert.deepEqual(ids("dynamic-hint"), ["any"]); assert.deepEqual(ids("primitive-hint"), ["i64"]);
   assert.deepEqual(ids("parameter"), ["schema-values"]);

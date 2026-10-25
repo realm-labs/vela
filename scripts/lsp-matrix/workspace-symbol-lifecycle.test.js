@@ -21,7 +21,7 @@ test("workspace lifecycle pins complete source and schema query sets across nine
     const schema = rows.filter(row => row.ownership === "Schema");
     assert.equal(schema.length, current.schema.mode === "valid" ? 2 : 0);
     if (schema.length) {
-      assert.equal(schema[0].name, "host::Box"); assert.equal(schema[0].kind, "Class");
+      assert.equal(schema[0].name, "host::Box"); assert.equal(schema[0].kind, "Struct");
       const expected = { a: ["value", "i64"], b: ["replaced", "String"], c: ["new_value", "bool"] }[current.schema.id];
       assert.deepEqual([schema[1].name, schema[1].detail, schema[1].identity], ["host::Box::" + expected[0], expected[1], "host::Box." + expected[0]]);
     }

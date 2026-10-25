@@ -1,26 +1,11 @@
 use super::*;
-
-#[test]
-fn engine_rejects_duplicate_host_type_ids() {
-    let result = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_type_desc(
-            TypeDesc::new(TypeKey::new(TypeId::new(2), "Monster")).host_type(HostTypeId::new(1)),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostTypeId { id: 1 }
-    ));
-}
+use vela_reflect::registry::MethodDesc;
 
 #[test]
 fn engine_rejects_duplicate_field_ids() {
     let result = Engine::builder()
         .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level"))
                 .field(FieldDesc::new(FieldId::new(1), "exp")),
         )
@@ -40,7 +25,6 @@ fn engine_rejects_duplicate_field_names() {
     let result = Engine::builder()
         .register_type_desc(
             TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-                .host_type(HostTypeId::new(1))
                 .field(FieldDesc::new(FieldId::new(1), "level"))
                 .field(FieldDesc::new(FieldId::new(2), "level")),
         )
@@ -248,15 +232,15 @@ fn engine_rejects_duplicate_trait_method_param_names() {
 fn engine_rejects_duplicate_host_method_ids() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
-                .method(MethodDesc::new(HostMethodId::new(1), "heal")),
+            player_type(TypeId::new(1))
+                .method(MethodDesc::new(MethodId::new(1), "grant_exp"))
+                .method(MethodDesc::new(MethodId::new(1), "heal")),
         )
         .build();
 
     assert!(matches!(
         result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodId { id: 1 }
+        Err(error) if error.kind == EngineErrorKind::DuplicateMethodId { id: 1 }
     ));
 }
 
@@ -287,15 +271,15 @@ fn engine_rejects_malformed_trait_method_param_names() {
 fn engine_rejects_duplicate_host_method_names() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp"))
-                .method(MethodDesc::new(HostMethodId::new(2), "grant_exp")),
+            player_type(TypeId::new(1))
+                .method(MethodDesc::new(MethodId::new(1), "grant_exp"))
+                .method(MethodDesc::new(MethodId::new(2), "grant_exp")),
         )
         .build();
 
     assert!(matches!(
         result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodName {
+        Err(error) if error.kind == EngineErrorKind::DuplicateMethodName {
             name: "grant_exp".to_owned()
         }
     ));
@@ -305,8 +289,8 @@ fn engine_rejects_duplicate_host_method_names() {
 fn engine_rejects_duplicate_host_method_param_names() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1)).method(
-                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+            player_type(TypeId::new(1)).method(
+                MethodDesc::new(MethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount"))
                     .param(MethodParamDesc::new("amount")),
             ),
@@ -315,7 +299,7 @@ fn engine_rejects_duplicate_host_method_param_names() {
 
     assert!(matches!(
         result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodParamName {
+        Err(error) if error.kind == EngineErrorKind::DuplicateMethodParamName {
             type_name: "Player".to_owned(),
             method: "grant_exp".to_owned(),
             name: "amount".to_owned(),
@@ -327,8 +311,8 @@ fn engine_rejects_duplicate_host_method_param_names() {
 fn engine_rejects_empty_host_method_required_permissions() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1)).method(
-                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+            player_type(TypeId::new(1)).method(
+                MethodDesc::new(MethodId::new(1), "grant_exp")
                     .access(vela_reflect::access::MethodAccess::new().require_permission("")),
             ),
         )
@@ -337,7 +321,7 @@ fn engine_rejects_empty_host_method_required_permissions() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidPermissionName {
-            descriptor: "host method Player.grant_exp".to_owned(),
+            descriptor: "method Player.grant_exp".to_owned(),
             name: "".to_owned(),
         }
     ));
@@ -347,15 +331,15 @@ fn engine_rejects_empty_host_method_required_permissions() {
 fn engine_rejects_empty_host_method_attribute_names() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(1), "grant_exp").attr("", "bad")),
+            player_type(TypeId::new(1))
+                .method(MethodDesc::new(MethodId::new(1), "grant_exp").attr("", "bad")),
         )
         .build();
 
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
-            descriptor: "host method Player.grant_exp".to_owned(),
+            descriptor: "method Player.grant_exp".to_owned(),
             name: "".to_owned(),
         }
     ));
@@ -365,8 +349,8 @@ fn engine_rejects_empty_host_method_attribute_names() {
 fn engine_rejects_generic_host_method_type_hints() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1)).method(
-                MethodDesc::new(HostMethodId::new(1), "grant_rewards")
+            player_type(TypeId::new(1)).method(
+                MethodDesc::new(MethodId::new(1), "grant_rewards")
                     .param(MethodParamDesc::new("items").type_hint("Array<Item>"))
                     .return_type("Result<i64>"),
             ),
@@ -376,7 +360,7 @@ fn engine_rejects_generic_host_method_type_hints() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "host method Player.grant_rewards return".to_owned(),
+            descriptor: "method Player.grant_rewards return".to_owned(),
             type_name: "Result<i64>".to_owned(),
         }
     ));
@@ -386,8 +370,8 @@ fn engine_rejects_generic_host_method_type_hints() {
 fn engine_rejects_generic_host_method_param_type_hints() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1)).method(
-                MethodDesc::new(HostMethodId::new(1), "grant_rewards")
+            player_type(TypeId::new(1)).method(
+                MethodDesc::new(MethodId::new(1), "grant_rewards")
                     .param(MethodParamDesc::new("items").type_hint("Set<Function>"))
                     .return_type("Result"),
             ),
@@ -397,49 +381,9 @@ fn engine_rejects_generic_host_method_param_type_hints() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "host method Player.grant_rewards parameter items".to_owned(),
+            descriptor: "method Player.grant_rewards parameter items".to_owned(),
             type_name: "Set<Function>".to_owned(),
         }
-    ));
-}
-
-#[test]
-fn engine_rejects_empty_native_method_attribute_names() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let result = Engine::builder()
-        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
-        .register_host_method_desc(
-            NativeMethodDesc::new(player_key, HostMethodId::new(45), "grant_exp").attr("", "bad"),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidAttributeName {
-            descriptor: "host method Player.grant_exp".to_owned(),
-            name: "".to_owned(),
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_duplicate_native_method_ids() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let result = Engine::builder()
-        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
-        .register_native_method_fn(
-            NativeMethodDesc::new(player_key.clone(), HostMethodId::new(44), "grant_exp"),
-            |_, _, _| Ok(OwnedValue::Unit),
-        )
-        .register_native_method_fn(
-            NativeMethodDesc::new(player_key, HostMethodId::new(44), "heal"),
-            |_, _, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodId { id: 44 }
     ));
 }
 
@@ -447,8 +391,7 @@ fn engine_rejects_duplicate_native_method_ids() {
 fn engine_rejects_malformed_host_method_names() {
     let result = Engine::builder()
         .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(HostMethodId::new(1), "")),
+            player_type(TypeId::new(1)).method(MethodDesc::new(MethodId::new(1), "")),
         )
         .build();
 
@@ -456,52 +399,8 @@ fn engine_rejects_malformed_host_method_names() {
         result,
         Err(error) if error.kind == EngineErrorKind::InvalidSchemaMemberName {
             type_name: "Player".to_owned(),
-            member_kind: "host method".to_owned(),
+            member_kind: "method".to_owned(),
             name: "".to_owned(),
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_duplicate_native_method_param_names() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let result = Engine::builder()
-        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
-        .register_host_method_desc(
-            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp")
-                .param("amount", TypeHint::i64())
-                .param("amount", TypeHint::string()),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateHostMethodParamName {
-            type_name: "Player".to_owned(),
-            method: "grant_exp".to_owned(),
-            name: "amount".to_owned(),
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_unknown_native_method_param_type_hints() {
-    let player_key = TypeKey::new(TypeId::new(1), "Player");
-    let result = Engine::builder()
-        .register_type_desc(player_type(player_key.id, HostTypeId::new(1)))
-        .register_host_method_desc(
-            NativeMethodDesc::new(player_key, HostMethodId::new(44), "grant_exp").param(
-                "target",
-                TypeHint::Record(TypeKey::new(TypeId::new(99), "Missing")),
-            ),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::UnknownTypeHint {
-            descriptor: "host method Player.grant_exp parameter target".to_owned(),
-            type_name: "Missing".to_owned(),
         }
     ));
 }

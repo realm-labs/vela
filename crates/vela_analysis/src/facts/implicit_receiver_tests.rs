@@ -61,9 +61,9 @@ fn plain(value: Any) { return value.value; }
     assert_eq!(diagnostics[0].code.as_deref(), Some("hir::unknown_schema"));
     assert!(diagnostics[0].message.contains("host::Row"));
     let mut schema = RegistryFacts::default();
-    schema.insert_type("shapes::Row", TypeFact::host("registry_decoy"));
+    schema.insert_type("shapes::Row", TypeFact::record("registry_decoy"));
     schema.insert_field("registry_decoy", "value", TypeFact::STRING);
-    schema.insert_type("host::Row", TypeFact::host("host::Row"));
+    schema.insert_type("host::Row", TypeFact::record("host::Row"));
     schema.insert_field("host::Row", "score", TypeFact::I64);
     (graph, schema)
 }
@@ -101,7 +101,7 @@ fn whole_module_implicit_receivers_preserve_scoped_source_and_schema_owners() {
             let expected = match name {
                 "read" | "required" => TypeFact::record("shapes::Row"),
                 "default_read" => TypeFact::trait_type("game::Reader"),
-                "host_read" => TypeFact::host("host::Row"),
+                "host_read" => TypeFact::record("host::Row"),
                 "erased" => TypeFact::Any,
                 other => panic!("unexpected method {other}"),
             };

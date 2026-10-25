@@ -106,18 +106,12 @@ fn validate_types(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError
                     ),
                 ));
             }
-            CompileTypeClass::Host { .. } if descriptor.shape.is_some() => {
-                return Err(validator.error(
-                    origin,
-                    format!("host type #{} owns a script record shape", type_id.get()),
-                ));
-            }
+
             CompileTypeClass::ScriptRecord
             | CompileTypeClass::ScriptEnum
             | CompileTypeClass::OpaqueExternal
             | CompileTypeClass::Registry
-            | CompileTypeClass::Standard
-            | CompileTypeClass::Host { .. } => {}
+            | CompileTypeClass::Standard => {}
         }
         let mut field_orders = BTreeSet::new();
         for field in &descriptor.fields {
@@ -393,7 +387,7 @@ fn validate_methods(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErr
         if descriptor.owner != owner || descriptor.id != method {
             return Err(validator.error(origin, "method table key does not match descriptor ID"));
         }
-        let owner_descriptor = validator.require_type(owner, origin, "method descriptor")?;
+        let _ = validator.require_type(owner, origin, "method descriptor")?;
         validate_signature(
             validator,
             &descriptor.signature,
@@ -412,17 +406,8 @@ fn validate_methods(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErr
                 code_symbol,
                 origin,
             )?,
-            CompileMethodClass::Host { .. }
-                if !matches!(owner_descriptor.class, CompileTypeClass::Host { .. }) =>
-            {
-                return Err(validator.error(
-                    origin,
-                    format!("host method #{} has a non-host owner", method.get()),
-                ));
-            }
-            CompileMethodClass::Host { .. }
-            | CompileMethodClass::Value
-            | CompileMethodClass::Registry => {}
+
+            CompileMethodClass::Value | CompileMethodClass::Registry => {}
         }
     }
     Ok(())

@@ -72,11 +72,7 @@ pub(super) fn collect(
                     DeclarationKind::Trait => schema.trait_fact(&name).is_some(),
                     _ => schema.type_fact(&name).is_some(),
                 };
-                if host {
-                    M::HOST.union(M::SCHEMA)
-                } else {
-                    M::NONE
-                }
+                if host { M::SCHEMA } else { M::NONE }
             });
             for (index, token) in tokens.iter().enumerate() {
                 let terminal = index + 1 == tokens.len();

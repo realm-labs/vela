@@ -1,72 +1,19 @@
 ---
-title: "Examples And Cookbook"
-description: "Task-oriented examples and recipes for Vela."
+title: "Examples Cookbook"
+description: "The retained synchronous Vela language and removal boundary."
 ---
 
-The repository includes standalone examples under `examples/src/bin`. They are the best source for complete host setup because they compile real Rust, register host types, and exercise runtime capabilities.
+Run examples with `cargo run --manifest-path examples/Cargo.toml --bin NAME`.
 
-## Run A Script From Rust
+- `native_function`: independent existing synchronous scalar and owned-collection native calls.
+- `serde_value`: script-owned serde snapshots; the original Rust input stays unchanged.
+- `modules`: ordinary modules and imports.
+- `package_dependency_demo`: ordinary path dependencies and package reload.
+- `script_state`: persistent VM-owned state, explicitly inspected or updated from Rust.
+- `hot_reload_function_swap`: ordinary script-code replacement.
+- `hot_reload_function_swap_invalid`: incompatible update rejection.
+- `container_type_hints` and `io_stdlib`: value collections and opt-in I/O.
 
-The `level_up` example shows the smallest host write-through shape:
+Independent expected-error examples retain duplicate fields, unsupported general type arguments, random permission denial, reflection structure mutation denial and unknown script fields.
 
-```vela
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-```
-
-Run it with:
-
-```bash
-cargo run -p vela_examples --bin level_up
-```
-
-The host registers `Player`, grants host read/write capabilities, passes `player` as a mutable host binding, and receives the script result.
-
-## Register Native Functions
-
-The `native_function` example covers manual and macro-generated native functions:
-
-```vela
-fn main(player: Player) {
-    let manual = game::bonus_manual(3, 4);
-    let generated = game::bonus_macro(10, 7);
-    let collection = game::collection_bonus(
-        { "quest": 5, "raid": 8 },
-        ["vip", "daily"],
-    );
-    let level = game::grant_level(player, collection);
-
-    return manual + generated + level;
-}
-```
-
-Use this example when you need Rust functions callable from scripts, including context-aware functions that route writes through `NativeCallContext`.
-
-## Use Modules And Globals
-
-The `modules` example compiles a directory and calls a fully qualified entry:
-
-```vela
-use game::reward::grant
-
-fn main() {
-    return grant(4) + game::config::BASE_REWARD;
-}
-```
-
-The `script_state` example shows per-Runtime VM state initialized in Vela and updated through state-specific Rust APIs.
-
-## Exercise Boundaries
-
-Several examples intentionally fail to demonstrate diagnostics and policy enforcement:
-
-- `host_permission_denied`
-- `host_read_only_denied`
-- `host_write_permission_denied`
-- `host_call_permission_denied`
-- `generic_type_hint_denied`
-- `reflect_schema_mutation_denied`
-
-Use these when checking capability profiles, read-only schemas, unsupported type hints, and reflection limits.
+Borrowed/transparently host-mutating and dependent Host construction/method/build-time examples are removed. They are not rewritten using new opaque or codec APIs.

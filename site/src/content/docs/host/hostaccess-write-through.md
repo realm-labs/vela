@@ -1,62 +1,15 @@
 ---
-title: "HostAccess Write-Through Model"
-description: "How Vela host reads, writes, mutations, removals, and calls are routed immediately."
+title: "Removed Host Write-Through"
+description: "Transparent Rust write-through is no longer supported."
 ---
 
-`HostAccess` is the call-scoped boundary for host effects. It is not a
-transaction log and does not roll back earlier writes if a later operation
-fails.
+Transparent host reads, writes, compound mutation and adapters are removed.
+Caller-borrowed Rust data cannot enter scripts through roots, wrappers, views,
+constructors, methods, reflection or dependent extern-state bindings.
 
-## Write-Through Semantics
+现有序列化值由脚本拥有；修改不会隐式写回 Rust。普通脚本结构体、集合、
+迭代器、VM `state`、反射和热重载继续保留。
 
-```vela
-fn main(player: Player) {
-    player.level += 1;
-    return player.level;
-}
-```
-
-The compound assignment resolves to a host mutation:
-
-```text
-resolve HostAccessSpec(Mutate(Add), player.level)
-validate schema, capability, generation, and adapter policy
-read or mutate current host value
-write the result immediately
-```
-
-Scripts observe previous writes in the same call because the adapter state has
-already changed.
-
-## Rejection Points
-
-Host access can be rejected by schema, capability, generation, or adapter
-policy. Examples include read-only fields, missing `HostWrite`, denied field
-writes, denied method calls, stale handles, and unsupported keyed access.
-
-```vela
-fn main(player: Player) {
-    player.id = 8; // rejected if Player.id is read-only
-}
-```
-
-## Adapter Contract
-
-Adapters resolve access first, then execute the operation.
-
-```rust
-fn resolve_host_access(&self, spec: HostAccessSpec<'_>)
-    -> HostResult<ResolvedHostAccess>;
-
-fn mutate_host(
-    &mut self,
-    access: ResolvedHostAccess,
-    target: HostTargetInstance<'_>,
-    op: HostMutationOp,
-    rhs: HostValue,
-) -> HostResult<()>;
-```
-
-Complex host collection mutation should be adapter-defined. The default model
-does not clone a host collection into a script value, mutate the clone, and
-write it back.
+Existing synchronous native/value calls and serde snapshots remain. Rust
+explicitly receives results. No replacement opaque-object, conversion or re-entry
+API is introduced by this removal. See [embedding](/host/embedding-overview/).

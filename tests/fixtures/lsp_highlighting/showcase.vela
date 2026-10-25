@@ -27,7 +27,7 @@ impl Reward {
 use game::support::source_helper
 
 const START_LEVEL: i64 = 1
-extern state active_player: SchemaPlayer
+state active_player: Reward = Reward { amount: 1, name: "gold" }
 
 pub fn main(
     player: SchemaPlayer,

@@ -3,7 +3,7 @@ title: "Maps"
 description: "Maps documentation for Vela."
 ---
 
-Maps are key-value collections for dynamic script data. They are useful for configuration, lookup tables, and snapshot values, but they are not a replacement for registered host schemas when Rust-owned state must be mutated safely.
+Maps are key-value collections for dynamic script data. They are useful for configuration, lookup tables, and snapshot values, and they are script-owned: changes do not implicitly mutate the original Rust data.
 
 `Map<K, V>` is the parameterized builtin map contract. Map keys use Vela's
 `ValueKey` policy: immutable leaf values compare by value, script heap objects
@@ -74,4 +74,4 @@ fn total(rewards) -> i64 {
 
 ## Host Boundary
 
-Indexing into a host path can represent a HostAccess operation rather than a script map mutation. Capabilities, read-only fields, generations, and schema epochs are still checked by the host adapter.
+Transparent host-path indexing is removed. These Map operations apply to script-owned values; they do not implicitly modify Rust data.

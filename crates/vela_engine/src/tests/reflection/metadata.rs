@@ -38,30 +38,7 @@ fn engine_builder_registers_reflect_schema_metadata() {
         .type_by_name("ReflectOnlyPlayer")
         .expect("reflect schema should be registered");
     assert_eq!(reflected.key.id, TypeId::new(9901));
-    assert_eq!(reflected.host_type_id, Some(HostTypeId::new(9901)));
     assert_eq!(reflected.fields[0].name, "level");
-}
-
-#[test]
-fn engine_builder_registers_host_methods_from_metadata_trait() {
-    let engine = Engine::builder()
-        .register_type_desc(player_type(TypeId::new(1), HostTypeId::new(1)))
-        .register_host_method_desc(metadata_only_player_method())
-        .build()
-        .expect("engine should build with host method metadata");
-
-    let registry = engine.registry();
-    let player = registry
-        .type_by_name("Player")
-        .expect("player type should be registered");
-    assert_eq!(player.methods.len(), 1);
-    assert_eq!(player.methods[0].id, HostMethodId::new(44));
-    assert_eq!(player.methods[0].name, "metadata_bonus");
-    assert_eq!(
-        player.methods[0].params[0].type_hint.as_deref(),
-        Some("i64")
-    );
-    assert!(player.methods[0].effects.reads_host);
 }
 
 #[test]
@@ -152,13 +129,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
@@ -208,13 +180,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
@@ -270,13 +237,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),
@@ -820,7 +782,7 @@ fn main() {
         && reflect::kind(map_type) == "map"
         && reflect::kind(set_type) == "set"
         && reflect::kind(range_type) == "range"
-        && reflect::kind(iterator_type) == "host"
+        && reflect::kind(iterator_type) == "script_struct"
         && reflect::kind(option_type) == "script_enum"
         && reflect::kind(result_type) == "script_enum"
         && type_of_checks
@@ -1021,13 +983,8 @@ fn main() {
 "#,
         )
         .expect("program should compile");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
-    let mut host = HostExecution {
-        adapter: &mut adapter,
-        access: &mut tx,
-        state_values: None,
-    };
+
+    let mut host = HostExecution { state_values: None };
 
     assert_eq!(
         run_linked_program_with_host(&engine, &program, &[], &mut host),

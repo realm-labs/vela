@@ -4,9 +4,7 @@ use vela_hir::type_hint::FunctionSignature;
 
 use crate::{registry::TypeRegistry, script_attrs::ReflectedScriptAttrs};
 
-use super::descriptors::{
-    DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, StateDesc, StateStorage,
-};
+use super::descriptors::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc, StateDesc};
 
 impl TypeRegistry {
     pub fn register_script_modules(&mut self, graph: &ModuleGraph) {
@@ -79,16 +77,11 @@ impl TypeRegistry {
             let package = graph
                 .module_package(declaration.module)
                 .expect("stored script state has a package");
-            let storage = match metadata.storage {
-                vela_hir::type_hint::StateStorage::Vm => StateStorage::Vm,
-                vela_hir::type_hint::StateStorage::Extern => StateStorage::Extern,
-            };
             let mut desc = StateDesc::new(
                 script_state_id(package.as_str(), &qualified_name),
                 qualified_name,
             )
             .public(declaration.visibility == Visibility::Public)
-            .storage(storage)
             .type_contract(metadata.type_hint.display())
             .initializer(metadata.initializer_span.is_some())
             .origin(DeclOrigin::Script)

@@ -493,6 +493,14 @@
               "file"
             ]
           }
+        ],
+        "hirCodes": [
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint"
         ]
       },
       {
@@ -1963,7 +1971,7 @@
       },
       {
         "id": "extern-state-hint",
-        "source": "[[file:start]]/*中😀*/ [[item:start]]pub extern state value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]];[[item:end]]\n[[eof]][[file:end]]",
+        "source": "[[file:start]]/*中😀*/ [[item:start]]pub state value: [[hint:start]][[option:start]]Opt[[option-cursor]]ion[[option:end]][[option-args:start]]<[[map:start]][[map-name:start]]M[[map-name-cursor]]ap[[map-name:end]][[map-args:start]]<[[string:start]]Str[[string-cursor]]ing[[string:end]], [[result:start]][[result-name:start]]Res[[result-name-cursor]]ult[[result-name:end]][[result-args:start]]<[[integer:start]]i[[integer-cursor]]64[[integer:end]], [[boolean:start]]bo[[boolean-cursor]]ol[[boolean:end]]>[[result-args:end]][[result:end]]>[[map-args:end]][[map:end]]>[[option-args:end]][[hint:end]] = Option<Map<String, Result<i64, bool>>> {};[[item:end]]\n[[eof]][[file:end]]",
         "queries": [
           {
             "position": "integer-cursor",
@@ -3169,6 +3177,22 @@
               "file"
             ]
           }
+        ],
+        "syntaxCodes": [
+          "syntax::generic_type_hint",
+          "syntax::generic_type_hint",
+          "syntax::generic_type_hint",
+          "syntax::generic_type_hint",
+          "syntax::generic_type_hint",
+          "syntax::generic_type_hint"
+        ],
+        "hirCodes": [
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint",
+          "hir::removed_host_type_hint"
         ]
       }
     ]

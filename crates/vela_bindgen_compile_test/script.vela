@@ -22,30 +22,6 @@ impl Point {
     pub fn sum(self) -> i64 { return self.x + self.y; }
 }
 
-pub fn raise(player: Player, amount: i64) -> i64 {
-    player.level += amount;
-    return player.level;
-}
-
-pub fn raise_with_label(player: Player, amount: i64) -> i64 {
-    player.level += amount;
-    let marker = label(player.level);
-    player.level += marker.len();
-    return player.level;
-}
-
-pub fn read_level(player: Player) -> i64 { return player.level; }
-
-pub fn round_trip(player: Player, amount: i64) -> i64 {
-    let result = test::reenter_player(player, amount);
-    let after = player.level;
-    return result + after - after;
-}
-
-pub fn round_trip_unrelated(player: Player) -> i64 {
-    return test::reject_unrelated(player);
-}
-
 pub fn effect_ceiling_denied() -> i64 {
     return test::deny_effect_expansion();
 }

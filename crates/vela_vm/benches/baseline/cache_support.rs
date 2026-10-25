@@ -1,13 +1,12 @@
 use std::cell::{Cell, RefCell};
 use vela_bytecode::{CacheSiteId, DebugNameId, InstructionOffset};
 use vela_vm::{
-    DynamicMethodInlineCacheEntry, HostInlineCacheEntry, MethodInlineCacheEntry,
-    NativeInlineCacheEntry, RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
+    DynamicMethodInlineCacheEntry, MethodInlineCacheEntry, NativeInlineCacheEntry,
+    RecordFieldInlineCacheEntry, VmBytecodeProfiler, VmInlineCaches,
 };
 
 #[derive(Debug, Default)]
 pub(crate) struct BenchInlineCaches {
-    host_accesses: Vec<Cell<Option<HostInlineCacheEntry>>>,
     record_fields: Vec<Cell<Option<RecordFieldInlineCacheEntry>>>,
     method_dispatches: Vec<Cell<Option<MethodInlineCacheEntry>>>,
     dynamic_method_dispatches: RefCell<Vec<Option<DynamicMethodInlineCacheEntry>>>,
@@ -17,8 +16,6 @@ pub(crate) struct BenchInlineCaches {
 
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct BenchCacheStats {
-    pub(crate) host_access_sets: usize,
-    pub(crate) host_access_hits: usize,
     pub(crate) record_field_sets: usize,
     pub(crate) record_field_hits: usize,
     pub(crate) method_dispatch_sets: usize,
@@ -31,16 +28,14 @@ pub(crate) struct BenchCacheStats {
 
 impl BenchCacheStats {
     pub(crate) fn total_sets(self) -> usize {
-        self.host_access_sets
-            + self.record_field_sets
+        self.record_field_sets
             + self.method_dispatch_sets
             + self.dynamic_method_dispatch_sets
             + self.native_call_sets
     }
 
     pub(crate) fn total_hits(self) -> usize {
-        self.host_access_hits
-            + self.record_field_hits
+        self.record_field_hits
             + self.method_dispatch_hits
             + self.dynamic_method_dispatch_hits
             + self.native_call_hits
@@ -49,7 +44,6 @@ impl BenchCacheStats {
 
 #[derive(Clone, Copy)]
 enum BenchCacheFamily {
-    HostAccess,
     RecordField,
     MethodDispatch,
     DynamicMethodDispatch,
@@ -59,7 +53,6 @@ enum BenchCacheFamily {
 impl BenchInlineCaches {
     pub(crate) fn new(len: usize) -> Self {
         Self {
-            host_accesses: empty_cell_cache(len),
             record_fields: empty_cell_cache(len),
             method_dispatches: empty_cell_cache(len),
             dynamic_method_dispatches: RefCell::new(vec![None; len]),
@@ -79,7 +72,6 @@ impl BenchInlineCaches {
     fn record_hit(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::HostAccess => stats.host_access_hits += 1,
             BenchCacheFamily::RecordField => stats.record_field_hits += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_hits += 1,
             BenchCacheFamily::DynamicMethodDispatch => {
@@ -124,7 +116,6 @@ impl BenchInlineCaches {
     fn record_set(&self, family: BenchCacheFamily) {
         let mut stats = self.stats.get();
         match family {
-            BenchCacheFamily::HostAccess => stats.host_access_sets += 1,
             BenchCacheFamily::RecordField => stats.record_field_sets += 1,
             BenchCacheFamily::MethodDispatch => stats.method_dispatch_sets += 1,
             BenchCacheFamily::DynamicMethodDispatch => {
@@ -138,24 +129,7 @@ impl BenchInlineCaches {
 
 impl VmInlineCaches for BenchInlineCaches {
     fn len(&self) -> usize {
-        self.host_accesses.len()
-    }
-
-    fn host_access(&self, site: CacheSiteId) -> Option<HostInlineCacheEntry> {
-        let entry = self.host_accesses.get(site.index()).and_then(Cell::get);
-        if entry.is_some() {
-            self.record_hit(BenchCacheFamily::HostAccess);
-        }
-        entry
-    }
-
-    fn set_host_access(&self, site: CacheSiteId, entry: HostInlineCacheEntry) {
-        self.record_copy_set(
-            BenchCacheFamily::HostAccess,
-            &self.host_accesses,
-            site,
-            entry,
-        );
+        self.record_fields.len()
     }
 
     fn record_field(&self, site: CacheSiteId) -> Option<RecordFieldInlineCacheEntry> {

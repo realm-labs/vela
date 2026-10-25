@@ -180,7 +180,6 @@ mod tests {
                     contract: None,
                     declaration_order: 0,
                     access: CompileFieldAccess::script(),
-                    host_runtime: None,
                 },
                 schema_origin,
             )

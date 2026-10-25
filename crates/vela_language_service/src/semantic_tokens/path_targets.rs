@@ -97,7 +97,7 @@ impl<'a> Targets<'a> {
             .schema_db()
             .facts()
             .function_fact(&name)
-            .map(|_| C::new(T::Function, M::HOST.union(M::SCHEMA)))
+            .map(|_| C::new(T::Function, M::SCHEMA))
     }
 
     pub(super) fn value(&self, path: &[String]) -> Option<C> {
@@ -142,7 +142,7 @@ impl<'a> Targets<'a> {
             None
         };
         kind.map_or(C::new(T::UnresolvedReference, M::UNRESOLVED), |kind| {
-            C::new(kind, M::HOST.union(M::SCHEMA))
+            C::new(kind, M::SCHEMA)
         })
     }
 }

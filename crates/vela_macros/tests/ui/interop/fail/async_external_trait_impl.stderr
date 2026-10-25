@@ -1,5 +1,7 @@
-error: Vela exports are synchronous; async Rust functions cannot be exported or registered
-  --> tests/ui/interop/fail/async_external_trait_impl.rs:12:5
-   |
-12 |     async fn value(&self) -> i64;
-   |     ^^^^^
+error[E0432]: unresolved import `vela_macros::export_external_trait_impl`
+ --> tests/ui/interop/fail/async_external_trait_impl.rs:1:5
+  |
+1 | use vela_macros::export_external_trait_impl;
+  |     ^^^^^^^^^^^^^--------------------------
+  |                  |
+  |                  no `export_external_trait_impl` in the root

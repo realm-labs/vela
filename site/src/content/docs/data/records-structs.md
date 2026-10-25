@@ -33,7 +33,7 @@ fn boost(reward: Reward) -> Reward {
 
 ## Structs Versus Host Types
 
-A script struct is GC-managed script data. A registered host type is Rust-owned state accessed through `HostRef`, `HostPath`, `PathProxy`, and HostAccess. The same dot syntax can appear at source level, but the runtime boundary is different.
+A script struct is GC-managed script data. Existing serialized Rust values become script-owned data with no implicit Rust write-back. Borrowed Host objects and transparent paths are removed.
 
 ## Reflection And Reload
 

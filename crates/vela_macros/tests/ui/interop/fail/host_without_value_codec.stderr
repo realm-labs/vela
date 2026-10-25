@@ -1,0 +1,89 @@
+error[E0277]: the trait bound `HostData: VelaValueBoundary` is not satisfied
+ --> tests/ui/interop/fail/host_without_value_codec.rs:6:21
+  |
+6 | pub fn read(_host: &HostData) -> i64 { 0 }
+  |                     ^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `VelaValueBoundary` is not implemented for `HostData`
+ --> tests/ui/interop/fail/host_without_value_codec.rs:3:1
+  |
+3 | pub struct HostData;
+  | ^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `VelaValueBoundary`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            BTreeMap<K, V>
+            BTreeSet<T>
+            HashMap<K, V>
+            HashSet<T>
+          and $N others
+
+error[E0277]: the trait bound `HostData: FromScriptArg` is not satisfied
+ --> tests/ui/interop/fail/host_without_value_codec.rs:6:21
+  |
+6 | pub fn read(_host: &HostData) -> i64 { 0 }
+  |                     ^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `FromScriptArg` is not implemented for `HostData`
+ --> tests/ui/interop/fail/host_without_value_codec.rs:3:1
+  |
+3 | pub struct HostData;
+  | ^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `FromScriptArg`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            BTreeMap<K, T>
+            BTreeSet<T>
+            HashMap<K, T>
+            HashSet<T>
+          and $N others
+
+error[E0277]: the trait bound `HostData: VelaValueBoundary` is not satisfied
+ --> tests/ui/interop/fail/host_without_value_codec.rs:9:21
+  |
+9 | pub fn owned(_host: HostData) -> i64 { 0 }
+  |                     ^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `VelaValueBoundary` is not implemented for `HostData`
+ --> tests/ui/interop/fail/host_without_value_codec.rs:3:1
+  |
+3 | pub struct HostData;
+  | ^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `VelaValueBoundary`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            BTreeMap<K, V>
+            BTreeSet<T>
+            HashMap<K, V>
+            HashSet<T>
+          and $N others
+
+error[E0277]: the trait bound `HostData: FromScriptArg` is not satisfied
+ --> tests/ui/interop/fail/host_without_value_codec.rs:8:1
+  |
+8 | #[export(path = "removed::owned")]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+  |
+help: the trait `FromScriptArg` is not implemented for `HostData`
+ --> tests/ui/interop/fail/host_without_value_codec.rs:3:1
+  |
+3 | pub struct HostData;
+  | ^^^^^^^^^^^^^^^^^^^
+  = help: the following other types implement trait `FromScriptArg`:
+            ()
+            (A, B)
+            (A, B, C)
+            (A, B, C, D)
+            BTreeMap<K, T>
+            BTreeSet<T>
+            HashMap<K, T>
+            HashSet<T>
+          and $N others
+  = note: required for `fn(HostData) -> i64 {owned}` to implement `TypedNativeFunction<(HostData,)>`
+  = note: this error originates in the attribute macro `export` (in Nightly builds, run with -Z macro-backtrace for more info)

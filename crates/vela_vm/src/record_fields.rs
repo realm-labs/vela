@@ -33,8 +33,7 @@ pub(crate) fn set_record_field_value(
                     | HeapValue::Set(_)
                     | HeapValue::Enum { .. }
                     | HeapValue::Closure(_)
-                    | HeapValue::Iterator(_)
-                    | HeapValue::PathProxy(_),
+                    | HeapValue::Iterator(_),
                 )
                 | None => return type_error("record field assignment"),
             };
@@ -95,8 +94,7 @@ pub(crate) fn set_record_slot_value(
                     | HeapValue::Set(_)
                     | HeapValue::Enum { .. }
                     | HeapValue::Closure(_)
-                    | HeapValue::Iterator(_)
-                    | HeapValue::PathProxy(_),
+                    | HeapValue::Iterator(_),
                 )
                 | None => return type_error("record slot assignment"),
             };

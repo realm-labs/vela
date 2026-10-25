@@ -10,14 +10,13 @@ use crate::{
 
 use super::SnapshotValidator;
 use super::contracts::validate_signature;
-use super::host;
 
 pub(super) fn validate(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
     validate_calls(validator)?;
     validate_members(validator)?;
     validate_constructors(validator)?;
     validate_pattern_constructors(validator)?;
-    validate_host_paths(validator)
+    Ok(())
 }
 
 fn validate_calls(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
@@ -112,14 +111,7 @@ fn validate_call(
             }
             Some(&descriptor.signature)
         }
-        CompileCalleeTarget::HostMethod(target) => {
-            host::validate_method(validator, target, origin, "host method call target")?;
-            Some(&target.signature)
-        }
-        CompileCalleeTarget::HostRemove { path } | CompileCalleeTarget::HostPush { path } => {
-            host::validate_path(validator, path, origin, "host intrinsic call target")?;
-            None
-        }
+
         CompileCalleeTarget::Lambda(body) => {
             validator.snapshot.lambda(root, *body).ok_or_else(|| {
                 validator.error(
@@ -189,7 +181,6 @@ fn validate_call_arguments(
             CompileCalleeTarget::NativeFunction { .. }
             | CompileCalleeTarget::StdlibFunction { .. }
             | CompileCalleeTarget::ValueMethod { .. }
-            | CompileCalleeTarget::HostMethod(_)
             | CompileCalleeTarget::Reflection { .. }
             | CompileCalleeTarget::SetFromArray { .. } => validate_placed_arguments(
                 validator,
@@ -206,10 +197,7 @@ fn validate_call_arguments(
             CompileCalleeTarget::DynamicCallable | CompileCalleeTarget::DynamicMethod(_) => {
                 Err(validator.error(origin, "dynamic call target lacks dynamic arguments"))
             }
-            CompileCalleeTarget::Local(_)
-            | CompileCalleeTarget::Lambda(_)
-            | CompileCalleeTarget::HostRemove { .. }
-            | CompileCalleeTarget::HostPush { .. } => {
+            CompileCalleeTarget::Local(_) | CompileCalleeTarget::Lambda(_) => {
                 Err(validator.error(origin, "call target cannot use placed external arguments"))
             }
         },
@@ -356,18 +344,7 @@ fn validate_members(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildErr
             CompileMemberTarget::ScriptField(field) => {
                 validate_field_target(validator, field, origin, "member placement")?;
             }
-            CompileMemberTarget::HostField(field) => {
-                host::validate_field(validator, field, origin, "host member placement")?;
-            }
-            CompileMemberTarget::HostProperty(method) => {
-                host::validate_method(validator, method, origin, "host property placement")?;
-                if !method.signature.parameters.is_empty() {
-                    return Err(validator.error(
-                        origin,
-                        "host property placement requires a zero-argument method",
-                    ));
-                }
-            }
+
             CompileMemberTarget::ScriptMethod { target, .. } => {
                 validator.require_script_method(*target, origin, "script member placement")?;
             }
@@ -757,18 +734,6 @@ fn validate_pattern_fields(
         {
             return Err(validator.error(origin, "pattern field has an inconsistent owner"));
         }
-    }
-    Ok(())
-}
-
-fn validate_host_paths(validator: &SnapshotValidator<'_>) -> Result<(), MirBuildError> {
-    for ((function, expression), target) in &validator.snapshot.host_paths {
-        let origin = validator.retained_origin(
-            &validator.snapshot.origins.host_paths,
-            &(*function, *expression),
-        );
-        validator.require_root(*function, origin, "host path placement")?;
-        host::validate_path(validator, target, origin, "host path placement")?;
     }
     Ok(())
 }

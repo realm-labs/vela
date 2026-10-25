@@ -141,7 +141,7 @@ fn field_use_classification(
     if schema_field_exists(schema, receiver, name) {
         return Some(SemanticTokenClassification::new(
             SemanticTokenType::Property,
-            schema_host_modifier(receiver),
+            SemanticTokenModifiers::SCHEMA,
         ));
     }
     script_field_exists(graph, receiver, name).then(|| {
@@ -192,11 +192,11 @@ fn schema_method_modifiers(
 ) -> Option<SemanticTokenModifiers> {
     owner_names(receiver).iter().find_map(|owner| {
         if schema.method_fact(owner, method).is_some() {
-            Some(schema_host_modifier(receiver))
+            Some(SemanticTokenModifiers::SCHEMA)
         } else {
             schema
                 .trait_method_fact(owner, method)
-                .map(|_| SemanticTokenModifiers::HOST.union(SemanticTokenModifiers::SCHEMA))
+                .map(|_| SemanticTokenModifiers::SCHEMA)
         }
     })
 }
@@ -367,9 +367,7 @@ fn source_owner_exists(graph: &ModuleGraph, receiver: &TypeFact) -> bool {
 
 fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
     match receiver {
-        TypeFact::Host { name } | TypeFact::Record { name } | TypeFact::Trait { name } => {
-            Some(name.clone())
-        }
+        TypeFact::Record { name } | TypeFact::Trait { name } => Some(name.clone()),
         TypeFact::Enum {
             name,
             variant: Some(variant),
@@ -380,18 +378,6 @@ fn receiver_owner_name(receiver: &TypeFact) -> Option<String> {
         } => Some(name.clone()),
         _ => None,
     }
-}
-
-fn host_modifier(receiver: &TypeFact) -> SemanticTokenModifiers {
-    if matches!(receiver, TypeFact::Host { .. }) {
-        SemanticTokenModifiers::HOST
-    } else {
-        SemanticTokenModifiers::NONE
-    }
-}
-
-fn schema_host_modifier(receiver: &TypeFact) -> SemanticTokenModifiers {
-    host_modifier(receiver).union(SemanticTokenModifiers::SCHEMA)
 }
 
 fn impl_target_names(

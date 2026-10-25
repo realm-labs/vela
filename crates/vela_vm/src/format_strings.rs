@@ -42,7 +42,7 @@ pub(crate) fn make_format_string(
 fn render_format_string(
     frame: &CallFrame,
     heap: &HeapExecution<'_>,
-    host: Option<&HostExecution<'_>>,
+    _host: Option<&HostExecution<'_>>,
     constants: &[Constant],
     parts: &[FormatStringPart],
     source_span: Option<Span>,
@@ -55,14 +55,8 @@ fn render_format_string(
             }
             FormatStringPart::Value(register) => {
                 let value = frame.read(*register)?;
-                let owned = value_to_owned(
-                    &value,
-                    Some(heap),
-                    host.map(|host| {
-                        &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
-                    }),
-                )
-                .map_err(|error| error.with_source_span_if_absent(source_span))?;
+                let owned = value_to_owned(&value, Some(heap))
+                    .map_err(|error| error.with_source_span_if_absent(source_span))?;
                 output.push_str(&owned.display_text());
             }
         }

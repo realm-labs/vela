@@ -3,7 +3,7 @@ title: "性能和 Benchmark"
 description: "Vela benchmark 结果如何采集和解释。"
 ---
 
-Vela 性能工作必须先测量。正确性、budgets、GC roots、HostAccess routing、
+Vela 性能工作必须先测量。正确性、budgets、GC roots、独立 native/value 调用、
 reflection policy、hot reload ownership 和 diagnostics 都优先于原始速度。
 
 ## Benchmark Harnesses

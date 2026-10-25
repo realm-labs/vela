@@ -1,147 +1,122 @@
-use vela_common::{HostMethodId, HostObjectId, HostTypeId};
-use vela_def::{FieldId, TypeId};
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::target::{HostTargetInstance, HostTargetPlan};
-use vela_host::value::HostValue;
-use vela_reflect::error::ReflectErrorKind;
-use vela_reflect::registry::{FieldDesc, MethodDesc, TypeDesc, TypeKey, TypeRegistry};
-use vela_reflect::value::{ReflectContext, ReflectValue, call, get, set};
+use std::collections::BTreeMap;
 
-fn player_ref() -> HostRef {
-    HostRef::new(HostTypeId::new(1), HostObjectId::new(7), 3)
+use vela_def::{FieldId, TypeId};
+use vela_host::value::HostValue;
+use vela_reflect::access::FieldAccess;
+use vela_reflect::error::ReflectErrorKind;
+use vela_reflect::permissions::{ReflectPermission, ReflectPolicy};
+use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::value::{ReflectContext, ReflectValue, get, set_with_policy};
+
+#[test]
+fn owned_record_updates_are_explicit_copies_not_rust_write_through() {
+    let registry = TypeRegistry::new();
+    let mut context = ReflectContext {
+        registry: &registry,
+    };
+    let original = ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::from([("level".to_owned(), ReflectValue::Host(HostValue::i64(9)))]),
+    };
+    let updated = set_with_policy(
+        &mut context,
+        &original,
+        "level",
+        ReflectValue::Host(HostValue::i64(12)),
+        &ReflectPolicy::all(),
+    )
+    .expect("owned update");
+    assert_eq!(
+        get(&mut context, &original, "level").expect("owned field remains readable"),
+        HostValue::i64(9)
+    );
+    assert_eq!(
+        get(&mut context, &updated, "level").expect("owned field remains readable"),
+        HostValue::i64(12)
+    );
+    assert_eq!(
+        get(
+            &mut context,
+            &ReflectValue::Host(HostValue::i64(9)),
+            "level"
+        )
+        .expect_err("invalid or denied field operation")
+        .kind,
+        ReflectErrorKind::InvalidTarget
+    );
 }
 
-fn registry() -> TypeRegistry {
+#[test]
+fn owned_record_writes_still_enforce_schema_policy() {
     let mut registry = TypeRegistry::new();
     registry.register(
-        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
-            .field(FieldDesc::new(FieldId::new(1), "id"))
-            .field(FieldDesc::new(FieldId::new(2), "level").writable(true))
-            .method(MethodDesc::new(HostMethodId::new(5), "grant_exp")),
+        TypeDesc::new(TypeKey::new(TypeId::new(100), "Player")).field(
+            FieldDesc::new(FieldId::new(1), "id")
+                .access(FieldAccess::new().reflect_writable(false)),
+        ),
     );
-    registry
-}
-
-fn adapter_with_level(value: HostValue) -> MockStateAdapter {
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(HostPath::new(player_ref()).field(FieldId::new(2)), value);
-    adapter
-}
-
-#[test]
-fn reflect_set_host_ref_creates_patch() {
-    let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
+    let original = ReflectValue::ScriptRecord {
+        type_name: "Player".to_owned(),
+        fields: BTreeMap::from([("id".to_owned(), ReflectValue::Host(HostValue::i64(7)))]),
     };
-
-    set(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "level",
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-    )
-    .expect("reflect set");
-}
-
-#[test]
-fn reflect_get_host_ref_reads_write_through_state() {
-    let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let plan = HostTargetPlan::new(player_ref().type_id).field(FieldId::new(2));
-    tx.write(
-        &mut adapter,
-        HostTargetInstance::new(player_ref(), &plan, &[]),
-        HostValue::Scalar(vela_common::ScalarValue::I64(12)),
-        None,
-    )
-    .expect("set host target");
-    let mut ctx = ReflectContext {
+    let mut context = ReflectContext {
         registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
     };
-
-    let value = get(&mut ctx, &ReflectValue::HostRef(player_ref()), "level").expect("reflect get");
-
-    assert_eq!(
-        value,
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(12)))
-    );
-}
-
-#[test]
-fn reflect_set_read_only_host_field_fails_without_patch() {
-    let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    let mut tx = HostAccess::new();
-    let mut ctx = ReflectContext {
-        registry: &registry,
-        adapter: &mut adapter,
-        access: &mut tx,
-    };
-
-    let error = set(
-        &mut ctx,
-        &ReflectValue::HostRef(player_ref()),
-        "id",
-        ReflectValue::Host(HostValue::Scalar(vela_common::ScalarValue::I64(10))),
-    )
-    .expect_err("read-only set");
-
-    assert_eq!(
-        error.kind,
-        ReflectErrorKind::FieldNotWritable {
-            type_name: "Player".to_owned(),
-            field: "id".to_owned(),
-            source_span: None,
-        }
-    );
-}
-
-#[test]
-fn reflect_call_host_ref_writes_through_and_updates_adapter() {
-    let registry = registry();
-    let mut adapter = adapter_with_level(HostValue::Scalar(vela_common::ScalarValue::I64(9)));
-    adapter.insert_method_return(HostMethodId::new(5), HostValue::Unit);
-    let mut tx = HostAccess::new();
-    {
-        let mut ctx = ReflectContext {
-            registry: &registry,
-            adapter: &mut adapter,
-            access: &mut tx,
-        };
-
-        let value = call(
-            &mut ctx,
-            &ReflectValue::HostRef(player_ref()),
-            "grant_exp",
-            vec![ReflectValue::Host(HostValue::Scalar(
-                vela_common::ScalarValue::I64(20),
-            ))],
+    assert!(matches!(
+        set_with_policy(
+            &mut context,
+            &original,
+            "id",
+            ReflectValue::Host(HostValue::i64(8)),
+            &ReflectPolicy::all()
         )
-        .expect("reflect call");
+        .expect_err("invalid or denied field operation")
+        .kind,
+        ReflectErrorKind::FieldNotReflectWritable { .. }
+    ));
+    assert_eq!(
+        get(&mut context, &original, "id").expect("owned field remains readable"),
+        HostValue::i64(7)
+    );
+}
 
-        assert_eq!(value, ReflectValue::Host(HostValue::Unit));
+#[test]
+fn reflection_boundary_has_no_object_or_adapter_escape_surface() {
+    let value_api = include_str!("../src/value.rs");
+    let registry_api = include_str!("../src/registry.rs");
+    let binding_api = include_str!("../src/type_binding.rs");
+    for removed in [
+        "HostRef",
+        "HostPath",
+        "HostTarget",
+        "ScriptStateAdapter",
+        "HostAccess",
+        "resolve_host_method",
+        "pub fn call(",
+        "pub fn call_with_policy(",
+    ] {
+        assert!(!value_api.contains(removed), "value API retains {removed}");
     }
-    let calls = adapter.method_calls();
-    assert_eq!(calls.len(), 1);
-    assert_eq!(calls[0].target.root, player_ref());
-    assert_eq!(
-        calls[0].target.target,
-        HostTargetPlan::new(player_ref().type_id)
-    );
-    assert_eq!(calls[0].method, HostMethodId::new(5));
-    assert_eq!(
-        calls[0].args,
-        vec![HostValue::Scalar(vela_common::ScalarValue::I64(20))]
-    );
+    for removed in [
+        "host_type_id",
+        "host_keys",
+        "type_of_host",
+        "HostIndexCapability",
+        "HostMethodId",
+    ] {
+        assert!(
+            !registry_api.contains(removed),
+            "registry retains {removed}"
+        );
+    }
+    for removed in [
+        "storage",
+        "capabilities",
+        "collection_views",
+        "constructor",
+        "representation",
+    ] {
+        assert!(!binding_api.contains(removed), "binding retains {removed}");
+    }
+    assert!(ReflectPermission::from_name("reflect::inspect_host_path").is_none());
 }

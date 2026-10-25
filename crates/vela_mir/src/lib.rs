@@ -34,7 +34,7 @@ pub use cfg::{
     MirBasicBlock, MirRangeStepMode, MirSwitchCase, MirSwitchValue, MirTerminator,
     MirTerminatorKind, MirTryContinue,
 };
-pub use contract::{HostTypeTarget, MirCallableKind, MirCallableKindSet, MirTypeContract};
+pub use contract::{MirCallableKind, MirCallableKindSet, MirTypeContract};
 pub use effects::{
     MirEffect, MirGuard, MirGuardAssumption, MirGuardContext, MirGuardKind, MirGuardLocation,
     MirLiveValue, MirSafepoint,
@@ -56,21 +56,18 @@ pub use input::{
     CompileConstructorTarget, CompileConstructorValue, CompileDynamicCallArgument,
     CompileDynamicConstructorField, CompileFieldTarget, CompileFunctionIdentity,
     CompileFunctionTarget, CompileFunctionTargets, CompileGuardKey, CompileGuardTarget,
-    CompileHostIndexCapability, CompileHostPathSegment, CompileHostPathTarget,
     CompileLambdaParameterTarget, CompileLambdaTarget, CompileMemberTarget, CompileParameter,
     CompileParameterDefault, CompilePatternConstructorTarget, CompilePlacedCallArgument,
     CompilePlacedCallValue, CompilePositionalPolicy, CompileReflectionCall, CompileSignature,
     CompileStateTarget, CompileTargetKind, CompileTargetSnapshot, CompileTargetSnapshotBuilder,
     CompileTryFamily, CompileTryLayoutTarget, CompileTryTarget, DynamicMethodTarget,
-    HostFieldTarget, HostMethodTarget, MethodExecutableTarget, MirBuildError, MirLoweringConfig,
-    MirLoweringInput,
+    MethodExecutableTarget, MirBuildError, MirLoweringConfig, MirLoweringInput,
 };
 pub use jit::{MirJitEligibility, MirJitIneligibility, restricted_jit_eligibility};
 pub use operations::{
     MirAggregate, MirCall, MirContextualBinaryOp, MirContextualNumericLiteral, MirDynamicArgument,
-    MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirHostMutation,
-    MirHostOperation, MirHostPath, MirHostPathSegment, MirIdentityOp, MirIndexKey,
-    MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
+    MirDynamicBinaryOp, MirDynamicUnaryOp, MirFieldTarget, MirFormatPart, MirIdentityOp,
+    MirIndexKey, MirIndexOperation, MirIteratorOperation, MirLiteralSide, MirReflectionOperation,
     MirScriptArgument, MirScriptParameterGuardMode, MirStateOperation, MirStatement,
     MirStatementKind,
 };

@@ -1,44 +1,10 @@
 ---
-title: "Host Object Lifetime"
-description: "Object identity, generations, and lifetime boundaries for host-owned state."
+title: "Removed Host Object Surface"
+description: "The synchronous, script-owned Vela boundary."
 ---
 
-Host objects are owned by Rust. Vela stores handles to them, not the objects
-themselves.
+Caller-borrowed Rust objects, borrowed arguments and returns, retained views, leases, and explicit borrow release are removed. A wrapper around a caller-stack borrow is not supported.
 
-## Call-Scoped Handles
+No independent old opaque construction/method surface survives this removal. Object storage, identity, invalidation, re-entry and opaque reflection/schema design are separate follow-up questions, not APIs implemented by this pass.
 
-`CallArgs::with_host_ref` and `CallArgs::with_host_mut` bind a Rust value for
-one call. The VM sees a `HostRef` handle and a call-local adapter binding.
-
-```rust
-runtime.call(
-    "main",
-    CallArgs::new().with_host_mut("player", &mut player),
-    CallOptions::unbounded(),
-)?;
-```
-
-When the call returns, the direct binding is gone. Any durable state remains in
-Rust, not in the script heap.
-
-## Persistent Extern State
-
-An `extern state` binding stores a persistent host object owned by Rust. The
-object must be `Send` because a runtime can move to a worker thread.
-
-```rust
-let runtime = Runtime::builder(engine, program)?
-    .bind_extern_state("main::player", player)?
-    .build()?;
-```
-
-VM `state` is different: its records, arrays, maps, sets, enums, and scalars
-are rooted and traced by the Runtime's script heap.
-
-## Stale References
-
-`HostRef` includes a generation. If an object slot is reused after a host object
-is removed or replaced, the adapter can reject a stale handle instead of
-silently writing to the wrong object. Rejection is a runtime diagnostic, not a
-best-effort fallback.
+Use existing synchronous native value calls and script-owned values. Rust state remains outside script GC; serialization does not create implicit write-back. See [snapshot values](/host/serde-snapshot-values/).

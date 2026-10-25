@@ -7,20 +7,13 @@ use crate::test_support::{
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use vela_bytecode::compiler::options::{CompilerOptions, HostIndexCapabilityInfo};
 use vela_bytecode::{
     CacheSiteKind, Constant, ConstantId, InstructionOffset, LinkedArtifact, LinkedProgram, Linker,
     UnlinkedInstruction,
 };
-use vela_common::{HostMethodId, HostObjectId, HostTypeId, SourceId, Span};
+use vela_common::{SourceId, Span};
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::{ModuleGraph, ModuleSource};
-use vela_host::access::HostAccess;
-use vela_host::error::HostErrorKind;
-use vela_host::mock::MockStateAdapter;
-use vela_host::path::{HostPath, HostRef};
-use vela_host::proxy::PathProxy;
-use vela_host::target::HostTargetPlan;
 use vela_host::value::HostValue;
 use vela_package::ModulePath;
 use vela_reflect::access::{FieldAccess, FunctionAccess, MethodAccess, MethodEffectSet};
@@ -78,13 +71,10 @@ fn linked_vm_state_resolves_stable_id_across_generation_slot_changes() {
 
     let mut values = VmStateValues::default();
     values.insert(state, Value::I64(41));
-    let mut adapter = MockStateAdapter::new();
-    let mut access = HostAccess::new();
+
     let vm = Vm::new();
     for artifact in [&old, &new] {
         let mut host = HostExecution {
-            adapter: &mut adapter,
-            access: &mut access,
             state_values: Some(&mut values),
         };
         let mut budget = ExecutionBudget::unbounded();
@@ -111,15 +101,11 @@ mod deferred_literals;
 mod dynamic_method_dispatch;
 mod evaluation_order;
 mod execution_core;
-mod heap_host;
-mod host_fields;
-mod host_methods;
 mod iteration;
 mod linked_array_standard_method_cache;
 mod linked_bytecode_profiler;
 mod linked_context_execution;
 mod linked_execution_core;
-mod linked_host_method_cache;
 mod linked_map_standard_method_cache;
 mod linked_readonly_standard_method_cache;
 mod linked_set_standard_method_cache;
@@ -233,13 +219,7 @@ fn run_linked_test_entry_with_caches(
     let function = linked_program_entry(linked.program(), entry)?;
     let mut heap = ScriptHeap::new();
     let mut heap_execution = HeapExecution::new(&mut heap);
-    let args = owned_args_to_runtime(
-        args,
-        linked.program(),
-        &mut heap_execution,
-        Some(budget),
-        None,
-    )?;
+    let args = owned_args_to_runtime(args, linked.program(), &mut heap_execution, Some(budget))?;
     let result = vm.execute_linked_call(
         crate::linked_execution::LinkedExecutionCall {
             owner: Arc::clone(linked),
@@ -256,45 +236,7 @@ fn run_linked_test_entry_with_caches(
         Some(&mut heap_execution),
         Some(budget),
     );
-    owned_heap_result(result, &mut heap_execution, budget, None)
-}
-
-fn run_linked_test_entry_with_host_and_caches(
-    vm: &Vm,
-    linked: &Arc<LinkedArtifact>,
-    entry: &str,
-    args: &[OwnedValue],
-    host: &mut HostExecution<'_>,
-    budget: &mut ExecutionBudget,
-    inline_caches: &dyn VmInlineCaches,
-) -> VmResult<OwnedValue> {
-    let function = linked_program_entry(linked.program(), entry)?;
-    let mut heap = ScriptHeap::new();
-    let mut heap_execution = HeapExecution::new(&mut heap);
-    let args = owned_args_to_runtime(
-        args,
-        linked.program(),
-        &mut heap_execution,
-        Some(budget),
-        Some(&mut *host.adapter),
-    )?;
-    let result = vm.execute_linked_call(
-        crate::linked_execution::LinkedExecutionCall {
-            owner: Arc::clone(linked),
-            function,
-            captures: &[],
-            args: &args,
-            check_param_guards: true,
-            call_site: None,
-            call_site_offset: None,
-            inline_caches: Some(inline_caches),
-            bytecode_profiler: None,
-        },
-        Some(host),
-        Some(&mut heap_execution),
-        Some(budget),
-    );
-    owned_heap_result(result, &mut heap_execution, budget, Some(&*host.adapter))
+    owned_heap_result(result, &mut heap_execution, budget)
 }
 
 fn run_linked_test_program_with_host_budget(
@@ -354,47 +296,6 @@ fn run_linked_test_program_runtime_with_heap_and_budget(
     )
 }
 
-fn run_linked_test_program_runtime_with_host_heap_and_budget(
-    vm: &Vm,
-    program: &UnlinkedProgram,
-    entry: &str,
-    args: &[Value],
-    host: &mut HostExecution<'_>,
-    heap: &mut HeapExecution<'_>,
-    budget: &mut ExecutionBudget,
-) -> VmResult<Value> {
-    let mut linker = Linker::new();
-    vm.native_implementation_ids()
-        .for_each(|id| linker.add_native_implementation(id));
-    let linked = linker
-        .link_test_program(program)
-        .expect("test program should link");
-    let function = linked
-        .functions()
-        .find_map(|(handle, code)| (linked.debug_name(code.debug_name) == entry).then_some(handle))
-        .ok_or_else(|| {
-            VmError::new(VmErrorKind::UnknownFunction {
-                name: entry.to_owned(),
-            })
-        })?;
-    vm.execute_linked_call(
-        crate::linked_execution::LinkedExecutionCall {
-            owner: Arc::clone(&linked),
-            function,
-            captures: &[],
-            args,
-            check_param_guards: true,
-            call_site: None,
-            call_site_offset: None,
-            inline_caches: None,
-            bytecode_profiler: None,
-        },
-        Some(host),
-        Some(heap),
-        Some(budget),
-    )
-}
-
 fn run_linked_test_code_with_linker(
     vm: &Vm,
     code: UnlinkedCodeObject,
@@ -409,35 +310,6 @@ fn run_linked_test_code_with_linker(
     vm.run_linked_program(&linked, &entry, &[])
 }
 
-fn host_read_program() -> (UnlinkedProgram, HostRef) {
-    let host_ref = player_ref(3);
-    let mut code = UnlinkedCodeObject::new("main", 2).with_params(vec!["player".into()]);
-    let target =
-        code.intern_host_target(HostTargetPlan::new(host_ref.type_id).field(level_field()));
-    let cache_site = code.push_cache_site(CacheSiteKind::HostPathRead, InstructionOffset(0));
-    code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::HostRead {
-            dst: Register(1),
-            root: Register(0),
-            target,
-            dynamic_args: Vec::new(),
-            cache_site,
-        },
-    ));
-    code.push_instruction(UnlinkedInstruction::new(UnlinkedInstructionKind::Return {
-        src: Register(1),
-    }));
-    let mut program = UnlinkedProgram::new();
-    program.insert_function(code);
-    (program, host_ref)
-}
-
-fn host_adapter(host_ref: HostRef, value: HostValue) -> MockStateAdapter {
-    let mut adapter = MockStateAdapter::new();
-    adapter.insert_diagnostic_path_value(level_path(host_ref), value);
-    adapter
-}
-
 fn reflection_registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
     registry.register_trait(
@@ -446,8 +318,8 @@ fn reflection_registry() -> TypeRegistry {
     );
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(100), "Player"))
-            .host_type(HostTypeId::new(1))
-            .docs("A player host object.")
+            .kind(TypeKind::ScriptStruct)
+            .docs("A player script value.")
             .attr("domain", "gameplay")
             .field(FieldDesc::new(FieldId::new(1), "id"))
             .field(
@@ -458,8 +330,8 @@ fn reflection_registry() -> TypeRegistry {
                     .attr("unit", "level"),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(5), "grant_exp")
-                    .effects(MethodEffectSet::host_write())
+                MethodDesc::new(MethodId::new(5), "grant_exp")
+                    .effects(MethodEffectSet::pure())
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .docs("Grant experience.")
@@ -495,7 +367,7 @@ pub fn grant(player: Player, amount: i64 = 1) -> bool {
 }
 
 pub state counter: i64 = 1;
-extern state player: Player;
+
 "#,
     ));
     let mut registry = TypeRegistry::new();
@@ -531,18 +403,18 @@ fn policy_method_reflection_registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(500), "Player"))
-            .host_type(HostTypeId::new(1))
-            .method(MethodDesc::new(HostMethodId::new(1), "visible"))
+            .kind(TypeKind::ScriptStruct)
+            .method(MethodDesc::new(MethodId::new(1), "visible"))
             .method(
-                MethodDesc::new(HostMethodId::new(2), "hidden")
+                MethodDesc::new(MethodId::new(2), "hidden")
                     .access(MethodAccess::new().reflect_callable(false)),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(3), "private")
+                MethodDesc::new(MethodId::new(3), "private")
                     .access(MethodAccess::new().public(false).reflect_callable(true)),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(4), "admin")
+                MethodDesc::new(MethodId::new(4), "admin")
                     .access(MethodAccess::new().require_permission("player.admin")),
             ),
     );
@@ -553,7 +425,7 @@ fn policy_field_reflection_registry() -> TypeRegistry {
     let mut registry = TypeRegistry::new();
     registry.register(
         TypeDesc::new(TypeKey::new(TypeId::new(600), "Player"))
-            .host_type(HostTypeId::new(1))
+            .kind(TypeKind::ScriptStruct)
             .field(FieldDesc::new(FieldId::new(1), "level"))
             .field(
                 FieldDesc::new(FieldId::new(2), "secret")
@@ -598,24 +470,8 @@ fn policy_variant_field_reflection_registry() -> TypeRegistry {
     registry
 }
 
-fn player_ref(generation: u32) -> HostRef {
-    HostRef::new(HostTypeId::new(1), HostObjectId::new(7), generation)
-}
-
-fn level_path(host_ref: HostRef) -> HostPath {
-    HostPath::new(host_ref).field(level_field())
-}
-
 fn level_field() -> FieldId {
     FieldId::new(2)
-}
-
-fn compile_host_program_source(
-    source: SourceId,
-    text: &str,
-    registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
-    compile_test_program_with_registry(source, text, registry.compile_view())
 }
 
 fn compile_standard_program_source(
@@ -643,135 +499,4 @@ fn compile_standard_program_source_with_native_functions(
             .expect("test native function should register");
     }
     compile_test_program_with_registry(source, text, registry.compile_view())
-}
-
-fn compile_host_program_source_with_options(
-    source: SourceId,
-    text: &str,
-    options: &CompilerOptions,
-    registry: vela_registry::DefinitionRegistry,
-) -> vela_bytecode::compiler::error::CompileResult<vela_bytecode::compiler::CompiledProgram> {
-    crate::test_support::compile_test_program_with_options_and_registry(
-        source,
-        text,
-        options,
-        registry.compile_view(),
-    )
-}
-
-fn host_definition_registry(
-    types: &[(&str, HostTypeId)],
-    fields: &[TestHostField<'_>],
-    methods: &[TestHostMethod<'_>],
-) -> vela_registry::DefinitionRegistry {
-    let mut registry = vela_registry::DefinitionRegistry::new();
-    let mut type_ids = BTreeMap::new();
-    for (name, runtime_id) in types {
-        let type_id = registry
-            .register_type(
-                vela_registry::TypeDef::new(vela_def::DefPath::ty(
-                    "host",
-                    std::iter::empty::<&str>(),
-                    *name,
-                ))
-                .host_runtime_id(runtime_id.get().into()),
-            )
-            .expect("test host type should register");
-        type_ids.insert(*name, type_id);
-    }
-
-    for field in fields {
-        let owner = *type_ids
-            .get(field.owner)
-            .expect("test field owner type should exist");
-        let def = vela_registry::FieldDef::new(
-            vela_def::DefPath::field("host", std::iter::empty::<&str>(), field.owner, field.name),
-            owner,
-        )
-        .host_runtime_id(field.id.get())
-        .writable(field.writable)
-        .type_hint(field.type_hint.map(str::to_owned));
-        registry
-            .register_field(def)
-            .expect("test host field should register");
-    }
-
-    for method in methods {
-        let owner = *type_ids
-            .get(method.owner)
-            .expect("test method owner type should exist");
-        registry
-            .register_method(
-                vela_registry::MethodDef::new(
-                    vela_def::DefPath::method(
-                        "host",
-                        std::iter::empty::<&str>(),
-                        method.owner,
-                        method.name,
-                    ),
-                    owner,
-                    vela_registry::FunctionSignature::new(
-                        method
-                            .params
-                            .iter()
-                            .map(|name| vela_registry::ParamDef::new(*name, None::<String>)),
-                        None::<vela_registry::TypeHintDef>,
-                    ),
-                )
-                .host_runtime_id(method.id.get()),
-            )
-            .expect("test host method should register");
-    }
-
-    registry
-}
-
-#[derive(Clone, Copy)]
-struct TestHostField<'a> {
-    owner: &'a str,
-    name: &'a str,
-    id: FieldId,
-    writable: bool,
-    type_hint: Option<&'a str>,
-}
-
-impl<'a> TestHostField<'a> {
-    const fn new(owner: &'a str, name: &'a str, id: FieldId) -> Self {
-        Self {
-            owner,
-            name,
-            id,
-            writable: true,
-            type_hint: None,
-        }
-    }
-
-    const fn readonly(mut self) -> Self {
-        self.writable = false;
-        self
-    }
-
-    const fn type_hint(mut self, type_hint: &'a str) -> Self {
-        self.type_hint = Some(type_hint);
-        self
-    }
-}
-
-#[derive(Clone, Copy)]
-struct TestHostMethod<'a> {
-    owner: &'a str,
-    name: &'a str,
-    id: HostMethodId,
-    params: &'a [&'a str],
-}
-
-impl<'a> TestHostMethod<'a> {
-    const fn new(owner: &'a str, name: &'a str, id: HostMethodId, params: &'a [&'a str]) -> Self {
-        Self {
-            owner,
-            name,
-            id,
-            params,
-        }
-    }
 }

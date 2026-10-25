@@ -40,21 +40,21 @@
         {
           "name": "HostPlayer",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostPlayer"
           }
         },
         {
           "name": "HostCell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           }
         },
         {
           "name": "alpha::Player",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "alpha::Player"
           }
         }
@@ -73,7 +73,7 @@
           "owner": "HostPlayer",
           "name": "child",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "HostCell"
           },
           "docs": "Host child docs."
@@ -124,7 +124,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "HostPlayer"
             }
           }

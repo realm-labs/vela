@@ -4,7 +4,7 @@
   "files": {
     "vela.toml": "[package]\nid = \"dev.vela.callable_hints\"\nname = \"callable_hints\"\nversion = \"0.1.0\"\n[source]\nroots = [\"scripts\"]\n[host]\nschema = \"schema.json\"\n",
     "scripts/api.vela": "pub struct Row { count: bool } struct Hidden {} pub const Mask: i64 = 1;\n",
-    "schema.json": "{\"formatVersion\":3,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Row\"}},{\"name\":\"host::Issue\",\"fact\":{\"kind\":\"host\",\"name\":\"host::Issue\"}},{\"name\":\"api::Row\",\"fact\":{\"kind\":\"host\",\"name\":\"api::Row\"}},{\"name\":\"api::Hidden\",\"fact\":{\"kind\":\"host\",\"name\":\"api::Hidden\"}},{\"name\":\"api::Mask\",\"fact\":{\"kind\":\"host\",\"name\":\"api::Mask\"}},{\"name\":\"Alias\",\"fact\":{\"kind\":\"host\",\"name\":\"Alias\"}},{\"name\":\"Row\",\"fact\":{\"kind\":\"host\",\"name\":\"Row\"}}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}}],\"functions\":[{\"name\":\"native::send\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_items\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Registered prefix 中😀.\"},{\"name\":\"native::legacy\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}",
+    "schema.json": "{\"formatVersion\":4,\"facts\":{\"types\":[{\"name\":\"host::Row\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Row\"}},{\"name\":\"host::Issue\",\"fact\":{\"kind\":\"record\",\"name\":\"host::Issue\"}},{\"name\":\"api::Row\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Row\"}},{\"name\":\"api::Hidden\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Hidden\"}},{\"name\":\"api::Mask\",\"fact\":{\"kind\":\"record\",\"name\":\"api::Mask\"}},{\"name\":\"Alias\",\"fact\":{\"kind\":\"record\",\"name\":\"Alias\"}},{\"name\":\"Row\",\"fact\":{\"kind\":\"record\",\"name\":\"Row\"}}],\"fields\":[{\"owner\":\"host::Row\",\"name\":\"count\",\"fact\":{\"kind\":\"primitive\",\"name\":\"i64\"}}],\"functions\":[{\"name\":\"native::send\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"signature\":{\"parameters\":[{\"name\":\"zz_items\",\"typeFact\":{\"kind\":\"primitive\",\"name\":\"i64\"},\"requirement\":\"required\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}},\"docs\":\"Registered prefix 中😀.\"},{\"name\":\"native::legacy\",\"fact\":{\"kind\":\"function\",\"params\":[{\"kind\":\"primitive\",\"name\":\"i64\"}],\"returns\":{\"kind\":\"primitive\",\"name\":\"bool\"}}}]}}",
     "scripts/array.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: Array<Alias>) -> bool { true }\nfn main(value: Array<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
     "scripts/array_view.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: ArrayView<Alias>) -> bool { true }\nfn main(value: ArrayView<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
     "scripts/array_mut.vela": "use host::Row as Alias;\n/* 中😀 */ fn accept(zz_items: ArrayMut<Alias>) -> bool { true }\nfn main(value: ArrayMut<Alias>) { accept([[replace:start]]zz_[[cursor]][[replace:end]]); }\n",
@@ -58,36 +58,30 @@
       {
         "id": "array_view",
         "file": "scripts/array_view.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "ArrayView(host::Row)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: ArrayView(host::Row)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "ArrayView(host::Row)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "array_mut",
         "file": "scripts/array_mut.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "ArrayMut(host::Row, fixed)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: ArrayMut(host::Row, fixed)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "ArrayMut(host::Row, fixed)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "map",
@@ -109,36 +103,30 @@
       {
         "id": "map_view",
         "file": "scripts/map_view.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "MapView(String, host::Row)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: MapView(String, host::Row)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "MapView(String, host::Row)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "map_mut",
         "file": "scripts/map_mut.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "MapMut(String, host::Row, growable)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: MapMut(String, host::Row, growable)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "MapMut(String, host::Row, growable)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "set",
@@ -160,36 +148,30 @@
       {
         "id": "set_view",
         "file": "scripts/set_view.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "SetView(host::Row)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: SetView(host::Row)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "SetView(host::Row)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "set_mut",
         "file": "scripts/set_mut.vela",
-        "parameters": [
-          {
-            "name": "zz_items",
-            "detail": "SetMut(host::Row, growable)",
-            "insert": "zz_items = "
-          }
-        ],
-        "signature": "accept(zz_items: SetMut(host::Row, growable)) -> bool",
+        "parameters": [],
+        "signature": null,
         "activeParameter": 0,
-        "expectedName": "zz_items",
-        "expectedType": "SetMut(host::Row, growable)",
-        "apply": "zz_items",
-        "value": "value"
+        "expectedName": null,
+        "expectedType": null,
+        "apply": null,
+        "value": "value",
+        "removedBoundary": true,
+        "expectedDiagnostic": "hir::removed_host_type_hint",
+        "expressions": null
       },
       {
         "id": "iterator",
@@ -514,6 +496,14 @@
         "apply": null,
         "value": "value"
       }
+    ],
+    "retiredBorrowedQueries": [
+      "array_view",
+      "array_mut",
+      "map_view",
+      "map_mut",
+      "set_view",
+      "set_mut"
     ]
   }
 }

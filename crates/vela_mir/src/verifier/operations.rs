@@ -1,12 +1,11 @@
 use std::collections::BTreeSet;
 
 mod calls;
-mod host;
 mod support;
 mod targets;
 
 use calls::verify_call;
-use host::verify_host;
+
 use support::{
     arity_accepts, bad_target, constant_type, destination_accepts, destination_contract, error,
     function_call_target, function_target, integer_or_dynamic, method_target, missing_target,
@@ -639,9 +638,6 @@ fn verify_statement_kind(
                 | MirStateOperation::WriteVmState { state, .. } => {
                     (*state, CompileStateStorage::Vm)
                 }
-                MirStateOperation::ReadExternState { state } => {
-                    (*state, CompileStateStorage::Extern)
-                }
             };
             let descriptor = verifier.program.targets().state(state).ok_or_else(|| {
                 missing_target(verifier, statement.origin, MirVerifyTarget::State(state))
@@ -655,8 +651,7 @@ fn verify_statement_kind(
                 ));
             }
             let contract = match operation {
-                MirStateOperation::ReadVmState { .. }
-                | MirStateOperation::ReadExternState { .. } => Some(&descriptor.contract),
+                MirStateOperation::ReadVmState { .. } => Some(&descriptor.contract),
                 MirStateOperation::WriteVmState { value, .. } => {
                     let actual = verifier.operand_type(value, block, Some(id), statement.origin)?;
                     if !satisfies_contract(actual, &descriptor.contract) {
@@ -680,16 +675,7 @@ fn verify_statement_kind(
         MirStatementKind::Call(call) => {
             verify_call(verifier, block, id, statement.origin, call, destination)?
         }
-        MirStatementKind::Host(operation) => {
-            verify_host(
-                verifier,
-                block,
-                id,
-                statement.origin,
-                operation,
-                destination,
-            )?;
-        }
+
         MirStatementKind::Reflect(operation) => {
             verify_reflection(
                 verifier,

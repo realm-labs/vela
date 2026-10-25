@@ -2,11 +2,16 @@ use std::sync::Arc;
 
 use vela_bytecode::ScriptFunctionHandle;
 use vela_common::ScalarValue;
-use vela_host::path::HostSlotRef;
 
 use crate::heap::GcRef;
 use crate::small_storage::SmallStorage;
 
+/// Compact script runtime value. Caller Rust references are not script values.
+///
+/// ```compile_fail,E0599
+/// use vela_vm::value::Value;
+/// let value = Value::HostRef(());
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Value {
     Missing,
@@ -24,7 +29,6 @@ pub enum Value {
     F32(f32),
     F64(f64),
     HeapRef(GcRef),
-    HostRef(HostSlotRef),
 }
 
 macro_rules! impl_scalar_value_helpers {

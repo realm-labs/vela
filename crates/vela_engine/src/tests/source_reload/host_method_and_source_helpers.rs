@@ -1,54 +1,7 @@
 use super::*;
 
 pub(super) fn type_with_reload_method(method: MethodDesc) -> TypeDesc {
-    TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
-        .host_type(HostTypeId::new(1))
-        .method(method)
-}
-
-pub(super) fn assert_host_method_access(_access: &HostAccess, _method: HostMethodId, _amount: i64) {
-}
-
-pub(super) fn write_host_method_reward_modules(
-    root: &std::path::Path,
-    method_name: &str,
-    reward: i64,
-) -> std::path::PathBuf {
-    let game_dir = root.join("game");
-    std::fs::create_dir_all(&game_dir).expect("create module dir");
-    std::fs::write(
-        game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main(player: Player) {
-    return grant(player);
-}
-"#,
-    )
-    .expect("write main module");
-    let reward_file = game_dir.join("reward.vela");
-    write_host_method_reward_module(&reward_file, method_name, reward);
-    reward_file
-}
-
-pub(super) fn write_host_method_reward_module(
-    path: &std::path::Path,
-    method_name: &str,
-    reward: i64,
-) {
-    std::fs::write(
-        path,
-        format!(
-            r#"
-pub fn grant(player: Player) {{
-    player.{method_name}(7);
-    return {reward};
-}}
-"#
-        ),
-    )
-    .expect("write host method reward module");
+    TypeDesc::new(TypeKey::new(TypeId::new(1), "Player")).method(method)
 }
 
 pub(super) fn write_typed_reward_modules(

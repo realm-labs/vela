@@ -1,9 +1,5 @@
 use vela_common::Span;
 use vela_def::StateId;
-use vela_host::error::HostErrorKind;
-use vela_host::error::HostResult;
-use vela_host::object::ScriptHostObject;
-use vela_host::path::HostRef;
 use vela_hot_reload::compile::initial_version_from_linked_artifact;
 use vela_hot_reload::error::{HotReloadError, HotReloadErrorKind};
 use vela_hot_reload::runtime::HotReloadRuntime;
@@ -63,10 +59,6 @@ pub enum RuntimeBuildError {
         source_span: Option<Span>,
         error: VmError,
     },
-    MissingExternState {
-        state: String,
-        source_span: Option<Span>,
-    },
 }
 
 impl std::fmt::Display for RuntimeBuildError {
@@ -78,9 +70,6 @@ impl std::fmt::Display for RuntimeBuildError {
             }
             Self::Initializer { state, error, .. } => {
                 write!(formatter, "state initializer for `{state}` failed: {error}")
-            }
-            Self::MissingExternState { state, .. } => {
-                write!(formatter, "extern state `{state}` has no host binding")
             }
         }
     }
@@ -123,19 +112,6 @@ where
         }
     }
 
-    pub fn bind_extern_state<T>(&mut self, name: impl Into<String>, value: T) -> HostResult<HostRef>
-    where
-        T: ScriptHostObject + Send + Sync + 'static,
-    {
-        let name = name.into();
-        let (state, expected) =
-            super::extern_state_bindings::extern_state_schema(&self.runtime.image, &name)?;
-        self.runtime
-            .state
-            .extern_states
-            .bind_host(state, expected, value)
-    }
-
     /// Enables generation-qualified aggregate instruction profiling.
     ///
     /// Every Runtime sharing this Engine deployment and executable generation
@@ -154,16 +130,6 @@ where
     }
 
     pub fn build(mut self) -> Result<RuntimeImpl<I>, RuntimeBuildError> {
-        if let Some((state, source_span)) = self
-            .runtime
-            .state
-            .extern_states
-            .missing_bindings(self.runtime.image.states())
-            .into_iter()
-            .next()
-        {
-            return Err(RuntimeBuildError::MissingExternState { state, source_span });
-        }
         self.runtime.initialize_vm_states(self.limits)?;
         Ok(self.runtime)
     }
@@ -209,7 +175,6 @@ where
             .linked_program()
             .states()
             .iter()
-            .filter(|state| state.storage == vela_bytecode::StateStorage::Vm)
             .filter(|state| include(state.id))
             .cloned()
             .collect::<Vec<_>>();
@@ -234,9 +199,6 @@ where
                 registry_image: self.image.program_image(),
                 artifact: self.image.linked_artifact(),
                 hot_reload: self.hot_reload.as_ref(),
-                extern_states: &mut runtime_state.extern_states,
-                host_arena: &mut runtime_state.host_arena,
-                host_slots: &mut runtime_state.host_slots,
                 vm_states: &mut runtime_state.vm_states,
                 generations: &mut runtime_state.generations,
                 target,
@@ -262,23 +224,6 @@ where
         limits: RuntimeInitializationLimits,
     ) -> Result<ReloadStateStaging, HotReloadError> {
         let next_states = update.linked_artifact().image().states();
-        if let Err((state, error)) = self.state.extern_states.validate_layout(next_states) {
-            let kind = match error.kind {
-                HostErrorKind::MissingExternState { .. } => {
-                    HotReloadErrorKind::MissingExternStateBinding {
-                        state,
-                        source_span: error.source_span.map(Box::new),
-                    }
-                }
-                kind => HotReloadErrorKind::InvalidExternStateBinding {
-                    state,
-                    reason: format!("{kind:?}"),
-                    source_span: error.source_span.map(Box::new),
-                },
-            };
-            return Err(HotReloadError { kind });
-        }
-
         let current = self
             .image
             .states()
@@ -287,9 +232,7 @@ where
             .collect::<std::collections::BTreeSet<_>>();
         let added = next_states
             .iter()
-            .filter(|state| {
-                state.storage == vela_bytecode::StateStorage::Vm && !current.contains(&state.id)
-            })
+            .filter(|state| !current.contains(&state.id))
             .map(|state| state.id)
             .collect::<std::collections::BTreeSet<_>>();
         if added.is_empty() {
@@ -374,10 +317,9 @@ where
 
     pub(super) fn commit_hot_update_state(
         &mut self,
-        states: &[vela_bytecode::StateDescriptor],
+        _states: &[vela_bytecode::StateDescriptor],
         staging: ReloadStateStaging,
     ) {
-        self.state.extern_states.commit_layout(states);
         for (state, value) in staging.vm_values {
             self.state.vm_states.insert_prepared(state, value);
         }

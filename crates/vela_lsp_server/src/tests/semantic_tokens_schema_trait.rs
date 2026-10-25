@@ -39,7 +39,7 @@ fn lsp_semantic_tokens_classify_schema_trait_method_uses_as_host() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {
@@ -88,9 +88,8 @@ fn lsp_semantic_tokens_classify_schema_trait_method_uses_as_host() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main(rewardable: Rewardable) -> i64 {
@@ -162,7 +161,7 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_function_return() 
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {
@@ -222,9 +221,8 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_function_return() 
         .expect("semantic token legend should list token modifiers");
     let function = token_type_index(token_types, "function");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main() -> i64 {
@@ -306,12 +304,12 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_method_return() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [
@@ -372,9 +370,8 @@ fn lsp_semantic_tokens_classify_schema_trait_method_on_schema_method_return() {
         .as_array()
         .expect("semantic token legend should list token modifiers");
     let method = token_type_index(token_types, "method");
-    let host = token_modifier_bit(token_modifiers, "host");
     let schema = token_modifier_bit(token_modifiers, "schema");
-    let schema_host = host | schema;
+    let schema_host = schema;
 
     let text = "\
 pub fn main(player: Player) -> i64 {

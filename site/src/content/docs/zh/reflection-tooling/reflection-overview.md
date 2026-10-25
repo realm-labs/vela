@@ -26,7 +26,7 @@ fn main(player: Player) {
 当当前策略允许时，反射可以执行受控 read、write 和 call。这些操作仍然通
 过普通脚本执行相同的 runtime 和 host access 边界。
 
-反射不是绕过 `HostAccess`、execution budget、capability、只读字段或
+反射不是绕过值权限、execution budget、capability、只读字段或
 stale host reference 校验的后门。
 
 ## 反射不能做什么

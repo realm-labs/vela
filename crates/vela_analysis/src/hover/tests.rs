@@ -1,4 +1,4 @@
-use vela_common::{HostMethodId, SourceId, Span};
+use vela_common::{SourceId, Span};
 use vela_def::{FieldId, FunctionId, TypeId, VariantId};
 use vela_reflect::access::{FieldAccess, FunctionEffectSet, MethodEffectSet};
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
@@ -15,7 +15,7 @@ fn hovers_types_fields_methods_and_variants() {
 
     let type_info = type_hover(&registry, "Player").expect("type hover");
     assert_eq!(type_info.kind, HoverKind::Type);
-    assert_eq!(type_info.fact, TypeFact::host("Player"));
+    assert_eq!(type_info.fact, TypeFact::record("Player"));
     assert_eq!(type_info.docs.as_deref(), Some("host player state"));
     assert_eq!(
         type_info.attrs,
@@ -83,7 +83,7 @@ fn hovers_functions_traits_and_modules() {
     assert_eq!(function_info.kind, HoverKind::Function);
     assert_eq!(
         function_info.fact,
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::BOOL)
+        TypeFact::function(vec![TypeFact::record("Player")], TypeFact::BOOL)
     );
     assert!(
         function_info
@@ -136,7 +136,7 @@ fn hover_registry() -> TypeRegistry {
                     ),
             )
             .method(
-                MethodDesc::new(HostMethodId::new(1), "grant")
+                MethodDesc::new(vela_def::MethodId::new(1), "grant")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool")
                     .effects(MethodEffectSet::host_write()),

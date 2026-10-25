@@ -791,7 +791,7 @@ impl Player {
 
     #[test]
     fn formatting_formats_state_forms_without_reserving_state_identifiers() {
-        let source = "state counter:i64=0;pub extern state world:World;fn state(state:i64){let state=state;}";
+        let source = "state counter:i64=0;pub state world:World=World{};fn state(state:i64){let state=state;}";
         let formatted = format_source(source_id(), source);
 
         assert!(formatted.diagnostics().is_empty());
@@ -799,7 +799,8 @@ impl Player {
             formatted.text(),
             "\
 state counter: i64 = 0;
-pub extern state world: World;
+pub state world: World = World {
+};
 fn state(state: i64) {
     let state = state;
 }

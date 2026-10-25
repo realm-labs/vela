@@ -1,6 +1,3 @@
-use super::host_array::HostArrayCursor;
-use super::host_map::HostMapCursor;
-use super::host_set::HostSetCursor;
 use crate::heap::GcRef;
 use crate::heap::HeapValue;
 use crate::heap_values::stored_runtime_value;
@@ -10,8 +7,6 @@ use crate::runtime_checks::is_truthy;
 use crate::value_key::ValueKey;
 use crate::{ExecutionBudget, HeapExecution, Value, VmError, VmErrorKind, VmResult};
 use vela_bytecode::TypeGuardPlan;
-
-mod host;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct IteratorState {
@@ -75,9 +70,6 @@ enum IteratorCursor {
         next: usize,
         len: usize,
     },
-    HostArray(Box<HostArrayCursor>),
-    HostMap(Box<HostMapCursor>),
-    HostSet(Box<HostSetCursor>),
     Range(RangeCursor),
     Map {
         source: Box<IteratorState>,
@@ -156,17 +148,6 @@ impl IteratorState {
                 }
             }
             IteratorCursor::Range(_) => {}
-            IteratorCursor::HostArray(_) => {}
-            IteratorCursor::HostMap(cursor) => {
-                for key in cursor.keys_mut() {
-                    remap_value(key, references)?;
-                }
-            }
-            IteratorCursor::HostSet(cursor) => {
-                for value in cursor.values_mut() {
-                    remap_value(value, references)?;
-                }
-            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -389,9 +370,6 @@ impl IteratorState {
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
-            | IteratorCursor::HostArray(_)
-            | IteratorCursor::HostMap(_)
-            | IteratorCursor::HostSet(_)
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. } => Ok(None),
         }
@@ -399,7 +377,7 @@ impl IteratorState {
 
     pub(crate) fn next_with_runtime(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         protected_values: &[Value],
     ) -> VmResult<Option<Value>> {
@@ -408,7 +386,7 @@ impl IteratorState {
 
     fn next_with_runtime_inner(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         protected_values: &[Value],
         charge_step: bool,
@@ -457,9 +435,6 @@ impl IteratorState {
                 operation,
                 HeapSequenceKind::Bytes,
             ),
-            IteratorCursor::HostArray(cursor) => cursor.next(runtime, operation),
-            IteratorCursor::HostMap(cursor) => cursor.next(runtime, operation),
-            IteratorCursor::HostSet(cursor) => cursor.next(runtime, operation),
             IteratorCursor::Take {
                 source, remaining, ..
             } => {
@@ -516,7 +491,7 @@ impl IteratorState {
 
     pub(crate) fn poll_next(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         charge_step: bool,
         returned: Option<Value>,
@@ -533,7 +508,7 @@ impl IteratorState {
 
     fn poll_next_inner(
         &mut self,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
         operation: &'static str,
         charge_step: bool,
         returned: &mut Option<Value>,
@@ -596,15 +571,6 @@ impl IteratorState {
                     operation,
                     HeapSequenceKind::Bytes,
                 )?)
-            }
-            IteratorCursor::HostArray(cursor) => {
-                IteratorPollStep::Complete(cursor.next(runtime, operation)?)
-            }
-            IteratorCursor::HostMap(cursor) => {
-                IteratorPollStep::Complete(cursor.next(runtime, operation)?)
-            }
-            IteratorCursor::HostSet(cursor) => {
-                IteratorPollStep::Complete(cursor.next(runtime, operation)?)
             }
             IteratorCursor::Take {
                 source,
@@ -706,7 +672,7 @@ impl IteratorState {
     fn validate_polled_item(
         &self,
         value: Option<Value>,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
     ) -> VmResult<Option<Value>> {
         let Some(value) = value else {
             return Ok(None);
@@ -731,19 +697,6 @@ impl IteratorState {
             | IteratorCursor::StringBytes { source, .. }
             | IteratorCursor::Bytes { source, .. } => refs.push(*source),
             IteratorCursor::Range(_) => {}
-            IteratorCursor::HostArray(_) => {}
-            IteratorCursor::HostMap(cursor) => {
-                cursor
-                    .keys()
-                    .iter()
-                    .for_each(|key| key.trace_heap_refs(refs));
-            }
-            IteratorCursor::HostSet(cursor) => {
-                cursor
-                    .values()
-                    .iter()
-                    .for_each(|value| value.trace_heap_refs(refs));
-            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -777,13 +730,6 @@ impl IteratorState {
             | IteratorCursor::StringBytes { source, .. }
             | IteratorCursor::Bytes { source, .. } => protected.push(Value::HeapRef(*source)),
             IteratorCursor::Range(_) => {}
-            IteratorCursor::HostArray(_) => {}
-            IteratorCursor::HostMap(cursor) => {
-                protected.extend(cursor.keys().iter().copied());
-            }
-            IteratorCursor::HostSet(cursor) => {
-                protected.extend(cursor.values().iter().copied());
-            }
             IteratorCursor::Map {
                 source, callback, ..
             }
@@ -802,8 +748,6 @@ impl IteratorState {
     pub(crate) fn values(&self) -> &[Value] {
         match &self.cursor {
             IteratorCursor::Values { values, .. } => values,
-            IteratorCursor::HostMap(cursor) => cursor.keys(),
-            IteratorCursor::HostSet(cursor) => cursor.values(),
             IteratorCursor::Range(_)
             | IteratorCursor::Array { .. }
             | IteratorCursor::Set { .. }
@@ -813,33 +757,10 @@ impl IteratorState {
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
-            | IteratorCursor::HostArray(_)
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
             | IteratorCursor::Skip { .. } => &[],
-        }
-    }
-
-    pub(crate) fn is_host_backed(&self) -> bool {
-        match &self.cursor {
-            IteratorCursor::HostArray(_)
-            | IteratorCursor::HostMap(_)
-            | IteratorCursor::HostSet(_) => true,
-            IteratorCursor::Map { source, .. }
-            | IteratorCursor::Filter { source, .. }
-            | IteratorCursor::Take { source, .. }
-            | IteratorCursor::Skip { source, .. } => source.is_host_backed(),
-            IteratorCursor::Values { .. }
-            | IteratorCursor::Array { .. }
-            | IteratorCursor::Set { .. }
-            | IteratorCursor::MapValues { .. }
-            | IteratorCursor::MapKeys { .. }
-            | IteratorCursor::MapEntries { .. }
-            | IteratorCursor::StringChars { .. }
-            | IteratorCursor::StringBytes { .. }
-            | IteratorCursor::Bytes { .. }
-            | IteratorCursor::Range(_) => false,
         }
     }
 
@@ -855,9 +776,6 @@ impl IteratorState {
             | IteratorCursor::StringChars { .. }
             | IteratorCursor::StringBytes { .. }
             | IteratorCursor::Bytes { .. }
-            | IteratorCursor::HostArray(_)
-            | IteratorCursor::HostMap(_)
-            | IteratorCursor::HostSet(_)
             | IteratorCursor::Map { .. }
             | IteratorCursor::Filter { .. }
             | IteratorCursor::Take { .. }
@@ -868,7 +786,7 @@ impl IteratorState {
     fn validate_item(
         &self,
         value: Option<Value>,
-        runtime: &mut MethodRuntime<'_, '_, '_>,
+        runtime: &mut MethodRuntime<'_, '_>,
     ) -> VmResult<Option<Value>> {
         let Some(value) = value else {
             return Ok(None);
@@ -891,7 +809,7 @@ fn next_indexed_heap_value(
     source: GcRef,
     next: &mut usize,
     len: usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
     kind: HeapSequenceKind,
 ) -> VmResult<Option<Value>> {
@@ -926,7 +844,7 @@ fn next_map_value(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -948,7 +866,7 @@ fn next_map_key(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -970,7 +888,7 @@ fn next_map_entry(
     source: GcRef,
     keys: &[ValueKey],
     next: &mut usize,
-    runtime: &mut MethodRuntime<'_, '_, '_>,
+    runtime: &mut MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -995,7 +913,7 @@ fn next_map_entry(
 fn next_string_char(
     source: GcRef,
     byte_next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {
@@ -1017,7 +935,7 @@ fn next_string_char(
 fn next_string_byte(
     source: GcRef,
     next: &mut usize,
-    runtime: &MethodRuntime<'_, '_, '_>,
+    runtime: &MethodRuntime<'_, '_>,
     operation: &'static str,
 ) -> VmResult<Option<Value>> {
     let Some(heap) = runtime.heap.as_deref() else {

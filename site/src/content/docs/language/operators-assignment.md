@@ -26,8 +26,8 @@ refs do not become structurally comparable just because their fields or
 contents match. A record or enum can opt in by implementing the closed builtin
 `PartialEq` trait with `fn eq(self, other: Type) -> bool`; `==` and `!=` call
 that method for values of the type. Use `===` and `!==` when you need
-reference identity for script objects or `HostRef` values. These identity
-operators do not read host state and do not use Map/Set key equivalence.
+reference identity for script objects. These identity
+operators do not use Map/Set key equivalence.
 
 Builtin leaf values such as unit, booleans, chars, exact scalar tags,
 strings, bytes, and ranges compare by value. Numeric equality is tag-exact, so
@@ -69,11 +69,8 @@ You can assign to:
 - a local variable: `score = 10`
 - a script record field: `reward.amount = 25`
 - an indexed collection entry: `tags["last_reward"] = reward.code`
-- a writable field on a host object: `player.gold += reward.amount`
 
-When the target belongs to a Rust host object, Vela asks the host to apply the
-write. The host can allow it, reject it because the field is read-only, or
-reject it because the current capability profile does not allow that write.
+These operations mutate script-owned values. Transparent Rust object paths are removed; compound assignment does not imply Rust write-back.
 
 ```vela
 fn apply(player, reward) {
@@ -86,6 +83,6 @@ fn apply(player, reward) {
 
 Common errors include using a non-number in arithmetic, using a non-boolean in
 boolean logic, assigning to something that is not assignable, writing a value
-with the wrong type, or writing a host field that the host has marked read-only.
+with the wrong type, or violating a script-owned field contract.
 These errors include source locations when Vela can identify the responsible
 expression.

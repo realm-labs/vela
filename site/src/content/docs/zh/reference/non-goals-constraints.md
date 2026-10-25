@@ -1,31 +1,14 @@
 ---
-title: "非目标和约束"
-description: "让 Vela 保持可嵌入和热更新安全的设计约束。"
+title: "Non-Goals And Constraints"
+description: "Vela 同步语言与删除边界。"
 ---
 
-Vela 是面向宿主持有业务逻辑的动态脚本语言。它不是 dynamic Rust，也不是
-Lua clone。部分功能被明确排除在第一版之外。
+Vela 是同步、解释执行、Hot Reload First 的动态脚本语言。保留普通函数、结构体、枚举、trait、模块与包、脚本集合及迭代器、受控反射、非移动 GC 和有限执行预算。
 
-## 语言非目标
+现有独立同步 native/value API 与 serde 快照转换继续可用，脚本修改不会隐式写回 Rust。普通 VM `state` 在兼容热重载时保留；活动调用与旧闭包保留精确的旧代码代际、嵌套调用和状态。
 
-MVP 不包含脚本侧泛型、按类型的函数重载、Rust-style borrow checker、任意
-`eval`、macros、monkey patching、classes、脚本线程、脚本可见的
-task/coroutine handle、手动 resume、挂起 async frame 的热迁移或 JIT
-compilation。
+已删除 Service/Provider、脚本 async/tasks、借用的 Rust 根/参数/返回值/view、租约/释放、透明宿主路径、依赖的 `extern state` 绑定和 Host 构造器/方法。普通脚本状态和 LSP 工作线程不是删除对象。没有新增 opaque 对象、codec、转换或重入 API；这些设计问题单独延期。
 
-## 宿主边界约束
+继续使用 `native_function`、`serde_value`、`modules`、`package_dependency_demo`、`script_state` 和脚本热重载示例。工具元数据使用严格格式 4；旧格式与已删除字段被拒绝。修改后的夹具不代表新的原生编辑器采集，也不代表完整仓库验收通过。
 
-脚本永远不会拿到真实 Rust `&mut T`。宿主修改必须通过 `HostRef`、
-`HostPath`、`PathProxy`、`HostAccess` 和 host adapter。宿主状态不会放到
-脚本 GC 下面。
-
-## 反射约束
-
-反射可以查询 metadata，并执行受控 read、write 和 call。它不能修改类型
-结构、替换方法、添加字段，也不能形成 monkey-patching 系统。
-
-## Runtime 约束
-
-执行必须有预算。优化必须保留 source diagnostics、GC roots、hot reload
-versioning、reflection permissions 和 host access checks。JIT 是 post-MVP
-backend 目标，不是第一版 interpreter 的要求。
+参见 [English reference](/reference/non-goals-constraints/) 和仓库中的权威目标、架构、进度与删除计划文档。

@@ -29,7 +29,7 @@ pub fn main(state: QuestState) -> i64 {
         .find("Active")
         .expect("schema Active marker should exist");
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -44,8 +44,7 @@ pub fn main(state: QuestState) -> i64 {
                     "fact": {
                         "kind": "enum",
                         "name": "QuestState",
-                        "variant": "Active",
-                        "payload": [{ "kind": "primitive", "name": "i64" }]
+                        "variant": "Active"
                     },
                     "sourceSpan": {
                         "source": schema_record.source_id().get(),
@@ -200,7 +199,7 @@ pub fn main() -> i64 {
 }";
     let rewards_text = "\
 pub const BASE_REWARD = 4
-pub extern state reward_scale: i64;";
+pub state reward_scale: i64 = 1;";
     let databases = databases_for(vec![
         SourceFileSnapshot::new(main.clone(), main_text),
         SourceFileSnapshot::new(rewards.clone(), rewards_text),

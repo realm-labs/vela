@@ -189,7 +189,6 @@ pub struct SyntaxStateItem {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SyntaxStateStorage {
     Vm,
-    Extern,
 }
 
 impl SyntaxStateItem {
@@ -209,17 +208,8 @@ impl SyntaxStateItem {
     }
 
     #[must_use]
-    pub fn extern_token(&self) -> Option<SyntaxToken> {
-        token(&self.syntax, SyntaxKind::ExternKw)
-    }
-
-    #[must_use]
     pub fn storage(&self) -> SyntaxStateStorage {
-        if self.extern_token().is_some() {
-            SyntaxStateStorage::Extern
-        } else {
-            SyntaxStateStorage::Vm
-        }
+        SyntaxStateStorage::Vm
     }
 
     #[must_use]

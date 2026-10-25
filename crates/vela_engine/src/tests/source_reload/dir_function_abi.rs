@@ -13,17 +13,9 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -32,13 +24,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir required parameter rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -62,13 +48,7 @@ fn runtime_stages_dir_required_parameter_rejection_until_safe_point() {
     assert_eq!(function, "game::reward::grant");
     assert_eq!(added, &vec!["amount".to_owned()]);
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -119,17 +99,9 @@ fn runtime_stages_dir_script_function_access_rejection_until_safe_point() {
         .expect("initial hot reload dir compile");
     let mut runtime =
         Runtime::from_hot_reload_version(engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -155,13 +127,7 @@ fn grant() {
         .stage_reload(crate::runtime::ReloadSource::directory(&root))
         .expect("dir script function access ABI rejection should be staged");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 
@@ -175,13 +141,7 @@ fn grant() {
     assert_eq!(report.errors[0].code, "reload.function.access_changed");
     assert_changed_function_access_rejection(&report, "game::reward::grant");
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
@@ -383,17 +343,9 @@ pub fn grant() {
         .expect("new engine should build");
     let mut runtime =
         Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let mut adapter = MockStateAdapter::new();
-    let mut tx = HostAccess::new();
 
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
     );
 
@@ -418,124 +370,8 @@ pub fn grant() {
     assert!(report.accepted);
     assert!(report.errors.is_empty());
     assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
+        runtime.call_raw("game::main::main", &[], CallOptions::unbounded()),
         Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(5)))
-    );
-}
-
-#[test]
-fn runtime_stages_dir_method_stable_id_rename_until_safe_point() {
-    let root = unique_test_dir("runtime_stage_dir_method_stable_id_rename");
-    let game_dir = root.join("game");
-    std::fs::create_dir_all(&game_dir).expect("create module dir");
-    std::fs::write(
-        game_dir.join("main.vela"),
-        r#"
-use game::reward::grant
-
-fn main(player: Player) {
-    return grant(player);
-}
-"#,
-    )
-    .expect("write main module");
-    let reward_file = game_dir.join("reward.vela");
-    std::fs::write(
-        &reward_file,
-        r#"
-pub fn grant(player: Player) {
-    player.grant_exp(7);
-    return 1;
-}
-"#,
-    )
-    .expect("write old method reward module");
-    let method = HostMethodId::new(9);
-    let old_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(method, "grant_exp")),
-        )
-        .build()
-        .expect("old engine should build");
-    let initial = old_engine
-        .compile_hot_reload_initial_dir(&root)
-        .expect("initial hot reload dir compile");
-    let new_engine = Engine::builder()
-        .execution_profile(ExecutionProfile::trusted())
-        .register_type_desc(
-            player_type(TypeId::new(1), HostTypeId::new(1))
-                .method(MethodDesc::new(method, "award_exp")),
-        )
-        .build()
-        .expect("new engine should build");
-    let mut runtime =
-        Runtime::from_hot_reload_version(new_engine, initial).expect("runtime should initialize");
-    let host_ref = HostRef::new(HostTypeId::new(1), HostObjectId::new(42), 1);
-    let mut adapter = MockStateAdapter::new();
-
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-
-    std::fs::write(
-        &reward_file,
-        r#"
-pub fn grant(player: Player) {
-    player.award_exp(7);
-    return 2;
-}
-"#,
-    )
-    .expect("write renamed method reward module");
-    runtime
-        .stage_reload(crate::runtime::ReloadSource::directory(&root))
-        .expect("dir method stable-ID rename should be staged");
-
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(1)))
-    );
-
-    let report = runtime
-        .activate_reload()
-        .expect("check reload at safe point")
-        .expect("staged dir method stable-ID rename report");
-
-    assert!(report.accepted);
-    assert!(report.errors.is_empty());
-    let mut tx = HostAccess::new();
-    assert_eq!(
-        runtime.call_raw(
-            "game::main::main",
-            &[OwnedValue::HostRef(host_ref)],
-            CallOptions::unbounded(),
-            &mut adapter,
-            &mut tx
-        ),
-        Ok(OwnedValue::Scalar(vela_common::ScalarValue::I64(2)))
     );
 }
 
@@ -543,8 +379,8 @@ pub fn grant(player: Player) {
 fn runtime_stages_dir_method_effect_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_effect",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
+        MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_read()),
+        MethodDesc::new(MethodId::new(9), "grant_exp").effects(MethodEffectSet::host_write()),
         "reload.method.effects_changed",
     );
 
@@ -571,9 +407,9 @@ fn runtime_stages_dir_method_effect_rejection_until_safe_point() {
 fn runtime_stages_dir_method_access_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_access",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .access(MethodAccess::new().reflect_callable(true)),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .access(MethodAccess::new().reflect_callable(false)),
         "reload.method.access_changed",
     );
@@ -599,9 +435,9 @@ fn runtime_stages_dir_method_access_rejection_until_safe_point() {
 fn runtime_stages_dir_method_parameter_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_parameter",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .param(MethodParamDesc::new("amount").type_hint("i64")),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp")
+        MethodDesc::new(MethodId::new(9), "grant_exp")
             .param(MethodParamDesc::new("amount").type_hint("f64")),
         "reload.method.parameter_abi_changed",
     );
@@ -631,8 +467,8 @@ fn runtime_stages_dir_method_parameter_rejection_until_safe_point() {
 fn runtime_stages_dir_method_return_rejection_until_safe_point() {
     let kind = dir_method_rejection_kind(
         "runtime_stage_dir_method_return",
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("i64"),
-        MethodDesc::new(HostMethodId::new(9), "grant_exp").return_type("()"),
+        MethodDesc::new(MethodId::new(9), "grant_exp").return_type("i64"),
+        MethodDesc::new(MethodId::new(9), "grant_exp").return_type("()"),
         "reload.method.return_abi_changed",
     );
 

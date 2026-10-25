@@ -2,9 +2,9 @@ use std::fmt::{self, Write};
 
 use crate::{
     MirAggregate, MirCall, MirDynamicArgument, MirEffect, MirEvaluatedConstant, MirFormatPart,
-    MirFunction, MirFunctionOwner, MirHostOperation, MirImmediate, MirIndexOperation,
-    MirIteratorOperation, MirOperand, MirPatternPredicate, MirProgram, MirReflectionOperation,
-    MirRvalue, MirScriptArgument, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatement,
+    MirFunction, MirFunctionOwner, MirImmediate, MirIndexOperation, MirIteratorOperation,
+    MirOperand, MirPatternPredicate, MirProgram, MirReflectionOperation, MirRvalue,
+    MirScriptArgument, MirSourceNode, MirSourceOrigin, MirStateOperation, MirStatement,
     MirStatementKind, MirTerminator, MirTerminatorKind,
 };
 
@@ -312,7 +312,7 @@ fn write_statement(formatter: &mut fmt::Formatter<'_>, statement: &MirStatement)
             operand_text(end)
         )?,
         MirStatementKind::Call(call) => write_call(formatter, call)?,
-        MirStatementKind::Host(operation) => write_host(formatter, operation)?,
+
         MirStatementKind::Reflect(operation) => write_reflection(formatter, operation)?,
         MirStatementKind::GuardTrap { value, guard } => {
             write!(formatter, "guard.trap {} with {guard}", operand_text(value))?;
@@ -375,9 +375,6 @@ fn write_state(formatter: &mut fmt::Formatter<'_>, operation: &MirStateOperation
                 state.get(),
                 operand_text(value)
             )
-        }
-        MirStateOperation::ReadExternState { state } => {
-            write!(formatter, "extern-state.read #{}", state.get())
         }
     }
 }
@@ -637,73 +634,6 @@ fn write_operand_values(
     Ok(())
 }
 
-fn write_host(formatter: &mut fmt::Formatter<'_>, operation: &MirHostOperation) -> fmt::Result {
-    match operation {
-        MirHostOperation::ReleaseBorrowLease { root } => write!(
-            formatter,
-            "host.release_borrow_lease {}",
-            operand_text(root)
-        ),
-        MirHostOperation::TryReleaseBorrowLease { root } => write!(
-            formatter,
-            "host.try_release_borrow_lease {}",
-            operand_text(root)
-        ),
-        MirHostOperation::Read { root, path } => write!(
-            formatter,
-            "host.read {} type#{} path={:?}",
-            operand_text(root),
-            path.root_type.runtime.get(),
-            path.segments
-        ),
-        MirHostOperation::Write { root, path, value } => write!(
-            formatter,
-            "host.write {} type#{} path={:?}, {}",
-            operand_text(root),
-            path.root_type.runtime.get(),
-            path.segments,
-            operand_text(value)
-        ),
-        MirHostOperation::Mutate {
-            root,
-            path,
-            operation,
-            value,
-        } => write!(
-            formatter,
-            "host.mutate.{operation:?} {} type#{} path={:?} value={}",
-            operand_text(root),
-            path.root_type.runtime.get(),
-            path.segments,
-            operand_text(value)
-        ),
-        MirHostOperation::Remove { root, path } => write!(
-            formatter,
-            "host.remove {} type#{} path={:?}",
-            operand_text(root),
-            path.root_type.runtime.get(),
-            path.segments
-        ),
-        MirHostOperation::Call {
-            root,
-            path,
-            target,
-            arguments,
-        } => {
-            write!(
-                formatter,
-                "host.call {} type#{} path={:?} method#{}(",
-                operand_text(root),
-                path.root_type.runtime.get(),
-                path.segments,
-                target.runtime.get()
-            )?;
-            write_operand_values(formatter, arguments)?;
-            formatter.write_char(')')
-        }
-    }
-}
-
 fn write_reflection(
     formatter: &mut fmt::Formatter<'_>,
     operation: &MirReflectionOperation,
@@ -757,14 +687,9 @@ fn write_iterator(
     operation: &MirIteratorOperation,
 ) -> fmt::Result {
     match operation {
-        MirIteratorOperation::Create {
-            iterable,
-            host_collection,
-        } => {
+        MirIteratorOperation::Create { iterable } => {
             write!(formatter, "iterator.create {}", operand_text(iterable))?;
-            if let Some(host_collection) = host_collection {
-                write!(formatter, " host={host_collection:?}")?;
-            }
+
             Ok(())
         }
     }
@@ -972,9 +897,6 @@ fn effect(effect: MirEffect) -> String {
         ("script-call", effect.script_call),
         ("dynamic-call", effect.dynamic_call),
         ("state-read", effect.state_read),
-        ("host-read", effect.host_read),
-        ("host-write", effect.host_write),
-        ("host-call", effect.host_call),
         ("reflect-read", effect.reflection_read),
         ("reflect-write", effect.reflection_write),
         ("reflect-call", effect.reflection_call),
@@ -983,6 +905,8 @@ fn effect(effect: MirEffect) -> String {
         ("random", effect.uses_random),
         ("io-read", effect.reads_io),
         ("io-write", effect.writes_io),
+        ("host-read", effect.host_read),
+        ("host-write", effect.host_write),
     ] {
         if enabled {
             names.push(name);

@@ -13,9 +13,6 @@ reflection policy、capability 默认值、standard natives 和 hot-reload polic
 
 ```rust
 let engine = Engine::builder()
-    .capability(Capability::HostRead)
-    .capability(Capability::HostWrite)
-    .register_script_host::<Player>()
     .register_typed_native_fn::<(i64, i64), _>(
         NativeFunctionDesc::new("game::bonus", NativeFunctionId::new(10_001))
             .param("amount", TypeHint::i64())
@@ -33,12 +30,12 @@ Builder API 保持显式，这样 schemas、effects 和 reflection metadata 都�
 ## Runtime
 
 `Runtime` 拥有一个 program image 的执行状态。它是可变的，因为一次调用
-可能分配脚本值、更新 VM state、访问 extern state、填充 inline caches、应用热更新，并通过
+可能分配脚本值、更新 VM state、填充 inline caches、应用热更新，并通过
 调用参数或 adapter 修改宿主状态。
 
 ```rust
 let program = engine.compile_source(source)?;
-let mut runtime = Runtime::new(engine, program);
+let mut runtime = Runtime::new(engine, program)?;
 let entry = runtime.entry("handle_tick")?;
 let value = runtime.call(&entry, CallArgs::new(), CallOptions::unbounded())?;
 let owned = runtime.value_to_owned(&value)?;

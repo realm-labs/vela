@@ -10,6 +10,7 @@ fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
     let first = cached_state_lambda("first", "main::first", StateSlot::new(0));
     let second = cached_state_lambda("second", "main::second", StateSlot::new(1));
     let mut main = UnlinkedCodeObject::new("main", 2);
+    main.stable_function = Some(vela_def::FunctionId::new(1));
     main.nested_functions = vec![first, second];
     main.push_instruction(UnlinkedInstruction::new(
         UnlinkedInstructionKind::MakeClosure {
@@ -31,8 +32,8 @@ fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
 
     let mut program = UnlinkedProgram::new();
     program.set_states([
-        crate::StateDescriptor::test_extern(vela_def::StateId::new(1), "main::first"),
-        crate::StateDescriptor::test_extern(vela_def::StateId::new(2), "main::second"),
+        crate::StateDescriptor::test_vm(vela_def::StateId::new(1), "main::first"),
+        crate::StateDescriptor::test_vm(vela_def::StateId::new(2), "main::second"),
     ]);
     program.insert_function(main);
     let artifact = Linker::new()
@@ -54,9 +55,9 @@ fn nested_local_cache_zero_sites_receive_distinct_generation_ids() {
 
 fn cached_state_lambda(name: &str, state: &str, slot: StateSlot) -> UnlinkedCodeObject {
     let mut code = UnlinkedCodeObject::new(name, 1);
-    let site = code.push_cache_site(CacheSiteKind::ExternStateRead, InstructionOffset(0));
+    let site = code.push_cache_site(CacheSiteKind::StateRead, InstructionOffset(0));
     code.push_instruction(UnlinkedInstruction::new(
-        UnlinkedInstructionKind::LoadExternState {
+        UnlinkedInstructionKind::LoadState {
             dst: Register(0),
             state: state.to_owned(),
             slot: Some(slot),

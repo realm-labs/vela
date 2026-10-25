@@ -1,44 +1,18 @@
 ---
 title: "Engine API Reference"
-description: "A high-level reference for the Rust embedding API."
+description: "The synchronous, script-owned Vela boundary."
 ---
 
-The Rust API is the primary embedding surface. This page is a stable overview,
-not a generated API reference. Consult crate docs and source for exact
-signatures while the project is pre-release.
+The Rust API is the primary embedding surface. Consult the current crate documentation for exact signatures.
 
-## Engine Builder
-
-`Engine::builder()` configures host types, native functions, standard natives,
-capabilities, reflection policy, compiler options, and hot reload policy.
+`Engine::builder()` configures independent native/value registrations, standard natives, capabilities and compiler options. An Engine compiles source, files and ordinary packages. A `Runtime` owns script execution and state.
 
 ```rust
-let engine = Engine::builder()
-    .with_standard_natives()
-    .capability(Capability::Time)
-    .build()?;
-```
-
-## Compilation And Runtime
-
-Engines compile files, source strings, modules, program images, and hot reload
-versions. A `Runtime` owns execution state and calls script entries with
-`CallArgs` and `CallOptions`.
-
-```rust
-let program = engine.compile_file(path)?;
-let mut runtime = Runtime::new(engine, program);
+let engine = Engine::builder().with_standard_natives().build()?;
+let program = engine.compile_source("fn main() -> i64 { return 7; }")?;
+let mut runtime = Runtime::new(engine, program)?;
 let value = runtime.call("main", CallArgs::new(), CallOptions::new(10_000, 1024 * 1024, 64))?;
+let result: i64 = runtime.from_value(&value)?;
 ```
 
-## Host Boundary
-
-Host state is registered through schemas, host refs, native functions, and
-adapters. Scripts never receive Rust `&mut T`; mutation is represented through
-`HostRef`, `HostPath`, `PathProxy`, `HostAccess`, and `ScriptStateAdapter`.
-
-## Values And Handles
-
-Embedding code can use owned values for detached snapshots and runtime-managed
-value handles for same-runtime reuse. Host capabilities and execution budgets
-should be configured explicitly for production runtimes.
+Value conversion and serde snapshots produce script-owned data, with no implicit Rust write-back. Ordinary VM state and exact-generation script reload remain. Borrowed host bindings, Host methods/constructors, transparent paths, extern state and script async/tasks are removed. No replacement object API is introduced.

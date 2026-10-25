@@ -1,4 +1,4 @@
-//! Unified Rust type registration and its sealed Engine snapshot.
+//! Owned Rust value registration and its sealed Engine snapshot.
 
 use std::any::{Any, TypeId as RustTypeId};
 use std::collections::{BTreeMap, HashMap};
@@ -6,44 +6,21 @@ use std::marker::PhantomData;
 use std::sync::Arc;
 
 use vela_common::{
-    CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation,
-    HostConstructionLifetime, InteropBindingContract, InteropRepresentation, InteropTypeId,
-    ReceiverCapabilities, ReceiverCapability, StoragePolicy, TypeAbiFingerprint,
-    TypeBindingRegistryChecksum, stable_id,
+    InteropBindingContract, InteropTypeId, TypeAbiFingerprint, TypeBindingRegistryChecksum,
+    stable_id,
 };
 use vela_reflect::registry::{FieldDesc, TypeDesc, TypeKey, TypeKind};
 use vela_reflect::type_binding::TypeBindingDesc;
-
-use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::host_type::HostTypeSpec;
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
-use crate::native::{HostNativeFunctionEntry, NativeFunctionDesc, TypeHint};
-use crate::typed::TypedNativeMethodFunction;
-use crate::{args::FromScriptArg, args::IntoScriptArg};
 use vela_vm::error::VmResult;
 use vela_vm::owned_value::OwnedValue;
 
+use crate::args::{FromScriptArg, IntoScriptArg};
+use crate::error::{EngineError, EngineErrorKind, EngineResult};
+
 #[derive(Clone)]
 pub struct TypeBinding<T: 'static> {
-    spec: HostTypeSpec,
-    storage: StoragePolicy,
-    capabilities: ReceiverCapabilities,
-    collection_views: Option<CollectionViewCapabilities>,
-    value_codec: Option<ValueCodec<T>>,
-    constructors: Vec<TypeConstructorEntry>,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum ConstructorStorage {
-    Value,
-    Host,
-}
-
-#[derive(Clone)]
-struct TypeConstructorEntry {
-    storage: ConstructorStorage,
-    host_lifetime: Option<HostConstructionLifetime>,
-    native: HostNativeFunctionEntry,
+    type_desc: TypeDesc,
+    value_codec: ValueCodec<T>,
 }
 
 impl<T: 'static> TypeBinding<T> {
@@ -56,293 +33,38 @@ impl<T: 'static> TypeBinding<T> {
     }
 
     #[must_use]
-    pub fn value_with_codec(type_desc: TypeDesc, codec: ValueCodec<T>) -> Self {
+    pub const fn value_with_codec(type_desc: TypeDesc, value_codec: ValueCodec<T>) -> Self {
         Self {
-            spec: HostTypeSpec::new(type_desc),
-            storage: StoragePolicy::Value,
-            capabilities: ReceiverCapabilities::OWNED_VALUE,
-            collection_views: None,
-            value_codec: Some(codec),
-            constructors: Vec::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn host(type_desc: TypeDesc) -> Self {
-        Self {
-            spec: HostTypeSpec::new(type_desc),
-            storage: StoragePolicy::Host,
-            capabilities: ReceiverCapabilities::HOST_OBJECT,
-            collection_views: None,
-            value_codec: None,
-            constructors: Vec::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn type_desc(&self) -> &TypeDesc {
-        self.spec.type_desc()
-    }
-
-    #[must_use]
-    pub const fn storage(&self) -> StoragePolicy {
-        self.storage
-    }
-
-    #[must_use]
-    pub const fn capabilities(&self) -> ReceiverCapabilities {
-        self.capabilities
-    }
-
-    #[must_use]
-    pub const fn collection_views(&self) -> Option<CollectionViewCapabilities> {
-        self.collection_views
-    }
-
-    pub fn abi_fingerprint(&self) -> TypeAbiFingerprint {
-        let id = InteropTypeId::from_type_id(self.spec.type_desc().key.id);
-        let constructors = self
-            .constructors
-            .iter()
-            .map(|entry| TypeConstructorRegistration {
-                storage: entry.storage,
-                host_lifetime: entry.host_lifetime,
-                desc: entry.native.desc.clone(),
-            })
-            .collect::<Vec<_>>();
-        type_abi_fingerprint(
-            id,
-            self.storage,
-            self.capabilities,
-            self.collection_views,
-            &constructors,
-            self.spec.type_desc(),
-        )
-    }
-
-    /// Describes one supported use of this exact binding in callable ABI.
-    ///
-    /// `None` means the requested representation was not advertised by the
-    /// binding. Generated adapters use this to fail registration rather than
-    /// silently degrading a borrowed collection to an owned value contract.
-    #[must_use]
-    pub fn interop_contract(
-        &self,
-        representation: InteropRepresentation,
-    ) -> Option<InteropBindingContract> {
-        let supported = match representation {
-            InteropRepresentation::Owned => self.capabilities.contains(ReceiverCapability::Owned),
-            InteropRepresentation::StorageDirectedShared => match self.storage {
-                StoragePolicy::Value => self.capabilities.contains(ReceiverCapability::Owned),
-                StoragePolicy::Host => {
-                    self.collection_views.is_none()
-                        && self.capabilities.contains(ReceiverCapability::Shared)
-                }
-            },
-            InteropRepresentation::SharedHost => {
-                self.collection_views.is_none()
-                    && self.capabilities.contains(ReceiverCapability::Shared)
-            }
-            InteropRepresentation::ExclusiveHost => {
-                self.collection_views.is_none()
-                    && self.capabilities.contains(ReceiverCapability::Exclusive)
-            }
-            InteropRepresentation::CollectionView(kind) => self
-                .collection_views
-                .is_some_and(|views| views.kind() == kind),
-            InteropRepresentation::CollectionMut { kind, mutation } => self
-                .collection_views
-                .is_some_and(|views| views.kind() == kind && views.mutation() == Some(mutation)),
-        };
-        supported.then(|| {
-            InteropBindingContract::new(
-                InteropTypeId::from_type_id(self.spec.type_desc().key.id),
-                representation,
-                self.abi_fingerprint(),
-            )
-        })
-    }
-
-    #[must_use]
-    pub const fn receiver_capabilities(mut self, capabilities: ReceiverCapabilities) -> Self {
-        self.capabilities = capabilities;
-        self
-    }
-
-    /// Advertises the HostRef-backed borrowed collection representations for
-    /// this binding without creating another Rust or Vela type identity.
-    #[must_use]
-    pub const fn collection_view_capabilities(
-        mut self,
-        capabilities: CollectionViewCapabilities,
-    ) -> Self {
-        self.collection_views = Some(capabilities);
-        self
-    }
-
-    #[must_use]
-    pub fn method_desc(mut self, desc: NativeMethodDesc) -> Self {
-        self.spec = self.spec.method_desc(desc);
-        self
-    }
-
-    /// Registers a constructor owned by this binding.
-    ///
-    /// The callable is published through the ordinary native-function
-    /// registry. Its qualified name must be directly below the bound type,
-    /// for example `host::Widget::new`, and its declared return type must be
-    /// this exact Value binding.
-    #[must_use]
-    pub fn constructor_fn(
-        mut self,
-        desc: NativeFunctionDesc,
-        function: impl for<'host> Fn(
-            &[OwnedValue],
-            &mut vela_vm::HostExecution<'host>,
-        ) -> VmResult<OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
-        self.constructors.push(TypeConstructorEntry {
-            storage: ConstructorStorage::Value,
-            host_lifetime: None,
-            native: HostNativeFunctionEntry::new(desc, function),
-        });
-        self
-    }
-
-    /// Registers a factory that transfers its Rust result into host storage
-    /// with an explicit lifetime and returns only a `HostRef` to Vela.
-    #[must_use]
-    pub fn host_constructor_fn(
-        mut self,
-        lifetime: HostConstructionLifetime,
-        desc: NativeFunctionDesc,
-        factory: impl for<'host> Fn(&[OwnedValue], &mut vela_vm::HostExecution<'host>) -> VmResult<T>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self
-    where
-        T: vela_host::object::ScriptHostObject + Send + Sync,
-    {
-        let expected_type = self.spec.type_desc().host_type_id;
-        self.capabilities = self.capabilities.with(ReceiverCapability::Construct);
-        self.constructors.push(TypeConstructorEntry {
-            storage: ConstructorStorage::Host,
-            host_lifetime: Some(lifetime),
-            native: HostNativeFunctionEntry::new(desc, move |args, host| {
-                let object = factory(args, host)?;
-                let actual = object.host_type_id();
-                let expected = expected_type
-                    .expect("host constructor executes only after its Host TypeBinding seals");
-                if actual != expected {
-                    return Err(vela_host::error::HostError {
-                        kind: vela_host::error::HostErrorKind::TypeMismatch { expected, actual },
-                        source_span: None,
-                    }
-                    .into());
-                }
-                let root = match lifetime {
-                    HostConstructionLifetime::CallScoped => {
-                        host.adapter.retain_call_scoped_host(Box::new(object))?
-                    }
-                    HostConstructionLifetime::RuntimeOwned => {
-                        host.adapter.retain_owned_host(Box::new(object))?
-                    }
-                };
-                Ok(OwnedValue::HostRef(root))
-            }),
-        });
-        self
-    }
-
-    #[must_use]
-    pub fn native_method_fn(
-        mut self,
-        desc: NativeMethodDesc,
-        function: impl for<'host> Fn(
-            &vela_host::path::HostPath,
-            &[vela_vm::owned_value::OwnedValue],
-            &mut vela_vm::HostExecution<'host>,
-        )
-            -> vela_vm::error::VmResult<vela_vm::owned_value::OwnedValue>
-        + Send
-        + Sync
-        + 'static,
-    ) -> Self {
-        self.spec = self.spec.native_method_fn(desc, function);
-        self
-    }
-
-    #[must_use]
-    pub fn typed_native_method_fn<Args, F>(self, desc: NativeMethodDesc, function: F) -> Self
-    where
-        F: TypedNativeMethodFunction<Args>,
-    {
-        self.native_method_fn(desc, move |receiver, args, host| {
-            function.call_method(receiver, args, host)
-        })
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_host_method_desc(self, desc: NativeMethodDesc) -> Self {
-        self.method_desc(desc)
-    }
-
-    #[doc(hidden)]
-    #[must_use]
-    pub fn register_typed_native_method_fn<Args, F>(
-        self,
-        desc: NativeMethodDesc,
-        function: F,
-    ) -> Self
-    where
-        F: TypedNativeMethodFunction<Args>,
-    {
-        self.typed_native_method_fn(desc, function)
-    }
-
-    pub(crate) fn into_parts(
-        self,
-    ) -> (
-        TypeBindingRegistration,
-        TypeDesc,
-        Vec<NativeMethodDesc>,
-        Vec<NativeMethodEntry>,
-        Vec<HostNativeFunctionEntry>,
-    ) {
-        let storage = self.storage;
-        let capabilities = self.capabilities;
-        let collection_views = self.collection_views;
-        let constructors = self.constructors;
-        let (type_desc, method_metadata, native_methods) = self.spec.into_parts();
-        let registration = TypeBindingRegistration {
-            key: type_desc.key.clone(),
-            storage,
-            capabilities,
-            collection_views,
-            rust_type_id: None,
-            value_codec: self.value_codec.map(ErasedValueCodec::new),
-            constructors: constructors
-                .iter()
-                .map(|entry| TypeConstructorRegistration {
-                    storage: entry.storage,
-                    host_lifetime: entry.host_lifetime,
-                    desc: entry.native.desc.clone(),
-                })
-                .collect(),
-        };
-        (
-            registration,
             type_desc,
-            method_metadata,
-            native_methods,
-            constructors.into_iter().map(|entry| entry.native).collect(),
+            value_codec,
+        }
+    }
+
+    #[must_use]
+    pub const fn type_desc(&self) -> &TypeDesc {
+        &self.type_desc
+    }
+
+    #[must_use]
+    pub fn abi_fingerprint(&self) -> TypeAbiFingerprint {
+        type_abi_fingerprint(&self.type_desc)
+    }
+
+    #[must_use]
+    pub fn interop_contract(&self) -> InteropBindingContract {
+        InteropBindingContract::new(
+            InteropTypeId::from_type_id(self.type_desc.key.id),
+            self.abi_fingerprint(),
         )
+    }
+
+    pub(crate) fn into_parts(self) -> (TypeBindingRegistration, TypeDesc) {
+        let registration = TypeBindingRegistration {
+            rust_type_id: None,
+            key: self.type_desc.key.clone(),
+            value_codec: ErasedValueCodec::new(self.value_codec),
+        };
+        (registration, self.type_desc)
     }
 }
 
@@ -361,43 +83,33 @@ impl<T> ValueCodec<T> {
             marker: PhantomData,
         }
     }
-
     #[must_use]
     pub fn encode(self, value: T) -> OwnedValue {
         (self.encode)(value)
     }
-
     pub fn decode(self, value: &OwnedValue) -> VmResult<T> {
         (self.decode)(value)
     }
 }
-
-impl<T> ValueCodec<T>
-where
-    T: IntoScriptArg + FromScriptArg,
-{
+impl<T: IntoScriptArg + FromScriptArg> ValueCodec<T> {
     #[must_use]
     pub const fn structural() -> Self {
         Self::new(T::into_script_arg, T::from_script_arg)
     }
 }
-
 impl<T> Clone for ValueCodec<T> {
     fn clone(&self) -> Self {
         *self
     }
 }
-
 impl<T> Copy for ValueCodec<T> {}
 
 #[derive(Clone)]
 struct ErasedValueCodec(Arc<dyn Any + Send + Sync>);
-
 impl ErasedValueCodec {
     fn new<T: 'static>(codec: ValueCodec<T>) -> Self {
         Self(Arc::new(codec))
     }
-
     fn get<T: 'static>(&self) -> Option<ValueCodec<T>> {
         self.0.downcast_ref::<ValueCodec<T>>().copied()
     }
@@ -407,35 +119,11 @@ impl ErasedValueCodec {
 pub(crate) struct TypeBindingRegistration {
     rust_type_id: Option<RustTypeId>,
     key: TypeKey,
-    storage: StoragePolicy,
-    capabilities: ReceiverCapabilities,
-    collection_views: Option<CollectionViewCapabilities>,
-    value_codec: Option<ErasedValueCodec>,
-    constructors: Vec<TypeConstructorRegistration>,
+    value_codec: ErasedValueCodec,
 }
-
-#[derive(Clone)]
-struct TypeConstructorRegistration {
-    storage: ConstructorStorage,
-    host_lifetime: Option<HostConstructionLifetime>,
-    desc: NativeFunctionDesc,
-}
-
 impl TypeBindingRegistration {
     pub(crate) fn bind_rust_type<T: 'static>(&mut self) {
         self.rust_type_id = Some(RustTypeId::of::<T>());
-    }
-
-    pub(crate) fn host_contract(key: TypeKey) -> Self {
-        Self {
-            rust_type_id: None,
-            key,
-            storage: StoragePolicy::Host,
-            capabilities: ReceiverCapabilities::HOST_OBJECT,
-            collection_views: None,
-            value_codec: None,
-            constructors: Vec::new(),
-        }
     }
 }
 
@@ -446,7 +134,6 @@ pub struct TypeBindingRegistry {
     value_codecs_by_rust_type: HashMap<RustTypeId, ErasedValueCodec>,
     checksum: TypeBindingRegistryChecksum,
 }
-
 impl TypeBindingRegistry {
     pub(crate) fn seal(
         registrations: Vec<TypeBindingRegistration>,
@@ -463,43 +150,9 @@ impl TypeBindingRegistry {
             let desc = types
                 .get(&registration.key)
                 .copied()
-                .expect("registered type binding descriptor survived type validation");
-            validate_representation(&registration, desc)?;
+                .expect("registered value descriptor survived validation");
             let id = InteropTypeId::from_type_id(registration.key.id);
-            let fingerprint = type_abi_fingerprint(
-                id,
-                registration.storage,
-                registration.capabilities,
-                registration.collection_views,
-                &registration.constructors,
-                desc,
-            );
-            let mut constructor_ids = registration
-                .constructors
-                .iter()
-                .map(|constructor| constructor.desc.id)
-                .collect::<Vec<_>>();
-            constructor_ids.sort_unstable();
-            let mut host_constructors = registration
-                .constructors
-                .iter()
-                .filter_map(|constructor| {
-                    constructor.host_lifetime.map(|lifetime| {
-                        vela_common::HostConstructorBinding::new(constructor.desc.id, lifetime)
-                    })
-                })
-                .collect::<Vec<_>>();
-            host_constructors.sort_unstable();
-            let binding = TypeBindingDesc::new(
-                id,
-                registration.key.clone(),
-                registration.storage,
-                registration.capabilities,
-                registration.collection_views,
-                constructor_ids,
-                fingerprint,
-            )
-            .with_host_constructors(host_constructors);
+            let binding = TypeBindingDesc::new(id, registration.key, type_abi_fingerprint(desc));
             if by_id.insert(id, binding).is_some() {
                 return Err(EngineError::new(EngineErrorKind::DuplicateInteropTypeId {
                     id: id.get(),
@@ -514,9 +167,7 @@ impl TypeBindingRegistry {
                         },
                     ));
                 }
-                if let Some(codec) = registration.value_codec {
-                    value_codecs_by_rust_type.insert(rust_type_id, codec);
-                }
+                value_codecs_by_rust_type.insert(rust_type_id, registration.value_codec);
             }
         }
         let canonical = by_id
@@ -542,167 +193,46 @@ impl TypeBindingRegistry {
             checksum,
         })
     }
-
     #[must_use]
     pub fn get(&self, id: InteropTypeId) -> Option<&TypeBindingDesc> {
         self.by_id.get(&id)
     }
-
     #[must_use]
     pub fn matches_contract(&self, contract: InteropBindingContract) -> bool {
-        self.get(contract.type_id).is_some_and(|binding| {
-            binding.abi_fingerprint == contract.abi_fingerprint
-                && binding.supports_representation(contract.representation)
-        })
+        self.get(contract.type_id)
+            .is_some_and(|binding| binding.abi_fingerprint == contract.abi_fingerprint)
     }
-
     #[must_use]
     pub fn get_for<T: 'static>(&self) -> Option<&TypeBindingDesc> {
-        let id = self.by_rust_type.get(&RustTypeId::of::<T>())?;
-        self.by_id.get(id)
+        self.by_id
+            .get(self.by_rust_type.get(&RustTypeId::of::<T>())?)
     }
-
     #[must_use]
     pub fn value_codec<T: 'static>(&self) -> Option<ValueCodec<T>> {
         self.value_codecs_by_rust_type
             .get(&RustTypeId::of::<T>())?
             .get::<T>()
     }
-
     pub fn iter(&self) -> impl Iterator<Item = &TypeBindingDesc> {
         self.by_id.values()
     }
-
     #[must_use]
     pub const fn checksum(&self) -> TypeBindingRegistryChecksum {
         self.checksum
     }
 }
 
-fn validate_representation(
-    registration: &TypeBindingRegistration,
-    desc: &TypeDesc,
-) -> EngineResult<()> {
-    let valid_storage = match registration.storage {
-        StoragePolicy::Value => desc.host_type_id.is_none() && registration.value_codec.is_some(),
-        StoragePolicy::Host => {
-            desc.host_type_id.is_some()
-                && (desc.kind == TypeKind::Host || registration.collection_views.is_some())
-                && registration.value_codec.is_none()
-        }
-    };
-    if !valid_storage {
-        return Err(EngineError::new(
-            EngineErrorKind::InvalidTypeBindingStorage {
-                name: desc.key.name.clone(),
-                storage: registration.storage.as_str().to_owned(),
-            },
-        ));
-    }
-    if !registration
-        .capabilities
-        .contains(ReceiverCapability::Owned)
-        || (registration
-            .capabilities
-            .contains(ReceiverCapability::Exclusive)
-            && !registration
-                .capabilities
-                .contains(ReceiverCapability::Shared))
-        || registration
-            .capabilities
-            .contains(ReceiverCapability::Construct)
-            != !registration.constructors.is_empty()
-    {
-        return Err(EngineError::new(
-            EngineErrorKind::InvalidTypeBindingCapabilities {
-                name: desc.key.name.clone(),
-                bits: registration.capabilities.bits(),
-            },
-        ));
-    }
-    validate_collection_views(registration, desc)?;
-    validate_constructors(registration, desc)?;
-    for method in &desc.methods {
-        let valid = match method.receiver {
-            ReceiverCapability::Owned => registration
-                .capabilities
-                .contains(ReceiverCapability::Owned),
-            ReceiverCapability::Shared => registration
-                .capabilities
-                .contains(ReceiverCapability::Shared),
-            ReceiverCapability::Exclusive => registration
-                .capabilities
-                .contains(ReceiverCapability::Exclusive),
-            ReceiverCapability::Construct => false,
-        };
-        if !valid {
-            return Err(EngineError::new(
-                EngineErrorKind::InvalidTypeBindingMethodReceiver {
-                    type_name: desc.key.name.clone(),
-                    method: method.name.clone(),
-                    receiver: method.receiver.as_str().to_owned(),
-                },
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn type_abi_fingerprint(
-    id: InteropTypeId,
-    storage: StoragePolicy,
-    capabilities: ReceiverCapabilities,
-    collection_views: Option<CollectionViewCapabilities>,
-    constructors: &[TypeConstructorRegistration],
-    desc: &TypeDesc,
-) -> TypeAbiFingerprint {
+fn type_abi_fingerprint(desc: &TypeDesc) -> TypeAbiFingerprint {
     let mut parts = vec![
-        format!("id={:032x}", id.get()),
+        format!("id={:032x}", desc.key.id.get()),
         format!("path={}", desc.key.name),
-        format!("storage={}", storage.as_str()),
-        format!("capabilities={:02x}", capabilities.bits()),
         format!("kind={}", type_kind_name(desc.kind)),
         format!(
             "schema={:016x}",
             desc.schema_hash
                 .map_or(0, vela_reflect::registry::SchemaHash::get)
         ),
-        format!(
-            "host={:016x}",
-            desc.host_type_id.map_or(0, vela_common::HostTypeId::get)
-        ),
     ];
-    if let Some(views) = collection_views {
-        parts.push(format!(
-            "collection-view={}:{}",
-            views.kind().as_str(),
-            views
-                .mutation()
-                .map_or("read-only", CollectionViewMutation::as_str)
-        ));
-    }
-    let mut constructors = constructors.iter().collect::<Vec<_>>();
-    constructors.sort_by_key(|constructor| constructor.desc.id);
-    for constructor in constructors {
-        parts.push(constructor_abi(&constructor.desc));
-        if let Some(lifetime) = constructor.host_lifetime {
-            parts.push(format!("constructor-host-lifetime={}", lifetime.as_str()));
-        }
-        parts.extend(
-            constructor
-                .desc
-                .params
-                .iter()
-                .enumerate()
-                .map(|(index, param)| {
-                    format!(
-                        "constructor-param={index}:{}:{}",
-                        param.name,
-                        crate::metadata::type_hint_display(&param.hint)
-                    )
-                }),
-        );
-    }
     let mut fields = desc.fields.iter().collect::<Vec<_>>();
     fields.sort_by_key(|field| field.id);
     parts.extend(fields.into_iter().map(field_abi));
@@ -716,16 +246,12 @@ fn type_abi_fingerprint(
     methods.sort_by_key(|method| method.id);
     for method in methods {
         parts.push(format!(
-            "method={:032x}:{}:{}:{}:{}:{}:{}",
+            "method={:032x}:{}:{}:{}:{}",
             method.id.get(),
             method.name,
-            method.receiver.as_str(),
             method.access.public,
             method_effect_bits(&method.effects),
-            method.return_type.as_deref().unwrap_or(""),
-            method
-                .return_collection_mutation
-                .map_or("read-only", CollectionViewMutation::as_str)
+            method.return_type.as_deref().unwrap_or("")
         ));
         parts.extend(method.params.iter().enumerate().map(|(index, param)| {
             format!(
@@ -776,175 +302,7 @@ fn type_abi_fingerprint(
             }));
         }
     }
-    if let Some(index) = &desc.index_capability {
-        parts.push(format!(
-            "index={}:{}:{}:{}:{}:{}",
-            index.readable,
-            index.writable,
-            index.addable,
-            index.removable,
-            index.key_type.as_deref().unwrap_or(""),
-            index.value_type.as_deref().unwrap_or("")
-        ));
-    }
     TypeAbiFingerprint::new(stable_id("vela_type_binding_abi_v1", "", &parts.join("|")))
-}
-
-fn validate_collection_views(
-    registration: &TypeBindingRegistration,
-    desc: &TypeDesc,
-) -> EngineResult<()> {
-    let Some(views) = registration.collection_views else {
-        return Ok(());
-    };
-    let kind_matches = matches!(
-        (views.kind(), desc.kind),
-        (CollectionViewKind::Array, TypeKind::Array | TypeKind::Bytes)
-            | (CollectionViewKind::Map, TypeKind::Map)
-            | (CollectionViewKind::Set, TypeKind::Set)
-    );
-    if !kind_matches {
-        return Err(invalid_collection_views(
-            desc,
-            "view kind does not match the registered value kind",
-        ));
-    }
-    if !registration
-        .capabilities
-        .contains(ReceiverCapability::Shared)
-    {
-        return Err(invalid_collection_views(
-            desc,
-            "a collection view requires shared receiver capability",
-        ));
-    }
-    if views.mutation().is_some()
-        && !registration
-            .capabilities
-            .contains(ReceiverCapability::Exclusive)
-    {
-        return Err(invalid_collection_views(
-            desc,
-            "a mutable collection view requires exclusive receiver capability",
-        ));
-    }
-    if views.mutation() == Some(CollectionViewMutation::Fixed)
-        && views.kind() != CollectionViewKind::Array
-    {
-        return Err(invalid_collection_views(
-            desc,
-            "fixed-length mutation is supported only for array views",
-        ));
-    }
-    Ok(())
-}
-
-fn invalid_collection_views(desc: &TypeDesc, reason: &'static str) -> EngineError {
-    EngineError::new(EngineErrorKind::InvalidTypeBindingCollectionView {
-        name: desc.key.name.clone(),
-        reason,
-    })
-}
-
-fn validate_constructors(
-    registration: &TypeBindingRegistration,
-    desc: &TypeDesc,
-) -> EngineResult<()> {
-    for constructor in &registration.constructors {
-        let constructor_desc = &constructor.desc;
-        let valid_owner = constructor_desc
-            .name
-            .rsplit_once("::")
-            .is_some_and(|(owner, name)| {
-                owner == desc.key.name && !name.is_empty() && !name.contains("::")
-            });
-        if !valid_owner {
-            return Err(invalid_constructor(
-                desc,
-                constructor_desc,
-                "qualified name is not directly owned by the bound type",
-            ));
-        }
-
-        let expected = match (registration.storage, constructor.storage, desc.kind) {
-            (StoragePolicy::Value, ConstructorStorage::Value, TypeKind::ScriptStruct) => {
-                TypeHint::Record(desc.key.clone())
-            }
-            (StoragePolicy::Value, ConstructorStorage::Value, TypeKind::ScriptEnum) => {
-                TypeHint::Enum(desc.key.clone())
-            }
-            (StoragePolicy::Value, ConstructorStorage::Value, _) => {
-                return Err(invalid_constructor(
-                    desc,
-                    constructor_desc,
-                    "Value constructors require a script struct or enum representation",
-                ));
-            }
-            (StoragePolicy::Host, ConstructorStorage::Host, TypeKind::Host) => {
-                TypeHint::Host(desc.key.clone())
-            }
-            (StoragePolicy::Value, ConstructorStorage::Host, _) => {
-                return Err(invalid_constructor(
-                    desc,
-                    constructor_desc,
-                    "a host factory cannot construct a Value binding",
-                ));
-            }
-            (StoragePolicy::Host, ConstructorStorage::Value, _) => {
-                return Err(invalid_constructor(
-                    desc,
-                    constructor_desc,
-                    "a Host binding requires a host-owned factory",
-                ));
-            }
-            (StoragePolicy::Host, ConstructorStorage::Host, _) => {
-                unreachable!("Host storage validation requires a host type representation")
-            }
-        };
-        match (constructor.storage, constructor.host_lifetime) {
-            (ConstructorStorage::Value, None) | (ConstructorStorage::Host, Some(_)) => {}
-            (ConstructorStorage::Value, Some(_)) | (ConstructorStorage::Host, None) => {
-                return Err(invalid_constructor(
-                    desc,
-                    constructor_desc,
-                    "host constructors require an explicit lifetime",
-                ));
-            }
-        }
-        if constructor_desc.returns != expected {
-            return Err(invalid_constructor(
-                desc,
-                constructor_desc,
-                "declared return type is not the bound type",
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn invalid_constructor(
-    desc: &TypeDesc,
-    constructor: &NativeFunctionDesc,
-    reason: &'static str,
-) -> EngineError {
-    EngineError::new(EngineErrorKind::InvalidTypeBindingConstructor {
-        type_name: desc.key.name.clone(),
-        constructor: constructor.name.clone(),
-        reason,
-    })
-}
-
-fn constructor_abi(constructor: &NativeFunctionDesc) -> String {
-    format!(
-        "constructor={:032x}:{}:{}:{}:{}:{}:{}",
-        constructor.id.get(),
-        constructor.name,
-        constructor.effects.bits(),
-        constructor.access.public,
-        constructor.access.reflect_visible,
-        constructor.access.reflect_callable,
-        crate::metadata::type_hint_display(&constructor.returns)
-    )
 }
 
 fn field_abi(field: &FieldDesc) -> String {
@@ -983,7 +341,6 @@ const fn type_kind_name(kind: TypeKind) -> &'static str {
         TypeKind::Range => "range",
         TypeKind::Function => "function",
         TypeKind::Closure => "closure",
-        TypeKind::Host => "host",
         TypeKind::ScriptStruct => "struct",
         TypeKind::ScriptEnum => "enum",
     }

@@ -80,31 +80,6 @@ pub mod test_support {
         Ordering, ProgramImage, profile_layout, test_mir_binding,
     };
 
-    /// Declares one extern state on a fixture program and returns its slot.
-    ///
-    /// Fixtures that execute `LoadExternState` need a matching declaration,
-    /// because `linked_artifact` verifies every program it wraps.
-    pub fn push_extern_state(
-        program: &mut LinkedProgram,
-        qualified_name: impl Into<String>,
-    ) -> vela_common::StateSlot {
-        let slot = vela_common::StateSlot::new(program.states().len());
-        let id = vela_def::StateId::new(u128::try_from(slot.get()).unwrap_or_default() + 1);
-        program.push_state(crate::LinkedStateDescriptor {
-            id,
-            qualified_name: qualified_name.into(),
-            visibility: crate::StateVisibility::Private,
-            storage: crate::StateStorage::Extern,
-            type_contract: vela_mir::MirTypeContract::Host(vela_mir::HostTypeTarget {
-                semantic: vela_def::TypeId::new(1),
-                runtime: vela_common::HostTypeId::new(1),
-            }),
-            initializer: None,
-            source_span: None,
-        });
-        slot
-    }
-
     #[must_use]
     pub fn linked_artifact(mut program: LinkedProgram) -> Arc<LinkedArtifact> {
         program.set_generation(ExecutableGenerationId::new(
@@ -1006,16 +981,7 @@ fn instruction_matches_budget_class(
                 | InstructionKind::CallMethod { .. }
                 | InstructionKind::CallDynamicMethod { .. }
         ),
-        Class::HostAccess => matches!(
-            kind,
-            InstructionKind::ReleaseBorrowLease { .. }
-                | InstructionKind::TryReleaseBorrowLease { .. }
-                | InstructionKind::HostRead { .. }
-                | InstructionKind::HostWrite { .. }
-                | InstructionKind::HostMutate { .. }
-                | InstructionKind::HostRemove { .. }
-                | InstructionKind::HostCall { .. }
-        ),
+
         Class::Reflection => matches!(kind, InstructionKind::CallNative { .. }),
         Class::Allocation => matches!(
             kind,

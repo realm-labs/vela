@@ -9,7 +9,7 @@ mod result;
 mod set;
 mod string;
 
-use vela_common::HostMethodId;
+use vela_def::MethodId;
 use vela_reflect::registry::{MethodDesc, MethodParamDesc};
 
 pub(crate) use array::array_method_descs;
@@ -112,9 +112,9 @@ fn canonical_type_hint(hint: &'static str) -> &'static str {
     }
 }
 
-fn std_method_host_id(owner: &str, name: &str) -> HostMethodId {
+fn std_method_host_id(owner: &str, name: &str) -> MethodId {
     let Some(id) = vela_stdlib::std_method_id(owner, name) else {
         panic!("missing standard method identity for {owner}::{name}");
     };
-    HostMethodId::new(id.get())
+    MethodId::new(id.get())
 }

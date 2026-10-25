@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
 use vela_bytecode::CacheSiteKind;
-use vela_host::access::HostAccess;
-use vela_host::mock::MockStateAdapter;
 use vela_hot_reload::error::HotReloadErrorKind;
 use vela_vm::owned_value::OwnedValue;
 use vela_vm::value::Value;
@@ -22,10 +20,8 @@ fn call_raw_executes_linked_program_image() {
         CallOptions::unbounded().with_managed_heap(false),
     ] {
         let mut runtime = linked_only_runtime();
-        let mut adapter = MockStateAdapter::new();
-        let mut access = HostAccess::new();
 
-        let result = runtime.call_raw("main", &[], options, &mut adapter, &mut access);
+        let result = runtime.call_raw("main", &[], options);
 
         assert_eq!(
             result,
@@ -105,10 +101,6 @@ fn cached(value) { return value.starts_with("q"); }
     assert!(!Arc::ptr_eq(
         &first.state.vm_states.retained_values,
         &second.state.vm_states.retained_values
-    ));
-    assert!(!std::ptr::eq(
-        &first.state.extern_states,
-        &second.state.extern_states
     ));
     assert_ne!(first.state.id, second.state.id);
 

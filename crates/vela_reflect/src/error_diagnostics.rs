@@ -5,7 +5,6 @@ impl ReflectErrorKind {
     #[must_use]
     pub fn code(&self) -> &'static str {
         match self {
-            Self::UnknownType { .. } => "reflect::unknown_type",
             Self::UnknownTypeName { .. } => "reflect::unknown_type_name",
             Self::UnknownField { .. } => "reflect::unknown_field",
             Self::UnknownMethod { .. } => "reflect::unknown_method",
@@ -27,21 +26,15 @@ impl ReflectErrorKind {
             Self::FunctionPermissionDenied { .. } => "reflect::function_permission_denied",
             Self::FieldPermissionDenied { .. } => "reflect::field_permission_denied",
             Self::LookupBudgetExceeded { .. } => "reflect::lookup_budget_exceeded",
-            Self::FieldNotWritable { .. } => "reflect::field_not_writable",
             Self::FieldNotReflectReadable { .. } => "reflect::field_not_reflect_readable",
             Self::FieldNotReflectWritable { .. } => "reflect::field_not_reflect_writable",
             Self::InvalidTarget => "reflect::invalid_target",
-            Self::InvalidValue => "reflect::invalid_value",
-            Self::Host(_) => "reflect::host_error",
         }
     }
 
     #[must_use]
     pub fn message(&self) -> String {
         match self {
-            Self::UnknownType { host_type_id } => {
-                format!("unknown reflected host type `{}`", host_type_id.get())
-            }
             Self::UnknownTypeName {
                 type_name,
                 candidates,
@@ -140,11 +133,6 @@ impl ReflectErrorKind {
             Self::LookupBudgetExceeded { limit } => {
                 format!("reflection lookup budget exceeded with limit {limit}")
             }
-            Self::FieldNotWritable {
-                type_name, field, ..
-            } => {
-                format!("field `{type_name}.{field}` is not writable")
-            }
             Self::FieldNotReflectReadable {
                 type_name, field, ..
             } => {
@@ -156,8 +144,6 @@ impl ReflectErrorKind {
                 format!("field `{type_name}.{field}` is not reflect-writable")
             }
             Self::InvalidTarget => "invalid reflection target".to_owned(),
-            Self::InvalidValue => "invalid reflection value".to_owned(),
-            Self::Host(message) => format!("host reflection error: {message}"),
         }
     }
 
@@ -226,11 +212,6 @@ impl ReflectErrorKind {
                 field,
                 source_span,
                 ..
-            }
-            | Self::FieldNotWritable {
-                type_name,
-                field,
-                source_span,
             }
             | Self::FieldNotReflectReadable {
                 type_name,

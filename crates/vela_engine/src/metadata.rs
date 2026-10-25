@@ -1,90 +1,21 @@
-use vela_reflect::access::{
-    FunctionAccess as ReflectFunctionAccess, FunctionEffectSet, MethodAccess, MethodEffectSet,
-};
+use vela_reflect::access::{FunctionAccess as ReflectFunctionAccess, FunctionEffectSet};
 use vela_reflect::modules::{DeclOrigin, FunctionDesc, FunctionParamDesc, ModuleDesc};
-use vela_reflect::registry::{MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry};
+use vela_reflect::registry::TypeRegistry;
 
-use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::interop::{BorrowedReturnOrigin, ReturnMode, ScopedHostAccess};
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{
-    ContextHostNativeFunctionEntry, HostNativeFunctionEntry, NativeFunctionDesc,
-    NativeFunctionEntry, TypeHint,
+    ContextHostNativeFunctionEntry, NativeFunctionDesc, NativeFunctionEntry, TypeHint,
 };
-
-pub(crate) fn inject_host_method_metadata(
-    types: &mut [TypeDesc],
-    host_method_metadata: &[NativeMethodDesc],
-    native_methods: &[NativeMethodEntry],
-) -> EngineResult<()> {
-    for desc in host_method_metadata
-        .iter()
-        .chain(native_methods.iter().map(|entry| &entry.desc))
-    {
-        let owner = find_type_mut(types, &desc.owner).ok_or_else(|| {
-            EngineError::new(EngineErrorKind::UnknownNativeMethodOwner {
-                name: desc.owner.name.clone(),
-            })
-        })?;
-        let mut method = MethodDesc::new(desc.id, desc.name.clone())
-            .return_type(type_hint_display(&desc.returns))
-            .effects(reflect_effects(&desc.effects))
-            .receiver(desc.receiver)
-            .access(reflect_access(&desc.access));
-        if let Some(mutation) = type_hint_collection_mutation(&desc.returns) {
-            method = method.return_collection_mutation(mutation);
-        }
-        for param in &desc.params {
-            method = method.param(
-                MethodParamDesc::new(param.name.clone()).type_hint(type_hint_display(&param.hint)),
-            );
-        }
-        if let Some(docs) = &desc.docs {
-            method = method.docs(docs.clone());
-        }
-        for (name, value) in desc.attrs.iter() {
-            method = method.attr(name, value);
-        }
-        if let Some((kind, parent)) = scoped_resource_attrs(desc.callable_contract.as_ref()) {
-            method = method
-                .attr("vela.scoped_resource.kind", kind)
-                .attr("vela.scoped_resource.parent", parent);
-        }
-        if let Some(source_span) = desc.source_span {
-            method = method.source_span(source_span);
-        }
-        owner.methods.push(method);
-    }
-    Ok(())
-}
-
-fn type_hint_collection_mutation(hint: &TypeHint) -> Option<vela_common::CollectionViewMutation> {
-    match hint {
-        TypeHint::ArrayMutOf { mutation, .. }
-        | TypeHint::MapMutOf { mutation, .. }
-        | TypeHint::SetMutOf { mutation, .. } => Some(*mutation),
-        _ => None,
-    }
-}
 
 pub(crate) fn inject_native_function_metadata(
     registry: &mut TypeRegistry,
     native_functions: &[NativeFunctionEntry],
-    scoped_host_native_functions: &[crate::native::ScopedHostNativeFunctionEntry],
-    host_native_functions: &[HostNativeFunctionEntry],
     context_host_native_functions: &[ContextHostNativeFunctionEntry],
 ) {
-    for desc in native_functions
-        .iter()
-        .map(|entry| &entry.desc)
-        .chain(scoped_host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(host_native_functions.iter().map(|entry| &entry.desc))
-        .chain(
-            context_host_native_functions
-                .iter()
-                .map(|entry| &entry.desc),
-        )
-    {
+    for desc in native_functions.iter().map(|entry| &entry.desc).chain(
+        context_host_native_functions
+            .iter()
+            .map(|entry| &entry.desc),
+    ) {
         if let Some(module_name) = native_function_module(&desc.name)
             && registry.module_by_name(&module_name).is_none()
         {
@@ -148,64 +79,16 @@ fn reflect_function(desc: &NativeFunctionDesc) -> FunctionDesc {
     for (name, value) in desc.attrs.iter() {
         reflected = reflected.attr(name, value);
     }
-    if let Some((kind, parent)) = scoped_resource_attrs(desc.callable_contract.as_ref()) {
-        reflected = reflected
-            .attr("vela.scoped_resource.kind", kind)
-            .attr("vela.scoped_resource.parent", parent);
-    }
     if let Some(source_span) = desc.source_span {
         reflected = reflected.source_span(source_span);
     }
     reflected
 }
 
-fn scoped_resource_attrs(
-    contract: Option<&crate::interop::CallableContract>,
-) -> Option<(&'static str, String)> {
-    let ReturnMode::ScopedHost {
-        origin,
-        child_access,
-        ..
-    } = contract?.returns.mode
-    else {
-        return None;
-    };
-    let kind = match child_access {
-        ScopedHostAccess::Shared => "view",
-        ScopedHostAccess::Exclusive => "mut_view",
-    };
-    let parent = match origin {
-        BorrowedReturnOrigin::Receiver => "receiver".to_owned(),
-        BorrowedReturnOrigin::Parameter(index) => format!("parameter:{index}"),
-    };
-    Some((kind, parent))
-}
-
 fn native_function_module(name: &str) -> Option<String> {
     name.rsplit_once("::")
         .map(|(module, _)| module.to_owned())
         .filter(|module| !module.is_empty())
-}
-
-fn reflect_effects(effects: &crate::native::EffectSet) -> MethodEffectSet {
-    MethodEffectSet {
-        reads_host: effects.reads_host(),
-        writes_host: effects.writes_host(),
-        emits_events: effects.emits_events(),
-        reads_time: effects.reads_time(),
-        uses_random: effects.uses_random(),
-        reads_io: effects.reads_io(),
-        writes_io: effects.writes_io(),
-        reads_reflection: effects.reads_reflection(),
-        writes_reflection: effects.writes_reflection(),
-        calls_reflection: effects.calls_reflection(),
-    }
-}
-
-fn reflect_access(access: &crate::native::FunctionAccess) -> MethodAccess {
-    MethodAccess::new()
-        .public(access.public)
-        .reflect_callable(access.reflect_callable)
 }
 
 fn reflect_function_effects(effects: &crate::native::EffectSet) -> FunctionEffectSet {
@@ -238,10 +121,6 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
         TypeHint::Primitive(tag) => tag.name().to_owned(),
         TypeHint::Array => "Array".to_owned(),
         TypeHint::ArrayOf(element) => format!("Array<{}>", type_hint_display(element)),
-        TypeHint::ArrayViewOf(element) => format!("ArrayView<{}>", type_hint_display(element)),
-        TypeHint::ArrayMutOf { element, .. } => {
-            format!("ArrayMut<{}>", type_hint_display(element))
-        }
         TypeHint::Map => "Map".to_owned(),
         TypeHint::MapOf { key, value } => {
             format!(
@@ -250,26 +129,8 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
                 type_hint_display(value)
             )
         }
-        TypeHint::MapViewOf { key, value } => {
-            format!(
-                "MapView<{}, {}>",
-                type_hint_display(key),
-                type_hint_display(value)
-            )
-        }
-        TypeHint::MapMutOf { key, value, .. } => {
-            format!(
-                "MapMut<{}, {}>",
-                type_hint_display(key),
-                type_hint_display(value)
-            )
-        }
         TypeHint::Set => "Set".to_owned(),
         TypeHint::SetOf(element) => format!("Set<{}>", type_hint_display(element)),
-        TypeHint::SetViewOf(element) => format!("SetView<{}>", type_hint_display(element)),
-        TypeHint::SetMutOf { element, .. } => {
-            format!("SetMut<{}>", type_hint_display(element))
-        }
         TypeHint::TupleOf(elements) => format!(
             "({})",
             elements
@@ -288,13 +149,8 @@ pub(crate) fn type_hint_display(hint: &TypeHint) -> String {
                 type_hint_display(err)
             )
         }
-        TypeHint::PathProxy => "path_proxy".to_owned(),
-        TypeHint::Record(key) | TypeHint::Enum(key) | TypeHint::Host(key) => key.name.clone(),
+        TypeHint::Record(key) | TypeHint::Enum(key) => key.name.clone(),
         TypeHint::Trait(name) => name.clone(),
         TypeHint::Function => "Function".to_owned(),
     }
-}
-
-fn find_type_mut<'a>(types: &'a mut [TypeDesc], key: &TypeKey) -> Option<&'a mut TypeDesc> {
-    types.iter_mut().find(|desc| desc.key == *key)
 }

@@ -2,7 +2,7 @@
 //! registry artifact, or signature parser.
 use serde_json::Value;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CollectionViewMutation, PrimitiveTag};
+use vela_common::PrimitiveTag;
 
 pub(super) fn expected(value: &Value) -> TypeFact {
     let name = || value["name"].as_str().expect("authored type name");
@@ -41,35 +41,12 @@ pub(super) fn expected(value: &Value) -> TypeFact {
         "array" => TypeFact::Array {
             element: child("element"),
         },
-        "arrayView" => TypeFact::ArrayView {
-            element: child("element"),
-        },
-        "arrayMut" => TypeFact::ArrayMut {
-            element: child("element"),
-            mutation: CollectionViewMutation::Fixed,
-        },
         "map" => TypeFact::Map {
             key: child("key"),
             value: child("value"),
         },
-        "mapView" => TypeFact::MapView {
-            key: child("key"),
-            value: child("value"),
-        },
-        "mapMut" => TypeFact::MapMut {
-            key: child("key"),
-            value: child("value"),
-            mutation: CollectionViewMutation::Growable,
-        },
         "set" => TypeFact::Set {
             element: child("element"),
-        },
-        "setView" => TypeFact::SetView {
-            element: child("element"),
-        },
-        "setMut" => TypeFact::SetMut {
-            element: child("element"),
-            mutation: CollectionViewMutation::Growable,
         },
         "iterator" => TypeFact::Iterator {
             item: child("item"),
@@ -89,9 +66,6 @@ pub(super) fn expected(value: &Value) -> TypeFact {
             returns: child("returns"),
         },
         "record" => TypeFact::Record {
-            name: name().into(),
-        },
-        "host" => TypeFact::Host {
             name: name().into(),
         },
         "enum" => TypeFact::Enum {

@@ -2,12 +2,12 @@ use vela_def::{DefPath, script_type_path, script_variant_path};
 use vela_registry::Def;
 
 use super::{
-    FunctionId, GuardContext, HostMethodId, HostTargetPlanId, LinkContext, LinkError,
-    LinkedCodeObject, LinkedMethodDispatch, LinkedMethodDispatchKind, LinkedNativeFunction,
-    LinkedType, LinkedVariant, MethodDispatchHandle, MethodDispatchKey, MethodId, NativeHandle,
-    ScriptFunctionHandle, TypeGuard, TypeGuardPlan, TypeHandle, TypeId, VariantHandle, VariantId,
+    FunctionId, GuardContext, LinkContext, LinkError, LinkedCodeObject, LinkedMethodDispatch,
+    LinkedMethodDispatchKind, LinkedNativeFunction, LinkedType, LinkedVariant,
+    MethodDispatchHandle, MethodDispatchKey, MethodId, NativeHandle, ScriptFunctionHandle,
+    TypeGuard, TypeGuardPlan, TypeHandle, TypeId, VariantHandle, VariantId,
 };
-use crate::{UnlinkedCodeObject, UnlinkedTypeGuard, UnlinkedTypeGuardPlan};
+use crate::{UnlinkedTypeGuard, UnlinkedTypeGuardPlan};
 
 impl LinkContext<'_, '_> {
     pub(super) fn resolve_script_function(
@@ -82,14 +82,6 @@ impl LinkContext<'_, '_> {
         self.intern_method_dispatch(key, method.to_owned())
     }
 
-    pub(super) fn link_host_method(&mut self, method_id: HostMethodId) -> MethodDispatchHandle {
-        self.intern_method_dispatch(
-            MethodDispatchKey::Host(method_id),
-            format!("host_method::{}", method_id.get()),
-        )
-        .expect("host method dispatch cannot fail")
-    }
-
     pub(super) fn intern_method_dispatch(
         &mut self,
         key: MethodDispatchKey,
@@ -106,7 +98,6 @@ impl LinkContext<'_, '_> {
                 function,
             },
             MethodDispatchKey::Value(method_id) => LinkedMethodDispatchKind::Value { method_id },
-            MethodDispatchKey::Host(method_id) => LinkedMethodDispatchKind::Host { method_id },
         };
         let handle = self
             .linked
@@ -189,21 +180,6 @@ impl LinkContext<'_, '_> {
             enum_name: enum_name.to_owned(),
             variant: variant.to_owned(),
         })
-    }
-
-    pub(super) fn link_host_target(
-        &self,
-        code: &UnlinkedCodeObject,
-        host_target_map: &[HostTargetPlanId],
-        target: HostTargetPlanId,
-    ) -> Result<HostTargetPlanId, LinkError> {
-        host_target_map
-            .get(target.index())
-            .copied()
-            .ok_or_else(|| LinkError::InvalidHostTarget {
-                function: code.name.clone(),
-                target,
-            })
     }
 
     pub(super) fn link_type_guard(
@@ -301,13 +277,6 @@ impl LinkContext<'_, '_> {
             } => self
                 .link_type(&type_name, Some(type_id))
                 .map(|ty| TypeGuardPlan::Shape { ty, shape_id }),
-            UnlinkedTypeGuardPlan::HostType {
-                type_name,
-                type_id,
-                host_type_id,
-            } => self
-                .link_type(&type_name, Some(type_id))
-                .map(|ty| TypeGuardPlan::HostType { ty, host_type_id }),
         }
     }
 }

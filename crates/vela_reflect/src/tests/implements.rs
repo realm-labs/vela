@@ -5,20 +5,12 @@ fn reflect_implements_uses_registry_metadata() {
     let registry = registry();
 
     assert!(
-        implements(
-            &registry,
-            &ReflectValue::HostRef(player_ref()),
-            &trait_name("Damageable"),
-        )
-        .expect("implements check")
+        implements(&registry, &player_value(), &trait_name("Damageable"),)
+            .expect("implements check")
     );
     assert!(
-        !implements(
-            &registry,
-            &ReflectValue::HostRef(player_ref()),
-            &trait_name("Trackable")
-        )
-        .expect("known unimplemented trait check")
+        !implements(&registry, &player_value(), &trait_name("Trackable"))
+            .expect("known unimplemented trait check")
     );
     let player_type = type_metadata_by_name(&registry, "Player").expect("type metadata");
     assert!(
@@ -35,12 +27,8 @@ fn reflect_implements_uses_registry_metadata() {
             .expect("copied trait descriptor implements check")
     );
 
-    let error = implements(
-        &registry,
-        &ReflectValue::HostRef(player_ref()),
-        &trait_name("Damagable"),
-    )
-    .expect_err("unknown trait should diagnose");
+    let error = implements(&registry, &player_value(), &trait_name("Damagable"))
+        .expect_err("unknown trait should diagnose");
     assert_eq!(
         error.kind,
         ReflectErrorKind::UnknownTrait {

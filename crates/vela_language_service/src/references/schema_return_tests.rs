@@ -167,16 +167,16 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "grant".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 },
                 {
                     "name": "Inventory",
-                    "fact": { "kind": "host", "name": "Inventory" }
+                    "fact": { "kind": "record", "name": "Inventory" }
                 }
             ],
             "methods": [
@@ -186,7 +186,7 @@ pub fn main(player: Player) -> i64 {
                     "fact": {
                         "kind": "function",
                         "params": [],
-                        "returns": { "kind": "host", "name": "Inventory" }
+                        "returns": { "kind": "record", "name": "Inventory" }
                     }
                 },
                 {
@@ -240,12 +240,12 @@ pub fn main(player: Player) -> i64 {
         .expect("schema marker should exist");
     let target_end = target_start + "preview".len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "traits": [

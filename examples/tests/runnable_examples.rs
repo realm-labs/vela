@@ -35,78 +35,6 @@ macro_rules! output_contains_example {
 }
 
 success_example!(
-    level_up_example_runs,
-    env!("CARGO_BIN_EXE_level_up"),
-    "result=Scalar(I64(10)) level=Scalar(I64(10))\n",
-);
-
-success_example!(
-    context_event_example_runs,
-    env!("CARGO_BIN_EXE_context_event"),
-    "result=Scalar(I64(1700000042)) level=Scalar(I64(9)) \
-     ctx_now=Scalar(I64(1700000000)) ctx_tick=Scalar(I64(42)) emits=1 logs=1\n",
-);
-
-success_example!(
-    time_clock_example_runs,
-    env!("CARGO_BIN_EXE_time_clock"),
-    "result=Scalar(I64(52)) level=Scalar(I64(9))\n",
-);
-
-success_example!(
-    gameplay_helpers_example_runs,
-    env!("CARGO_BIN_EXE_gameplay_helpers"),
-    "result=Scalar(I64(9)) level=Scalar(I64(9))\n",
-);
-
-success_example!(
-    random_allowed_example_runs,
-    env!("CARGO_BIN_EXE_random_allowed"),
-    "result=Scalar(I64(310)) level=Scalar(I64(9))\n",
-);
-
-success_example!(
-    random_reflect_allowed_example_runs,
-    env!("CARGO_BIN_EXE_random_reflect_allowed"),
-    "result=Scalar(I64(310)) level=Scalar(I64(9))\n",
-);
-
-success_example!(
-    reward_preview_example_runs,
-    env!("CARGO_BIN_EXE_reward_preview"),
-    "result=Scalar(I64(22)) level=Scalar(I64(1))\n",
-);
-
-success_example!(
-    monster_kill_reward_example_runs,
-    env!("CARGO_BIN_EXE_monster_kill_reward"),
-    "result=Scalar(I64(2)) level=Scalar(I64(2)) exp=Scalar(I64(0)) \
-     quest_count=Scalar(I64(3)) quest_done=Bool(true) \
-     inventory_gold=Scalar(I64(2)) reward_calls=1 emits=3\n",
-);
-
-success_example!(
-    quest_progress_example_runs,
-    env!("CARGO_BIN_EXE_quest_progress"),
-    "result=Scalar(I64(3)) level=Scalar(I64(1)) exp=Scalar(I64(90)) \
-     quest_count=Scalar(I64(3)) quest_done=Bool(true) \
-     inventory_gold=Scalar(I64(0)) reward_calls=0 emits=1\n",
-);
-
-success_example!(
-    reflect_debug_example_runs,
-    env!("CARGO_BIN_EXE_reflect_debug"),
-    "result=Scalar(I64(22)) level=Scalar(I64(12)) \
-     ctx_now=Scalar(I64(1700000000)) ctx_tick=Scalar(I64(42)) emits=1\n",
-);
-
-success_example!(
-    host_type_methods_example_runs,
-    env!("CARGO_BIN_EXE_host_type_methods"),
-    "script_result=Scalar(I64(10)) final_count=10 score=7 reward_calls=3\n",
-);
-
-success_example!(
     modules_example_runs,
     env!("CARGO_BIN_EXE_modules"),
     "module_result=Scalar(I64(16))\n",
@@ -115,13 +43,7 @@ success_example!(
 success_example!(
     native_function_example_runs,
     env!("CARGO_BIN_EXE_native_function"),
-    "native_function_result=Scalar(I64(45)) final_level=16\n",
-);
-
-success_example!(
-    interop_round_trip_example_runs,
-    env!("CARGO_BIN_EXE_interop_round_trip"),
-    "interop_round_trip result=6 level=6 recorded=5\n",
+    "native_function_result=Scalar(I64(44))\n",
 );
 
 success_example!(
@@ -163,42 +85,6 @@ output_contains_example!(
     random_permission_denied_example_reports_error,
     env!("CARGO_BIN_EXE_random_permission_denied"),
     "native `math::random` requires capability `random`",
-);
-
-output_contains_example!(
-    host_read_only_denied_example_reports_error,
-    env!("CARGO_BIN_EXE_host_read_only_denied"),
-    "field is read-only for script writes",
-);
-
-output_contains_example!(
-    host_permission_denied_example_reports_error,
-    env!("CARGO_BIN_EXE_host_permission_denied"),
-    "action: \"read\"",
-);
-
-output_contains_example!(
-    host_write_permission_denied_example_reports_error,
-    env!("CARGO_BIN_EXE_host_write_permission_denied"),
-    "action: \"write\"",
-);
-
-output_contains_example!(
-    host_call_permission_denied_example_reports_error,
-    env!("CARGO_BIN_EXE_host_call_permission_denied"),
-    "action: \"call\"",
-);
-
-output_contains_example!(
-    host_compound_write_denied_example_reports_error,
-    env!("CARGO_BIN_EXE_host_compound_write_denied"),
-    "action: \"write\"",
-);
-
-output_contains_example!(
-    stale_host_ref_example_reports_error,
-    env!("CARGO_BIN_EXE_stale_host_ref"),
-    "StaleGeneration",
 );
 
 output_contains_example!(

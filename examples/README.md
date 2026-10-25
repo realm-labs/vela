@@ -1,68 +1,32 @@
 # Vela Examples
 
-Each example is a standalone Cargo bin with its own `main`, so examples do not
-depend on a parameter-dispatched demo runner.
-
-Checkpoints B/C remove the Service/Provider and async/task examples and their executable registrations.
-Ordinary packages, traits, native/value calls and script reload remain. The
-borrowed-host examples below still describe the implementation awaiting
-checkpoint D; they are not the reduced target boundary or replacement APIs.
+Each retained example is a standalone Cargo bin with its own Rust entrypoint and
+script sources. Checkpoints B-D remove Service/Provider, script async/tasks,
+borrowed/transparently host-mutating examples, and dependent Host construction,
+method and build-time binding examples. They are not replaced with opaque or
+codec APIs.
 
 ```bash
-cargo run --manifest-path examples/Cargo.toml --bin level_up
-cargo run --manifest-path examples/Cargo.toml --bin monster_kill_reward
-cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap
-cargo run --manifest-path examples/Cargo.toml --bin host_type_methods
-cargo run --manifest-path examples/Cargo.toml --bin script_state
+cargo run --manifest-path examples/Cargo.toml --bin native_function
 cargo run --manifest-path examples/Cargo.toml --bin serde_value
-cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
-cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
-cargo run --manifest-path examples/Cargo.toml --bin interop_round_trip
 cargo run --manifest-path examples/Cargo.toml --bin modules
 cargo run --manifest-path examples/Cargo.toml --bin package_dependency_demo
+cargo run --manifest-path examples/Cargo.toml --bin hot_reload_function_swap
+cargo run --manifest-path examples/Cargo.toml --bin script_state
+cargo run --manifest-path examples/Cargo.toml --bin container_type_hints
+cargo run --manifest-path examples/Cargo.toml --bin io_stdlib
 ```
 
-Each example directory keeps the Rust entrypoint and script source together:
+- `native_function`: existing independent synchronous scalar/collection calls.
+- `serde_value`: script-owned snapshots; the original Rust input is unchanged.
+- `modules` / `package_dependency_demo`: ordinary source organization and package reload.
+- `script_state`: VM-owned state, initialized by Vela and explicitly updated from Rust.
+  This is not an extern-state host binding.
+- `hot_reload_function_swap` / `hot_reload_function_swap_invalid`: ordinary script
+  replacement and incompatible-update rejection.
+- `container_type_hints` / `io_stdlib`: retained value collections and opt-in I/O.
 
-```text
-examples/src/bin/level_up/main.rs
-examples/src/bin/level_up/level_up.vela
-examples/src/bin/host_type_methods/main.rs
-examples/src/bin/host_type_methods/handle.vela
-```
-
-The `host_type_methods` example covers the host type method and argument model:
-
-- concrete host type specs for `Player`, `IntIntMap`, `TagSet`, and `RewardSink`
-- same method name on different concrete receiver types: `contains`
-- call-scoped host object binding through `CallArgs::with_host_mut`
-- `player.inventory.items["gold"].count` as keyed host access without cloning a Rust collection
-- root and child host method calls resolved through host target plans and `HostMethodId`
-
-The Rust side uses `#[derive(ScriptHost)]` for field/path bindings and
-`#[vela_macros::methods]` for `&self` / `&mut self` host methods. Script-visible
-fields participate in resolved host access by default, so the example does not
-hand-write `ScriptHostObject` or `PathSegment` dispatch.
-
-Other useful embedding examples:
-
-- `modules`: ordinary script modules and imports.
-- `package_dependency_demo`: ordinary path-dependency compilation and script
-  reload, without discovery or selection entrypoints.
-- `hot_reload_function_swap` and `hot_reload_function_swap_invalid`: ordinary
-  script replacement and incompatible-update rejection.
-- `interop_round_trip`: the primary ordinary interop workflow. Vela calls an
-  exported Rust function and methods using normal syntax, while Rust calls the
-  Vela entry through build-time generated typed bindings. Authored calls do not
-  assemble `CallArgs`, erase values, or resolve runtime target strings.
-- `script_state`: per-Runtime VM state initialized by Vela and updateable from Rust.
-- `serde_value`: snapshot-style serde conversion between Rust structs/enums and
-  Vela owned values.
-- `native_function`: script calls into Rust native functions.
-- `container_type_hints`: builtin typed container contracts across arrays,
-  value-keyed maps, sets, and nested Result propagation.
-- `io_stdlib`: opt-in stdout plus sandboxed file I/O capability checks.
-
-Expected-error examples such as `random_permission_denied` and
-`hot_reload_function_swap_invalid` validate the expected diagnostic and then
-exit successfully.
+Independent expected-error examples retain duplicate-field, generic-hint,
+random-capability, reflection-schema-mutation and unknown-script-field rejection.
+They validate the expected error and exit successfully. Source-boundary rejection
+coverage also lives in `tests/removed_entrypoints.rs`.

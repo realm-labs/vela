@@ -1,7 +1,6 @@
 use vela_analysis::completion::{CompletionItem, CompletionKind, member_completions};
 use vela_analysis::registry::RegistryFacts;
 use vela_analysis::type_fact::TypeFact;
-use vela_common::HostMethodId;
 use vela_def::{FieldId, TypeId};
 use vela_reflect::registry::{
     FieldDesc, MethodDesc, MethodParamDesc, TypeDesc, TypeKey, TypeRegistry,
@@ -18,7 +17,7 @@ fn host_member_completion_fixture_suggests_registry_fields_and_methods() {
     let parsed = parse_source(&normalized_fixture(HOST_MEMBER_SOURCE));
     assert_eq!(parsed.diagnostics(), []);
 
-    let mut completions = member_completions(&registry_facts(), &TypeFact::host("Player"));
+    let mut completions = member_completions(&registry_facts(), &TypeFact::record("Player"));
     completions.sort_by(|left, right| {
         completion_rank(&left.kind)
             .cmp(&completion_rank(&right.kind))
@@ -84,7 +83,7 @@ fn registry_facts() -> RegistryFacts {
             .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
             .field(FieldDesc::new(FieldId::new(2), "inventory").type_hint("Map"))
             .method(
-                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                MethodDesc::new(vela_def::MethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool"),
             ),

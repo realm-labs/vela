@@ -9,8 +9,6 @@ use crate::{
     MirTypeContract, MirValueType,
 };
 
-use super::host::verify_host_type;
-
 pub(super) fn verify_abi(
     verifier: &FunctionVerifier<'_>,
     descriptor: &crate::CompileFunctionDescriptor,
@@ -168,7 +166,7 @@ pub(super) fn verify_value_type(
         MirValueType::Enum(type_id) => {
             require_type(verifier, type_id, origin)?;
         }
-        MirValueType::Host(target) => verify_host_type(verifier, origin, target)?,
+
         MirValueType::Dynamic
         | MirValueType::Unit
         | MirValueType::Primitive(_)
@@ -232,7 +230,7 @@ pub(super) fn verify_contract(
         MirTypeContract::Variant { type_id, variant } => {
             require_variant(verifier, *type_id, *variant, origin)?;
         }
-        MirTypeContract::Host(target) => verify_host_type(verifier, origin, *target)?,
+
         MirTypeContract::Any
         | MirTypeContract::Primitive(_)
         | MirTypeContract::Range
@@ -625,7 +623,7 @@ pub(super) fn satisfies_contract(value: MirValueType, contract: &MirTypeContract
             matches!(value, MirValueType::ScriptType { type_id: id, .. } | MirValueType::Enum(id) if id == *type_id)
         }
         MirTypeContract::Variant { type_id, .. } => value == MirValueType::Enum(*type_id),
-        MirTypeContract::Host(target) => value == MirValueType::Host(*target),
+
         MirTypeContract::Option(_) | MirTypeContract::Result { .. } => {
             matches!(value, MirValueType::Enum(_))
         }

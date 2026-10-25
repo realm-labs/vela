@@ -2,12 +2,12 @@ use vela_bytecode::{
     CacheSiteDesc, CacheSiteId, CacheSiteKind, DebugNameId, FieldSlot, InstructionOffset,
     MethodDispatchHandle, linked::InstructionKind,
 };
-use vela_common::{HostMethodId, HostTypeId, ShapeId, SourceId};
+use vela_common::{ShapeId, SourceId};
+use vela_def::MethodId;
 use vela_def::TypeId;
-use vela_host::resolved::{HostAccessOp, HostSchemaEpoch, ResolvedHostAccess};
 use vela_vm::{
-    HostInlineCacheEntry, HostInlineCacheTarget, MethodInlineCacheEntry, MethodInlineCacheTarget,
-    RecordFieldInlineCacheEntry, owned_value::OwnedValue,
+    MethodInlineCacheEntry, MethodInlineCacheTarget, RecordFieldInlineCacheEntry,
+    owned_value::OwnedValue,
 };
 
 use crate::engine::Engine;
@@ -179,34 +179,35 @@ fn main() {
         ),
         CacheSiteDesc::new(
             CacheSiteId::new(1),
-            CacheSiteKind::HostPathCall,
+            CacheSiteKind::RecordFieldRead,
             "main",
             InstructionOffset(1),
         ),
     ]);
     let method_site = CacheSiteId::new(0);
-    let host_site = CacheSiteId::new(1);
-    let method_id = HostMethodId::new(7);
+    let field_site = CacheSiteId::new(1);
+    let method_id = MethodId::new(7);
     let method_entry = MethodInlineCacheEntry {
         dispatch: MethodDispatchHandle::new(0),
         debug_name: DebugNameId::new(0),
-        target: MethodInlineCacheTarget::Host { method_id },
+        target: MethodInlineCacheTarget::Value {
+            method_id,
+            standard_method: None,
+        },
     };
-    let host_entry = HostInlineCacheEntry {
-        root_type: HostTypeId::new(1),
-        target: HostInlineCacheTarget::RootObject,
-        op: HostAccessOp::Call(method_id),
-        schema_epoch: HostSchemaEpoch::new(0),
-        resolved: ResolvedHostAccess::generic_target(HostSchemaEpoch::new(0)),
+    let field_entry = RecordFieldInlineCacheEntry {
+        type_id: TypeId::new(1),
+        shape_id: ShapeId::new(2),
+        field: FieldSlot::new(3),
     };
 
     caches.set_method_dispatch(method_site, method_entry);
-    caches.set_host_access(method_site, host_entry);
-    caches.set_host_access(host_site, host_entry);
+    caches.set_record_field(method_site, field_entry);
+    caches.set_record_field(field_site, field_entry);
 
     assert_eq!(caches.method_dispatch(method_site), Some(method_entry));
-    assert_eq!(caches.host_access(method_site), None);
-    assert_eq!(caches.host_access(host_site), Some(host_entry));
+    assert_eq!(caches.record_field(method_site), None);
+    assert_eq!(caches.record_field(field_site), Some(field_entry));
 }
 
 #[test]

@@ -72,37 +72,12 @@ pub enum EngineErrorKind {
         descriptor: String,
         name: String,
     },
-    DuplicateHostTypeId {
-        id: u64,
-    },
     DuplicateInteropTypeId {
         id: u128,
     },
     DuplicateRustTypeBinding {
         first: u128,
         second: u128,
-    },
-    InvalidTypeBindingStorage {
-        name: String,
-        storage: String,
-    },
-    InvalidTypeBindingCapabilities {
-        name: String,
-        bits: u8,
-    },
-    InvalidTypeBindingCollectionView {
-        name: String,
-        reason: &'static str,
-    },
-    InvalidTypeBindingMethodReceiver {
-        type_name: String,
-        method: String,
-        receiver: String,
-    },
-    InvalidTypeBindingConstructor {
-        type_name: String,
-        constructor: String,
-        reason: &'static str,
     },
     InvalidCallableTypeBinding {
         callable: String,
@@ -152,13 +127,13 @@ pub enum EngineErrorKind {
         trait_name: String,
         name: String,
     },
-    DuplicateHostMethodId {
+    DuplicateMethodId {
         id: u128,
     },
-    DuplicateHostMethodName {
+    DuplicateMethodName {
         name: String,
     },
-    DuplicateHostMethodParamName {
+    DuplicateMethodParamName {
         type_name: String,
         method: String,
         name: String,
@@ -171,9 +146,6 @@ pub enum EngineErrorKind {
         type_name: String,
         trait_name: String,
         method: String,
-        name: String,
-    },
-    UnknownNativeMethodOwner {
         name: String,
     },
     RuntimeNotHotReloadEnabled,
@@ -256,9 +228,6 @@ impl fmt::Display for EngineError {
             EngineErrorKind::InvalidPermissionName { descriptor, name } => {
                 write!(formatter, "invalid permission name {name} in {descriptor}")
             }
-            EngineErrorKind::DuplicateHostTypeId { id } => {
-                write!(formatter, "duplicate host type id {id}")
-            }
             EngineErrorKind::DuplicateInteropTypeId { id } => {
                 write!(formatter, "duplicate interop type id {id}")
             }
@@ -266,44 +235,6 @@ impl fmt::Display for EngineError {
                 write!(
                     formatter,
                     "one Rust type cannot use two interop type ids {first} and {second}"
-                )
-            }
-            EngineErrorKind::InvalidTypeBindingStorage { name, storage } => {
-                write!(
-                    formatter,
-                    "type binding {name} cannot use {storage} storage with its registered representation"
-                )
-            }
-            EngineErrorKind::InvalidTypeBindingCapabilities { name, bits } => {
-                write!(
-                    formatter,
-                    "type binding {name} has invalid receiver capabilities 0x{bits:02x}"
-                )
-            }
-            EngineErrorKind::InvalidTypeBindingCollectionView { name, reason } => {
-                write!(
-                    formatter,
-                    "type binding {name} has invalid collection view capabilities: {reason}"
-                )
-            }
-            EngineErrorKind::InvalidTypeBindingMethodReceiver {
-                type_name,
-                method,
-                receiver,
-            } => {
-                write!(
-                    formatter,
-                    "type binding method {type_name}::{method} cannot use {receiver} receiver"
-                )
-            }
-            EngineErrorKind::InvalidTypeBindingConstructor {
-                type_name,
-                constructor,
-                reason,
-            } => {
-                write!(
-                    formatter,
-                    "invalid constructor {constructor} for type binding {type_name}: {reason}"
                 )
             }
             EngineErrorKind::InvalidCallableTypeBinding { callable, location } => {
@@ -379,20 +310,20 @@ impl fmt::Display for EngineError {
                     "duplicate trait method name {name} on {type_name}.{trait_name}"
                 )
             }
-            EngineErrorKind::DuplicateHostMethodId { id } => {
-                write!(formatter, "duplicate host method id {id}")
+            EngineErrorKind::DuplicateMethodId { id } => {
+                write!(formatter, "duplicate method id {id}")
             }
-            EngineErrorKind::DuplicateHostMethodName { name } => {
-                write!(formatter, "duplicate host method name {name}")
+            EngineErrorKind::DuplicateMethodName { name } => {
+                write!(formatter, "duplicate method name {name}")
             }
-            EngineErrorKind::DuplicateHostMethodParamName {
+            EngineErrorKind::DuplicateMethodParamName {
                 type_name,
                 method,
                 name,
             } => {
                 write!(
                     formatter,
-                    "duplicate parameter name {name} on host method {type_name}.{method}"
+                    "duplicate parameter name {name} on method {type_name}.{method}"
                 )
             }
             EngineErrorKind::DefinitionRegistry { message } => {
@@ -409,9 +340,6 @@ impl fmt::Display for EngineError {
                     formatter,
                     "duplicate parameter name {name} on trait method {type_name}.{trait_name}.{method}"
                 )
-            }
-            EngineErrorKind::UnknownNativeMethodOwner { name } => {
-                write!(formatter, "unknown native method owner type {name}")
             }
             EngineErrorKind::RuntimeNotHotReloadEnabled => {
                 write!(

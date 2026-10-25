@@ -6,7 +6,7 @@ fn unified_interop_export_signature_ui() {
 }
 
 #[test]
-fn removed_service_macros_are_unavailable() {
+fn removed_macros_and_borrow_apis_are_unavailable() {
     let cases = trybuild::TestCases::new();
     cases.compile_fail("tests/ui/removed/*.rs");
 }

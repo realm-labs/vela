@@ -623,7 +623,6 @@ fn insert_fields(
                     contract: None,
                     declaration_order: u32::try_from(index).expect("two fields fit in u32"),
                     access: CompileFieldAccess::script(),
-                    host_runtime: None,
                 },
                 origin,
             )

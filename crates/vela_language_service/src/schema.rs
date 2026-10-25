@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use vela_analysis::registry::{
-    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryIndexCapabilityFact,
-    RegistryMemberFact, RegistryMethodAccessFact, RegistryModuleFact, ScopedResourceKindDef,
-    ScopedResourceParentDef, ScopedResourceReturnDef,
+    RegistryEffectFact, RegistryFacts, RegistryFieldAccessFact, RegistryMemberFact,
+    RegistryMethodAccessFact, RegistryModuleFact,
 };
 use vela_analysis::type_fact::TypeFact;
-use vela_common::{CollectionViewMutation, PrimitiveTag, ReceiverCapability};
+use vela_common::PrimitiveTag;
 
 #[cfg(test)]
 use vela_common::{SourceId, Span};
@@ -19,13 +18,13 @@ mod signature;
 use signature::validate_signatures;
 mod type_binding;
 
-pub use type_binding::{SchemaCollectionViewFact, SchemaTypeBindingFact};
+pub use type_binding::SchemaTypeBindingFact;
 use type_binding::{
     type_binding_checksum_from_schema, type_binding_checksum_to_schema, type_binding_from_schema,
     type_binding_to_schema, validate_type_binding_facts,
 };
 
-pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 3;
+pub const SCHEMA_ARTIFACT_FORMAT_VERSION: u32 = 4;
 const SCHEMA_HASH_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const SCHEMA_HASH_PRIME: u64 = 0x0000_0100_0000_01b3;
 
@@ -128,6 +127,8 @@ impl SchemaArtifact {
                 "schemaVersion must be non-empty when present",
             ));
         }
+        validate_type_binding_facts(&self.facts)?;
+        validate_signatures(&self.facts)?;
         if let Some(schema_hash) = self.schema_hash.as_deref() {
             let declared = parse_schema_hash(schema_hash)?;
             let computed = self.computed_schema_hash()?;
@@ -138,9 +139,6 @@ impl SchemaArtifact {
                 )));
             }
         }
-        validate_type_binding_facts(&self.facts)?;
-        validate_signatures(&self.facts)?;
-
         Ok(())
     }
 }
@@ -199,8 +197,6 @@ pub struct SchemaArtifactFacts {
     #[serde(default)]
     function_effects: Vec<SchemaFunctionEffectFact>,
     #[serde(default)]
-    index_capabilities: Vec<SchemaIndexCapabilityFact>,
-    #[serde(default)]
     type_binding_checksum: Option<String>,
     #[serde(default)]
     type_bindings: Vec<SchemaTypeBindingFact>,
@@ -226,7 +222,7 @@ impl SchemaArtifactFacts {
                 .fields()
                 .map(|member| {
                     let docs = facts.field_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs, None)
+                    SchemaMemberFact::from_registry_member(member, docs)
                 })
                 .collect(),
             field_access: facts
@@ -237,17 +233,15 @@ impl SchemaArtifactFacts {
                 .variants()
                 .map(|member| {
                     let docs = facts.variant_docs(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs, None)
+                    SchemaMemberFact::from_registry_member(member, docs)
                 })
                 .collect(),
             methods: facts
                 .methods()
                 .map(|member| {
                     let docs = facts.method_docs(&member.owner, &member.name);
-                    let resource = facts.method_scoped_resource(&member.owner, &member.name);
                     let signature = facts.method_signature_fact(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs, resource)
-                        .with_signature(signature)
+                    SchemaMemberFact::from_registry_member(member, docs).with_signature(signature)
                 })
                 .collect(),
             method_effects: facts
@@ -263,8 +257,7 @@ impl SchemaArtifactFacts {
                 .map(|member| {
                     let docs = facts.trait_method_docs(&member.owner, &member.name);
                     let signature = facts.trait_method_signature_fact(&member.owner, &member.name);
-                    SchemaMemberFact::from_registry_member(member, docs, None)
-                        .with_signature(signature)
+                    SchemaMemberFact::from_registry_member(member, docs).with_signature(signature)
                 })
                 .collect(),
             trait_method_effects: facts
@@ -275,19 +268,14 @@ impl SchemaArtifactFacts {
                 .functions()
                 .map(|function| {
                     let docs = facts.function_docs(&function.name);
-                    let resource = facts.function_scoped_resource(&function.name);
                     let signature = facts.function_signature_fact(&function.name);
-                    SchemaFunctionFact::from_registry_function(function, docs, resource)
+                    SchemaFunctionFact::from_registry_function(function, docs)
                         .with_signature(signature)
                 })
                 .collect(),
             function_effects: facts
                 .function_effects()
                 .map(|(name, effect)| SchemaFunctionEffectFact::new(name, effect))
-                .collect(),
-            index_capabilities: facts
-                .index_capabilities()
-                .map(SchemaIndexCapabilityFact::from)
                 .collect(),
             type_binding_checksum: facts
                 .type_binding_checksum()
@@ -358,13 +346,6 @@ impl SchemaArtifactFacts {
             if let Some(docs) = &entry.docs {
                 facts.insert_method_docs(entry.owner.clone(), entry.name.clone(), docs.clone());
             }
-            if let Some(resource) = entry.scoped_resource {
-                facts.insert_method_scoped_resource(
-                    entry.owner.clone(),
-                    entry.name.clone(),
-                    resource.into(),
-                );
-            }
         }
         for effect in &self.method_effects {
             facts.insert_method_effect(
@@ -412,15 +393,9 @@ impl SchemaArtifactFacts {
             if let Some(docs) = &entry.docs {
                 facts.insert_function_docs(entry.name.clone(), docs.clone());
             }
-            if let Some(resource) = entry.scoped_resource {
-                facts.insert_function_scoped_resource(entry.name.clone(), resource.into());
-            }
         }
         for effect in &self.function_effects {
             facts.insert_function_effect(effect.name.clone(), effect.effect.to_registry_fact());
-        }
-        for capability in &self.index_capabilities {
-            facts.insert_index_capability(capability.to_registry_fact());
         }
         if let Some(checksum) = self
             .type_binding_checksum
@@ -508,64 +483,8 @@ fn fnv1a64(bytes: &[u8]) -> u64 {
     if hash == 0 { 1 } else { hash }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-enum SchemaScopedResourceKind {
-    View,
-    MutView,
-    Iterator,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case", tag = "source")]
-enum SchemaScopedResourceParent {
-    Receiver,
-    Parameter { index: u16 },
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-struct SchemaScopedResourceReturn {
-    kind: SchemaScopedResourceKind,
-    parent: SchemaScopedResourceParent,
-}
-
-impl From<ScopedResourceReturnDef> for SchemaScopedResourceReturn {
-    fn from(value: ScopedResourceReturnDef) -> Self {
-        Self {
-            kind: match value.kind {
-                ScopedResourceKindDef::View => SchemaScopedResourceKind::View,
-                ScopedResourceKindDef::MutView => SchemaScopedResourceKind::MutView,
-                ScopedResourceKindDef::Iterator => SchemaScopedResourceKind::Iterator,
-            },
-            parent: match value.parent {
-                ScopedResourceParentDef::Receiver => SchemaScopedResourceParent::Receiver,
-                ScopedResourceParentDef::Parameter(index) => {
-                    SchemaScopedResourceParent::Parameter { index }
-                }
-            },
-        }
-    }
-}
-
-impl From<SchemaScopedResourceReturn> for ScopedResourceReturnDef {
-    fn from(value: SchemaScopedResourceReturn) -> Self {
-        Self {
-            kind: match value.kind {
-                SchemaScopedResourceKind::View => ScopedResourceKindDef::View,
-                SchemaScopedResourceKind::MutView => ScopedResourceKindDef::MutView,
-                SchemaScopedResourceKind::Iterator => ScopedResourceKindDef::Iterator,
-            },
-            parent: match value.parent {
-                SchemaScopedResourceParent::Receiver => ScopedResourceParentDef::Receiver,
-                SchemaScopedResourceParent::Parameter { index } => {
-                    ScopedResourceParentDef::Parameter(index)
-                }
-            },
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 struct SchemaFieldAccessFact {
     owner: String,
     name: String,
@@ -606,11 +525,10 @@ impl From<RegistryFieldAccessFact> for SchemaFieldAccessFact {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 struct SchemaMethodAccessFact {
     owner: String,
     name: String,
-    #[serde(default)]
-    receiver: SchemaReceiverCapability,
     public: bool,
     reflect_callable: bool,
     #[serde(default)]
@@ -622,7 +540,6 @@ impl SchemaMethodAccessFact {
         RegistryMethodAccessFact {
             owner: self.owner.clone(),
             name: self.name.clone(),
-            receiver: self.receiver.into(),
             public: self.public,
             reflect_callable: self.reflect_callable,
             required_permissions: self.required_permissions.clone(),
@@ -635,7 +552,6 @@ impl From<RegistryMethodAccessFact> for SchemaMethodAccessFact {
         Self {
             owner: value.owner,
             name: value.name,
-            receiver: value.receiver.into(),
             public: value.public,
             reflect_callable: value.reflect_callable,
             required_permissions: value.required_permissions,
@@ -643,78 +559,8 @@ impl From<RegistryMethodAccessFact> for SchemaMethodAccessFact {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-enum SchemaReceiverCapability {
-    Owned,
-    #[default]
-    Shared,
-    Exclusive,
-    Construct,
-}
-
-impl From<SchemaReceiverCapability> for ReceiverCapability {
-    fn from(value: SchemaReceiverCapability) -> Self {
-        match value {
-            SchemaReceiverCapability::Owned => Self::Owned,
-            SchemaReceiverCapability::Shared => Self::Shared,
-            SchemaReceiverCapability::Exclusive => Self::Exclusive,
-            SchemaReceiverCapability::Construct => Self::Construct,
-        }
-    }
-}
-
-impl From<ReceiverCapability> for SchemaReceiverCapability {
-    fn from(value: ReceiverCapability) -> Self {
-        match value {
-            ReceiverCapability::Owned => Self::Owned,
-            ReceiverCapability::Shared => Self::Shared,
-            ReceiverCapability::Exclusive => Self::Exclusive,
-            ReceiverCapability::Construct => Self::Construct,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-struct SchemaIndexCapabilityFact {
-    owner: String,
-    readable: bool,
-    writable: bool,
-    addable: bool,
-    removable: bool,
-    key: SchemaTypeFact,
-    value: SchemaTypeFact,
-}
-
-impl SchemaIndexCapabilityFact {
-    fn to_registry_fact(&self) -> RegistryIndexCapabilityFact {
-        RegistryIndexCapabilityFact {
-            owner: self.owner.clone(),
-            readable: self.readable,
-            writable: self.writable,
-            addable: self.addable,
-            removable: self.removable,
-            key: self.key.to_type_fact(),
-            value: self.value.to_type_fact(),
-        }
-    }
-}
-
-impl From<RegistryIndexCapabilityFact> for SchemaIndexCapabilityFact {
-    fn from(value: RegistryIndexCapabilityFact) -> Self {
-        Self {
-            owner: value.owner,
-            readable: value.readable,
-            writable: value.writable,
-            addable: value.addable,
-            removable: value.removable,
-            key: SchemaTypeFact::from_type_fact(&value.key),
-            value: SchemaTypeFact::from_type_fact(&value.value),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 struct SchemaMemberEffectFact {
     owner: String,
     name: String,
@@ -732,6 +578,7 @@ impl From<(RegistryMemberFact, RegistryEffectFact)> for SchemaMemberEffectFact {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(deny_unknown_fields)]
 struct SchemaFunctionEffectFact {
     name: String,
     effect: SchemaEffectFact,
@@ -796,7 +643,7 @@ impl From<RegistryEffectFact> for SchemaEffectFact {
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 enum SchemaTypeFact {
     Unknown,
     Never,
@@ -808,35 +655,12 @@ enum SchemaTypeFact {
     Array {
         element: Box<SchemaTypeFact>,
     },
-    ArrayView {
-        element: Box<SchemaTypeFact>,
-    },
-    ArrayMut {
-        element: Box<SchemaTypeFact>,
-        mutation: SchemaCollectionMutation,
-    },
     Map {
         key: Box<SchemaTypeFact>,
         value: Box<SchemaTypeFact>,
     },
-    MapView {
-        key: Box<SchemaTypeFact>,
-        value: Box<SchemaTypeFact>,
-    },
-    MapMut {
-        key: Box<SchemaTypeFact>,
-        value: Box<SchemaTypeFact>,
-        mutation: SchemaCollectionMutation,
-    },
     Set {
         element: Box<SchemaTypeFact>,
-    },
-    SetView {
-        element: Box<SchemaTypeFact>,
-    },
-    SetMut {
-        element: Box<SchemaTypeFact>,
-        mutation: SchemaCollectionMutation,
     },
     Iterator {
         item: Box<SchemaTypeFact>,
@@ -873,9 +697,6 @@ enum SchemaTypeFact {
         name: String,
         variant: Option<String>,
     },
-    Host {
-        name: String,
-    },
     Trait {
         name: String,
     },
@@ -885,31 +706,6 @@ enum SchemaTypeFact {
     Union {
         facts: Vec<SchemaTypeFact>,
     },
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
-enum SchemaCollectionMutation {
-    Fixed,
-    Growable,
-}
-
-impl From<CollectionViewMutation> for SchemaCollectionMutation {
-    fn from(value: CollectionViewMutation) -> Self {
-        match value {
-            CollectionViewMutation::Fixed => Self::Fixed,
-            CollectionViewMutation::Growable => Self::Growable,
-        }
-    }
-}
-
-impl From<SchemaCollectionMutation> for CollectionViewMutation {
-    fn from(value: SchemaCollectionMutation) -> Self {
-        match value {
-            SchemaCollectionMutation::Fixed => Self::Fixed,
-            SchemaCollectionMutation::Growable => Self::Growable,
-        }
-    }
 }
 
 impl SchemaTypeFact {
@@ -925,41 +721,14 @@ impl SchemaTypeFact {
             TypeFact::Array { element } => Self::Array {
                 element: Box::new(Self::from_type_fact(element)),
             },
-            TypeFact::ArrayView { element } => Self::ArrayView {
-                element: Box::new(Self::from_type_fact(element)),
-            },
-            TypeFact::ArrayMut { element, mutation } => Self::ArrayMut {
-                element: Box::new(Self::from_type_fact(element)),
-                mutation: (*mutation).into(),
-            },
             TypeFact::Map { key, value } => Self::Map {
                 key: Box::new(Self::from_type_fact(key)),
                 value: Box::new(Self::from_type_fact(value)),
             },
-            TypeFact::MapView { key, value } => Self::MapView {
-                key: Box::new(Self::from_type_fact(key)),
-                value: Box::new(Self::from_type_fact(value)),
-            },
-            TypeFact::MapMut {
-                key,
-                value,
-                mutation,
-            } => Self::MapMut {
-                key: Box::new(Self::from_type_fact(key)),
-                value: Box::new(Self::from_type_fact(value)),
-                mutation: (*mutation).into(),
-            },
             TypeFact::Set { element } => Self::Set {
                 element: Box::new(Self::from_type_fact(element)),
             },
-            TypeFact::SetView { element } => Self::SetView {
-                element: Box::new(Self::from_type_fact(element)),
-            },
-            TypeFact::SetMut { element, mutation } => Self::SetMut {
-                element: Box::new(Self::from_type_fact(element)),
-                mutation: (*mutation).into(),
-            },
-            TypeFact::Iterator { item } | TypeFact::ScopedIterator { item } => Self::Iterator {
+            TypeFact::Iterator { item } => Self::Iterator {
                 item: Box::new(Self::from_type_fact(item)),
             },
             TypeFact::Option { some } => Self::Option {
@@ -995,7 +764,6 @@ impl SchemaTypeFact {
                 name: name.clone(),
                 variant: variant.clone(),
             },
-            TypeFact::Host { name } => Self::Host { name: name.clone() },
             TypeFact::Trait { name } => Self::Trait { name: name.clone() },
             TypeFact::Module { name } => Self::Module { name: name.clone() },
             TypeFact::Union(facts) => Self::Union {
@@ -1014,24 +782,8 @@ impl SchemaTypeFact {
             }
             Self::Range => TypeFact::Range,
             Self::Array { element } => TypeFact::array(element.to_type_fact()),
-            Self::ArrayView { element } => TypeFact::array_view(element.to_type_fact()),
-            Self::ArrayMut { element, mutation } => {
-                TypeFact::array_mut(element.to_type_fact(), (*mutation).into())
-            }
             Self::Map { key, value } => TypeFact::map(key.to_type_fact(), value.to_type_fact()),
-            Self::MapView { key, value } => {
-                TypeFact::map_view(key.to_type_fact(), value.to_type_fact())
-            }
-            Self::MapMut {
-                key,
-                value,
-                mutation,
-            } => TypeFact::map_mut(key.to_type_fact(), value.to_type_fact(), (*mutation).into()),
             Self::Set { element } => TypeFact::set(element.to_type_fact()),
-            Self::SetView { element } => TypeFact::set_view(element.to_type_fact()),
-            Self::SetMut { element, mutation } => {
-                TypeFact::set_mut(element.to_type_fact(), (*mutation).into())
-            }
             Self::Iterator { item } => TypeFact::iterator(item.to_type_fact()),
             Self::Option { some } => TypeFact::option(some.to_type_fact()),
             Self::OptionSome { some } => TypeFact::option_some(some.to_type_fact()),
@@ -1047,7 +799,6 @@ impl SchemaTypeFact {
             Self::Tuple { elements } => TypeFact::tuple(elements.iter().map(Self::to_type_fact)),
             Self::Record { name } => TypeFact::record(name),
             Self::Enum { name, variant } => TypeFact::enum_type(name, variant.clone()),
-            Self::Host { name } => TypeFact::host(name),
             Self::Trait { name } => TypeFact::trait_type(name),
             Self::Module { name } => TypeFact::module(name),
             Self::Union { facts } => TypeFact::union(facts.iter().map(Self::to_type_fact)),

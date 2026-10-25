@@ -225,15 +225,9 @@ impl TypeArgumentContract {
 
 fn type_argument_contract(path: &[String]) -> Option<TypeArgumentContract> {
     match path {
-        [name] if matches!(name.as_str(), "Array" | "ArrayView" | "ArrayMut") => {
-            Some(TypeArgumentContract::FixedArity(1))
-        }
-        [name] if matches!(name.as_str(), "Set" | "SetView" | "SetMut") => {
-            Some(TypeArgumentContract::KeyedSet)
-        }
-        [name] if matches!(name.as_str(), "Map" | "MapView" | "MapMut") => {
-            Some(TypeArgumentContract::KeyedMap)
-        }
+        [name] if matches!(name.as_str(), "Array") => Some(TypeArgumentContract::FixedArity(1)),
+        [name] if matches!(name.as_str(), "Set") => Some(TypeArgumentContract::KeyedSet),
+        [name] if matches!(name.as_str(), "Map") => Some(TypeArgumentContract::KeyedMap),
         [name] if name == "Iterator" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Option" => Some(TypeArgumentContract::FixedArity(1)),
         [name] if name == "Result" => Some(TypeArgumentContract::FixedArity(2)),
@@ -246,14 +240,7 @@ fn is_keyable_type_hint(hint: &SyntaxTypeHint) -> bool {
         return false;
     }
     match hint.path_segments().as_slice() {
-        [name]
-            if matches!(
-                name.as_str(),
-                "Range" | "Function" | "PathProxy" | "path_proxy"
-            ) =>
-        {
-            false
-        }
+        [name] if matches!(name.as_str(), "Range" | "Function") => false,
         [_] => true,
         _ => hint.type_arg_list().is_none(),
     }

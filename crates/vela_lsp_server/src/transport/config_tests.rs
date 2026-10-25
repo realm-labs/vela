@@ -284,12 +284,12 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_player_field(name: &str, kind: &str) -> String {
     serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [

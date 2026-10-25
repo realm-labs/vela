@@ -42,11 +42,11 @@ fn assert_schema_method_return_navigation(kind: NavigationKind) {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     },
                     {
                         "name": "Inventory",
-                        "fact": { "kind": "host", "name": "Inventory" }
+                        "fact": { "kind": "record", "name": "Inventory" }
                     }
                 ],
                 "methods": [
@@ -56,7 +56,7 @@ fn assert_schema_method_return_navigation(kind: NavigationKind) {
                         "fact": {
                             "kind": "function",
                             "params": [],
-                            "returns": { "kind": "host", "name": "Inventory" }
+                            "returns": { "kind": "record", "name": "Inventory" }
                         }
                     },
                     {
@@ -92,7 +92,7 @@ fn assert_schema_trait_method_return_navigation(kind: NavigationKind) {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [
@@ -160,7 +160,7 @@ fn assert_schema_return_navigation<F>(
         .expect("schema marker should exist");
     let target_end = target_start + schema_marker.len();
     let artifact = serde_json::json!({
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": facts(schema_record.source_id().get(), target_start, target_end)
     })
     .to_string();

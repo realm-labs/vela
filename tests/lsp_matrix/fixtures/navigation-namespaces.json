@@ -56,7 +56,7 @@
         {
           "name": "alpha::Cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "alpha::Cell"
           },
           "sourceSpan": {
@@ -67,7 +67,7 @@
         {
           "name": "beta::Cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "beta::Cell"
           },
           "sourceSpan": {
@@ -78,7 +78,7 @@
         {
           "name": "Cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "Cell"
           },
           "sourceSpan": {
@@ -89,7 +89,7 @@
         {
           "name": "local::Cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "local::Cell"
           },
           "sourceSpan": {
@@ -100,7 +100,7 @@
         {
           "name": "gamma::Cell",
           "fact": {
-            "kind": "host",
+            "kind": "record",
             "name": "gamma::Cell"
           }
         }
@@ -112,7 +112,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "alpha::Cell"
             }
           },
@@ -127,7 +127,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "beta::Cell"
             }
           },
@@ -142,7 +142,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "alpha::Cell"
             }
           },
@@ -157,7 +157,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "Cell"
             }
           },
@@ -172,7 +172,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "local::Cell"
             }
           },
@@ -187,7 +187,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "missing::Cell"
             }
           },
@@ -202,7 +202,7 @@
             "kind": "function",
             "params": [],
             "returns": {
-              "kind": "host",
+              "kind": "record",
               "name": "gamma::Cell"
             }
           },

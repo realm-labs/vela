@@ -32,16 +32,10 @@ impl CacheSiteId {
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum CacheSiteKind {
     StateRead,
-    ExternStateRead,
     StateWrite,
     RecordFieldRead,
     RecordFieldWrite,
     MethodCall,
-    HostPathRead,
-    HostPathWrite,
-    HostPathMutate,
-    HostPathRemove,
-    HostPathCall,
     NativeCall,
 }
 
@@ -139,7 +133,7 @@ mod tests {
     #[test]
     fn cache_site_layout_indexes_descriptors_by_id() {
         let mut layout = CacheSiteLayout::default();
-        let state = layout.push(CacheSiteKind::ExternStateRead, "main", InstructionOffset(3));
+        let state = layout.push(CacheSiteKind::StateRead, "main", InstructionOffset(3));
         let record = layout.push(CacheSiteKind::RecordFieldRead, "main", InstructionOffset(9));
 
         assert_eq!(state, CacheSiteId::new(0));

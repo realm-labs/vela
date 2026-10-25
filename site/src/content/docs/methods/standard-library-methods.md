@@ -3,7 +3,7 @@ title: "Standard Library Methods"
 description: "Standard Library Methods documentation for Vela."
 ---
 
-Standard library methods provide the built-in behavior for primitive and collection values. They are receiver-dispatched like script and host methods, but their targets are registered by the runtime.
+Standard library methods provide the built-in behavior for primitive and collection values. They are receiver-dispatched like ordinary script methods, but their targets are registered by the runtime.
 
 ## Value Families
 

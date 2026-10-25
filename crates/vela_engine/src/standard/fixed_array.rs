@@ -1,5 +1,4 @@
-use vela_common::{CollectionViewCapabilities, CollectionViewKind, CollectionViewMutation};
-use vela_reflect::registry::{HostIndexCapability, TraitDesc, TypeDesc, TypeKind};
+use vela_reflect::registry::{TraitDesc, TypeDesc, TypeKind};
 
 use crate::args::{FromScriptArg, IntoScriptArg};
 use crate::interop::VelaValueBoundary;
@@ -13,12 +12,7 @@ where
     T: VelaValueBoundary + IntoScriptArg + FromScriptArg + 'static,
 {
     fn standard_type_binding() -> TypeBinding<Self> {
-        TypeBinding::value(fixed_array_type_desc::<T, N>()).collection_view_capabilities(
-            CollectionViewCapabilities::mutable(
-                CollectionViewKind::Array,
-                CollectionViewMutation::Fixed,
-            ),
-        )
+        TypeBinding::value(fixed_array_type_desc::<T, N>())
     }
 }
 
@@ -35,13 +29,6 @@ where
     )
     .trait_impl(TraitDesc::new("Sequence"))
     .trait_impl(TraitDesc::new("Iterable"))
-    .index_capability(
-        HostIndexCapability::new()
-            .readable(true)
-            .writable(true)
-            .key_type("i64")
-            .value_type(element.clone()),
-    )
     .docs(format!(
         "Concrete Rust [{element}; {N}] value binding using fixed-length Vela Array behavior."
     ))
@@ -53,28 +40,4 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::standard::standard_type_binding;
-
-    #[test]
-    fn fixed_array_binding_preserves_length_identity_and_view_capability() {
-        let fixed = fixed_array_type_desc::<i64, 3>();
-        let other = fixed_array_type_desc::<i64, 4>();
-        assert_ne!(fixed.key, other.key);
-        assert_eq!(fixed.kind, TypeKind::Array);
-        assert_eq!(fixed.attrs.get("vela_collection_growth"), Some("fixed"));
-        let index = fixed
-            .index_capability
-            .expect("fixed array index capability");
-        assert!(index.readable && index.writable);
-        assert!(!index.addable && !index.removable);
-        assert_eq!(
-            standard_type_binding::<[i64; 3]>().collection_views(),
-            Some(CollectionViewCapabilities::mutable(
-                CollectionViewKind::Array,
-                CollectionViewMutation::Fixed,
-            ))
-        );
-    }
-}
+mod tests {}

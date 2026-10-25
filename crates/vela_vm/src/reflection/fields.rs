@@ -6,7 +6,7 @@ use vela_reflect::{self as reflect};
 use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
-use super::common::{check_host_ref_inspection, check_reflect_policy};
+use super::common::check_reflect_policy;
 
 pub(super) fn register(
     vm: &mut Vm,
@@ -31,7 +31,7 @@ pub(super) fn register(
         }
         expect_arity("reflect::fields", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::fields")?;
-        check_host_ref_inspection(&fields_policy, &target)?;
+
         value_from_reflect(reflect::members::fields_with_policy(
             &fields_registry,
             &target,
@@ -50,7 +50,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::field", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::field")?;
-        check_host_ref_inspection(&field_policy, &target)?;
+
         let field_name = expect_string(&args[1], "reflect::field")?;
         value_from_reflect(reflect::members::field_with_policy(
             &field_registry,
@@ -71,7 +71,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::has_field", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::has_field")?;
-        check_host_ref_inspection(&has_field_policy, &target)?;
+
         let field_name = expect_string(&args[1], "reflect::has_field")?;
         Ok(OwnedValue::Bool(reflect::members::has_field_with_policy(
             &has_field_registry,

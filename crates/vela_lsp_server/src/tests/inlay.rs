@@ -272,12 +272,12 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -347,18 +347,6 @@ fn lsp_inlay_hints_show_host_path_typefacts() {
                 "paddingRight": true
             },
             {
-                "position": { "line": 1, "character": 27 },
-                "label": ": i64",
-                "kind": 1,
-                "paddingRight": true
-            },
-            {
-                "position": { "line": 2, "character": 16 },
-                "label": ": i64",
-                "kind": 1,
-                "paddingRight": true
-            },
-            {
                 "position": { "line": 4, "character": 17 },
                 "label": "arg0:",
                 "kind": 2,
@@ -396,12 +384,12 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
     fs::write(
         &schema_path,
         r#"{
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "functions": [
@@ -421,7 +409,7 @@ fn lsp_inlay_hints_suppress_any_schema_function_parameters() {
                         "fact": {
                             "kind": "function",
                             "params": [
-                                { "kind": "host", "name": "Player" },
+                                { "kind": "record", "name": "Player" },
                                 { "kind": "primitive", "name": "i64" }
                             ],
                             "returns": { "kind": "primitive", "name": "i64" }
@@ -908,7 +896,7 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_with_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
@@ -941,7 +929,7 @@ fn schema_with_quest_state_tuple_variant() -> &'static str {
 
 fn schema_with_dynamic_quest_state_tuple_variant() -> &'static str {
     r#"{
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {

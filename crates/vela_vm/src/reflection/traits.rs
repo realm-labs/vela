@@ -6,7 +6,7 @@ use vela_reflect::{self as reflect};
 use crate::owned_value::OwnedValue;
 use crate::{Vm, expect_arity, expect_string, value_from_reflect, value_to_reflect};
 
-use super::common::{check_host_ref_inspection, check_reflect_policy};
+use super::common::check_reflect_policy;
 
 pub(super) fn register(
     vm: &mut Vm,
@@ -28,7 +28,7 @@ pub(super) fn register(
         }
         expect_arity("reflect::traits", args, 1)?;
         let target = value_to_reflect(&args[0], "reflect::traits")?;
-        check_host_ref_inspection(&traits_policy, &target)?;
+
         value_from_reflect(reflect::members::traits(&traits_registry, &target)?)
     });
 
@@ -77,7 +77,7 @@ pub(super) fn register(
         )?;
         expect_arity("reflect::implements", args, 2)?;
         let target = value_to_reflect(&args[0], "reflect::implements")?;
-        check_host_ref_inspection(&implements_policy, &target)?;
+
         let trait_target = value_to_reflect(&args[1], "reflect::implements")?;
         Ok(OwnedValue::Bool(reflect::value::implements(
             &implements_registry,

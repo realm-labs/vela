@@ -1,14 +1,11 @@
 use std::collections::BTreeSet;
 
-use vela_common::InteropRepresentation;
 use vela_reflect::modules::ModuleDesc;
 use vela_reflect::registry::{AttrMap, MethodParamDesc, TypeDesc, TypeKind};
 
 use crate::compiler_registry::EngineFunctionEntries;
 use crate::error::{EngineError, EngineErrorKind, EngineResult};
-use crate::interop::{BoundaryMode, ReturnMode};
 use crate::metadata::type_hint_display;
-use crate::method::{NativeMethodDesc, NativeMethodEntry};
 use crate::native::{NativeFunctionDesc, TypeHint};
 use crate::type_binding::TypeBindingRegistry;
 
@@ -94,7 +91,6 @@ fn validate_module_desc(module: &ModuleDesc, names: &mut BTreeSet<String>) -> En
 pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -> EngineResult<()> {
     let mut ids = BTreeSet::new();
     let mut names = BTreeSet::new();
-    let mut host_ids = BTreeSet::new();
     let mut host_method_ids = BTreeSet::new();
     let mut host_method_names = BTreeSet::new();
 
@@ -104,7 +100,6 @@ pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -
                 &desc,
                 &mut ids,
                 &mut names,
-                &mut host_ids,
                 &mut host_method_ids,
                 &mut host_method_names,
             )?;
@@ -116,7 +111,6 @@ pub(crate) fn validate_types(types: &[TypeDesc], include_standard_types: bool) -
             desc,
             &mut ids,
             &mut names,
-            &mut host_ids,
             &mut host_method_ids,
             &mut host_method_names,
         )?;
@@ -129,8 +123,7 @@ fn validate_type_desc(
     desc: &TypeDesc,
     ids: &mut BTreeSet<vela_def::TypeId>,
     names: &mut BTreeSet<String>,
-    host_ids: &mut BTreeSet<vela_common::HostTypeId>,
-    host_method_ids: &mut BTreeSet<vela_common::HostMethodId>,
+    host_method_ids: &mut BTreeSet<vela_def::MethodId>,
     host_method_names: &mut BTreeSet<(String, String)>,
 ) -> EngineResult<()> {
     if !is_valid_simple_name(&desc.key.name) {
@@ -150,42 +143,33 @@ fn validate_type_desc(
     }
     validate_attr_names(&format!("type {}", desc.key.name), &desc.attrs)?;
     validate_tuple_type(desc)?;
-    if let Some(host_type_id) = desc.host_type_id
-        && !host_ids.insert(host_type_id)
-    {
-        return Err(EngineError::new(EngineErrorKind::DuplicateHostTypeId {
-            id: host_type_id.get(),
-        }));
-    }
-
     validate_type_fields(desc)?;
     validate_type_variants(desc)?;
     validate_type_traits(desc)?;
-    validate_type_index_capability(desc)?;
 
     for method in &desc.methods {
-        validate_schema_member_name(&desc.key.name, "host method", &method.name)?;
+        validate_schema_member_name(&desc.key.name, "method", &method.name)?;
         validate_raw_type_hint(
-            &format!("host method {}.{} return", desc.key.name, method.name),
+            &format!("method {}.{} return", desc.key.name, method.name),
             method.return_type.as_deref(),
         )?;
         validate_attr_names(
-            &format!("host method {}.{}", desc.key.name, method.name),
+            &format!("method {}.{}", desc.key.name, method.name),
             &method.attrs,
         )?;
         if !host_method_ids.insert(method.id) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodId {
+            return Err(EngineError::new(EngineErrorKind::DuplicateMethodId {
                 id: method.id.get(),
             }));
         }
         if !host_method_names.insert((desc.key.name.clone(), method.name.clone())) {
-            return Err(EngineError::new(EngineErrorKind::DuplicateHostMethodName {
+            return Err(EngineError::new(EngineErrorKind::DuplicateMethodName {
                 name: method.name.clone(),
             }));
         }
         validate_host_method_params(desc.key.name.as_str(), method.name.as_str(), &method.params)?;
         validate_permission_names(
-            &format!("host method {}.{}", desc.key.name, method.name),
+            &format!("method {}.{}", desc.key.name, method.name),
             method
                 .access
                 .required_permissions()
@@ -223,20 +207,6 @@ fn validate_tuple_type(desc: &TypeDesc) -> EngineResult<()> {
         )?;
     }
     Ok(())
-}
-
-fn validate_type_index_capability(desc: &TypeDesc) -> EngineResult<()> {
-    let Some(index) = &desc.index_capability else {
-        return Ok(());
-    };
-    validate_raw_type_hint(
-        &format!("index key type {}", desc.key.name),
-        index.key_type.as_deref(),
-    )?;
-    validate_raw_type_hint(
-        &format!("index value type {}", desc.key.name),
-        index.value_type.as_deref(),
-    )
 }
 
 fn validate_type_fields(desc: &TypeDesc) -> EngineResult<()> {
@@ -436,14 +406,14 @@ fn validate_host_method_params(
 ) -> EngineResult<()> {
     let mut names = BTreeSet::new();
     for param in params {
-        validate_schema_member_name(type_name, "host method parameter", &param.name)?;
+        validate_schema_member_name(type_name, "method parameter", &param.name)?;
         validate_raw_type_hint(
-            &format!("host method {type_name}.{method} parameter {}", param.name),
+            &format!("method {type_name}.{method} parameter {}", param.name),
             param.type_hint.as_deref(),
         )?;
         if !names.insert(param.name.as_str()) {
             return Err(EngineError::new(
-                EngineErrorKind::DuplicateHostMethodParamName {
+                EngineErrorKind::DuplicateMethodParamName {
                     type_name: type_name.to_owned(),
                     method: method.to_owned(),
                     name: param.name.clone(),
@@ -504,8 +474,6 @@ pub(crate) fn validate_native_functions(
         .native
         .iter()
         .map(|entry| &entry.desc)
-        .chain(functions.scoped_host.iter().map(|entry| &entry.desc))
-        .chain(functions.host.iter().map(|entry| &entry.desc))
         .chain(functions.context_host.iter().map(|entry| &entry.desc))
     {
         validate_native_function_desc(desc, &mut ids, &mut names, &type_hints)?;
@@ -524,8 +492,7 @@ fn validate_callable_type_bindings(
     };
     for parameter in &contract.parameters {
         if let Some(binding) = parameter.binding
-            && (!type_bindings.matches_contract(binding)
-                || !parameter_mode_matches_representation(parameter.mode, binding.representation))
+            && !type_bindings.matches_contract(binding)
         {
             return Err(EngineError::new(
                 EngineErrorKind::InvalidCallableTypeBinding {
@@ -536,8 +503,7 @@ fn validate_callable_type_bindings(
         }
     }
     if let Some(binding) = contract.returns.binding
-        && (!type_bindings.matches_contract(binding)
-            || !return_mode_matches_representation(contract.returns.mode, binding.representation))
+        && !type_bindings.matches_contract(binding)
     {
         return Err(EngineError::new(
             EngineErrorKind::InvalidCallableTypeBinding {
@@ -545,77 +511,6 @@ fn validate_callable_type_bindings(
                 location: "return".to_owned(),
             },
         ));
-    }
-    Ok(())
-}
-
-fn parameter_mode_matches_representation(
-    mode: BoundaryMode,
-    representation: InteropRepresentation,
-) -> bool {
-    match representation {
-        InteropRepresentation::Owned => matches!(
-            mode,
-            BoundaryMode::Value | BoundaryMode::ReadOnlyValueBorrow
-        ),
-        InteropRepresentation::StorageDirectedShared => mode == BoundaryMode::StorageDirectedShared,
-        InteropRepresentation::SharedHost | InteropRepresentation::CollectionView(_) => {
-            mode == BoundaryMode::SharedHost
-        }
-        InteropRepresentation::ExclusiveHost | InteropRepresentation::CollectionMut { .. } => {
-            mode == BoundaryMode::ExclusiveHost
-        }
-    }
-}
-
-fn return_mode_matches_representation(
-    mode: ReturnMode,
-    representation: InteropRepresentation,
-) -> bool {
-    match representation {
-        InteropRepresentation::Owned => {
-            matches!(mode, ReturnMode::OwnedValue | ReturnMode::StructuredValue)
-        }
-        InteropRepresentation::StorageDirectedShared => false,
-        InteropRepresentation::SharedHost
-        | InteropRepresentation::ExclusiveHost
-        | InteropRepresentation::CollectionView(_)
-        | InteropRepresentation::CollectionMut { .. } => {
-            matches!(mode, ReturnMode::ScopedHost { .. })
-        }
-    }
-}
-
-pub(crate) fn validate_native_method_type_hints(
-    host_method_metadata: &[NativeMethodDesc],
-    native_methods: &[NativeMethodEntry],
-    types: &[TypeDesc],
-    include_standard_types: bool,
-) -> EngineResult<()> {
-    let type_hints = TypeHintLookup::new(types, include_standard_types);
-    for desc in host_method_metadata
-        .iter()
-        .chain(native_methods.iter().map(|entry| &entry.desc))
-    {
-        validate_attr_names(
-            &format!("host method {}.{}", desc.owner.name, desc.name),
-            &desc.attrs,
-        )?;
-        validate_type_hint(
-            &desc.returns,
-            &format!("host method {}.{} return", desc.owner.name, desc.name),
-            &type_hints,
-        )?;
-        for param in &desc.params {
-            validate_type_hint(
-                &param.hint,
-                &format!(
-                    "host method {}.{} parameter {}",
-                    desc.owner.name, desc.name, param.name
-                ),
-                &type_hints,
-            )?;
-        }
     }
     Ok(())
 }
@@ -746,17 +641,11 @@ fn validate_type_hint(
         | TypeHint::Map
         | TypeHint::Set
         | TypeHint::Iterator
-        | TypeHint::PathProxy
-        | TypeHint::Host(_)
         | TypeHint::Function => Ok(()),
         TypeHint::ArrayOf(element)
-        | TypeHint::ArrayViewOf(element)
-        | TypeHint::ArrayMutOf { element, .. }
         | TypeHint::IteratorOf(element)
         | TypeHint::OptionOf(element) => validate_type_hint(element, descriptor, lookup),
-        TypeHint::SetOf(element)
-        | TypeHint::SetViewOf(element)
-        | TypeHint::SetMutOf { element, .. } => {
+        TypeHint::SetOf(element) => {
             if !is_keyable_type_hint(element) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
@@ -765,9 +654,7 @@ fn validate_type_hint(
             }
             validate_type_hint(element, descriptor, lookup)
         }
-        TypeHint::MapOf { key, value }
-        | TypeHint::MapViewOf { key, value }
-        | TypeHint::MapMutOf { key, value, .. } => {
+        TypeHint::MapOf { key, value } => {
             if !is_keyable_type_hint(key) {
                 return Err(EngineError::new(EngineErrorKind::InvalidTypeHintName {
                     descriptor: descriptor.to_owned(),
@@ -851,12 +738,8 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
     match (name.as_str(), hint.args.as_slice()) {
         ("()", []) => true,
         ("()", elements) => elements.len() >= 2 && elements.iter().all(is_valid_type_hint_def),
-        ("Array" | "ArrayView" | "ArrayMut" | "Iterator" | "Option", [element]) => {
-            is_valid_type_hint_def(element)
-        }
-        ("Set" | "SetView" | "SetMut", [element]) => {
-            is_valid_type_hint_def(element) && is_keyable_type_hint_def(element)
-        }
+        ("Array" | "Iterator" | "Option", [element]) => is_valid_type_hint_def(element),
+        ("Set", [element]) => is_valid_type_hint_def(element) && is_keyable_type_hint_def(element),
         ("Map" | "MapView" | "MapMut", [key, value]) => {
             is_valid_type_hint_def(key)
                 && is_keyable_type_hint_def(key)
@@ -864,10 +747,9 @@ fn is_valid_type_hint_def(hint: &vela_registry::TypeHintDef) -> bool {
         }
         ("Result", [ok, err]) => is_valid_type_hint_def(ok) && is_valid_type_hint_def(err),
         (
-            "Array" | "ArrayView" | "ArrayMut" | "Set" | "SetView" | "SetMut" | "Map" | "MapView"
-            | "MapMut" | "Range" | "Iterator" | "Function" | "Closure" | "Option" | "Result"
-            | "Any" | "String" | "Bytes" | "bool" | "char" | "i8" | "i16" | "i32" | "i64" | "u8"
-            | "u16" | "u32" | "u64" | "f32" | "f64",
+            "Array" | "Set" | "Map" | "Range" | "Iterator" | "Function" | "Closure" | "Option"
+            | "Result" | "Any" | "String" | "Bytes" | "bool" | "char" | "i8" | "i16" | "i32"
+            | "i64" | "u8" | "u16" | "u32" | "u64" | "f32" | "f64",
             [],
         ) => true,
         (_, []) => true,
@@ -897,25 +779,17 @@ fn is_keyable_type_hint(hint: &TypeHint) -> bool {
         | TypeHint::Primitive(_)
         | TypeHint::Array
         | TypeHint::ArrayOf(_)
-        | TypeHint::ArrayViewOf(_)
-        | TypeHint::ArrayMutOf { .. }
         | TypeHint::Map
         | TypeHint::MapOf { .. }
-        | TypeHint::MapViewOf { .. }
-        | TypeHint::MapMutOf { .. }
         | TypeHint::Set
         | TypeHint::SetOf(_)
-        | TypeHint::SetViewOf(_)
-        | TypeHint::SetMutOf { .. }
         | TypeHint::Iterator
         | TypeHint::IteratorOf(_)
         | TypeHint::OptionOf(_)
         | TypeHint::ResultOf { .. }
         | TypeHint::Record(_)
         | TypeHint::Enum(_)
-        | TypeHint::Host(_)
-        | TypeHint::Trait(_)
-        | TypeHint::PathProxy => !matches!(hint, TypeHint::PathProxy),
+        | TypeHint::Trait(_) => true,
         TypeHint::TupleOf(_) | TypeHint::Function => false,
     }
 }

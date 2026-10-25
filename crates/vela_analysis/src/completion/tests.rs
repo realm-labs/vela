@@ -1,4 +1,4 @@
-use vela_common::{HostMethodId, SourceId};
+use vela_common::SourceId;
 use vela_def::{FieldId, FunctionId, MethodId, TypeId, VariantId};
 use vela_hir::module_graph::ModuleSource;
 use vela_package::ModulePath;
@@ -14,7 +14,7 @@ use super::*;
 fn receiver_completions_include_fields_and_methods_for_host_or_record_facts() {
     let facts = registry_facts();
 
-    let completions = member_completions(&facts, &TypeFact::host("Player"));
+    let completions = member_completions(&facts, &TypeFact::record("Player"));
 
     assert!(completions.contains(&CompletionItem::new(
         "level",
@@ -61,7 +61,7 @@ fn global_completions_include_types_traits_and_functions() {
     assert!(completions.contains(&CompletionItem::new(
         "Player",
         CompletionKind::Type,
-        TypeFact::host("Player"),
+        TypeFact::record("Player"),
     )));
     assert!(completions.contains(&CompletionItem::new(
         "Damageable",
@@ -71,7 +71,7 @@ fn global_completions_include_types_traits_and_functions() {
     assert!(completions.contains(&CompletionItem::new(
         "game::reward::grant",
         CompletionKind::Function,
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::BOOL),
+        TypeFact::function(vec![TypeFact::record("Player")], TypeFact::BOOL),
     )));
 }
 
@@ -798,7 +798,7 @@ fn registry_facts() -> RegistryFacts {
         TypeDesc::new(TypeKey::new(TypeId::new(1), "Player"))
             .field(FieldDesc::new(FieldId::new(1), "level").type_hint("i64"))
             .method(
-                MethodDesc::new(HostMethodId::new(1), "grant_exp")
+                MethodDesc::new(vela_def::MethodId::new(1), "grant_exp")
                     .param(MethodParamDesc::new("amount").type_hint("i64"))
                     .return_type("bool"),
             ),

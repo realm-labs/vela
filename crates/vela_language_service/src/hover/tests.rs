@@ -1,7 +1,4 @@
-use vela_analysis::registry::{
-    CallableSignatureFact, RegistryEffectFact, RegistryFacts, ScopedResourceKindDef,
-    ScopedResourceParentDef, ScopedResourceReturnDef,
-};
+use vela_analysis::registry::{CallableSignatureFact, RegistryEffectFact, RegistryFacts};
 
 use super::*;
 use crate::{
@@ -82,34 +79,8 @@ fn hover_displays_schema_callable_signatures() {
 }
 
 #[test]
-fn hover_displays_scoped_resource_origin_and_release_contract() {
-    let document = DocumentId::from("/workspace/scripts/game/main.vela");
-    let text = "fn main(player: Player) { return inventory::item(player); }";
-    let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_function(
-        "inventory::item",
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::host("Item")),
-    );
-    schema.insert_function_scoped_resource(
-        "inventory::item",
-        ScopedResourceReturnDef {
-            kind: ScopedResourceKindDef::View,
-            parent: ScopedResourceParentDef::Parameter(0),
-        },
-    );
-    let databases = databases_for(&document, text, schema);
-
-    let hover = databases
-        .hover(
-            &document,
-            Position::new(0, text.find("item(player").expect("schema function") + 1),
-        )
-        .expect("hover should resolve scoped schema function");
-
-    assert!(hover.detail().contains("scoped resource: View"));
-    assert!(hover.detail().contains("parent: parameter #1"));
-    assert!(hover.detail().contains("release: explicit"));
+fn hover_rejects_scoped_resource_origin_and_release_contract() {
+    crate::removed_boundary_tests::assert_removed_resource_surface();
 }
 
 #[test]
@@ -155,7 +126,7 @@ fn hover_reports_effects_and_permissions() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) { player.grant(1) }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_method(
         "Player",
         "grant",
@@ -166,7 +137,7 @@ fn hover_reports_effects_and_permissions() {
     schema.insert_method_access(vela_analysis::registry::RegistryMethodAccessFact {
         owner: "Player".to_owned(),
         name: "grant".to_owned(),
-        receiver: vela_common::ReceiverCapability::Shared,
+
         public: true,
         reflect_callable: true,
         required_permissions: vec!["player.reward".to_owned()],
@@ -235,12 +206,12 @@ pub fn main(player: Player) {
     player.inventory().grant(1)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
-    schema.insert_type("Inventory", TypeFact::host("Inventory"));
+    schema.insert_type("Player", TypeFact::record("Player"));
+    schema.insert_type("Inventory", TypeFact::record("Inventory"));
     schema.insert_method(
         "Player",
         "inventory",
-        TypeFact::function(Vec::new(), TypeFact::host("Inventory")),
+        TypeFact::function(Vec::new(), TypeFact::record("Inventory")),
     );
     schema.insert_method(
         "Inventory",
@@ -291,7 +262,7 @@ pub fn main(player: Player) {
     player.rewardable().preview(1)
 }";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_trait("Rewardable", TypeFact::trait_type("Rewardable"));
     schema.insert_method(
         "Player",
@@ -370,13 +341,13 @@ fn hover_reports_schema_type_field_and_function_docs() {
     let document = DocumentId::from("/workspace/scripts/game/main.vela");
     let text = "pub fn main(player: Player) {\n    player.level\n    grant(player)\n}";
     let mut schema = RegistryFacts::default();
-    schema.insert_type("Player", TypeFact::host("Player"));
+    schema.insert_type("Player", TypeFact::record("Player"));
     schema.insert_type_docs("Player", "Player host object.");
     schema.insert_field("Player", "level", TypeFact::I64);
     schema.insert_field_docs("Player", "level", "Current player level.");
     schema.insert_function(
         "grant",
-        TypeFact::function(vec![TypeFact::host("Player")], TypeFact::BOOL),
+        TypeFact::function(vec![TypeFact::record("Player")], TypeFact::BOOL),
     );
     schema.insert_function_docs("grant", "Grant a player reward.");
     let databases = databases_for(&document, text, schema);

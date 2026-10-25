@@ -166,7 +166,6 @@ fn insert_static_enum_layout(
             contract: None,
             declaration_order: 0,
             access: CompileFieldAccess::script(),
-            host_runtime: None,
         },
         origin,
     )
@@ -190,7 +189,7 @@ fn mir_builder_match_literal_order_and_catch_all_snapshot() {
     assert_eq!(
         program.dump(),
         r#"mir {
-  target function#8700 CompileFunctionDescriptor { id: FunctionId(8700), class: Script, canonical_symbol: "patterns_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, host_read: false, host_write: false, host_call: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
+  target function#8700 CompileFunctionDescriptor { id: FunctionId(8700), class: Script, canonical_symbol: "patterns_builder::main", debug_name: "main", signature: CompileSignature { parameters: [CompileParameter { name: "value", contract: None, default: Required, origin: None }], positional: ExactOrTrailingDefaults, return_contract: None, effect: MirEffect { may_trap: false, may_allocate: false, script_call: false, dynamic_call: false, state_read: false, state_write: false, reflection_read: false, reflection_write: false, reflection_call: false, emits_event: false, reads_time: false, uses_random: false, reads_io: false, writes_io: false, host_read: false, host_write: false } }, access: CompileFunctionAccess { public: false, reflect_visible: true, reflect_callable: false } }
   fn f0 body h0 owner function#8700 symbol="patterns_builder::main" @87:15..59/h0 {
     param p0: value -> l0 kind=Explicit(HirParamId(0)) contract=None default=None hir=l0 @87:8..13/h0
     local l0: Script(HirLocalId(0)) Dynamic @87:8..13/h0
@@ -750,7 +749,6 @@ fn mir_builder_lowers_qualified_record_compatibility_as_never_match() {
                     contract: None,
                     declaration_order: 0,
                     access: CompileFieldAccess::script(),
-                    host_runtime: None,
                 },
                 origin,
             )?;

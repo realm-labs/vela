@@ -26,10 +26,10 @@ use crate::{
     store_value_in_heap_if_needed, validate_inline_cache_layout,
 };
 use crate::{
-    array_methods, closure_calls, constant_loads, field_access, format_strings, host_access,
-    i64_ops, indexing, iteration, native_function_calls, runtime_type_guards,
-    script_aggregate_construction, script_builtin_methods, script_function_calls,
-    script_method_calls, script_object_construction, try_propagation, tuple_fields,
+    array_methods, closure_calls, constant_loads, field_access, format_strings, i64_ops, indexing,
+    iteration, native_function_calls, runtime_type_guards, script_aggregate_construction,
+    script_builtin_methods, script_function_calls, script_method_calls, script_object_construction,
+    try_propagation, tuple_fields,
 };
 
 pub(crate) struct LinkedExecutionCall<'a> {
@@ -202,8 +202,6 @@ impl Vm {
             call.inline_caches,
             call.bytecode_profiler,
             None,
-            host.as_deref()
-                .map(|host| &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)),
             heap.as_deref_mut(),
             budget.as_deref_mut(),
             None,
@@ -347,9 +345,6 @@ impl Vm {
                         child_dispatch.inline_caches,
                         child_dispatch.bytecode_profiler,
                         Some(return_to),
-                        host.as_deref().map(|host| {
-                            &*host.adapter as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
-                        }),
                         heap.as_deref_mut(),
                         budget.as_deref_mut(),
                         Some(&mut session.frame_pool),
@@ -577,7 +572,6 @@ impl Vm {
         inline_caches: Option<&dyn VmInlineCaches>,
         _bytecode_profiler: Option<&dyn VmBytecodeProfiler>,
         return_to: Option<ReturnContinuation>,
-        host: Option<&(dyn vela_host::adapter::ScriptStateAdapter + Send)>,
         heap: Option<&mut HeapExecution<'_>>,
         budget: Option<&mut ExecutionBudget>,
         pool: Option<&mut crate::frame::FramePool>,
@@ -640,8 +634,7 @@ impl Vm {
             }
         }
         if check_param_guards {
-            let mut guard_context =
-                runtime_type_guards::GuardExecutionContext::new_with_host(heap, budget, host);
+            let mut guard_context = runtime_type_guards::GuardExecutionContext::new(heap, budget);
             runtime_type_guards::execute_linked_param_guards(
                 code,
                 program,
@@ -756,20 +749,6 @@ impl Vm {
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     ResumableCallbackStep::Complete(value) => {
-                        if let Some(retain) = callback.take_completed_host_retain() {
-                            crate::host_collection_mutation::execute_host_root_collection_retain(
-                                crate::host_access::HostAccessRuntime {
-                                    frame: &mut frame_state.registers,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span,
-                                },
-                                retain,
-                            )
-                            .map_err(|error| error.with_source_span_if_absent(source_span))?;
-                        }
                         frame_state.registers.write(destination, value)?;
                         None
                     }
@@ -799,15 +778,7 @@ impl Vm {
                     returned,
                     source_span,
                 } => match next
-                    .step(
-                        &current_owner,
-                        &mut host
-                            .as_deref_mut()
-                            .map(|host| host as &mut dyn crate::method_runtime::HostIteratorAccess),
-                        heap,
-                        budget,
-                        returned,
-                    )
+                    .step(&current_owner, heap, budget, returned)
                     .map_err(|error| error.with_source_span_if_absent(source_span))?
                 {
                     iteration::ResumableIteratorStep::Complete(Some(value)) => {
@@ -1184,15 +1155,10 @@ impl Vm {
                     .0;
                 }
                 InstructionKind::GuardType { src, guard } => {
-                    let mut guard_context =
-                        runtime_type_guards::GuardExecutionContext::new_with_host(
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                            host.as_deref().map(|host| {
-                                &*host.adapter
-                                    as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
-                            }),
-                        );
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
                     runtime_type_guards::execute_linked_register_guard(
                         code,
                         program,
@@ -1360,38 +1326,26 @@ impl Vm {
                         &dispatch_target.kind
                     {
                         let receiver_value = frame.read(*receiver)?;
-                        if let Some(prepared) =
-                            crate::host_collection_callback::prepare_callback_receiver(
+                        if let Some(callback_cache) =
+                            crate::callback_method_dispatch::callback_cache_entry(
                                 *method_id,
-                                receiver_value,
-                                crate::host_access::HostAccessRuntime {
-                                    frame,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span: instruction.span,
-                                },
-                                *receiver,
-                                *cache_site,
-                            )?
+                                &receiver_value,
+                                heap.as_deref(),
+                            )
                         {
                             let values =
                                 script_function_calls::script_call_args_from_call_arguments(
                                     frame, args,
                                 )?;
                             if let Some(callback) = ResumableCallbackMethod::new(
-                                &prepared.value,
-                                prepared.cache,
+                                &receiver_value,
+                                callback_cache,
                                 values.as_slice(),
                                 heap.as_deref(),
-                                prepared.host_retain_writeback,
-                                prepared.host_sequence,
                             ) {
                                 let callback = callback?;
-                                if prepared.cacheable_receiver
-                                    && let (Some(site), Some(caches)) =
-                                        (*cache_site, call.inline_caches)
+                                if let (Some(site), Some(caches)) =
+                                    (*cache_site, call.inline_caches)
                                 {
                                     let existing = caches.method_dispatch(site);
                                     let cached = existing.is_some_and(|entry| {
@@ -1403,7 +1357,7 @@ impl Vm {
                                                     method_id: cached_method,
                                                     callback_method,
                                                 } if cached_method == *method_id
-                                                    && callback_method == prepared.cache
+                                                    && callback_method == callback_cache
                                             )
                                     });
                                     if !cached {
@@ -1415,7 +1369,7 @@ impl Vm {
                                                 target:
                                                     crate::MethodInlineCacheTarget::CallbackValue {
                                                         method_id: *method_id,
-                                                        callback_method: prepared.cache,
+                                                        callback_method: callback_cache,
                                                     },
                                             },
                                         );
@@ -1437,21 +1391,13 @@ impl Vm {
                                 script_function_calls::script_call_args_from_call_arguments(
                                     frame, args,
                                 )?;
-                            let ordering = crate::host_collection_ordering::prepare_array_ordering(
+                            let ordering = array_methods::ResumableArrayOrdering::new(
                                 kind,
-                                receiver_value,
+                                &receiver_value,
                                 values.as_slice(),
-                                crate::host_access::HostAccessRuntime {
-                                    frame,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span: instruction.span,
-                                },
-                                *receiver,
-                                *cache_site,
-                            )?;
+                                heap.as_deref(),
+                            )
+                            .map(Some)?;
                             if let Some(ordering) = ordering {
                                 if let (Some(site), Some(caches)) =
                                     (*cache_site, call.inline_caches)
@@ -1610,33 +1556,22 @@ impl Vm {
                     ) = &resolution
                     {
                         let receiver_value = frame.read(*receiver)?;
-                        if let Some(prepared) =
-                            crate::host_collection_callback::prepare_callback_receiver(
+                        if let Some(callback_cache) =
+                            crate::callback_method_dispatch::callback_cache_entry(
                                 *method_id,
-                                receiver_value,
-                                crate::host_access::HostAccessRuntime {
-                                    frame,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span: instruction.span,
-                                },
-                                *receiver,
-                                *cache_site,
-                            )?
+                                &receiver_value,
+                                heap.as_deref(),
+                            )
                         {
                             let values =
                                 script_method_calls::dynamic_value_args_from_linked_arguments(
                                     frame, args,
                                 )?;
                             if let Some(callback) = ResumableCallbackMethod::new(
-                                &prepared.value,
-                                prepared.cache,
+                                &receiver_value,
+                                callback_cache,
                                 values.as_slice(),
                                 heap.as_deref(),
-                                prepared.host_retain_writeback,
-                                prepared.host_sequence,
                             ) {
                                 frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
@@ -1654,21 +1589,13 @@ impl Vm {
                                 script_method_calls::dynamic_value_args_from_linked_arguments(
                                     frame, args,
                                 )?;
-                            let ordering = crate::host_collection_ordering::prepare_array_ordering(
+                            let ordering = array_methods::ResumableArrayOrdering::new(
                                 kind,
-                                receiver_value,
+                                &receiver_value,
                                 values.as_slice(),
-                                crate::host_access::HostAccessRuntime {
-                                    frame,
-                                    heap: heap.as_deref_mut(),
-                                    budget: budget.as_deref_mut(),
-                                    host: host.as_deref_mut(),
-                                    inline_caches: call.inline_caches,
-                                    source_span: instruction.span,
-                                },
-                                *receiver,
-                                *cache_site,
-                            )?;
+                                heap.as_deref(),
+                            )
+                            .map(Some)?;
                             if let Some(ordering) = ordering {
                                 frame_state.ip = InstructionOffset(ip);
                                 frame_state.pending_operation =
@@ -1686,37 +1613,6 @@ impl Vm {
                     else {
                         unreachable!("script dynamic targets return through a frame push")
                     };
-                    if let script_method_calls::LinkedDynamicNonScriptTarget::Host { method_id } =
-                        &target
-                        && let Some(function) = self.host_method_ids.get(method_id)
-                    {
-                        let prepared = host_access::prepare_host_root_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *receiver,
-                            args,
-                        )?;
-                        let host_execution = host.as_deref_mut().ok_or_else(|| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "host context",
-                            })
-                        })?;
-                        let result = function(&prepared.receiver, &prepared.args, host_execution)
-                            .map_err(|error| {
-                            error.with_source_span_if_absent(instruction.span)
-                        })?;
-                        native_function_calls::write_native_result(
-                            frame,
-                            host,
-                            heap,
-                            budget,
-                            program,
-                            Some(*dst),
-                            result,
-                        )?;
-                        continue;
-                    }
                     script_method_calls::dispatch_resolved_linked_dynamic_method_call(
                         self,
                         context,
@@ -1736,15 +1632,10 @@ impl Vm {
                         *src,
                         *expected,
                     )? {
-                        let mut guard_context =
-                            runtime_type_guards::GuardExecutionContext::new_with_host(
-                                heap.as_deref_mut(),
-                                budget.as_deref_mut(),
-                                host.as_deref().map(|host| {
-                                    &*host.adapter
-                                        as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
-                                }),
-                            );
+                        let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                            heap.as_deref_mut(),
+                            budget.as_deref_mut(),
+                        );
                         return runtime_type_guards::execute_linked_return_guard(
                             code,
                             program,
@@ -1976,9 +1867,6 @@ impl Vm {
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
                         },
                         *dst,
                         *base,
@@ -1993,9 +1881,6 @@ impl Vm {
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
                         },
                         *dst,
                         *base,
@@ -2008,9 +1893,6 @@ impl Vm {
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
                         },
                         *base,
                         *index,
@@ -2025,83 +1907,23 @@ impl Vm {
                             frame,
                             heap: heap.as_deref_mut(),
                             budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
                         },
                         *base,
                         key,
                         *src,
                     )?;
                 }
-                InstructionKind::IterInit {
-                    dst,
-                    iterable,
-                    host_collection,
-                } => {
-                    let host_iterator = if matches!(frame.read(*iterable)?, Value::HostRef(_)) {
-                        match host_collection {
-                            Some(vela_common::HostCollectionIteration::ArrayValues) => Some(
-                                crate::host_collection_projection::execute_host_root_array_for_loop(
-                                    host_access::HostAccessRuntime {
-                                        frame,
-                                        heap: heap.as_deref_mut(),
-                                        budget: budget.as_deref_mut(),
-                                        host: host.as_deref_mut(),
-                                        inline_caches: call.inline_caches,
-                                        source_span: instruction.span,
-                                    },
-                                    *iterable,
-                                )?,
-                            ),
-                            Some(vela_common::HostCollectionIteration::MapEntries) => Some(
-                                crate::host_collection_projection::execute_host_root_map_for_loop(
-                                    host_access::HostAccessRuntime {
-                                        frame,
-                                        heap: heap.as_deref_mut(),
-                                        budget: budget.as_deref_mut(),
-                                        host: host.as_deref_mut(),
-                                        inline_caches: call.inline_caches,
-                                        source_span: instruction.span,
-                                    },
-                                    *iterable,
-                                    crate::std_method_ids::HostMapIteration::Entries,
-                                )?,
-                            ),
-                            Some(vela_common::HostCollectionIteration::SetValues) => Some(
-                                crate::host_collection_projection::execute_host_root_set_iteration(
-                                    host_access::HostAccessRuntime {
-                                        frame,
-                                        heap: heap.as_deref_mut(),
-                                        budget: budget.as_deref_mut(),
-                                        host: host.as_deref_mut(),
-                                        inline_caches: call.inline_caches,
-                                        source_span: instruction.span,
-                                    },
-                                    *iterable,
-                                    &[],
-                                    None,
-                                )?,
-                            ),
-                            None => None,
-                        }
-                    } else {
-                        None
-                    };
-                    if let Some(iterator) = host_iterator {
-                        frame.write(*dst, iterator)?;
-                    } else {
-                        iteration::dispatch_iter_init(
-                            iteration::IterRuntime {
-                                frame,
-                                heap: heap.as_deref_mut(),
-                                budget: budget.as_deref_mut(),
-                            },
-                            *dst,
-                            *iterable,
-                        )
-                        .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    }
+                InstructionKind::IterInit { dst, iterable } => {
+                    iteration::dispatch_iter_init(
+                        iteration::IterRuntime {
+                            frame,
+                            heap: heap.as_deref_mut(),
+                            budget: budget.as_deref_mut(),
+                        },
+                        *dst,
+                        *iterable,
+                    )
+                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
                 }
                 InstructionKind::IterNext {
                     iterator,
@@ -2195,18 +2017,7 @@ impl Vm {
                     debug_name: _,
                     cache_site: _,
                 } => {
-                    let value = host_access::load_linked_state(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        program,
-                        *slot,
-                    )?;
+                    let value = crate::state_values::load(host.as_deref(), program, *slot)?;
                     frame.write(*dst, value)?;
                 }
                 InstructionKind::StoreState {
@@ -2214,276 +2025,18 @@ impl Vm {
                     debug_name: _,
                     src,
                 } => {
-                    let value = frame.read(*src)?;
-                    host_access::store_linked_state(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
+                    crate::state_values::store(
+                        host.as_deref_mut(),
                         program,
                         *slot,
-                        value,
-                    )?;
-                }
-                InstructionKind::LoadExternState {
-                    dst,
-                    slot,
-                    debug_name,
-                    cache_site: _,
-                } => {
-                    let value = host_access::load_linked_cached_extern_state(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        program,
-                        *debug_name,
-                        Some(*slot),
-                    )?;
-                    frame.write(*dst, value)?;
-                }
-                InstructionKind::ReleaseBorrowLease { dst, src } => {
-                    let root = crate::heap_values::optional_borrowed_host_ref(
                         frame.read(*src)?,
-                        heap.as_deref().map(|heap| &*heap.heap),
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let Some(root) = root else {
-                        frame.write(*dst, Value::Unit)?;
-                        continue;
-                    };
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "release borrowed host lease without host boundary",
-                        })
-                        .with_source_span(instruction.span)
-                    })?;
-                    let reference = match root {
-                        crate::heap_values::BorrowedReleaseTarget::Interned(root) => {
-                            host.resolve_host_ref(root)?
-                        }
-                        crate::heap_values::BorrowedReleaseTarget::ScopedIterator(root) => root,
-                    };
-                    host.adapter.release_scoped_host(reference)?;
-                    frame.write(*dst, Value::Unit)?;
-                }
-                InstructionKind::TryReleaseBorrowLease { dst, src } => {
-                    let root = crate::heap_values::optional_borrowed_host_ref(
-                        frame.read(*src)?,
-                        heap.as_deref().map(|heap| &*heap.heap),
-                    )
-                    .map_err(|error| error.with_source_span_if_absent(instruction.span))?;
-                    let Some(root) = root else {
-                        frame.write(*dst, Value::Bool(false))?;
-                        continue;
-                    };
-                    let host = host.as_deref_mut().ok_or_else(|| {
-                        VmError::new(VmErrorKind::TypeMismatch {
-                            operation: "try-release borrowed host lease without host boundary",
-                        })
-                        .with_source_span(instruction.span)
-                    })?;
-                    let reference = match root {
-                        crate::heap_values::BorrowedReleaseTarget::Interned(root) => {
-                            host.resolve_host_ref(root)?
-                        }
-                        crate::heap_values::BorrowedReleaseTarget::ScopedIterator(root) => root,
-                    };
-                    let released = host.adapter.try_release_scoped_host(reference)?;
-                    frame.write(*dst, Value::Bool(released))?;
-                }
-                InstructionKind::HostRead {
-                    dst,
-                    root,
-                    target,
-                    dynamic_args,
-                    cache_site,
-                } => {
-                    let value = host_access::execute_code_host_read(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        *root,
-                        host_access::CodeHostTargetPlan {
-                            targets: &code.host_targets,
-                            target_id: *target,
-                            dynamic_args,
-                            cache_site: *cache_site,
-                        },
                     )?;
-                    frame.write(*dst, value)?;
-                }
-                InstructionKind::HostWrite {
-                    root,
-                    target,
-                    dynamic_args,
-                    src,
-                    cache_site,
-                } => {
-                    host_access::execute_code_host_write(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        *root,
-                        host_access::CodeHostTargetPlan {
-                            targets: &code.host_targets,
-                            target_id: *target,
-                            dynamic_args,
-                            cache_site: *cache_site,
-                        },
-                        *src,
-                    )?;
-                }
-                InstructionKind::HostMutate {
-                    root,
-                    target,
-                    dynamic_args,
-                    op,
-                    rhs,
-                    cache_site,
-                } => {
-                    host_access::execute_code_host_mutate(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        *root,
-                        host_access::CodeHostMutationPlan {
-                            target: host_access::CodeHostTargetPlan {
-                                targets: &code.host_targets,
-                                target_id: *target,
-                                dynamic_args,
-                                cache_site: *cache_site,
-                            },
-                            op: *op,
-                            rhs: *rhs,
-                        },
-                    )?;
-                }
-                InstructionKind::HostRemove {
-                    root,
-                    target,
-                    dynamic_args,
-                    cache_site,
-                } => {
-                    host_access::execute_code_host_remove(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        *root,
-                        host_access::CodeHostTargetPlan {
-                            targets: &code.host_targets,
-                            target_id: *target,
-                            dynamic_args,
-                            cache_site: *cache_site,
-                        },
-                    )?;
-                }
-                InstructionKind::HostCall {
-                    dst,
-                    root,
-                    target,
-                    dynamic_args,
-                    method,
-                    debug_name: _,
-                    args,
-                    cache_site,
-                } => {
-                    let method_id =
-                        host_access::linked_host_method_id(program, *method, instruction.span)?;
-                    if let Some(function) = self.host_method_ids.get(&method_id) {
-                        let prepared = host_access::prepare_host_method_args(
-                            frame,
-                            heap.as_deref(),
-                            host.as_deref(),
-                            *root,
-                            host_access::CodeHostTargetPlan {
-                                targets: &code.host_targets,
-                                target_id: *target,
-                                dynamic_args,
-                                cache_site: *cache_site,
-                            },
-                            args,
-                            instruction.span,
-                        )?;
-                        let host_execution = host.as_deref_mut().ok_or_else(|| {
-                            VmError::new(VmErrorKind::TypeMismatch {
-                                operation: "host context",
-                            })
-                        })?;
-                        let result = function(&prepared.receiver, &prepared.args, host_execution)
-                            .map_err(|error| {
-                            error.with_source_span_if_absent(instruction.span)
-                        })?;
-                        native_function_calls::write_native_result(
-                            frame, host, heap, budget, program, *dst, result,
-                        )?;
-                        continue;
-                    }
-                    let value = host_access::execute_linked_code_host_call(
-                        host_access::HostAccessRuntime {
-                            frame,
-                            heap: heap.as_deref_mut(),
-                            budget: budget.as_deref_mut(),
-                            host: host.as_deref_mut(),
-                            inline_caches: call.inline_caches,
-                            source_span: instruction.span,
-                        },
-                        *root,
-                        host_access::LinkedCodeHostCallPlan {
-                            program,
-                            target: host_access::CodeHostTargetPlan {
-                                targets: &code.host_targets,
-                                target_id: *target,
-                                dynamic_args,
-                                cache_site: *cache_site,
-                            },
-                            method: *method,
-                            args,
-                            wants_return: dst.is_some(),
-                        },
-                    )?;
-                    if let (Some(dst), Some(value)) = (dst, value) {
-                        frame.write(*dst, value)?;
-                    }
                 }
                 InstructionKind::Return { src } => {
-                    let mut guard_context =
-                        runtime_type_guards::GuardExecutionContext::new_with_host(
-                            heap.as_deref_mut(),
-                            budget.as_deref_mut(),
-                            host.as_deref().map(|host| {
-                                &*host.adapter
-                                    as &(dyn vela_host::adapter::ScriptStateAdapter + Send)
-                            }),
-                        );
+                    let mut guard_context = runtime_type_guards::GuardExecutionContext::new(
+                        heap.as_deref_mut(),
+                        budget.as_deref_mut(),
+                    );
                     return runtime_type_guards::execute_linked_return_guard(
                         code,
                         program,

@@ -36,12 +36,12 @@ fn lsp_references_find_schema_field_reads_and_writes() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -188,12 +188,12 @@ fn lsp_references_find_schema_record_constructor_field_labels() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -339,12 +339,12 @@ fn lsp_references_find_schema_method_calls() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "methods": [
@@ -492,7 +492,7 @@ fn lsp_references_find_schema_variant_constructors_and_patterns() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
@@ -660,7 +660,7 @@ fn lsp_document_highlight_marks_schema_variant_uses() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
@@ -675,8 +675,7 @@ fn lsp_document_highlight_marks_schema_variant_uses() {
                         "fact": {
                             "kind": "enum",
                             "name": "QuestState",
-                            "variant": "Active",
-                            "payload": [{ "kind": "primitive", "name": "i64" }]
+                            "variant": "Active"
                         },
                         "sourceSpan": {
                             "source": 1,
@@ -834,7 +833,7 @@ fn lsp_references_find_schema_trait_method_calls() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "traits": [
                     {
@@ -989,12 +988,12 @@ pub fn preview() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "traits": [

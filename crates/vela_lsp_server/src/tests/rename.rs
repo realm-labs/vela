@@ -646,12 +646,12 @@ pub fn grant() { return 1 }";
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" }
+                        "fact": { "kind": "record", "name": "Player" }
                     }
                 ],
                 "fields": [
@@ -790,12 +790,12 @@ fn lsp_source_backed_schema_type_rename_updates_type_hints() {
     fs::write(
         &schema_path,
         serde_json::json!({
-            "formatVersion": 3,
+            "formatVersion": 4,
             "facts": {
                 "types": [
                     {
                         "name": "Player",
-                        "fact": { "kind": "host", "name": "Player" },
+                        "fact": { "kind": "record", "name": "Player" },
                         "sourceSpan": {
                             "source": 1,
                             "start": target_start,
@@ -980,12 +980,12 @@ fn file_uri(path: &Path) -> String {
 
 fn schema_artifact() -> &'static str {
     r#"{
-        "formatVersion": 3,
+        "formatVersion": 4,
         "facts": {
             "types": [
                 {
                     "name": "Player",
-                    "fact": { "kind": "host", "name": "Player" }
+                    "fact": { "kind": "record", "name": "Player" }
                 }
             ],
             "fields": [

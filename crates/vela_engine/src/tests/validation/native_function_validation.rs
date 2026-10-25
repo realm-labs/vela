@@ -1,27 +1,6 @@
 use super::*;
 
 #[test]
-fn engine_rejects_native_methods_for_unknown_owner_types() {
-    let result = Engine::builder()
-        .register_native_method_fn(
-            NativeMethodDesc::new(
-                TypeKey::new(TypeId::new(99), "Missing"),
-                HostMethodId::new(1),
-                "grant_exp",
-            ),
-            |_, _, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::UnknownNativeMethodOwner {
-            name: "Missing".to_owned()
-        }
-    ));
-}
-
-#[test]
 fn engine_rejects_duplicate_native_function_ids() {
     let result = Engine::builder()
         .register_native_fn(
@@ -56,46 +35,6 @@ fn engine_rejects_empty_module_attribute_names() {
 }
 
 #[test]
-fn engine_rejects_duplicate_names_across_host_and_pure_natives() {
-    let result = Engine::builder()
-        .register_native_fn(
-            NativeFunctionDesc::new("game::same", NativeFunctionId::new(10)),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .register_host_native_fn(
-            NativeFunctionDesc::new("game::same", NativeFunctionId::new(11)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result.map(|_| ()),
-        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionName {
-            name: "game::same".to_owned()
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_duplicate_ids_across_host_and_pure_natives() {
-    let result = Engine::builder()
-        .register_native_fn(
-            NativeFunctionDesc::new("game::first", NativeFunctionId::new(16)),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .register_host_native_fn(
-            NativeFunctionDesc::new("game::second", NativeFunctionId::new(16)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result.map(|_| ()),
-        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 16 }
-    ));
-}
-
-#[test]
 fn engine_rejects_duplicate_names_across_context_host_and_pure_natives() {
     let result = Engine::builder()
         .register_native_fn(
@@ -104,27 +43,6 @@ fn engine_rejects_duplicate_names_across_context_host_and_pure_natives() {
         )
         .register_context_host_native_fn(
             NativeFunctionDesc::new("game::same", NativeFunctionId::new(13)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result.map(|_| ()),
-        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionName {
-            name: "game::same".to_owned()
-        }
-    ));
-}
-
-#[test]
-fn engine_rejects_duplicate_names_across_context_host_and_host_natives() {
-    let result = Engine::builder()
-        .register_host_native_fn(
-            NativeFunctionDesc::new("game::same", NativeFunctionId::new(14)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .register_context_host_native_fn(
-            NativeFunctionDesc::new("game::same", NativeFunctionId::new(15)),
             |_, _| Ok(OwnedValue::Unit),
         )
         .build();
@@ -153,25 +71,6 @@ fn engine_rejects_duplicate_context_host_native_ids() {
     assert!(matches!(
         result,
         Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 30 }
-    ));
-}
-
-#[test]
-fn engine_rejects_duplicate_ids_across_host_and_context_host_natives() {
-    let result = Engine::builder()
-        .register_host_native_fn(
-            NativeFunctionDesc::new("game::first", NativeFunctionId::new(40)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .register_context_host_native_fn(
-            NativeFunctionDesc::new("game::second", NativeFunctionId::new(40)),
-            |_, _| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::DuplicateNativeFunctionId { id: 40 }
     ));
 }
 
@@ -341,27 +240,6 @@ fn engine_accepts_native_function_value_keyed_map_and_set_hints() {
         .build();
 
     assert!(result.is_ok());
-}
-
-#[test]
-fn engine_rejects_native_function_map_hints_with_non_keyable_keys() {
-    let result = Engine::builder()
-        .register_native_fn(
-            NativeFunctionDesc::new("game::bad_scores", NativeFunctionId::new(371)).param(
-                "scores",
-                TypeHint::map_of(TypeHint::PathProxy, TypeHint::string()),
-            ),
-            |_| Ok(OwnedValue::Unit),
-        )
-        .build();
-
-    assert!(matches!(
-        result,
-        Err(error) if error.kind == EngineErrorKind::InvalidTypeHintName {
-            descriptor: "native function game::bad_scores parameter scores".to_owned(),
-            type_name: "Map<path_proxy, String>".to_owned(),
-        }
-    ));
 }
 
 #[test]

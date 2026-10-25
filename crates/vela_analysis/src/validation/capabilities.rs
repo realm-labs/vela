@@ -251,16 +251,9 @@ fn identity_capability(
         Some(
             TypeFact::Never
             | TypeFact::Array { .. }
-            | TypeFact::ArrayView { .. }
-            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
-            | TypeFact::MapView { .. }
-            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
-            | TypeFact::SetView { .. }
-            | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
-            | TypeFact::ScopedIterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
@@ -272,8 +265,7 @@ fn identity_capability(
             | TypeFact::Closure
             | TypeFact::LogicalRecord(_)
             | TypeFact::Record { .. }
-            | TypeFact::Enum { .. }
-            | TypeFact::Host { .. },
+            | TypeFact::Enum { .. },
         ) => CapabilityFact::Supported,
     }
 }
@@ -310,7 +302,6 @@ fn comparison_capability(
             | TypeFact::Record { .. }
             | TypeFact::Enum { .. }
             | TypeFact::LogicalRecord(_)
-            | TypeFact::Host { .. }
             | TypeFact::Trait { .. }
             | TypeFact::Module { .. },
         )
@@ -320,16 +311,9 @@ fn comparison_capability(
             | TypeFact::Primitive(_)
             | TypeFact::Range
             | TypeFact::Array { .. }
-            | TypeFact::ArrayView { .. }
-            | TypeFact::ArrayMut { .. }
             | TypeFact::Map { .. }
-            | TypeFact::MapView { .. }
-            | TypeFact::MapMut { .. }
             | TypeFact::Set { .. }
-            | TypeFact::SetView { .. }
-            | TypeFact::SetMut { .. }
             | TypeFact::Iterator { .. }
-            | TypeFact::ScopedIterator { .. }
             | TypeFact::Tuple { .. }
             | TypeFact::Option { .. }
             | TypeFact::OptionSome { .. }
@@ -365,10 +349,7 @@ fn array_ordering_capability(
     ) {
         return None;
     }
-    let (TypeFact::Array { element }
-    | TypeFact::ArrayView { element }
-    | TypeFact::ArrayMut { element, .. }) = facts.expression(field.receiver)?
-    else {
+    let TypeFact::Array { element } = facts.expression(field.receiver)? else {
         return None;
     };
 
@@ -444,23 +425,15 @@ fn ord_capability_for_fact(capabilities: &CapabilityIndex, fact: &TypeFact) -> C
         | TypeFact::Union(_)
         | TypeFact::Record { .. }
         | TypeFact::Enum { .. }
-        | TypeFact::Host { .. }
         | TypeFact::Trait { .. }
         | TypeFact::Module { .. }
         | TypeFact::LogicalRecord(_) => CapabilityFact::Dynamic,
         TypeFact::Primitive(_)
         | TypeFact::Range
         | TypeFact::Array { .. }
-        | TypeFact::ArrayView { .. }
-        | TypeFact::ArrayMut { .. }
         | TypeFact::Map { .. }
-        | TypeFact::MapView { .. }
-        | TypeFact::MapMut { .. }
         | TypeFact::Set { .. }
-        | TypeFact::SetView { .. }
-        | TypeFact::SetMut { .. }
         | TypeFact::Iterator { .. }
-        | TypeFact::ScopedIterator { .. }
         | TypeFact::Tuple { .. }
         | TypeFact::Option { .. }
         | TypeFact::OptionSome { .. }

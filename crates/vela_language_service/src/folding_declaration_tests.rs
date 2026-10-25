@@ -26,12 +26,20 @@ fn check(db: &LanguageServiceDatabases, main: &Document, helper: &Document, case
     for (file, doc) in [("scripts/main.vela", main), ("scripts/helper.vela", helper)] {
         let id = DocumentId::from(uri(file));
         assert_eq!(db.source_db().records()[&id].text(), doc.text);
-        assert!(
-            db.parse_db()
-                .parse_diagnostics(&id)
-                .expect("parsed source")
-                .is_empty()
-        );
+        let diagnostics = db.parse_db().parse_diagnostics(&id).expect("parsed source");
+        if file == "scripts/main.vela" && case.get("syntaxCodes").is_some() {
+            assert_eq!(
+                serde_json::json!(
+                    diagnostics
+                        .iter()
+                        .map(|d| d.code.as_deref())
+                        .collect::<Vec<_>>()
+                ),
+                case["syntaxCodes"]
+            );
+        } else {
+            assert!(diagnostics.is_empty(), "{file}: {diagnostics:?}");
+        }
     }
     assert_eq!(db.schema_db().facts().types().count(), 0);
     assert_eq!(db.schema_db().facts().functions().count(), 0);

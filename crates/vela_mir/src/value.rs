@@ -1,7 +1,7 @@
 use vela_common::{NumericTag, PrimitiveTag, ScalarValue, ShapeId};
 use vela_def::{TypeId, VariantId};
 
-use crate::{HostTypeTarget, MirLocalId, MirTempId};
+use crate::{MirLocalId, MirTempId};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MirImmediate {
@@ -72,7 +72,7 @@ pub enum MirValueType {
     Iterator,
     ScriptType { type_id: TypeId, shape: ShapeId },
     Enum(TypeId),
-    Host(HostTypeTarget),
+
     Tuple(u32),
     Callable,
 }
@@ -143,7 +143,6 @@ pub enum MirBinaryOp {
 ///
 /// Stable checks carry definition identities. Dynamic variant checks are
 /// deliberately tag-only; field projections remain separate trapping reads.
-/// Host values and host paths deliberately have no structural predicate form.
 #[derive(Clone, Debug, PartialEq)]
 pub enum MirPatternPredicate {
     TupleArity {
