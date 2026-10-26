@@ -84,6 +84,8 @@ fn split_type_path(path: &str, ident: &Ident) -> Result<(String, String)> {
 
 #[cfg(test)]
 mod tests {
+    use rstest::rstest;
+
     use super::type_identity;
 
     #[test]
@@ -106,31 +108,54 @@ mod tests {
         );
     }
 
-    #[test]
-    fn value_identity_requires_an_explicit_module_and_consistent_names() {
+    #[rstest]
+    #[case::missing_module(
+        None,
+        None,
+        None,
+        "Value requires #[vela(path = \"module::Type\")] or #[vela(module = \"module\")]"
+    )]
+    #[case::inconsistent_module(
+        Some("data::Record"),
+        Some("other"),
+        None,
+        "script path and module disagree"
+    )]
+    #[case::inconsistent_name(
+        Some("data::Record"),
+        None,
+        Some("Other"),
+        "script path and name disagree"
+    )]
+    #[case::unqualified_path(
+        Some("Record"),
+        None,
+        None,
+        "script path must include a module and type name"
+    )]
+    fn value_identity_requires_an_explicit_module_and_consistent_names(
+        #[case] path: Option<&str>,
+        #[case] module: Option<&str>,
+        #[case] name: Option<&str>,
+        #[case] expected: &str,
+    ) {
         let ident = syn::parse_quote!(Record);
-        assert!(type_identity(&ident, None, None, None, None).is_err());
-        assert!(
-            type_identity(
-                &ident,
-                Some("data::Record".to_owned()),
-                Some("other".to_owned()),
-                None,
-                None,
-            )
-            .is_err()
-        );
-        assert!(
-            type_identity(
-                &ident,
-                Some("data::Record".to_owned()),
-                None,
-                Some("Other".to_owned()),
-                None,
-            )
-            .is_err()
-        );
-        assert!(type_identity(&ident, Some("Record".to_owned()), None, None, None,).is_err());
+        let error = match type_identity(
+            &ident,
+            path.map(str::to_owned),
+            module.map(str::to_owned),
+            name.map(str::to_owned),
+            None,
+        ) {
+            Ok(_) => panic!("invalid Value identity must fail"),
+            Err(error) => error,
+        };
+        assert_eq!(error.to_string(), expected);
+    }
+
+    #[test]
+    fn value_identity_accepts_an_explicit_module_with_the_rust_name() {
+        let ident = syn::parse_quote!(Record);
         let identity = type_identity(&ident, None, Some("data".to_owned()), None, None)
             .expect("module-local Value identity");
         assert_eq!(identity.stable_path, "data::Record");

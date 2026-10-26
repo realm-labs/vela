@@ -17,6 +17,7 @@ vela_common = { workspace = true }
 vela_def = { workspace = true }
 
 [dev-dependencies]
+rstest.workspace = true
 trybuild = "1"
 vela_engine = { workspace = true }
 vela_host = { workspace = true }

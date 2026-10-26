@@ -796,130 +796,113 @@ fn enum_schema_hash(
 
 #[cfg(test)]
 mod tests {
+    use proc_macro2::TokenStream;
     use quote::quote;
+    use rstest::rstest;
 
     use super::expand_result;
 
-    #[test]
-    fn value_codecs_keep_owned_copies_without_host_or_service_members() {
-        for item in [
-            quote! {
-                #[vela(path = "host::Record")]
-                struct Record { count: i64 }
-            },
-            quote! {
-                #[vela(path = "host::Decision")]
-                enum Decision { Pending, Granted { count: i64 } }
-            },
-        ] {
-            let expanded = expand_result(item)
-                .expect("Value codec expands")
-                .to_string();
+    #[rstest]
+    #[case::record(quote! {
+        #[vela(path = "host::Record")]
+        struct Record { count: i64 }
+    })]
+    #[case::enum_value(quote! {
+        #[vela(path = "host::Decision")]
+        enum Decision { Pending, Granted { count: i64 } }
+    })]
+    fn value_codecs_keep_owned_copies_without_host_or_service_members(#[case] item: TokenStream) {
+        let expanded = expand_result(item)
+            .expect("Value codec expands")
+            .to_string();
 
-            assert!(expanded.contains("VelaValueBoundary for"));
-            assert!(expanded.contains("ToScriptValueRef for"));
-            assert!(expanded.contains("register_value_type_closure"));
-            assert!(expanded.contains("IntoScriptArg for"));
-            assert!(expanded.contains("FromScriptArg for"));
-            for removed in [
-                "VelaSharedBoundary",
-                "StoragePolicy",
-                "DetachedHostValue",
-                "ScriptHostObject",
-                "ScriptHostFieldAccess",
-                "HostTarget",
-                "host_id",
-                "register_shared_type_closure",
-                "push_shared_service_arg",
-                "decode_shared_temporary",
-            ] {
-                assert!(!expanded.contains(removed), "unexpected member: {removed}");
-            }
+        assert!(expanded.contains("VelaValueBoundary for"));
+        assert!(expanded.contains("ToScriptValueRef for"));
+        assert!(expanded.contains("register_value_type_closure"));
+        assert!(expanded.contains("IntoScriptArg for"));
+        assert!(expanded.contains("FromScriptArg for"));
+        for removed in [
+            "VelaSharedBoundary",
+            "StoragePolicy",
+            "DetachedHostValue",
+            "ScriptHostObject",
+            "ScriptHostFieldAccess",
+            "HostTarget",
+            "host_id",
+            "register_shared_type_closure",
+            "push_shared_service_arg",
+            "decode_shared_temporary",
+        ] {
+            assert!(!expanded.contains(removed), "unexpected member: {removed}");
         }
     }
 
-    #[test]
-    fn rejects_host_projection_attributes_instead_of_serializing_host_wrappers() {
-        for attribute in [
-            quote! { fields },
-            quote! { deref },
-            quote! { get },
-            quote! { set },
-            quote! { host = "data::Host" },
-        ] {
-            let error = expand_result(quote! {
-                #[vela(path = "data::Record")]
-                struct Record {
-                    #[vela(#attribute)]
-                    count: i64,
-                }
-            })
-            .expect_err("host projections do not become Value codecs");
-            assert!(
-                error
-                    .to_string()
-                    .contains("host projection attributes are removed")
-            );
-        }
-    }
-
-    #[test]
-    fn rejects_skipped_fields_that_cannot_be_reconstructed() {
+    #[rstest]
+    #[case::fields(quote! { fields })]
+    #[case::deref(quote! { deref })]
+    #[case::get(quote! { get })]
+    #[case::set(quote! { set })]
+    #[case::host(quote! { host = "data::Host" })]
+    fn rejects_host_projection_attributes_instead_of_serializing_host_wrappers(
+        #[case] attribute: TokenStream,
+    ) {
         let error = expand_result(quote! {
+            #[vela(path = "data::Record")]
+            struct Record {
+                #[vela(#attribute)]
+                count: i64,
+            }
+        })
+        .expect_err("host projections do not become Value codecs");
+        assert_eq!(
+            error.to_string(),
+            "host projection attributes are removed; Value only supports script-owned data"
+        );
+    }
+
+    #[rstest]
+    #[case::skipped_fields(
+        quote! {
             #[vela(path = "host::PartialValue")]
             struct PartialValue {
                 visible: i64,
                 #[vela(skip)]
                 hidden: i64,
             }
-        })
-        .expect_err("skipped structural field should fail");
-
-        assert!(error.to_string().contains("cannot be skipped"));
-    }
-
-    #[test]
-    fn rejects_generic_structs_instead_of_generating_script_generics() {
-        let error = expand_result(quote! {
+        },
+        "Value fields cannot be skipped because structural decoding must reconstruct the exact Rust value"
+    )]
+    #[case::generic_structs(
+        quote! {
             #[vela(path = "host::Envelope")]
             struct Envelope<T> {
                 value: T,
             }
-        })
-        .expect_err("generic Value should fail");
-
-        assert!(error.to_string().contains("does not support generic"));
-    }
-
-    #[test]
-    fn rejects_skipped_variants_that_cannot_be_encoded() {
-        let error = expand_result(quote! {
+        },
+        "Value does not support generic Rust types; register a concrete manual TypeBinding"
+    )]
+    #[case::skipped_variants(
+        quote! {
             #[vela(path = "host::State")]
             enum State {
                 Ready,
                 #[vela(skip)]
                 Hidden,
             }
-        })
-        .expect_err("skipped enum variant should fail");
-
-        assert!(error.to_string().contains("variants cannot be skipped"));
-    }
-
-    #[test]
-    fn rejects_tuple_variants_without_a_named_structural_abi() {
-        let error = expand_result(quote! {
+        },
+        "Value variants cannot be skipped because structural encoding must cover every Rust value"
+    )]
+    #[case::tuple_variants(
+        quote! {
             #[vela(path = "host::State")]
             enum State {
                 Ready(i64),
             }
-        })
-        .expect_err("tuple enum variant should fail");
-
-        assert!(
-            error
-                .to_string()
-                .contains("unit variants or have named fields")
-        );
+        },
+        "Value enum variants must be unit variants or have named fields"
+    )]
+    fn rejects_unsupported_value_shapes(#[case] input: TokenStream, #[case] expected: &str) {
+        let error = expand_result(input).expect_err("unsupported structural Value");
+        assert_eq!(error.to_string(), expected);
     }
 }

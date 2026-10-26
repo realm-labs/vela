@@ -145,3 +145,24 @@ Four-owner baseline: 608 passes; after: 627 default and 633 all-feature passes,
 including integration and doctests. Both-mode Clippy, case discovery, nonempty
 exact selection, changed-file format and whitespace checks passed in the isolated
 source snapshot. No active external references required migration.
+
+## TO05 — Macros And Rust Boundaries
+
+Signature borrowed-root/return/wrapper rejection families expose 9/8/12 cases;
+inputs and phase distinctions are unchanged. Rejection checks now assert exact
+diagnostic strings rather than substrings or only `is_err()`. Three export
+rejections map to `export_rejects_invalid_contracts` (wrapper, effect removal,
+task-spawn effect). Owned value emission remains a record/enum pair with all
+positive/negative token checks; host-projection attributes expose five cases.
+Four value-shape rejections become `rejects_unsupported_value_shapes` (skipped
+fields, generic structs, skipped variants, tuple variants). Type identity keeps
+four exact rejection cases and an explicit successful module/name test.
+
+Trybuild runners/globs, all reviewed stderr files, macro execution and removal
+coverage remain unchanged. Historical module names that own rejection coverage
+stay named; a cosmetic rename would only churn references (C11).
+Baseline: 21 unit + 8 value integration + 6 export execution + 2 UI runners.
+After, both feature modes: 56 unit + 8 + 6 + 2 pass. All 27 UI fixtures pass
+(one compile-pass, 22 interop compile-fail, four removal compile-fail). Discovery
+lists 56 unit tests; exact selection, scoped Clippy and formatting pass. The macro
+doctest harness has zero tests; broader removal doctests are covered in TO09.

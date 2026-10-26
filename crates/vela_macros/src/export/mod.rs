@@ -47,7 +47,9 @@ fn expand_result(attr: TokenStream, input: TokenStream) -> Result<TokenStream> {
 
 #[cfg(test)]
 mod tests {
+    use proc_macro2::TokenStream;
     use quote::quote;
+    use rstest::rstest;
 
     use super::expand_result;
 
@@ -94,46 +96,28 @@ mod tests {
         }
     }
 
-    #[test]
-    fn export_rejects_boundary_wrapper_parameters() {
-        let error = expand_result(
-            quote! { path = "game::grant" },
-            quote! {
-                pub fn grant(player: HostRef) {}
-            },
-        )
-        .expect_err("ordinary exports must hide HostRef");
-
-        assert!(error.to_string().contains("boundary wrapper"));
-    }
-
-    #[test]
-    fn export_rejects_effect_removal_spelling() {
-        let error = expand_result(
-            quote! { path = "game::grant", effects(pure) },
-            quote! {
-                pub fn grant(player: &mut Player) {}
-            },
-        )
-        .expect_err("pure cannot be an additive effect");
-
-        assert!(error.to_string().contains("effects(...) only adds"));
-    }
-
-    #[test]
-    fn export_rejects_task_spawn_effect() {
-        let error = expand_result(
-            quote! { path = "game::repair", effects(task_spawn) },
-            quote! {
-                pub fn repair() {}
-            },
-        )
-        .expect_err("task spawning is no longer a supported effect");
-
-        assert!(
-            error
-                .to_string()
-                .contains("unsupported Vela callable effect")
-        );
+    #[rstest]
+    #[case::boundary_wrapper_parameters(
+        quote! { path = "game::grant" },
+        quote! { pub fn grant(player: HostRef) {} },
+        "ordinary exported signatures cannot mention a Vela boundary wrapper"
+    )]
+    #[case::effect_removal_spelling(
+        quote! { path = "game::grant", effects(pure) },
+        quote! { pub fn grant(player: &mut Player) {} },
+        "effects(...) only adds effects; `pure` cannot remove declared effects"
+    )]
+    #[case::task_spawn_effect(
+        quote! { path = "game::repair", effects(task_spawn) },
+        quote! { pub fn repair() {} },
+        "unsupported Vela callable effect"
+    )]
+    fn export_rejects_invalid_contracts(
+        #[case] attr: TokenStream,
+        #[case] input: TokenStream,
+        #[case] expected: &str,
+    ) {
+        let error = expand_result(attr, input).expect_err("unsupported export contract");
+        assert_eq!(error.to_string(), expected);
     }
 }

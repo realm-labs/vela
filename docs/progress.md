@@ -72,6 +72,10 @@ Reload, generated-call, affinity and authorization scenarios retain their origin
 observations; generated reload now guards the source replacement count. Both
 feature modes and scoped Clippy pass.
 
+TO05 completes ordinary macro signature/classification cases with exact diagnostics.
+Trybuild and stderr expectations are unchanged; both feature modes pass all 27 UI
+fixtures and the native/value execution suites.
+
 ## Final Validation
 
 Detailed commands, failures resolved during validation, evidence paths and limits
