@@ -88,18 +88,7 @@ fn body_binding_query_follows_methods_lambdas_and_parameter_defaults() {
     graph.add_source(source(
         1,
         "game::reward",
-        r#"
-trait Score {
-    fn score(self, bonus: i64 = 1) { return (|value: i64| value + bonus)(self.count); }
-}
-
-struct Reward { count: i64 }
-impl Score for Reward {}
-
-impl Reward {
-    fn doubled(self) { return (|value: i64| value + self.count)(self.count); }
-}
-"#,
+        include_str!("../../../tests/fixtures/bindings/method_default_bindings.vela"),
     ));
     graph.resolve_imports();
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
@@ -160,11 +149,7 @@ fn binding_unresolved_names_report_candidate_hints() {
     graph.add_source(source(
         1,
         "game::player",
-        r#"
-fn main(player) {
-    return plaeyr;
-}
-"#,
+        include_str!("../../../tests/fixtures/ui/semantic/unresolved_name.vela"),
     ));
     let unresolved = graph
         .diagnostics()
@@ -276,18 +261,7 @@ fn main(player) {
 #[test]
 fn binding_resolves_if_expression_lambda_captures_at_vm_spans() {
     let mut graph = ModuleGraph::new();
-    let text = r#"
-struct Bucket {
-    id: i64
-}
-
-fn main() {
-    let even = Bucket { id: 0 };
-    let odd = Bucket { id: 1 };
-    let groups = [1, 2, 3, 4].group_by(|value| if value % 2 == 0 { even } else { odd });
-    return groups[even][1];
-}
-"#;
+    let text = include_str!("../../../tests/fixtures/bindings/if_capture.vela");
     let module = graph.add_source(source(1, "main", text));
     let main = graph
         .module(module)
@@ -357,30 +331,7 @@ fn main() {
 #[test]
 fn binding_resolves_block_expression_outer_capture_at_vm_span() {
     let mut graph = ModuleGraph::new();
-    let text = r#"
-struct Reward {
-    count: i64
-}
-
-impl Reward {
-    fn score(self) {
-        return self.count;
-    }
-}
-
-fn add(base, bonus) {
-    return base + bonus;
-}
-
-fn main() {
-    let reward: Reward = Reward { count: 5 };
-    let block_value: i64 = {
-        let local = add(bonus = 3, base = 4);
-        local + reward.score()
-    };
-    return block_value;
-}
-"#;
+    let text = include_str!("../../../tests/fixtures/bindings/block_capture.vela");
     let module = graph.add_source(source(1, "main", text));
     let main = graph
         .module(module)
@@ -483,28 +434,7 @@ fn binding_resolves_core_conformance_block_capture_at_vm_span() {
 #[test]
 fn binding_resolves_calls_inside_multiline_if_condition() {
     let mut graph = ModuleGraph::new();
-    let text = r#"
-fn expect_i64(value: i64) {
-    return value;
-}
-
-fn expect_i8(value: i8) {
-    return value;
-}
-
-fn main() {
-    let default_integer = 12;
-    let contextual: i8 = 7;
-    let score: i64 = if expect_i64(default_integer) == 12
-        && expect_i8(contextual) == 7i8
-    {
-        19
-    } else {
-        0
-    };
-    return score;
-}
-"#;
+    let text = include_str!("../../../tests/fixtures/bindings/multiline_condition.vela");
     let module = graph.add_source(source(1, "main", text));
     let main = graph
         .module(module)
@@ -847,21 +777,7 @@ fn body_hir_tracks_lexical_scopes_for_blocks_loops_and_match_arms() {
     let module = graph.add_source(source(
         1,
         "game::reward",
-        r#"
-fn main(values, state) {
-    let total = 0;
-    if total == 0 {
-        let branch = total;
-    }
-    for (index, value) in values {
-        let nested = value;
-    }
-    match state {
-        Reward::Grant { amount } => amount,
-        _ => total,
-    }
-}
-"#,
+        include_str!("../../../tests/fixtures/bindings/lexical_scopes.vela"),
     ));
     let main = graph
         .module(module)

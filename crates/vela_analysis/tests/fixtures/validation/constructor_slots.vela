@@ -1,0 +1,13 @@
+
+struct Reward { first: i64, second: String = "default" }
+enum Event {
+    Named { first: i64, second: String = "default" },
+    Tuple(first: i64, second: String = "default"),
+}
+fn main() {
+    Reward { second: "two", first: 1 };
+    Event::Named { second: "two", first: 1 };
+    Event::Tuple(second = "two", first = 1);
+    Reward { first: 2 };
+    Event::Tuple(first = 2);
+}

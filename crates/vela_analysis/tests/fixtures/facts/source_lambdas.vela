@@ -1,0 +1,8 @@
+
+            struct Reward { count: i64 }
+            fn identity(reward: Reward) -> Reward { return reward; }
+            fn main(reward: Reward) -> i64 {
+                let count = identity(reward).count;
+                return (|value: i64| value + count)(1);
+            }
+            

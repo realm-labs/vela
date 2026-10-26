@@ -1,0 +1,3 @@
+
+use game::reward::grant
+fn main() { return grant(); }

@@ -3,14 +3,15 @@ use super::*;
 #[test]
 fn function_bindings_resolve_imported_names() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     let module = graph.add_source(source(
         2,
         "game::main",
-        r#"
-use game::reward::grant
-fn main() { return grant; }
-"#,
+        include_str!("../../../../tests/fixtures/modules/imported_value.vela"),
     ));
     let main = graph
         .module(module)
@@ -380,22 +381,7 @@ struct Reward {
 #[test]
 fn function_bodies_record_source_path_facts() {
     let mut graph = ModuleGraph::new();
-    let source_text = r#"
-enum QuestState {
-    Active { count: i64 }
-    Done
-}
-fn grant_reward() { return 1; }
-fn main(states) {
-    grant_reward()
-    let weights = { RewardKey::Small: 1 }
-    let next = QuestState::Active { count: 1 }
-    match next {
-        QuestState::Active { count } => count
-        QuestState::Done => 0
-    }
-}
-"#;
+    let source_text = include_str!("../../../../tests/fixtures/bindings/source_paths.vela");
     graph.add_source(source(1, "game::main", source_text));
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
 

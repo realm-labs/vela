@@ -1,0 +1,13 @@
+error[hir::unresolved_name]: unresolved name `plaeyr`
+  --> game/player.vela:3:12
+    |
+  3 |     return plaeyr;
+    |            ^^^^^^ unresolved name `plaeyr`
+  --> game/player.vela:3:12
+    |
+  3 |     return plaeyr;
+    |            ^^^^^^ did you mean `player`?
+  --> game/player.vela:2:9
+    |
+  2 | fn main(player) {
+    |         ^^^^^^ candidate `player` is declared here

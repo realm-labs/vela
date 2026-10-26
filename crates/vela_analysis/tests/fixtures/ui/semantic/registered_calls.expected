@@ -1,0 +1,9 @@
+error[compiler::missing_required_argument]: missing required argument `lhs`
+  --> game.vela:6:5
+    |
+  6 |     game::add(rhs = 2);
+    |     ^^^^^^^^^^^^^^^^^^ missing required argument `lhs`
+  --> game.vela:6:5
+    |
+  6 |     game::add(rhs = 2);
+    |     ^^^^^^^^^^^^^^^^^^ call does not provide this required parameter

@@ -1,0 +1,1 @@
+pub struct Token { tag: i64 } struct Hidden { tag: i64 }

@@ -89,20 +89,7 @@ fn rejects_removed_service_paths_in_calls_values_and_nested_functions() {
 fn ordinary_traits_methods_and_base_services_names_remain_available() {
     let sources = build_single_source(
         SourceId::new(4),
-        r#"
-struct Inventory { value: i64 }
-trait Grant { fn grant(self, base: i64) -> i64; }
-impl Grant for Inventory {
-    fn grant(self, base: i64) -> i64 { return self.value + base; }
-}
-impl Inventory {
-    fn record(self, services: i64) -> i64 { return self.value + services; }
-}
-fn main(base, services) {
-    let value = base.grant(services.record(1));
-    return value;
-}
-"#,
+        include_str!("fixtures/methods/ordinary_inventory.vela"),
     )
     .expect("ordinary traits and local names are retained");
     let catalog = ScriptMethodCatalog::from_graph(

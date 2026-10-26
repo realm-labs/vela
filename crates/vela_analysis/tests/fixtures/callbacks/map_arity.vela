@@ -1,0 +1,8 @@
+
+fn main() {
+    let rewards = {"gold": 5, "gem": 6};
+    let mapped = rewards.map_values(|value| value + 1);
+    let filtered = rewards.filter(|key, value| key.len() >= 3 && value > 0);
+    let found = rewards.find(|value| value == 6);
+    return mapped.len() + filtered.len() + found.unwrap_or(MapEntry { key: "", value: 0 }).value;
+}

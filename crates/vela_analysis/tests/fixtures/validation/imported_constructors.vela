@@ -1,0 +1,9 @@
+
+use game::schema::Reward as Prize
+use game::schema::State as ImportedState
+fn main() {
+    Prize { amount: 1 };
+    game::schema::Reward { amount: 2 };
+    ImportedState::Pair(amount = 3);
+    game::schema::State::Pair(amount = 4);
+}

@@ -1,0 +1,1 @@
+pub enum Choice { Idle, Pair(value: i64), Data { tag: i64 } } enum Hidden { Idle, Pair(value: i64), Data { tag: i64 } } pub struct Mask {}

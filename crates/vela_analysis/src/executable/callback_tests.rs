@@ -18,19 +18,7 @@ use crate::type_fact::TypeFact;
 fn callback_params_are_qualified_by_concrete_executable() {
     let (graph, _) = graph(
         91,
-        r#"
-trait Probe {
-    fn inspect(self) {
-        return self.values.map(|value| value);
-    }
-}
-
-struct Labels { values: Array<String> }
-struct Scores { values: Array<i64> }
-
-impl Probe for Labels {}
-impl Probe for Scores {}
-"#,
+        include_str!("../../tests/fixtures/callbacks/concrete_receivers.vela"),
     );
     let probe = declaration_named(&graph, "Probe");
     let labels = declaration_named(&graph, "Labels");
@@ -108,18 +96,7 @@ impl Probe for Scores {}
 fn source_record_and_iterator_callbacks_converge_to_stable_member_facts() {
     let (graph, main) = graph(
         92,
-        r#"
-struct Bag { tags: Array<String> }
-
-fn main() {
-    let bags = [Bag { tags: ["daily", "quest"] }];
-    let mapped = bags.map(|bag| bag.tags.join(","));
-    let iter = mapped.iter().map(|text| text.to_upper());
-    let tags = set::from_array(["daily", "raid"]);
-    let selected = tags.filter(|tag| tag.starts_with("d"));
-    return iter.collect_array().join("|") + selected.values().collect_array().join("|");
-}
-"#,
+        include_str!("../../tests/fixtures/callbacks/record_iterators.vela"),
     );
     let bag = declaration_named(&graph, "Bag");
     let body = graph.function_body(main).expect("main body");
@@ -184,15 +161,7 @@ fn main() {
 fn map_callbacks_use_value_or_key_value_facts_from_lambda_arity() {
     let (graph, main) = graph(
         93,
-        r#"
-fn main() {
-    let rewards = {"gold": 5, "gem": 6};
-    let mapped = rewards.map_values(|value| value + 1);
-    let filtered = rewards.filter(|key, value| key.len() >= 3 && value > 0);
-    let found = rewards.find(|value| value == 6);
-    return mapped.len() + filtered.len() + found.unwrap_or(MapEntry { key: "", value: 0 }).value;
-}
-"#,
+        include_str!("../../tests/fixtures/callbacks/map_arity.vela"),
     );
     let body = graph.function_body(main).expect("main body");
     let lambdas = child_lambdas(&graph, body.id);
@@ -265,17 +234,7 @@ fn main() {
 fn map_find_function_fallbacks_preserve_specialized_logical_members() {
     let (graph, main) = graph(
         97,
-        r#"
-fn main() {
-    let counts = {"gold": 4, "xp": 6};
-    let count_found = counts.find(|key, value| key == "xp" && value == 6);
-    let count_entry = option::unwrap_or(count_found, MapEntry { key: "", value: 0 });
-    let labels = {"wolf": "active", "wyrm": "done"};
-    let label_found = labels.find(|key, value| key.starts_with("w") && value == "done");
-    let label_entry = option::unwrap_or(label_found, MapEntry { key: "", value: "" });
-    return count_entry.value + label_entry.key.len() + label_entry.value.len();
-}
-"#,
+        include_str!("../../tests/fixtures/callbacks/map_find_fallbacks.vela"),
     );
     let body = graph.function_body(main).expect("main body");
     let function = FunctionId::new(9_801);
@@ -462,18 +421,7 @@ fn main() {
 fn logical_map_entries_survive_option_iterator_array_local_and_callback_flow() {
     let (graph, main) = graph(
         95,
-        r#"
-fn main() {
-    let rewards = {"gold": 5, "gem": 6};
-    let found = rewards.find(|value| value == 6);
-    let entry = found?;
-    let entries = rewards.entries().collect_array();
-    let first = entries[0];
-    let mapped = rewards.entries().map(|entry| entry.key.len() + entry.value).collect_array();
-    let rebuilt = rewards.iter().collect_map();
-    return entry.value + first.value + mapped[0] + rebuilt.len();
-}
-"#,
+        include_str!("../../tests/fixtures/callbacks/logical_map_flow.vela"),
     );
     let body = graph.function_body(main).expect("main body");
     let lambdas = child_lambdas(&graph, body.id);
@@ -542,19 +490,7 @@ fn main() {
 fn option_result_and_typed_registry_callbacks_seed_nested_params() {
     let (graph, main) = graph(
         94,
-        r#"
-fn main() {
-    let option_value = option::some("quest").map(|value| value.to_upper());
-    let option_fallback = option::none().or_else(| | option::some("fallback"));
-    let result_value = result::ok(["gold", "xp"]).map(|values| values.join("+"));
-    let result_error = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
-    let result_chained = result::ok("quest").and_then(|text| result::ok(text.to_upper()));
-    let checked = fixture::apply((|text| text.starts_with("Q")));
-    return option_value.unwrap_or("") + result_value.unwrap_or("")
-        + result_error.to_error_option().unwrap_or("") + option_fallback.unwrap_or("")
-        + result_chained.unwrap_or("");
-}
-"#,
+        include_str!("../../tests/fixtures/callbacks/option_result_registry.vela"),
     );
     let body = graph.function_body(main).expect("main body");
     let lambdas = child_lambdas(&graph, body.id);

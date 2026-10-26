@@ -146,8 +146,12 @@ fn external_function_aliases_preserve_returns_effects_and_ownership_boundaries()
             ModulePath::from_qualified("main"),
             format!("{imports} fn run({parameters}) {{ let result = {callee}(1); result.value; }}"),
         ));
-        graph.add_source(ModuleSource::new(SourceId::new(252), PackageId::anonymous(),
-            ModulePath::from_qualified("defs"), "pub fn make() -> i64 { return 1; } fn hidden() -> String { return \"private\"; } pub const occupied: i64 = 1; pub struct Blocked { value: i64 }"));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(252),
+            PackageId::anonymous(),
+            ModulePath::from_qualified("defs"),
+            include_str!("../../../tests/fixtures/semantic_facts/external_defs.vela"),
+        ));
         graph.resolve_imports();
         let mut schema = RegistryFacts::default();
         schema.insert_type("HostCell", host.clone());

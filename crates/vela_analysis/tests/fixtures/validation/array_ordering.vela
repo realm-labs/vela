@@ -1,0 +1,17 @@
+
+struct Plain { value: i64 }
+
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Ranked { value: i64 }
+
+fn main(dynamic_callback) {
+    let plain = [Plain { value: 2 }, Plain { value: 1 }];
+    let ranked = [Ranked { value: 2 }, Ranked { value: 1 }];
+    let floats: Array<f64> = [2.0, 1.0];
+    plain.sort();
+    ranked.max();
+    floats.min();
+    plain.sort_by(|item| 1.0);
+    plain.sort_by(|item| item);
+    return plain.sort_by(dynamic_callback);
+}

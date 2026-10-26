@@ -1,0 +1,9 @@
+error[hir::unresolved_import]: unresolved import `grant_reward` in module `game::reward`
+  --> game/main.vela:1:1
+    |
+  1 | use game::reward::grant_reward
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unresolved import `grant_reward` in module `game::reward`
+  --> game/main.vela:1:1
+    |
+  1 | use game::reward::grant_reward
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ did you mean `grant`?

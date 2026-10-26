@@ -84,34 +84,13 @@ fn executable_constructor_targets_follow_imported_and_qualified_hir_resolutions(
         SourceId::new(91),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::main"),
-        r#"
-use game::schema::Reward as Prize
-use game::schema::State as ImportedState
-
-fn main() {
-    let imported_record = Prize { amount: 1 };
-    let qualified_record = game::schema::Reward { amount: 2 };
-    let imported_variant = ImportedState::Ready { amount: 3 };
-    let qualified_variant = game::schema::State::Ready { amount: 4 };
-    let imported_unit_variant = ImportedState::Idle;
-    let qualified_unit_variant = game::schema::State::Idle;
-    let dynamic_record = Missing { amount: 5 };
-    match imported_variant {
-        ImportedState::Ready { amount } => { amount; },
-        game::schema::State::Idle => {},
-        Missing::Ready { amount } => { amount; },
-    }
-}
-"#,
+        include_str!("../../../tests/fixtures/semantic_facts/constructor_main.vela"),
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(92),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::schema"),
-        r#"
-pub struct Reward { amount: i64 }
-pub enum State { Ready { amount: i64 }, Idle }
-"#,
+        include_str!("../../../tests/fixtures/semantic_facts/constructor_schema.vela"),
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);

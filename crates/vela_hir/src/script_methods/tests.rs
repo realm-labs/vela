@@ -85,19 +85,7 @@ fn trait_defaults_expand_per_owner_share_body_and_yield_to_explicit_methods() {
     let (graph, module) = graph(
         303,
         ModulePath::from_qualified("game"),
-        r#"
-trait BonusSource {
-    fn bonus(self) -> i64 { return self.value; }
-}
-struct Player { value: i64 }
-struct Monster { value: i64 }
-struct Boss { value: i64 }
-impl BonusSource for Player {}
-impl BonusSource for Monster {}
-impl BonusSource for Boss {
-    fn bonus(self) -> i64 { return self.value + 10; }
-}
-"#,
+        include_str!("../../tests/fixtures/methods/trait_defaults.vela"),
     );
     let catalog = ScriptMethodCatalog::from_graph(&graph, ScriptMethodCatalogMode::ModuleGraph)
         .expect("trait-default method catalog");

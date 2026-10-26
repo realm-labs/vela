@@ -3,7 +3,11 @@ use super::*;
 #[test]
 fn function_bindings_resolve_import_aliases() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     let module = graph.add_source(source(
         2,
         "game::main",
@@ -37,22 +41,7 @@ fn body_hir_owns_executable_operands_containers_and_control_flow() {
     let module = graph.add_source(source(
         1,
         "game::main",
-        r#"
-enum State { Ready { count } }
-fn main(player, values) {
-    let pair = (1, 2);
-    let data = { key: pair.0 };
-    let bump = |x| x + 1;
-    player.level += data["key"];
-    for value in values {
-        if value > 0 { player.save(value); }
-    }
-    match player.state {
-        State::Ready { count } if count > 0 => bump(count),
-        _ => 0,
-    }
-}
-"#,
+        include_str!("../../../../tests/fixtures/bindings/executable_operands.vela"),
     ));
     let main = graph
         .module(module)
@@ -207,31 +196,12 @@ fn constructor_bindings_resolve_after_later_qualified_sources_are_added() {
     let module = graph.add_source(source(
         1,
         "game::main",
-        r#"
-use game::schema::Reward as Prize
-use game::schema::State as ImportedState
-
-fn main(value) {
-    Prize { amount: 1 };
-    game::schema::Reward { amount: 2 };
-    ImportedState::Ready { amount: 3 };
-    game::schema::State::Ready { amount: 4 };
-    Missing { amount: 5 };
-    match value {
-        ImportedState::Ready { amount } => {},
-        game::schema::State::Idle => {},
-        Missing::Ready { amount } => {},
-    }
-}
-"#,
+        include_str!("../../../../tests/fixtures/modules/constructor_main.vela"),
     ));
     let schema = graph.add_source(source(
         2,
         "game::schema",
-        r#"
-pub struct Reward { amount: i64 }
-pub enum State { Ready { amount: i64 }, Idle }
-"#,
+        include_str!("../../../../tests/fixtures/modules/constructor_schema.vela"),
     ));
     graph.resolve_imports();
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
@@ -324,12 +294,13 @@ fn resolved_imports_refresh_existing_binding_maps() {
     let module = graph.add_source(source(
         1,
         "game::main",
-        r#"
-use game::reward::grant
-fn main() { return grant; }
-"#,
+        include_str!("../../../../tests/fixtures/modules/imported_value.vela"),
     ));
-    let reward = graph.add_source(source(2, "game::reward", "pub fn grant() { return 1; }"));
+    let reward = graph.add_source(source(
+        2,
+        "game::reward",
+        include_str!("../../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     let main = graph
         .module(module)
         .and_then(|module| module.get("main"))

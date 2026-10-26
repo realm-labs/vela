@@ -1,0 +1,10 @@
+
+            fn main() {
+                let option_payload = fixture::option()?;
+                let result_payload = fixture::result()?;
+                let union_payload = fixture::union()?;
+                let known_failure = fixture::failure()?;
+                let dynamic_payload = fixture::dynamic()?;
+                let unknown_payload = fixture::unknown()?;
+            }
+            

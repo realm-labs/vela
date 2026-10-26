@@ -1,0 +1,13 @@
+
+struct Token { value: i64 }
+enum State { Ready }
+
+fn main(dynamic) {
+    let token = Token { value: 1 };
+    token === token;
+    State::Ready() === State::Ready();
+    1 === 1;
+    (1..2) === (1..2);
+    dynamic === dynamic;
+    return [1] === [1];
+}

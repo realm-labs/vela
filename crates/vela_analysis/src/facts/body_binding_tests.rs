@@ -10,22 +10,7 @@ use crate::type_fact::TypeFact;
 #[test]
 fn analysis_ingests_impl_trait_lambda_and_default_binding_generations() {
     let source = SourceId::new(44);
-    let text = r#"
-trait Score {
-    fn score(self, bonus: i64 = 1) -> i64 {
-        return (|value: i64| value + bonus)(self.count);
-    }
-}
-
-struct Reward { count: i64 }
-impl Score for Reward {}
-
-impl Reward {
-    fn doubled(self, factor: i64 = 2) -> i64 {
-        return (|value: i64| value * factor)(self.count);
-    }
-}
-"#;
+    let text = include_str!("../../tests/fixtures/facts/body_bindings.vela");
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,

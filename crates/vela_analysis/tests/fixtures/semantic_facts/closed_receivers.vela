@@ -1,0 +1,11 @@
+
+        struct SourceRecord { present: i64 }
+
+        fn inspect(source: SourceRecord, dynamic: Any) {
+            fixture::opaque().missing();
+            fixture::known().missing();
+            source.missing();
+            fixture::unknown().missing();
+            dynamic.missing();
+        }
+        

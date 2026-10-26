@@ -1,0 +1,10 @@
+
+fn main() {
+    let counts = {"gold": 4, "xp": 6};
+    let count_found = counts.find(|key, value| key == "xp" && value == 6);
+    let count_entry = option::unwrap_or(count_found, MapEntry { key: "", value: 0 });
+    let labels = {"wolf": "active", "wyrm": "done"};
+    let label_found = labels.find(|key, value| key.starts_with("w") && value == "done");
+    let label_entry = option::unwrap_or(label_found, MapEntry { key: "", value: "" });
+    return count_entry.value + label_entry.key.len() + label_entry.value.len();
+}

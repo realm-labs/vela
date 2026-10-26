@@ -1,0 +1,8 @@
+[package]
+id="dev.vela.first"
+name="first"
+version="0.1.0"
+[dependencies]
+common={path="../common"}
+[host]
+schema="first.json"

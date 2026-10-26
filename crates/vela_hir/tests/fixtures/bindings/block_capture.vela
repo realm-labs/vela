@@ -1,0 +1,23 @@
+
+struct Reward {
+    count: i64
+}
+
+impl Reward {
+    fn score(self) {
+        return self.count;
+    }
+}
+
+fn add(base, bonus) {
+    return base + bonus;
+}
+
+fn main() {
+    let reward: Reward = Reward { count: 5 };
+    let block_value: i64 = {
+        let local = add(bonus = 3, base = 4);
+        local + reward.score()
+    };
+    return block_value;
+}

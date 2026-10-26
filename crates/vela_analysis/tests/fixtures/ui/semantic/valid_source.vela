@@ -1,0 +1,2 @@
+fn grant(base: i64, amount: i64 = 10) {}
+fn main() { grant(amount = 2, base = 1); }

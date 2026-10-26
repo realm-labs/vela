@@ -1,0 +1,16 @@
+
+trait Probe {
+    fn route(self) { self.target(second = 2, first = 1); }
+}
+
+struct Forward {}
+struct Reverse {}
+
+impl Forward {
+    fn target(self, first: i64, second: i64, third: i64 = 3) {}
+}
+impl Reverse {
+    fn target(self, second: i64, first: i64, third: i64 = 3) {}
+}
+impl Probe for Forward {}
+impl Probe for Reverse {}

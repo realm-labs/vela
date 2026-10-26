@@ -1,0 +1,15 @@
+
+[workspace]
+members = ["plugins/sort"]
+[package]
+id = "com.example.app"
+name = "app"
+version = "0.1.0"
+[source]
+roots = ["src", "generated"]
+[dependencies]
+utils = { path = "../utils" }
+[capabilities]
+requires = ["host_read", "time"]
+[host]
+schema = "target/schema.json"

@@ -1,0 +1,21 @@
+
+struct Plain { value: i64 }
+
+#[derive(PartialEq)]
+struct DerivedEq { value: i64 }
+
+#[derive(PartialEq, PartialOrd)]
+struct DerivedOrd { value: i64 }
+
+struct ExplicitEq { value: i64 }
+impl PartialEq for ExplicitEq {
+    fn eq(self, other: ExplicitEq) -> bool { return self.value == other.value; }
+}
+
+fn main() {
+    Plain { value: 1 } == Plain { value: 2 };
+    DerivedEq { value: 1 } == DerivedEq { value: 2 };
+    ExplicitEq { value: 1 } == ExplicitEq { value: 2 };
+    Plain { value: 1 } < Plain { value: 2 };
+    return DerivedOrd { value: 1 } < DerivedOrd { value: 2 };
+}

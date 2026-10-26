@@ -16,26 +16,7 @@ use crate::type_fact::TypeFact;
 #[test]
 fn shared_trait_default_facts_are_qualified_by_concrete_executable() {
     let source = SourceId::new(71);
-    let text = r#"
-trait Probe {
-    fn target(self);
-    fn inspect(self, fallback = self.value) {
-        let current = self;
-        let nested = |ignored| self.value;
-        current.value;
-        self.target();
-        nested(fallback);
-    }
-}
-
-struct Player { value: i64 }
-struct Monster { value: String }
-
-impl Probe for Player { fn target(self) {} }
-impl Probe for Monster { fn target(self) {} }
-
-fn unrelated(hidden) { let outside = hidden; return 99; }
-"#;
+    let text = include_str!("../../tests/fixtures/facts/executable_receivers.vela");
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,

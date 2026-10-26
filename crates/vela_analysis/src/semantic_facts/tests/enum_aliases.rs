@@ -60,8 +60,12 @@ fn enum_alias_facts_keep_exact_source_and_registry_owners_and_closed_negatives()
         let mut graph = ModuleGraph::new();
         let module = graph.add_source(ModuleSource::new(SourceId::new(301), PackageId::anonymous(),
             ModulePath::from_qualified("main"), format!("{imports} fn inspect({parameter}) {{ let idle = {base}::Idle; let pair = {base}::Pair(1); let data = {base}::Data {{ tag: 1 }}; }}")));
-        graph.add_source(ModuleSource::new(SourceId::new(302), PackageId::anonymous(), ModulePath::from_qualified("api"),
-            "pub enum Choice { Idle, Pair(value: i64), Data { tag: i64 } } enum Hidden { Idle, Pair(value: i64), Data { tag: i64 } } pub struct Mask {}"));
+        graph.add_source(ModuleSource::new(
+            SourceId::new(302),
+            PackageId::anonymous(),
+            ModulePath::from_qualified("api"),
+            include_str!("../../../tests/fixtures/semantic_facts/enum_api.vela"),
+        ));
         graph.resolve_imports();
         let mut schema = RegistryFacts::default();
         for name in [

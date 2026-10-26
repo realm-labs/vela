@@ -1,0 +1,10 @@
+
+fn grant(player: game::Player, amount: i64, bonuses: Array<Option<i64>>) -> Result<Map<String, i64>, String> {
+    let reward: Reward = Reward { count: amount };
+    let names: Set<String> = [];
+    let mapper = |entry: Reward| entry.count;
+    return reward;
+}
+struct Reward {
+    count: i64,
+}

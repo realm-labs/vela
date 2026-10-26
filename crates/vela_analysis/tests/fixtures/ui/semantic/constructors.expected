@@ -1,0 +1,88 @@
+error[compiler::duplicate_constructor_field]: duplicate constructor field `extra`
+  --> game.vela:5:24
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |                        ^^^^^ duplicate constructor field `extra`
+  --> game.vela:5:14
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |              ^^^^^ previous field is here
+  --> game.vela:5:24
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |                        ^^^^^ duplicate field is here
+error[compiler::unknown_constructor_field]: unknown constructor field `extra` for `Reward`
+  --> game.vela:5:14
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |              ^^^^^ unknown constructor field `extra` for `Reward`
+  --> game.vela:5:14
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |              ^^^^^ field is not declared by the constructor schema
+  --> game.vela:5:14
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |              ^^^^^ available fields: first, second
+error[compiler::unknown_constructor_field]: unknown constructor field `extra` for `Reward`
+  --> game.vela:5:24
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |                        ^^^^^ unknown constructor field `extra` for `Reward`
+  --> game.vela:5:24
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |                        ^^^^^ field is not declared by the constructor schema
+  --> game.vela:5:24
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |                        ^^^^^ available fields: first, second
+error[compiler::missing_constructor_field]: missing constructor field `first` for `Reward`
+  --> game.vela:5:5
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing constructor field `first` for `Reward`
+  --> game.vela:5:5
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required field is not provided and has no default
+error[compiler::missing_constructor_field]: missing constructor field `second` for `Reward`
+  --> game.vela:5:5
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing constructor field `second` for `Reward`
+  --> game.vela:5:5
+    |
+  5 |     Reward { extra: 1, extra: 2 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required field is not provided and has no default
+error[compiler::missing_constructor_field]: missing constructor field `0` for `Item::Pair`
+  --> game.vela:6:5
+    |
+  6 |     Item::Pair();
+    |     ^^^^^^^^^^^^ missing constructor field `0` for `Item::Pair`
+  --> game.vela:6:5
+    |
+  6 |     Item::Pair();
+    |     ^^^^^^^^^^^^ required field is not provided and has no default
+error[compiler::unknown_constructor_field]: unknown constructor field `1` for `Item::Pair`
+  --> game.vela:7:19
+    |
+  7 |     Item::Pair(1, 2);
+    |                   ^ unknown constructor field `1` for `Item::Pair`
+  --> game.vela:7:19
+    |
+  7 |     Item::Pair(1, 2);
+    |                   ^ field is not declared by the constructor schema
+  --> game.vela:7:19
+    |
+  7 |     Item::Pair(1, 2);
+    |                   ^ available fields: 0
+error[compiler::unknown_constructor_variant]: unknown enum variant `Item::Missing`
+  --> game.vela:8:5
+    |
+  8 |     Item::Missing { amount: 1 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown enum variant `Item::Missing`
+  --> game.vela:8:5
+    |
+  8 |     Item::Missing { amount: 1 };
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ variant is not declared on this enum

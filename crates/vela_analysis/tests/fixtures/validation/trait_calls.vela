@@ -1,0 +1,11 @@
+
+trait Loader {
+    fn load(self, amount: i64 = 1) -> i64;
+    fn keep(self, amount: i64) -> i64 { amount }
+}
+fn main(loader: Loader, dynamic: Any) {
+    loader.load(amount = 2);
+    loader.load(3);
+    loader.keep(4);
+    dynamic.load(5);
+}

@@ -529,27 +529,57 @@ mod tests {
         fs::write(path, text).expect("write fixture");
     }
 
+    fn package_fixture(name: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/fixtures/packages")
+            .join(name)
+    }
+
+    fn copy_tree(source: &Path, destination: &Path) {
+        for entry in fs::read_dir(source).expect("read package fixture") {
+            let entry = entry.expect("fixture entry");
+            let target = destination.join(entry.file_name());
+            let kind = entry.file_type().expect("fixture file type");
+            if kind.is_dir() {
+                fs::create_dir_all(&target).expect("create copied directory");
+                copy_tree(&entry.path(), &target);
+            } else {
+                assert!(kind.is_file(), "package fixtures must not contain symlinks");
+                fs::copy(entry.path(), target).expect("copy package fixture");
+            }
+        }
+    }
+
+    #[test]
+    fn package_fixture_copies_are_fresh_and_do_not_modify_the_origin() {
+        let origin = package_fixture("path_dependency");
+        let first = fixture("copy_first");
+        let second = fixture("copy_second");
+        copy_tree(&origin, &first);
+        copy_tree(&origin, &second);
+        let relative = "util/src/lib.vela";
+        let original = fs::read(origin.join(relative)).expect("original bytes");
+        assert_eq!(
+            fs::read(first.join(relative)).expect("first bytes"),
+            original
+        );
+        write(&first.join(relative), "pub fn changed() {}\n");
+        assert_eq!(
+            fs::read(second.join(relative)).expect("second bytes"),
+            original
+        );
+        assert_eq!(
+            fs::read(origin.join(relative)).expect("origin bytes"),
+            original
+        );
+        fs::remove_dir_all(first).expect("remove first copy");
+        fs::remove_dir_all(second).expect("remove second copy");
+    }
+
     #[test]
     fn independent_roots_share_dependencies_once_and_keep_explicit_host_boundaries() {
         let root = fixture("independent_roots_中");
-        write(
-            &root.join("first/vela.toml"),
-            "[package]\nid=\"dev.vela.first\"\nname=\"first\"\nversion=\"0.1.0\"\n[dependencies]\ncommon={path=\"../common\"}\n[host]\nschema=\"first.json\"\n",
-        );
-        write(
-            &root.join("second/vela.toml"),
-            "[package]\nid=\"dev.vela.second\"\nname=\"second\"\nversion=\"0.1.0\"\n[dependencies]\ncommon={path=\"../common\"}\n[host]\nschema=\"second.json\"\n",
-        );
-        write(
-            &root.join("common/vela.toml"),
-            "[package]\nid=\"dev.vela.common\"\nname=\"common\"\nversion=\"0.1.0\"\n",
-        );
-        for name in ["first", "second", "common"] {
-            write(
-                &root.join(name).join("src/shared.vela"),
-                "pub fn shared() {}\n",
-            );
-        }
+        copy_tree(&package_fixture("independent_roots"), &root);
         let manifests = [
             root.join("second/vela.toml"),
             root.join("first/vela.toml"),
@@ -705,20 +735,7 @@ mod tests {
     #[test]
     fn path_dependency_resolves_relative_to_manifest_and_sources_are_deterministic() {
         let root = fixture("dependency");
-        write(
-            &root.join("vela.toml"),
-            "[package]\nid=\"com.example.app\"\nname=\"app\"\nversion=\"0.1.0\"\n[dependencies]\nutil={path=\"util\"}\n",
-        );
-        write(&root.join("src/z.vela"), "fn z() {}\n");
-        write(&root.join("src/a.vela"), "fn a() {}\n");
-        write(
-            &root.join("util/vela.toml"),
-            "[package]\nid=\"com.example.util\"\nname=\"util\"\nversion=\"0.1.0\"\n",
-        );
-        write(
-            &root.join("util/src/lib.vela"),
-            "pub fn value() { return 1 }\n",
-        );
+        copy_tree(&package_fixture("path_dependency"), &root);
         let graph =
             load_package_graph(root.join("vela.toml"), std::slice::from_ref(&root)).expect("graph");
         let app = PackageId::new("com.example.app").expect("id");

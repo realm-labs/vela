@@ -1,0 +1,20 @@
+
+#[event("monster.kill")]
+pub fn grant(player: Player) {
+    return;
+}
+#[doc("Reward metadata")]
+#[domain("gameplay")]
+#[policy(level = 3, tags = ["reward", game::reward::Event])]
+struct Reward {
+    #[doc("Reward item id")]
+    item_id: String,
+}
+enum QuestProgress {
+    #[terminal]
+    Finished { #[doc("Quest id")] quest_id: String },
+}
+trait Damageable {
+    #[doc("Apply damage")]
+    fn damage(self, amount: i64) -> i64;
+}

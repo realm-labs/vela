@@ -73,17 +73,7 @@ fn runtime_record_members_are_dynamic_only_when_the_owner_schema_is_absent() {
 #[test]
 fn missing_method_targets_require_a_closed_receiver_universe() {
     let source = SourceId::new(83);
-    let text = r#"
-        struct SourceRecord { present: i64 }
-
-        fn inspect(source: SourceRecord, dynamic: Any) {
-            fixture::opaque().missing();
-            fixture::known().missing();
-            source.missing();
-            fixture::unknown().missing();
-            dynamic.missing();
-        }
-        "#;
+    let text = include_str!("../../tests/fixtures/semantic_facts/closed_receivers.vela");
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,

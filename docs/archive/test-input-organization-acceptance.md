@@ -12,7 +12,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF00 | Complete | Census and baseline inspection below. |
 | SF01 | Complete | Byte-preserving formatter/reload extraction and discovery proof below. |
 | SF02 | Complete | [Syntax/UI-P evidence](test-input-sf02.md): 29 preserved inputs, parser goldens, typed/recovery controls and formatter subset. |
-| SF03–SF12 | Pending | No acceptance claimed. |
+| SF03 | Complete | [Semantic/package evidence](test-input-sf03.md): 75 extracted inputs, 11 UI-S cases and fresh package trees; 329 tests per feature lane. Archive packaging remains limited by existing versionless path dependencies. |
+| SF04–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 

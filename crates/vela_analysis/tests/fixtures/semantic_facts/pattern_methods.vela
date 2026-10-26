@@ -1,0 +1,26 @@
+
+trait BonusSource { fn bonus(self, amount) -> i64; }
+struct Player { level: i64 }
+enum Event {
+    Record { record_player: Player },
+    Tuple(tuple_player: Player),
+    None,
+}
+impl BonusSource for Player {
+    fn bonus(self, amount) -> i64 {
+        return self.level + amount;
+    }
+}
+fn main() {
+    let record_event = Event::Record { record_player: Player { level: 7 } };
+    let record_bonus = match record_event {
+        Event::Record { record_player } => record_player.bonus(5),
+        _ => 0,
+    };
+    let tuple_event = Event::Tuple(Player { level: 8 });
+    let tuple_bonus = match tuple_event {
+        Event::Tuple(tuple_player) => tuple_player.bonus(6),
+        _ => 0,
+    };
+    return record_bonus + tuple_bonus;
+}

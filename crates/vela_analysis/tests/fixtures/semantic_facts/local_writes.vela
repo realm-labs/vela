@@ -1,0 +1,30 @@
+
+fn main() {
+    let straight = 1;
+    straight.trim();
+    straight = "ready:gold";
+    straight.contains(needle = ":");
+
+    let looped = 1;
+    for item in [] { looped = "ready:gold"; }
+    looped.contains(needle = ":");
+
+    let matched = 1;
+    match matched {
+        1 => { matched = "ready:gold"; }
+        _ => {}
+    }
+    matched.contains(needle = ":");
+
+    let shorted = 1;
+    true || { shorted = "ready:gold"; true };
+    shorted.contains(needle = ":");
+
+    let interpolated = 1;
+    let display = f"{interpolated = "ready:gold"}";
+    interpolated.contains(needle = ":");
+
+    42.trim();
+    42.touch(arg = 0);
+}
+

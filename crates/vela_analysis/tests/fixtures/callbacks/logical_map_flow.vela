@@ -1,0 +1,11 @@
+
+fn main() {
+    let rewards = {"gold": 5, "gem": 6};
+    let found = rewards.find(|value| value == 6);
+    let entry = found?;
+    let entries = rewards.entries().collect_array();
+    let first = entries[0];
+    let mapped = rewards.entries().map(|entry| entry.key.len() + entry.value).collect_array();
+    let rebuilt = rewards.iter().collect_map();
+    return entry.value + first.value + mapped[0] + rebuilt.len();
+}

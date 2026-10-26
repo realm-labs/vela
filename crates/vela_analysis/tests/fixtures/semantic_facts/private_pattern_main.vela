@@ -1,0 +1,1 @@
+use api::Hidden as Alias; use api as ns; fn run(input) { match input { api::Hidden::Record { value: direct } => {}, Alias::Tuple(alias) => {}, ns::Hidden::Record { value: namespace } => {}, api::Public::Record { value: public } => {}, _ => {} } }

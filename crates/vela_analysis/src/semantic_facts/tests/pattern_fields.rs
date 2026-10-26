@@ -20,12 +20,12 @@ fn private_pattern_payloads_do_not_borrow_registry_facts() {
         (
             96,
             "api",
-            "enum Hidden { Record { value: i64 }, Tuple(value: i64) } pub enum Public { Record { value: bool } }",
+            include_str!("../../../tests/fixtures/semantic_facts/private_pattern_api.vela"),
         ),
         (
             97,
             "main",
-            "use api::Hidden as Alias; use api as ns; fn run(input) { match input { api::Hidden::Record { value: direct } => {}, Alias::Tuple(alias) => {}, ns::Hidden::Record { value: namespace } => {}, api::Public::Record { value: public } => {}, _ => {} } }",
+            include_str!("../../../tests/fixtures/semantic_facts/private_pattern_main.vela"),
         ),
     ] {
         graph.add_source(ModuleSource::new(
@@ -115,33 +115,7 @@ fn executable_variant_pattern_fields_preserve_script_method_identity() {
         SourceId::new(95),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("main"),
-        r#"
-trait BonusSource { fn bonus(self, amount) -> i64; }
-struct Player { level: i64 }
-enum Event {
-    Record { record_player: Player },
-    Tuple(tuple_player: Player),
-    None,
-}
-impl BonusSource for Player {
-    fn bonus(self, amount) -> i64 {
-        return self.level + amount;
-    }
-}
-fn main() {
-    let record_event = Event::Record { record_player: Player { level: 7 } };
-    let record_bonus = match record_event {
-        Event::Record { record_player } => record_player.bonus(5),
-        _ => 0,
-    };
-    let tuple_event = Event::Tuple(Player { level: 8 });
-    let tuple_bonus = match tuple_event {
-        Event::Tuple(tuple_player) => tuple_player.bonus(6),
-        _ => 0,
-    };
-    return record_bonus + tuple_bonus;
-}
-"#,
+        include_str!("../../../tests/fixtures/semantic_facts/pattern_methods.vela"),
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);

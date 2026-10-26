@@ -19,17 +19,7 @@ use crate::type_fact::TypeFact;
 #[test]
 fn call_placement_diagnostics_freeze_codes_spans_and_labels() {
     let source = SourceId::new(106);
-    let text = r#"
-fn grant(base: i64, amount: i64 = 10) {}
-
-fn main() {
-    grant(base = 1, amunt = 2);
-    grant(base = 1, 2);
-    grant(1, 2, 3);
-    grant(1, base = 2);
-    grant();
-}
-"#;
+    let text = include_str!("../../tests/fixtures/ui/semantic/call_placement.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(10_601);
     let generation = generation(&graph, None, main, function);
@@ -99,23 +89,7 @@ fn main() {
 #[test]
 fn shared_body_placements_keep_source_order_separate_from_receiver_specific_slots() {
     let source = SourceId::new(107);
-    let text = r#"
-trait Probe {
-    fn route(self) { self.target(second = 2, first = 1); }
-}
-
-struct Forward {}
-struct Reverse {}
-
-impl Forward {
-    fn target(self, first: i64, second: i64, third: i64 = 3) {}
-}
-impl Reverse {
-    fn target(self, second: i64, first: i64, third: i64 = 3) {}
-}
-impl Probe for Forward {}
-impl Probe for Reverse {}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/receiver_slots.vela");
     let (graph, _) = graph(source, text);
     let probe = declaration_named(&graph, "Probe");
     let forward = declaration_named(&graph, "Forward");
@@ -172,14 +146,7 @@ impl Probe for Reverse {}
 #[test]
 fn external_calls_only_place_named_arguments_and_keep_parameter_spans_absent() {
     let source = SourceId::new(108);
-    let text = r#"
-fn main() {
-    game::add();
-    game::add(1, 2, 3);
-    game::add(rhs = 2, lhs = 1);
-    game::add(rhs = 2);
-}
-"#;
+    let text = include_str!("../../tests/fixtures/ui/semantic/registered_calls.vela");
     let (graph, main) = graph(source, text);
     let mut schema = RegistryFacts::default();
     schema.insert_function(
@@ -389,18 +356,7 @@ fn main(dynamic: Any) {
 #[test]
 fn trait_call_validation_preserves_parameter_slots() {
     let source = SourceId::new(115);
-    let text = r#"
-trait Loader {
-    fn load(self, amount: i64 = 1) -> i64;
-    fn keep(self, amount: i64) -> i64 { amount }
-}
-fn main(loader: Loader, dynamic: Any) {
-    loader.load(amount = 2);
-    loader.load(3);
-    loader.keep(4);
-    dynamic.load(5);
-}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/trait_calls.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(11_501);
     let generation = generation(&graph, None, main, function);

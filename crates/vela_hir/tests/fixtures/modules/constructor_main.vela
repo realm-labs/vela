@@ -1,0 +1,16 @@
+
+use game::schema::Reward as Prize
+use game::schema::State as ImportedState
+
+fn main(value) {
+    Prize { amount: 1 };
+    game::schema::Reward { amount: 2 };
+    ImportedState::Ready { amount: 3 };
+    game::schema::State::Ready { amount: 4 };
+    Missing { amount: 5 };
+    match value {
+        ImportedState::Ready { amount } => {},
+        game::schema::State::Idle => {},
+        Missing::Ready { amount } => {},
+    }
+}

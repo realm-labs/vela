@@ -13,37 +13,7 @@ use crate::type_fact::TypeFact;
 #[test]
 fn local_use_facts_track_straight_line_writes_and_invalidate_control_flow_joins() {
     let source = SourceId::new(84);
-    let text = r#"
-fn main() {
-    let straight = 1;
-    straight.trim();
-    straight = "ready:gold";
-    straight.contains(needle = ":");
-
-    let looped = 1;
-    for item in [] { looped = "ready:gold"; }
-    looped.contains(needle = ":");
-
-    let matched = 1;
-    match matched {
-        1 => { matched = "ready:gold"; }
-        _ => {}
-    }
-    matched.contains(needle = ":");
-
-    let shorted = 1;
-    true || { shorted = "ready:gold"; true };
-    shorted.contains(needle = ":");
-
-    let interpolated = 1;
-    let display = f"{interpolated = "ready:gold"}";
-    interpolated.contains(needle = ":");
-
-    42.trim();
-    42.touch(arg = 0);
-}
-
-"#;
+    let text = include_str!("../../tests/fixtures/semantic_facts/local_writes.vela");
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,
@@ -123,28 +93,7 @@ fn main() {
 #[test]
 fn erased_collection_annotations_retain_initializer_and_assignment_shapes() {
     let source = SourceId::new(85);
-    let text = r#"
-fn main() {
-    let values: Array = [21, 11, 10, 12, 13];
-    let groups: Map = values.group_by(|value| if value % 2 == 0 {
-        "even"
-    } else {
-        "odd"
-    });
-    groups["odd"].count(|value| value > 12);
-
-    let reassigned: Array = [];
-    reassigned = [1, 2, 3];
-    reassigned.count(|value| value > 1);
-
-    let branched: Array = [];
-    if true { branched = [4, 5]; }
-    branched.count(|value| value > 4);
-
-    let rows = [[1, 2], [3, 4]];
-    rows.map(|row: Array| row.count(|value| value > 1));
-}
-"#;
+    let text = include_str!("../../tests/fixtures/semantic_facts/erased_collections.vela");
     let mut graph = ModuleGraph::new();
     graph.add_source(ModuleSource::new(
         source,

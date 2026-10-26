@@ -624,17 +624,7 @@ fn local_completions_include_function_scope_bindings() {
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game"),
-        r#"
-            struct Player { level: i64 }
-            fn grant(player: Player, amount: i64) -> bool {
-                let rewards: Map = {};
-                let inferred = 10;
-                for reward in [] {
-                    let amount: String = reward;
-                }
-                return amount > 0;
-            }
-            "#,
+        include_str!("../../tests/fixtures/queries/local_bindings.vela"),
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);
@@ -681,32 +671,13 @@ fn declaration_completions_include_script_declarations() {
         SourceId::new(1),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::player"),
-        r#"
-            pub struct Player { level: i64 }
-            pub enum QuestState { Active { quest_id: String }, Done }
-            pub trait Damageable {
-                fn damage(self, amount: i64) -> bool;
-            }
-            pub const START_LEVEL: i64 = 1
-            pub fn grant(player: Player, amount: i64) -> bool {
-                return amount > 0;
-            }
-            impl Damageable for Player {
-                fn damage(self, amount: i64) -> bool {
-                    return amount > 0;
-                }
-            }
-            "#,
+        include_str!("../../tests/fixtures/queries/player.vela"),
     ));
     graph.add_source(ModuleSource::new(
         SourceId::new(2),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::reward"),
-        r#"
-            pub fn grant(amount: i64) -> i64 {
-                return amount + 1;
-            }
-            "#,
+        include_str!("../../tests/fixtures/queries/reward.vela"),
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);

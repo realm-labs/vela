@@ -1,0 +1,9 @@
+
+struct Reward { first: i64, second: i64 }
+enum Item { Pair(first: i64), Known { amount: i64 } }
+fn main() {
+    Reward { extra: 1, extra: 2 };
+    Item::Pair();
+    Item::Pair(1, 2);
+    Item::Missing { amount: 1 };
+}

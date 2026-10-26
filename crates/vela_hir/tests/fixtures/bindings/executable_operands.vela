@@ -1,0 +1,15 @@
+
+enum State { Ready { count } }
+fn main(player, values) {
+    let pair = (1, 2);
+    let data = { key: pair.0 };
+    let bump = |x| x + 1;
+    player.level += data["key"];
+    for value in values {
+        if value > 0 { player.save(value); }
+    }
+    match player.state {
+        State::Ready { count } if count > 0 => bump(count),
+        _ => 0,
+    }
+}

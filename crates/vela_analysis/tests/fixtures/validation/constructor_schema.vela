@@ -1,0 +1,2 @@
+pub struct Reward { amount: i64 }
+pub enum State { Pair(amount: i64) }

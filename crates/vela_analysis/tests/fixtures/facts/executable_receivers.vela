@@ -1,0 +1,19 @@
+
+trait Probe {
+    fn target(self);
+    fn inspect(self, fallback = self.value) {
+        let current = self;
+        let nested = |ignored| self.value;
+        current.value;
+        self.target();
+        nested(fallback);
+    }
+}
+
+struct Player { value: i64 }
+struct Monster { value: String }
+
+impl Probe for Player { fn target(self) {} }
+impl Probe for Monster { fn target(self) {} }
+
+fn unrelated(hidden) { let outside = hidden; return 99; }

@@ -1,0 +1,11 @@
+
+struct Bucket {
+    id: i64
+}
+
+fn main() {
+    let even = Bucket { id: 0 };
+    let odd = Bucket { id: 1 };
+    let groups = [1, 2, 3, 4].group_by(|value| if value % 2 == 0 { even } else { odd });
+    return groups[even][1];
+}

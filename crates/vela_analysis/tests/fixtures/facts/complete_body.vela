@@ -1,0 +1,14 @@
+
+            struct Reward { count: i64 }
+            enum State { Ready(value) }
+            fn main(player: Player, values: Array<i64>, state: State) -> bool {
+                let reward = Reward { count: 1 };
+                let ready = State::Ready(1);
+                values.len();
+                math::max(1, 2);
+                audit::log("saved");
+                player.save();
+                match state { State::Ready(value) => value, _ => 0 }
+                return player.level > values[0] && reward.count > 0;
+            }
+            

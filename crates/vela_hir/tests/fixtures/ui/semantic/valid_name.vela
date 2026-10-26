@@ -1,0 +1,1 @@
+fn main(player) { return player; }

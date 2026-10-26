@@ -1,0 +1,12 @@
+
+fn main() {
+    let option_value = option::some("quest").map(|value| value.to_upper());
+    let option_fallback = option::none().or_else(| | option::some("fallback"));
+    let result_value = result::ok(["gold", "xp"]).map(|values| values.join("+"));
+    let result_error = result::err(["bad", "level"]).map_err(|errors| errors.join("."));
+    let result_chained = result::ok("quest").and_then(|text| result::ok(text.to_upper()));
+    let checked = fixture::apply((|text| text.starts_with("Q")));
+    return option_value.unwrap_or("") + result_value.unwrap_or("")
+        + result_error.to_error_option().unwrap_or("") + option_fallback.unwrap_or("")
+        + result_chained.unwrap_or("");
+}

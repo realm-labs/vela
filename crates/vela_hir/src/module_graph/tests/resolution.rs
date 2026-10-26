@@ -326,14 +326,15 @@ fn indexes_declarations_and_virtual_module_children_for_completion() {
 #[test]
 fn resolves_imports_across_modules() {
     let mut graph = ModuleGraph::new();
-    let _reward = graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    let _reward = graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     let main = graph.add_source(source(
         2,
         "game::main",
-        r#"
-use game::reward::grant
-fn main() { return grant(); }
-"#,
+        include_str!("../../../tests/fixtures/ui/semantic/valid_import.vela"),
     ));
     graph.resolve_imports();
     assert!(graph.diagnostics().is_empty(), "{:?}", graph.diagnostics());
@@ -395,7 +396,11 @@ fn grant(amount, amount) {
 #[test]
 fn duplicate_import_aliases_report_both_spans() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     graph.add_source(source(2, "game::config", "pub const BONUS = 2"));
     graph.add_source(source(
         3,
@@ -419,7 +424,11 @@ fn main() { return reward; }
 #[test]
 fn imports_conflicting_with_declarations_report_both_spans() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
+    graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../tests/fixtures/modules/public_reward.vela"),
+    ));
     graph.add_source(source(
         2,
         "game::main",
@@ -561,8 +570,16 @@ impl Rewardable for Player {
 #[test]
 fn unresolved_imports_include_candidate_hints() {
     let mut graph = ModuleGraph::new();
-    graph.add_source(source(1, "game::reward", "pub fn grant() { return 1; }"));
-    graph.add_source(source(2, "game::main", "use game::reward::grant_reward"));
+    graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../tests/fixtures/modules/public_reward.vela"),
+    ));
+    graph.add_source(source(
+        2,
+        "game::main",
+        include_str!("../../../tests/fixtures/ui/semantic/unresolved_import.vela"),
+    ));
     graph.resolve_imports();
     let unresolved = graph
         .diagnostics()
@@ -575,8 +592,16 @@ fn unresolved_imports_include_candidate_hints() {
 #[test]
 fn private_imports_are_rejected_across_modules() {
     let mut graph = ModuleGraph::new();
-    let reward = graph.add_source(source(1, "game::reward", "fn secret() { return 1; }"));
-    let main = graph.add_source(source(2, "game::main", "use game::reward::secret"));
+    let reward = graph.add_source(source(
+        1,
+        "game::reward",
+        include_str!("../../../tests/fixtures/modules/private_reward.vela"),
+    ));
+    let main = graph.add_source(source(
+        2,
+        "game::main",
+        include_str!("../../../tests/fixtures/ui/semantic/private_import.vela"),
+    ));
     graph.resolve_imports();
     let private = graph
         .diagnostics()

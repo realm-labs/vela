@@ -1,0 +1,10 @@
+
+trait Probe {
+    fn same(self) { self.value === self.value; }
+}
+
+struct ReferenceOwner { value: Array<i64> }
+struct ScalarOwner { value: i64 }
+
+impl Probe for ReferenceOwner {}
+impl Probe for ScalarOwner {}

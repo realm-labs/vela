@@ -1,0 +1,7 @@
+
+fn main() {
+    game::add();
+    game::add(1, 2, 3);
+    game::add(rhs = 2, lhs = 1);
+    game::add(rhs = 2);
+}

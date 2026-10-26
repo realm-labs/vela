@@ -56,17 +56,7 @@ pub extern state world: World;
 #[test]
 fn lowers_type_hint_metadata_for_signatures_structs_and_locals() {
     let mut graph = ModuleGraph::new();
-    let source_text = r#"
-fn grant(player: game::Player, amount: i64, bonuses: Array<Option<i64>>) -> Result<Map<String, i64>, String> {
-    let reward: Reward = Reward { count: amount };
-    let names: Set<String> = [];
-    let mapper = |entry: Reward| entry.count;
-    return reward;
-}
-struct Reward {
-    count: i64,
-}
-"#;
+    let source_text = include_str!("../../../tests/fixtures/metadata/type_hints.vela");
     let module = graph.add_source(source(1, "game::reward", source_text));
     let declarations = graph.module(module).expect("module declarations");
     let grant = declarations.get("grant").expect("grant declaration");
@@ -648,27 +638,7 @@ fn lowers_attribute_metadata_for_declarations_and_members() {
     let module = graph.add_source(source(
         1,
         "game::reward",
-        r#"
-#[event("monster.kill")]
-pub fn grant(player: Player) {
-    return;
-}
-#[doc("Reward metadata")]
-#[domain("gameplay")]
-#[policy(level = 3, tags = ["reward", game::reward::Event])]
-struct Reward {
-    #[doc("Reward item id")]
-    item_id: String,
-}
-enum QuestProgress {
-    #[terminal]
-    Finished { #[doc("Quest id")] quest_id: String },
-}
-trait Damageable {
-    #[doc("Apply damage")]
-    fn damage(self, amount: i64) -> i64;
-}
-"#,
+        include_str!("../../../tests/fixtures/metadata/attributes.vela"),
     ));
     let declarations = graph.module(module).expect("module declarations");
     let grant = declarations.get("grant").expect("grant declaration");
@@ -795,16 +765,7 @@ fn lowers_schema_field_default_metadata() {
     let module = graph.add_source(source(
         1,
         "game::quest",
-        r#"
-struct Reward {
-    item_id: String = "gold",
-    count: i64 = 1,
-}
-enum QuestProgress {
-    Active { quest_id: String, count: i64 = 0 },
-    Finished(label: String = "done"),
-}
-"#,
+        include_str!("../../../tests/fixtures/metadata/field_defaults.vela"),
     ));
     let declarations = graph.module(module).expect("module declarations");
     let reward = declarations.get("Reward").expect("Reward declaration");
@@ -874,20 +835,7 @@ struct Reward {
 #[test]
 fn lowers_impl_metadata_and_method_bindings() {
     let mut graph = ModuleGraph::new();
-    let source_text = r#"
-trait Damageable {
-    fn damage(self, amount: i64) -> i64;
-    fn alive(self) -> bool { return true; }
-}
-struct Player { hp: i64 }
-impl Damageable for Player {
-    fn damage(self, amount: i64) -> i64 {
-        let remaining: i64 = self.hp - amount;
-        let adjust = |bonus| self.hp + bonus;
-        return remaining;
-    }
-}
-"#;
+    let source_text = include_str!("../../../tests/fixtures/metadata/trait_impl.vela");
     let module = graph.add_source(source(1, "game::combat", source_text));
     let declarations = graph.module(module).expect("module declarations");
     let trait_decl = declarations

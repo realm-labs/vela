@@ -1,0 +1,11 @@
+
+trait Score {
+    fn score(self, bonus: i64 = 1) { return (|value: i64| value + bonus)(self.count); }
+}
+
+struct Reward { count: i64 }
+impl Score for Reward {}
+
+impl Reward {
+    fn doubled(self) { return (|value: i64| value + self.count)(self.count); }
+}

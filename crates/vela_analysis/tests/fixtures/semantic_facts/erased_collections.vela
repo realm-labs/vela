@@ -1,0 +1,21 @@
+
+fn main() {
+    let values: Array = [21, 11, 10, 12, 13];
+    let groups: Map = values.group_by(|value| if value % 2 == 0 {
+        "even"
+    } else {
+        "odd"
+    });
+    groups["odd"].count(|value| value > 12);
+
+    let reassigned: Array = [];
+    reassigned = [1, 2, 3];
+    reassigned.count(|value| value > 1);
+
+    let branched: Array = [];
+    if true { branched = [4, 5]; }
+    branched.count(|value| value > 4);
+
+    let rows = [[1, 2], [3, 4]];
+    rows.map(|row: Array| row.count(|value| value > 1));
+}

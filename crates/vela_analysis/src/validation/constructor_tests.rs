@@ -19,20 +19,7 @@ use crate::type_fact::TypeFact;
 #[test]
 fn source_constructor_placements_separate_evaluation_order_from_schema_slots() {
     let source = SourceId::new(201);
-    let text = r#"
-struct Reward { first: i64, second: String = "default" }
-enum Event {
-    Named { first: i64, second: String = "default" },
-    Tuple(first: i64, second: String = "default"),
-}
-fn main() {
-    Reward { second: "two", first: 1 };
-    Event::Named { second: "two", first: 1 };
-    Event::Tuple(second = "two", first = 1);
-    Reward { first: 2 };
-    Event::Tuple(first = 2);
-}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/constructor_slots.vela");
     let (graph, main) = graph(source, text);
     let reward = declaration_named(&graph, "Reward");
     let event = declaration_named(&graph, "Event");
@@ -156,16 +143,7 @@ fn main() {
 #[test]
 fn constructor_diagnostics_precede_generic_tuple_call_diagnostics() {
     let source = SourceId::new(202);
-    let text = r#"
-struct Reward { first: i64, second: i64 }
-enum Item { Pair(first: i64), Known { amount: i64 } }
-fn main() {
-    Reward { extra: 1, extra: 2 };
-    Item::Pair();
-    Item::Pair(1, 2);
-    Item::Missing { amount: 1 };
-}
-"#;
+    let text = include_str!("../../tests/fixtures/ui/semantic/constructors.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(20_201);
     let generation = generation(&graph, None, main, function);
@@ -275,16 +253,7 @@ fn main() {
 #[test]
 fn imported_and_qualified_constructor_paths_share_declaration_identities() {
     let main_source = SourceId::new(203);
-    let main_text = r#"
-use game::schema::Reward as Prize
-use game::schema::State as ImportedState
-fn main() {
-    Prize { amount: 1 };
-    game::schema::Reward { amount: 2 };
-    ImportedState::Pair(amount = 3);
-    game::schema::State::Pair(amount = 4);
-}
-"#;
+    let main_text = include_str!("../../tests/fixtures/validation/imported_constructors.vela");
     let mut graph = ModuleGraph::new();
     let main_module = graph.add_source(ModuleSource::new(
         main_source,
@@ -296,7 +265,7 @@ fn main() {
         SourceId::new(204),
         vela_package::PackageId::anonymous(),
         ModulePath::from_qualified("game::schema"),
-        "pub struct Reward { amount: i64 }\npub enum State { Pair(amount: i64) }",
+        include_str!("../../tests/fixtures/validation/constructor_schema.vela"),
     ));
     graph.resolve_imports();
     assert_eq!(graph.diagnostics(), &[]);

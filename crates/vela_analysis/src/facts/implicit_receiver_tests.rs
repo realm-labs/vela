@@ -13,37 +13,15 @@ use crate::{registry::RegistryFacts, type_fact::TypeFact};
 fn fixture() -> (ModuleGraph, RegistryFacts) {
     let mut graph = ModuleGraph::new();
     for (source, module, text) in [
-        (60, "shapes", "pub struct Row { value: i64 }"),
+        (
+            60,
+            "shapes",
+            include_str!("../../tests/fixtures/facts/implicit_shapes.vela"),
+        ),
         (
             61,
             "game",
-            r#"
-use shapes::Row as Alias;
-struct Row { value: String }
-trait Reader {
- fn required(self) -> i64;
- fn default_read(self) -> i64 {
-  let out = self.required();
-  let capture = || self.required();
-  return out;
- }
-}
-impl Alias {
- fn read(self) -> i64 {
-  let direct = self.value;
-  let capture = || self.value;
-  return direct;
- }
- fn erased(self: Any) { return self.value; }
-}
-impl Reader for Alias {
- fn required(self) -> i64 { return self.value; }
-}
-impl host::Row {
- fn host_read(self) -> i64 { return self.score; }
-}
-fn plain(value: Any) { return value.value; }
-"#,
+            include_str!("../../tests/fixtures/facts/implicit_game.vela"),
         ),
     ] {
         graph.add_source(ModuleSource::new(

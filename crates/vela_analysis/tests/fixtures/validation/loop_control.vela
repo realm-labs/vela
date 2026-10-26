@@ -1,0 +1,14 @@
+
+fn main() {
+    break;
+    continue;
+    for value in [1] {
+        if value == 1 { break; }
+        { continue; }
+        let nested = || {
+            break;
+            continue;
+        };
+        nested();
+    }
+}

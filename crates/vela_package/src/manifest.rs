@@ -424,22 +424,7 @@ mod tests {
     fn manifest_parses_workspace_package_sources_dependencies_and_capabilities() {
         let parsed = parse_manifest(
             ManifestFileId::new(1),
-            r#"
-[workspace]
-members = ["plugins/sort"]
-[package]
-id = "com.example.app"
-name = "app"
-version = "0.1.0"
-[source]
-roots = ["src", "generated"]
-[dependencies]
-utils = { path = "../utils" }
-[capabilities]
-requires = ["host_read", "time"]
-[host]
-schema = "target/schema.json"
-"#,
+            include_str!("../tests/fixtures/manifests/complete.toml"),
         );
         let manifest = parsed.manifest.expect("valid manifest");
         assert_eq!(

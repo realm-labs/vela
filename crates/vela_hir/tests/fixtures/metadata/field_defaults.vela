@@ -1,0 +1,9 @@
+
+struct Reward {
+    item_id: String = "gold",
+    count: i64 = 1,
+}
+enum QuestProgress {
+    Active { quest_id: String, count: i64 = 0 },
+    Finished(label: String = "done"),
+}

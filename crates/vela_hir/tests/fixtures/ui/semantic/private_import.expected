@@ -1,0 +1,13 @@
+error[hir::private_import]: declaration `secret` in module `game::reward` is private
+  --> game/main.vela:1:1
+    |
+  1 | use game::reward::secret
+    | ^^^^^^^^^^^^^^^^^^^^^^^^ declaration `secret` in module `game::reward` is private
+  --> game/main.vela:1:1
+    |
+  1 | use game::reward::secret
+    | ^^^^^^^^^^^^^^^^^^^^^^^^ private declaration cannot be imported from another module
+  --> game/reward.vela:1:1
+    |
+  1 | fn secret() { return 1; }
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^ declaration is private

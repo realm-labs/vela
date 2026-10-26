@@ -1,0 +1,1 @@
+enum Hidden { Record { value: i64 }, Tuple(value: i64) } pub enum Public { Record { value: bool } }

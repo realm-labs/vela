@@ -1,0 +1,11 @@
+
+            struct Player { level: i64 }
+            fn grant(player: Player, amount: i64) -> bool {
+                let rewards: Map = {};
+                let inferred = 10;
+                for reward in [] {
+                    let amount: String = reward;
+                }
+                return amount > 0;
+            }
+            

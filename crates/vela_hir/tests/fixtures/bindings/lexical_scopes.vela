@@ -1,0 +1,14 @@
+
+fn main(values, state) {
+    let total = 0;
+    if total == 0 {
+        let branch = total;
+    }
+    for (index, value) in values {
+        let nested = value;
+    }
+    match state {
+        Reward::Grant { amount } => amount,
+        _ => total,
+    }
+}

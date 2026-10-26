@@ -1,0 +1,11 @@
+
+struct Bag { tags: Array<String> }
+
+fn main() {
+    let bags = [Bag { tags: ["daily", "quest"] }];
+    let mapped = bags.map(|bag| bag.tags.join(","));
+    let iter = mapped.iter().map(|text| text.to_upper());
+    let tags = set::from_array(["daily", "raid"]);
+    let selected = tags.filter(|tag| tag.starts_with("d"));
+    return iter.collect_array().join("|") + selected.values().collect_array().join("|");
+}

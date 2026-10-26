@@ -1,0 +1,5 @@
+
+            pub fn grant(amount: i64) -> i64 {
+                return amount + 1;
+            }
+            

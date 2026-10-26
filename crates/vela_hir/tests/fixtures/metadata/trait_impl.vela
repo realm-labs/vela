@@ -1,0 +1,13 @@
+
+trait Damageable {
+    fn damage(self, amount: i64) -> i64;
+    fn alive(self) -> bool { return true; }
+}
+struct Player { hp: i64 }
+impl Damageable for Player {
+    fn damage(self, amount: i64) -> i64 {
+        let remaining: i64 = self.hp - amount;
+        let adjust = |bonus| self.hp + bonus;
+        return remaining;
+    }
+}

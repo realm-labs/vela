@@ -1,0 +1,12 @@
+
+trait Probe {
+    fn inspect(self) {
+        return self.values.map(|value| value);
+    }
+}
+
+struct Labels { values: Array<String> }
+struct Scores { values: Array<i64> }
+
+impl Probe for Labels {}
+impl Probe for Scores {}

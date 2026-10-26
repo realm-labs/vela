@@ -1,0 +1,26 @@
+error[compiler::invalid_identity_comparison]: `===` requires reference identity operands, but the left operand has type `i64`
+  --> game.vela:9:5
+    |
+  9 |     1 === 1;
+    |     ^^^^^^^ `===` requires reference identity operands, but the left operand has type `i64`
+  --> game.vela:9:5
+    |
+  9 |     1 === 1;
+    |     ^^^^^^^ identity comparison requires reference operands
+  --> game.vela:9:5
+    |
+  9 |     1 === 1;
+    |     ^ left operand is statically `i64`
+error[compiler::invalid_identity_comparison]: `===` requires reference identity operands, but the left operand has type `Range`
+  --> game.vela:10:5
+     |
+  10 |     (1..2) === (1..2);
+     |     ^^^^^^^^^^^^^^^^^ `===` requires reference identity operands, but the left operand has type `Range`
+  --> game.vela:10:5
+     |
+  10 |     (1..2) === (1..2);
+     |     ^^^^^^^^^^^^^^^^^ identity comparison requires reference operands
+  --> game.vela:10:5
+     |
+  10 |     (1..2) === (1..2);
+     |     ^^^^^^ left operand is statically `Range`

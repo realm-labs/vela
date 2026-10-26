@@ -400,16 +400,7 @@ mod tests {
             SourceId::new(19),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
-            r#"
-            fn main() {
-                let option_payload = fixture::option()?;
-                let result_payload = fixture::result()?;
-                let union_payload = fixture::union()?;
-                let known_failure = fixture::failure()?;
-                let dynamic_payload = fixture::dynamic()?;
-                let unknown_payload = fixture::unknown()?;
-            }
-            "#,
+            include_str!("../tests/fixtures/facts/try_payloads.vela"),
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
@@ -550,20 +541,7 @@ mod tests {
             SourceId::new(1),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
-            r#"
-            struct Reward { count: i64 }
-            enum State { Ready(value) }
-            fn main(player: Player, values: Array<i64>, state: State) -> bool {
-                let reward = Reward { count: 1 };
-                let ready = State::Ready(1);
-                values.len();
-                math::max(1, 2);
-                audit::log("saved");
-                player.save();
-                match state { State::Ready(value) => value, _ => 0 }
-                return player.level > values[0] && reward.count > 0;
-            }
-            "#,
+            include_str!("../tests/fixtures/facts/complete_body.vela"),
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);
@@ -797,14 +775,7 @@ mod tests {
             SourceId::new(17),
             vela_package::PackageId::anonymous(),
             ModulePath::from_qualified("game"),
-            r#"
-            struct Reward { count: i64 }
-            fn identity(reward: Reward) -> Reward { return reward; }
-            fn main(reward: Reward) -> i64 {
-                let count = identity(reward).count;
-                return (|value: i64| value + count)(1);
-            }
-            "#,
+            include_str!("../tests/fixtures/facts/source_lambdas.vela"),
         ));
         graph.resolve_imports();
         assert_eq!(graph.diagnostics(), &[]);

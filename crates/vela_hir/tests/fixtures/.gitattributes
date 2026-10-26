@@ -1,0 +1,2 @@
+*.vela text eol=lf
+*.expected text eol=lf

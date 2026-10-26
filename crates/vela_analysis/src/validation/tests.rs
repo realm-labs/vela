@@ -19,20 +19,7 @@ use super::{
 #[test]
 fn identity_validation_distinguishes_static_values_from_dynamic_references() {
     let source = SourceId::new(101);
-    let text = r#"
-struct Token { value: i64 }
-enum State { Ready }
-
-fn main(dynamic) {
-    let token = Token { value: 1 };
-    token === token;
-    State::Ready() === State::Ready();
-    1 === 1;
-    (1..2) === (1..2);
-    dynamic === dynamic;
-    return [1] === [1];
-}
-"#;
+    let text = include_str!("../../tests/fixtures/ui/semantic/identity.vela");
     let (graph, main) = graph(source, text);
     let body = graph.function_body(main).expect("main body");
     let function = FunctionId::new(10_101);
@@ -80,28 +67,7 @@ fn main(dynamic) {
 #[test]
 fn comparison_validation_uses_authoritative_derives_and_impl_metadata() {
     let source = SourceId::new(102);
-    let text = r#"
-struct Plain { value: i64 }
-
-#[derive(PartialEq)]
-struct DerivedEq { value: i64 }
-
-#[derive(PartialEq, PartialOrd)]
-struct DerivedOrd { value: i64 }
-
-struct ExplicitEq { value: i64 }
-impl PartialEq for ExplicitEq {
-    fn eq(self, other: ExplicitEq) -> bool { return self.value == other.value; }
-}
-
-fn main() {
-    Plain { value: 1 } == Plain { value: 2 };
-    DerivedEq { value: 1 } == DerivedEq { value: 2 };
-    ExplicitEq { value: 1 } == ExplicitEq { value: 2 };
-    Plain { value: 1 } < Plain { value: 2 };
-    return DerivedOrd { value: 1 } < DerivedOrd { value: 2 };
-}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/comparison_traits.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(10_201);
     let generation = generation(&graph, main, function);
@@ -155,24 +121,7 @@ fn main() {
 #[test]
 fn array_ordering_validation_covers_proven_elements_and_callback_keys() {
     let source = SourceId::new(103);
-    let text = r#"
-struct Plain { value: i64 }
-
-#[derive(PartialEq, Eq, PartialOrd, Ord)]
-struct Ranked { value: i64 }
-
-fn main(dynamic_callback) {
-    let plain = [Plain { value: 2 }, Plain { value: 1 }];
-    let ranked = [Ranked { value: 2 }, Ranked { value: 1 }];
-    let floats: Array<f64> = [2.0, 1.0];
-    plain.sort();
-    ranked.max();
-    floats.min();
-    plain.sort_by(|item| 1.0);
-    plain.sort_by(|item| item);
-    return plain.sort_by(dynamic_callback);
-}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/array_ordering.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(10_301);
     let generation = generation(&graph, main, function);
@@ -235,21 +184,7 @@ fn main(dynamic_callback) {
 #[test]
 fn loop_control_validation_stays_within_each_hir_body() {
     let source = SourceId::new(104);
-    let text = r#"
-fn main() {
-    break;
-    continue;
-    for value in [1] {
-        if value == 1 { break; }
-        { continue; }
-        let nested = || {
-            break;
-            continue;
-        };
-        nested();
-    }
-}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/loop_control.vela");
     let (graph, main) = graph(source, text);
     let function = FunctionId::new(10_401);
     let generation = generation(&graph, main, function);
@@ -309,17 +244,7 @@ fn main() {
 #[test]
 fn shared_body_operator_validation_is_qualified_by_function_id() {
     let source = SourceId::new(105);
-    let text = r#"
-trait Probe {
-    fn same(self) { self.value === self.value; }
-}
-
-struct ReferenceOwner { value: Array<i64> }
-struct ScalarOwner { value: i64 }
-
-impl Probe for ReferenceOwner {}
-impl Probe for ScalarOwner {}
-"#;
+    let text = include_str!("../../tests/fixtures/validation/receiver_identity.vela");
     let (graph, _) = graph(source, text);
     let probe = declaration_named(&graph, "Probe");
     let reference_owner = declaration_named(&graph, "ReferenceOwner");

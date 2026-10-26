@@ -92,7 +92,7 @@ fn imported_type_hints_preserve_exact_source_registry_and_unavailable_owners() {
             SourceId::new(13),
             PackageId::anonymous(),
             ModulePath::from_qualified("api"),
-            "pub struct Token { tag: i64 } struct Hidden { tag: i64 }",
+            include_str!("../../tests/fixtures/semantic_facts/token_api.vela"),
         ));
         graph.resolve_imports();
         let mut schema = crate::registry::RegistryFacts::default();

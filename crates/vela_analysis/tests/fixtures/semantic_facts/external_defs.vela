@@ -1,0 +1,1 @@
+pub fn make() -> i64 { return 1; } fn hidden() -> String { return "private"; } pub const occupied: i64 = 1; pub struct Blocked { value: i64 }

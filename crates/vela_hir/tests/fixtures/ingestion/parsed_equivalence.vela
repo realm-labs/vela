@@ -1,0 +1,9 @@
+
+struct Reward {
+    amount: i64 = 1,
+}
+
+fn grant(multiplier = 2) {
+    let adjust = |value| value + multiplier;
+    return Reward { amount: adjust(multiplier) };
+}

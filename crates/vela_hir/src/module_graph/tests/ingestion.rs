@@ -7,16 +7,7 @@ fn parsed_source_ingestion_preserves_the_complete_hir_graph_and_ids() {
     let module_source = source(
         17,
         "game::rules",
-        r#"
-struct Reward {
-    amount: i64 = 1,
-}
-
-fn grant(multiplier = 2) {
-    let adjust = |value| value + multiplier;
-    return Reward { amount: adjust(multiplier) };
-}
-"#,
+        include_str!("../../../tests/fixtures/ingestion/parsed_equivalence.vela"),
     );
     let parsed = parse_source_with_id(module_source.id, &module_source.text);
 

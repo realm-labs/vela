@@ -1,0 +1,1 @@
+fn main() { game::add(rhs = 2, lhs = 1); }

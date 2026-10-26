@@ -141,7 +141,7 @@ fn imported_record_results_preserve_source_registry_and_unavailable_owners() {
             SourceId::new(232),
             PackageId::anonymous(),
             ModulePath::from_qualified("api"),
-            "pub struct Token { tag: i64 } struct Hidden { tag: i64 }",
+            include_str!("../../../tests/fixtures/semantic_facts/token_api.vela"),
         ));
         graph.resolve_imports();
         let mut schema = RegistryFacts::default();

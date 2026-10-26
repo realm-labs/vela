@@ -1,0 +1,15 @@
+
+enum QuestState {
+    Active { count: i64 }
+    Done
+}
+fn grant_reward() { return 1; }
+fn main(states) {
+    grant_reward()
+    let weights = { RewardKey::Small: 1 }
+    let next = QuestState::Active { count: 1 }
+    match next {
+        QuestState::Active { count } => count
+        QuestState::Done => 0
+    }
+}
