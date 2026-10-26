@@ -9,7 +9,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         || {
             hot_reload_demo::run(
                 "hot_reload_function_swap_v1.vela",
-                include_str!("hot_reload_function_swap_v1.vela"),
+                include_str!("../hot_reload_function_swap/hot_reload_function_swap_v1.vela"),
                 "hot_reload_function_swap_invalid.vela",
                 include_str!("hot_reload_function_swap_invalid.vela"),
             )

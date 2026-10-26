@@ -1,8 +1,11 @@
+mod support;
+
 use rstest::rstest;
 use std::process::Command;
 
 fn run_bin(path: &str) -> String {
-    let output = Command::new(path).output().expect("run example bin");
+    let cwd = vela_examples::temp_dir::TempDir::new().expect("isolated example cwd");
+    let output = support::process::run(Command::new(path).current_dir(cwd.path()));
     assert!(
         output.status.success(),
         "example failed\nstdout:\n{}\nstderr:\n{}",

@@ -1,7 +1,0 @@
-fn kill_exp() {
-    return 20;
-}
-
-fn main() {
-    return kill_exp();
-}

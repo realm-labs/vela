@@ -1,0 +1,13 @@
+error: error[vm::division_by_zero]: division by zero
+  --> runtime_error.vela:3:12
+    |
+  3 |     return 10 / 0;
+    |            ^^^^^^ division by zero
+  --> runtime_error.vela:3:12
+    |
+  3 |     return 10 / 0;
+    |            ^^^^^^ runtime error
+  --> runtime_error.vela:7:12
+    |
+  7 |     return helper();
+    |            ^^^^^^^^ while executing `helper`

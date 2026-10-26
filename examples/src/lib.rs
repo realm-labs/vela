@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
 pub mod hot_reload_demo;
+pub mod temp_dir;
 
 pub fn example_dir(example: &str) -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))

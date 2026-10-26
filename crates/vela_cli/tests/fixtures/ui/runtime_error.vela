@@ -1,0 +1,8 @@
+
+fn helper() {
+    return 10 / 0;
+}
+
+fn main() {
+    return helper();
+}

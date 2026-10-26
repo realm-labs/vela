@@ -1,0 +1,4 @@
+
+fn main() {
+    return time::elapsed_since(1699999990) + math::random(1, 6);
+}

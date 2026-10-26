@@ -1,216 +1,94 @@
+mod support;
+
 use rstest::rstest;
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::Path;
+use std::process::{Command, Output};
+use support::temp::TempDir;
+use support::ui::{self, Exit};
 
-fn run_cli(script: &str) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .arg(script)
-        .output()
-        .expect("run vela_cli")
+fn run_cli(cwd: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
+    support::process::run(
+        Command::new(env!("CARGO_BIN_EXE_vela_cli"))
+            .current_dir(cwd)
+            .env_clear()
+            .envs(env.iter().copied())
+            .args(args),
+    )
 }
 
-fn run_cli_args(args: &[&str]) -> std::process::Output {
-    Command::new(env!("CARGO_BIN_EXE_vela_cli"))
-        .args(args)
-        .output()
-        .expect("run vela_cli")
-}
-
-struct ScriptFixture {
-    root: PathBuf,
-    script: PathBuf,
-}
-
-impl ScriptFixture {
-    fn script(&self) -> &Path {
-        &self.script
-    }
-}
-
-impl Drop for ScriptFixture {
-    fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.root);
-    }
-}
-
-fn unique_test_dir(name: &str) -> PathBuf {
-    static NEXT_TEST_DIR: AtomicU64 = AtomicU64::new(0);
-
-    let mut path = std::env::temp_dir();
-    let sequence = NEXT_TEST_DIR.fetch_add(1, Ordering::Relaxed);
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system time after epoch")
-        .as_nanos();
-    path.push(format!(
-        "vela_cli_{name}_{}_{}_{}",
-        std::process::id(),
-        nanos,
-        sequence
-    ));
-    path
-}
-
-fn write_script(name: &str, source: &str) -> ScriptFixture {
-    let root = unique_test_dir(name);
-    fs::create_dir_all(&root).expect("create temp dir");
-    let script = root.join(format!("{name}.vela"));
-    fs::write(&script, source).expect("write script");
-    ScriptFixture { root, script }
+fn script_fixture(name: &str, source: &str) -> TempDir {
+    let root = TempDir::new().expect("acquire isolated directory");
+    fs::write(root.path().join(format!("{name}.vela")), source).expect("write script");
+    root
 }
 
 #[rstest]
-#[case::script_main(
-    "basic",
-    r#"
-fn main() {
-    return 2 + 3;
-}
-"#,
-    "Scalar(I64(5))\n"
-)]
-#[case::standard_time_and_random_helpers(
-    "stdlib",
-    r#"
-fn main() {
-    return time::elapsed_since(1699999990) + math::random(1, 6);
-}
-"#,
-    "Scalar(I64(13))\n"
-)]
-fn cli_runs_script(#[case] name: &str, #[case] source: &str, #[case] expected: &str) {
-    let fixture = write_script(name, source);
-
-    let output = run_cli(
-        fixture
-            .script()
-            .to_str()
-            .expect("script path should be utf8"),
-    );
-
-    assert!(
-        output.status.success(),
-        "cli script failed\nstdout:\n{}\nstderr:\n{}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(
-        String::from_utf8(output.stdout).expect("stdout should be utf8"),
-        expected
-    );
+#[case::script_main("basic", include_str!("fixtures/ui/basic.vela"), &["basic.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::Success)]
+#[case::standard_time_and_random_helpers("stdlib", include_str!("fixtures/ui/stdlib.vela"), &["stdlib.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::Success)]
+fn cli_runs_script(
+    #[case] name: &str,
+    #[case] source: &str,
+    #[case] args: &[&str],
+    #[case] env: &[(&str, &str)],
+    #[case] exit: Exit,
+) {
+    let fixture = script_fixture(name, source);
+    ui::assert_golden(&run_cli(fixture.path(), args, env), name, exit);
 }
 
-#[test]
-fn cli_rejects_removed_async_flag() {
-    let fixture = write_script(
+#[rstest]
+#[case::removed_async_flag(&["--async", "async_explicit.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::UsageFailure)]
+fn cli_rejects_removed_async_flag(
+    #[case] args: &[&str],
+    #[case] env: &[(&str, &str)],
+    #[case] exit: Exit,
+) {
+    let fixture = script_fixture(
         "async_explicit",
-        r#"
-async fn answer() {
-    return 42;
-}
-
-async fn main() {
-    return answer().await;
-}
-"#,
+        include_str!("fixtures/ui/async_explicit.vela"),
     );
-    let script = fixture
-        .script()
-        .to_str()
-        .expect("script path should be utf8");
-
-    let output = run_cli_args(&["--async", script]);
-
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
-    assert!(stderr.contains("unexpected argument '--async'"));
+    ui::assert_golden(
+        &run_cli(fixture.path(), args, env),
+        "removed_async_flag",
+        exit,
+    );
 }
 
 #[rstest]
-#[case::removed_async_source(
-    "async_default",
-    r#"
-async fn main() {
-    return 42;
-}
-"#,
-    &["error[", "async"],
-    &["rerun with `--async`"],
-)]
-#[case::compile_diagnostic(
-    "invalid",
-    r#"
-fn main() {
-    return missing_value;
-}
-"#,
-    &[
-        "error[hir::unresolved_name]: unresolved name `missing_value`",
-        "invalid.vela:3:12",
-        "return missing_value;",
-    ],
-    &[],
-)]
-#[case::runtime_diagnostic(
-    "runtime_error",
-    r#"
-fn helper() {
-    return 10 / 0;
-}
-
-fn main() {
-    return helper();
-}
-"#,
-    &[
-        "error[vm::division_by_zero]: division by zero",
-        "runtime_error.vela:3:12",
-        "return 10 / 0;",
-        "runtime_error.vela:7:12",
-        "return helper();",
-        "while executing `helper`",
-    ],
-    &[],
-)]
+#[case::removed_async_source("async_default", include_str!("fixtures/ui/async_default.vela"), &["async_default.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::ScriptFailure, &["error[", "async"], &["rerun with `--async`"])]
+#[case::compile_diagnostic("invalid", include_str!("fixtures/ui/invalid.vela"), &["invalid.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::ScriptFailure, &["error[hir::unresolved_name]: unresolved name `missing_value`", "invalid.vela:3:12", "return missing_value;"], &[])]
+#[case::runtime_diagnostic("runtime_error", include_str!("fixtures/ui/runtime_error.vela"), &["runtime_error.vela"], &[("NO_COLOR", "1"), ("TERM", "dumb")], Exit::ScriptFailure, &["error[vm::division_by_zero]: division by zero", "runtime_error.vela:3:12", "return 10 / 0;", "runtime_error.vela:7:12", "return helper();", "while executing `helper`"], &[])]
 fn cli_reports_script_diagnostics(
     #[case] name: &str,
     #[case] source: &str,
+    #[case] args: &[&str],
+    #[case] env: &[(&str, &str)],
+    #[case] exit: Exit,
     #[case] expected: &[&str],
     #[case] forbidden: &[&str],
 ) {
-    let fixture = write_script(name, source);
-
-    let output = run_cli(
-        fixture
-            .script()
-            .to_str()
-            .expect("script path should be utf8"),
-    );
-
-    assert!(!output.status.success());
-    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    let fixture = script_fixture(name, source);
+    let output = run_cli(fixture.path(), args, env);
+    ui::assert_golden(&output, name, exit);
+    let stderr = String::from_utf8(output.stderr).expect("UTF-8 diagnostics");
     for expected in expected {
-        assert!(
-            stderr.contains(expected),
-            "missing `{expected}` in {stderr}"
-        );
+        assert!(stderr.contains(expected), "missing {expected}: {stderr}");
     }
     for forbidden in forbidden {
         assert!(
             !stderr.contains(forbidden),
-            "unexpected `{forbidden}` in {stderr}"
+            "obsolete {forbidden}: {stderr}"
         );
     }
 }
 
 #[test]
 fn cli_renders_clap_help() {
-    let output = run_cli_args(&["--help"]);
-
-    assert!(output.status.success());
+    let cwd = TempDir::new().expect("cwd");
+    let output = run_cli(cwd.path(), &["--help"], &[("NO_COLOR", "1")]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
     let stdout = String::from_utf8(output.stdout).expect("stdout should be utf8");
     assert!(stdout.contains("Run a Vela script file"));
     assert!(
@@ -218,4 +96,78 @@ fn cli_renders_clap_help() {
             || stdout.contains("Usage: vela_cli.exe [OPTIONS] <SCRIPT>")
     );
     assert!(!stdout.contains("--async"));
+}
+
+#[rstest]
+#[case::invalid_source("fn main() { return missing_value; }")]
+#[case::would_write("fn main() { fs::write_string(\"executed.txt\", \"bad\"); return 0; }")]
+fn cli_print_schema_does_not_compile_or_execute(#[case] source: &str) {
+    let fixture = script_fixture("schema", source);
+    let output = run_cli(fixture.path(), &["--print-schema", "schema.vela"], &[]);
+    assert_eq!(output.status.code(), Some(0));
+    assert!(output.stderr.is_empty());
+    let json = String::from_utf8(output.stdout).expect("schema JSON");
+    vela_language_service::SchemaArtifact::from_json(&json).expect("supported schema format");
+    assert!(json.contains("\"formatVersion\": 4"));
+    assert!(json.contains("fs::write_string"));
+    assert!(!fixture.path().join("executed.txt").exists());
+}
+
+#[test]
+fn cli_print_schema_still_requires_positional_script() {
+    let cwd = TempDir::new().expect("cwd");
+    let output = run_cli(cwd.path(), &["--print-schema"], &[]);
+    assert_eq!(output.status.code(), Some(2));
+    assert!(output.stdout.is_empty());
+    assert!(
+        String::from_utf8(output.stderr)
+            .expect("stderr")
+            .contains("<SCRIPT>")
+    );
+}
+
+#[test]
+fn cli_reports_missing_source() {
+    let cwd = TempDir::new().expect("cwd");
+    let output = run_cli(cwd.path(), &["missing.vela"], &[]);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).expect("stderr");
+    assert!(stderr.contains("missing.vela"), "{stderr}");
+    assert!(stderr.starts_with("error:"), "{stderr}");
+    assert!(!cwd.path().join("missing.vela").exists());
+}
+
+#[test]
+fn cli_relative_script_uses_script_parent_as_fs_root() {
+    let cwd = TempDir::new().expect("cwd");
+    fs::create_dir(cwd.path().join("scripts")).expect("script parent");
+    fs::write(cwd.path().join("input.txt"), "wrong cwd").expect("cwd decoy");
+    fs::write(cwd.path().join("outside.txt"), "unchanged sentinel").expect("outside sentinel");
+    fs::write(cwd.path().join("scripts/input.txt"), "script parent input").expect("input");
+    fs::write(
+        cwd.path().join("scripts/io.vela"),
+        r#"
+fn main() {
+    let input = result::unwrap_or(fs::read_to_string("input.txt"), "missing");
+    fs::write_string("output.txt", input);
+    let denied = result::is_err(fs::write_string("../outside.txt", "changed"));
+    let hidden = result::is_err(fs::read_to_string("../outside.txt"));
+    if !denied || !hidden { return -1; }
+    return input.len();
+}
+"#,
+    )
+    .expect("script");
+    let output = run_cli(cwd.path(), &["scripts/io.vela"], &[]);
+    ui::compare(&output, Exit::Success, b"Scalar(I64(19))\n", b"").expect("script parent IO");
+    assert_eq!(
+        fs::read(cwd.path().join("scripts/output.txt")).expect("written"),
+        b"script parent input"
+    );
+    assert!(!cwd.path().join("output.txt").exists());
+    assert_eq!(
+        fs::read(cwd.path().join("outside.txt")).expect("sentinel"),
+        b"unchanged sentinel"
+    );
 }

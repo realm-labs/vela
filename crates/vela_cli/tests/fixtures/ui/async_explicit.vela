@@ -1,0 +1,8 @@
+
+async fn answer() {
+    return 42;
+}
+
+async fn main() {
+    return answer().await;
+}

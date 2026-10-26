@@ -1,0 +1,8 @@
+[package]
+id = "dev.vela.example.app"
+name = "app"
+version = "0.1.0"
+[source]
+roots = ["src"]
+[dependencies]
+lib = { path = "lib" }

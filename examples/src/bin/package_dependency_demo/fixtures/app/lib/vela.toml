@@ -1,0 +1,6 @@
+[package]
+id = "dev.vela.example.lib"
+name = "lib"
+version = "0.1.0"
+[source]
+roots = ["src"]

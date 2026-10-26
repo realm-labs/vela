@@ -1,0 +1,7 @@
+error: unexpected argument '--async' found
+
+  tip: to pass '--async' as a value, use '-- --async'
+
+Usage: vela_cli [OPTIONS] <SCRIPT>
+
+For more information, try '--help'.

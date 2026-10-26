@@ -1,0 +1,5 @@
+error: error[syntax::removed_async]: script async and await are no longer supported
+  --> async_default.vela:2:1
+    |
+  2 | async fn main() {
+    | ^^^^^ script async and await are no longer supported

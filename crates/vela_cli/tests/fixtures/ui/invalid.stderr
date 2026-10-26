@@ -1,0 +1,9 @@
+error: error[hir::unresolved_name]: unresolved name `missing_value`
+  --> invalid.vela:3:12
+    |
+  3 |     return missing_value;
+    |            ^^^^^^^^^^^^^ unresolved name `missing_value`
+  --> invalid.vela:3:12
+    |
+  3 |     return missing_value;
+    |            ^^^^^^^^^^^^^ no similar names found

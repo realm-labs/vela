@@ -1,0 +1,3 @@
+ui/*.vela text eol=lf
+ui/*.stdout text eol=lf
+ui/*.stderr text eol=lf

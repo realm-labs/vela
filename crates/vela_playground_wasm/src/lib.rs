@@ -484,29 +484,7 @@ mod tests {
         json!(["vela", 42]),
     )]
     #[case::level_reward(
-        r#"
-            struct Reward {
-                enabled: bool,
-                base: int,
-                multiplier: int,
-            }
-
-            fn score_reward(reward) {
-                if !reward.enabled {
-                    return 0;
-                }
-                return reward.base * reward.multiplier;
-            }
-
-            fn main() {
-                let reward = Reward {
-                    enabled: true,
-                    base: 12,
-                    multiplier: 3,
-                };
-                return score_reward(reward) + 4;
-            }
-            "#,
+        include_str!("../tests/fixtures/json/level_reward.vela"),
         json!(40),
     )]
     fn run_script_returns_json_value(#[case] source: &str, #[case] expected: JsonValue) {
