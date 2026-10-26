@@ -1,0 +1,43 @@
+
+struct LabelA {
+    text: String,
+}
+
+struct LabelB {
+    text: String,
+}
+
+impl LabelA {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+impl LabelB {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let first = LabelA { text: "quest" };
+        let second = LabelB { text: "quick" };
+        if matches_prefix(first) {
+            total += 1;
+        }
+        if matches_prefix(second) {
+            total += 1;
+        }
+        if matches_prefix("q-string") {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}

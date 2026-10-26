@@ -1,0 +1,22 @@
+
+fn run_once() {
+    let total = 0;
+    for tick in 0..96 {
+        let active = set::from_array([1, 2]);
+        active.add(3);
+        active.add(1);
+        active.remove(2);
+        if active.has(1) && active.has(3) && !active.has(2) {
+            total += active.len() + tick % 7;
+        }
+    }
+    return total;
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}

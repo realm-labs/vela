@@ -1,0 +1,26 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let tags = ["daily", "quest"];
+        tags.extend(["raid", "event", "boss"]);
+        tags.extend(["bonus"]);
+
+        let scores = [1, 2, 3];
+        scores.extend([5, 8, 13]);
+        scores.extend([]);
+
+        if tags.len() != 6
+            || tags[0] != "daily"
+            || tags[5] != "bonus"
+            || tags.join("|") != "daily|quest|raid|event|boss|bonus"
+            || scores.len() != 6
+            || scores[5] != 13
+            || scores.sum() != 32
+        {
+            return 0;
+        }
+        total += tags.len() + scores.sum() + tick - tick;
+    }
+    return total;
+}

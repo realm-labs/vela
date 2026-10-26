@@ -1,0 +1,6 @@
+[
+  { "title": "Level reward", "entry": "main", "sourceFile": "level_reward.vela" },
+  { "title": "Collections", "entry": "main", "sourceFile": "collections.vela" },
+  { "title": "Methods", "entry": "main", "sourceFile": "methods.vela" },
+  { "title": "Runtime error", "entry": "main", "sourceFile": "runtime_error.vela" }
+]

@@ -14,51 +14,11 @@ const DEFAULT_REPEATS: usize = 7;
 const DEFAULT_ITERATIONS: usize = 100;
 const DEFAULT_WARMUP: usize = 10;
 
-const INITIAL_SOURCE: &str = r#"
-#[event("monster.kill")]
-fn on_kill(player, monster) {
-    return player + monster + 20;
-}
+const INITIAL_SOURCE: &str = include_str!("fixtures/hot_reload_initial.vela");
 
-fn helper(value) {
-    return value + 1;
-}
+const UPDATED_SOURCE: &str = include_str!("fixtures/hot_reload_updated.vela");
 
-fn main() {
-    return on_kill(1, helper(2));
-}
-"#;
-
-const UPDATED_SOURCE: &str = r#"
-#[event("monster.kill")]
-fn on_kill(player, monster) {
-    let bonus = 30;
-    return player + monster + bonus;
-}
-
-fn helper(value) {
-    return value + 2;
-}
-
-fn main() {
-    return on_kill(1, helper(2));
-}
-"#;
-
-const ABI_REJECT_SOURCE: &str = r#"
-#[event("monster.kill")]
-fn on_kill(player) {
-    return player + 30;
-}
-
-fn helper(value) {
-    return value + 2;
-}
-
-fn main() {
-    return on_kill(1);
-}
-"#;
+const ABI_REJECT_SOURCE: &str = include_str!("fixtures/hot_reload_abi_reject.vela");
 
 fn main() -> Result<(), Box<dyn Error>> {
     let params = BenchParams::from_args();

@@ -113,16 +113,7 @@ struct ConcurrencyFixture {
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
         let engine = Engine::builder().build()?;
-        let program = engine.compile_source(
-            r#"
-state calls: i64 = 0;
-
-pub fn actor_turn(value: i64) -> i64 {
-    calls += 1;
-    return calls + value;
-}
-"#,
-        )?;
+        let program = engine.compile_source(include_str!("fixtures/actor_turn.vela"))?;
         let image = vela_engine::runtime::RuntimeImage::new_compiled(engine, program).into_shared();
         Ok(Self { image })
     }
@@ -255,43 +246,7 @@ fn report_concurrency(mode: &str, workers: usize, elapsed: Duration, results: Ve
     );
 }
 
-const DYNAMIC_CONTENTION_SOURCE: &str = r#"
-struct Label {
-    text: String,
-}
-
-impl Label {
-    fn starts_with(self, prefix: String) -> bool {
-        return self.text.starts_with(prefix);
-    }
-}
-
-fn matches_prefix(value) {
-    return value.starts_with("q");
-}
-
-fn string_worker() {
-    let total = 0;
-    for tick in 0..32 {
-        if matches_prefix("quest") {
-            total += 1;
-        }
-        total += tick - tick;
-    }
-    return total;
-}
-
-fn label_worker() {
-    let total = 0;
-    for tick in 0..32 {
-        if matches_prefix(Label { text: "quick" }) {
-            total += 1;
-        }
-        total += tick - tick;
-    }
-    return total;
-}
-"#;
+const DYNAMIC_CONTENTION_SOURCE: &str = include_str!("fixtures/dynamic_contention.vela");
 
 fn dynamic_cache_contention(workers: usize, calls_per_worker: usize) -> Result<(), Box<dyn Error>> {
     let engine = Engine::builder().build()?;

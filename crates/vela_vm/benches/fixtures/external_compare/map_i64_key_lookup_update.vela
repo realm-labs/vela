@@ -1,0 +1,23 @@
+
+fn run_once() {
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(1, 3);
+    scores.set(2, 8);
+    scores.set(3, 2);
+    let total = 0;
+    for tick in 0..120 {
+        scores.set(1, scores.get_or(1, 0) + tick % 5);
+        scores.set(3, scores.get_or(3, 0) + 1);
+        total += scores.get_or(1, 0) + scores.get_or(2, 0);
+    }
+    return total + scores.get_or(3, 0);
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}

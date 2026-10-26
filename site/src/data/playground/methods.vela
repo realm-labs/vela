@@ -1,0 +1,18 @@
+struct DamageResult {
+    actor: String,
+    applied: i64,
+}
+
+impl DamageResult {
+    fn score(self, bonus) -> i64 {
+        return self.applied + bonus;
+    }
+}
+
+fn main() {
+    let result = DamageResult {
+        actor: "knight",
+        applied: 42,
+    };
+    return result.score(8);
+}

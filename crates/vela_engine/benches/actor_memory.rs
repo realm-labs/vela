@@ -316,16 +316,7 @@ struct ConcurrencyFixture {
 impl ConcurrencyFixture {
     fn new() -> Result<Self, Box<dyn Error>> {
         let engine = Engine::builder().build()?;
-        let program = engine.compile_source(
-            r#"
-state calls: i64 = 0;
-
-pub fn actor_turn(value: i64) -> i64 {
-    calls += 1;
-    return calls + value;
-}
-"#,
-        )?;
+        let program = engine.compile_source(include_str!("fixtures/actor_turn.vela"))?;
         let image = vela_engine::runtime::RuntimeImage::new_compiled(engine, program).into_shared();
         Ok(Self { image })
     }
@@ -534,9 +525,7 @@ fn selected_plan_counts(version: &ProgramVersion) -> (usize, usize, usize) {
 
 fn memory_source(shape: ArtifactShape) -> String {
     match shape {
-        ArtifactShape::Small => {
-            "state counter: i64 = 0;\nfn add(value: i64) -> i64 { counter += value; return counter; }\npub fn main(value: i64) -> i64 { let total = 0; for index in 0..8 { total += index + 1 - 1; } return add(value) + total; }\n".to_owned()
-        }
+        ArtifactShape::Small => include_str!("fixtures/actor_memory_small.vela").to_owned(),
         ArtifactShape::Large => {
             let mut source = "state counter: i64 = 0;\n".to_owned();
             for index in 0..LARGE_FUNCTION_COUNT {

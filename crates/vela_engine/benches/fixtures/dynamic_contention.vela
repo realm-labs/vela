@@ -1,0 +1,36 @@
+
+struct Label {
+    text: String,
+}
+
+impl Label {
+    fn starts_with(self, prefix: String) -> bool {
+        return self.text.starts_with(prefix);
+    }
+}
+
+fn matches_prefix(value) {
+    return value.starts_with("q");
+}
+
+fn string_worker() {
+    let total = 0;
+    for tick in 0..32 {
+        if matches_prefix("quest") {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}
+
+fn label_worker() {
+    let total = 0;
+    for tick in 0..32 {
+        if matches_prefix(Label { text: "quick" }) {
+            total += 1;
+        }
+        total += tick - tick;
+    }
+    return total;
+}

@@ -1,0 +1,23 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores: Map = {
+            "base": 1,
+            "bonus": 2,
+        };
+        scores.set("tick", tick);
+        scores.set("bonus", 5);
+        scores.set("raid", 8);
+
+        if scores.get_or("tick", 0) != tick
+            || scores.get_or("bonus", 0) != 5
+            || scores.get_or("raid", 0) != 8
+        {
+            return 0;
+        }
+
+        total += scores.values().collect_array().sum();
+    }
+    return total;
+}

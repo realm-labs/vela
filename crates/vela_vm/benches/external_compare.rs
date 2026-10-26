@@ -1,5 +1,7 @@
 use std::error::Error;
 
+#[path = "external_compare/bounded_process.rs"]
+mod bounded_process;
 /// Shared with the `baseline` bench: single-threaded inline-cache storage for
 /// cache-enabled measurement rows. `#[path]` is the repository's documented
 /// mechanism for justified cross-bench-target sharing.
@@ -10,6 +12,8 @@ mod cache_support;
 mod config;
 #[path = "external_compare/embedded.rs"]
 mod embedded;
+#[path = "external_compare/preflight.rs"]
+mod preflight;
 #[path = "external_compare/process.rs"]
 mod process;
 #[path = "external_compare/report.rs"]
@@ -26,114 +30,9 @@ mod version;
 #[path = "external_compare/workloads.rs"]
 mod workloads;
 
-use config::BenchConfig;
+#[path = "external_compare/runner.rs"]
+mod runner;
+
 fn main() -> Result<(), Box<dyn Error>> {
-    let config = BenchConfig::from_args();
-    report::print_header(&config);
-
-    let workloads = workloads::all_workloads()
-        .filter(|workload| config.should_run(workload.name))
-        .collect::<Vec<_>>();
-    if workloads.is_empty() {
-        return Err(format!("no external workloads matched {}", config.filters_label()).into());
-    }
-
-    if config.should_run_runtime("vela") {
-        let vela_runtime = vela::VelaRuntime::new()?;
-        for workload in &workloads {
-            report::print_result(
-                "vela",
-                env!("CARGO_PKG_VERSION"),
-                "internal_hot_loop",
-                workload.name,
-                vela_runtime.run(workload, config.params)?,
-                config.params,
-            );
-        }
-    }
-
-    if config.should_run_runtime("vela-cache") {
-        let vela_runtime = vela::VelaRuntime::new()?;
-        for workload in &workloads {
-            report::print_result(
-                "vela-cache",
-                env!("CARGO_PKG_VERSION"),
-                "internal_hot_loop",
-                workload.name,
-                vela_runtime.run_cache_enabled(workload, config.params)?,
-                config.params,
-            );
-        }
-    }
-
-    if config.should_run_runtime("lua54") {
-        let lua_runtime = embedded::LuaRuntime::new();
-        for workload in &workloads {
-            report::print_result(
-                "lua54",
-                "mlua-vendored-lua54",
-                "embedded_hot_loop",
-                workload.name,
-                lua_runtime.run(workload, config.params)?,
-                config.params,
-            );
-        }
-    }
-
-    if config.should_run_runtime("rhai") {
-        let rhai_runtime = embedded::RhaiRuntime::new();
-        for workload in &workloads {
-            report::print_result(
-                "rhai",
-                "rhai-crate",
-                "embedded_hot_loop",
-                workload.name,
-                rhai_runtime.run(workload, config.params)?,
-                config.params,
-            );
-        }
-    }
-
-    for runtime in process::process_runtimes() {
-        if !config.should_run_runtime(runtime.name) {
-            continue;
-        }
-        match runtime.locate() {
-            Some(command) => {
-                let version = runtime.version(&command);
-                println!(
-                    "runtime={} version=\"{}\" command={}",
-                    runtime.name,
-                    support::sanitize(&version),
-                    command
-                );
-                for workload in &workloads {
-                    match runtime.run(&command, workload, config.params) {
-                        Ok(result) => report::print_result(
-                            runtime.name,
-                            &version,
-                            "process_hot_loop",
-                            workload.name,
-                            result,
-                            config.params,
-                        ),
-                        Err(error) => println!(
-                            "runtime={} bench={} status=error command={} error=\"{}\"",
-                            runtime.name,
-                            workload.name,
-                            command,
-                            support::sanitize(&error.to_string())
-                        ),
-                    }
-                }
-            }
-            None => println!(
-                "runtime={} status=missing commands={}",
-                runtime.name,
-                runtime.commands.join(",")
-            ),
-        }
-    }
-
-    Ok(())
+    runner::run(std::env::args().skip(1))
 }

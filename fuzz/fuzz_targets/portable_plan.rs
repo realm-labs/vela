@@ -128,9 +128,7 @@ fn base_artifact() -> &'static Vec<u8> {
     BASE.get_or_init(|| {
         let engine = Engine::builder().build().expect("fuzz seed engine");
         let compiled = engine
-            .compile_source(
-                "fn branch(value: i64) -> i64 { if value < 10 { return value + 1; } return value; } fn main(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return branch(total); }",
-            )
+            .compile_source(include_str!("../fixtures/portable_plan/base.vela"))
             .expect("fuzz seed source");
         PortableProgramArtifact::from_compiled(compiled)
             .expect("portable fuzz seed")

@@ -72,60 +72,17 @@ const PRE_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
         name: "scalar_branch_loop",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let total = 0;
-    for value in 0..200 {
-        if value % 3 == 0 {
-            total += value * 2;
-            continue;
-        }
-        if value > 180 {
-            break;
-        }
-        total += (value * 5) % 17;
-    }
-    return total;
-}
-"#,
+        source: include_str!("../fixtures/baseline/scalar_branch_loop.vela"),
     },
     Workload {
         name: "scalar_branch_loop_budgeted",
         mode: ExecutionMode::Budgeted,
-        source: r#"
-fn main() {
-    let total = 0;
-    for value in 0..200 {
-        if value % 3 == 0 {
-            total += value * 2;
-            continue;
-        }
-        if value > 180 {
-            break;
-        }
-        total += (value * 5) % 17;
-    }
-    return total;
-}
-"#,
+        source: include_str!("../fixtures/baseline/scalar_branch_loop.vela"),
     },
     Workload {
         name: "range_iteration",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let total = 0;
-    for outer in 0..8 {
-        for value in 0..128 {
-            total += value + outer - outer;
-        }
-    }
-    for value in 0..=63 {
-        total += value;
-    }
-    return total;
-}
-"#,
+        source: include_str!("../fixtures/baseline/range_iteration.vela"),
     },
     Workload {
         name: "managed_heap_range_methods",
@@ -150,30 +107,7 @@ fn main() {
     Workload {
         name: "scalar_dispatch_mix",
         mode: ExecutionMode::Inline,
-        source: r#"
-fn main() {
-    let total = 0;
-    let drift = 0.5;
-    let label = "tick";
-    let enabled = true;
-    for tick in 0..180 {
-        drift += 0.25;
-        if drift > 12.0 {
-            drift = 0.5;
-        }
-        if enabled && (tick % 2 == 0 || label == "tick") {
-            total += tick * 3 - 1;
-        }
-        if !(label != "tick") && drift >= 1.0 {
-            total += 2;
-        }
-        if tick > 150 && drift < 5.0 {
-            break;
-        }
-    }
-    return total;
-}
-"#,
+        source: include_str!("../fixtures/baseline/scalar_dispatch_mix.vela"),
     },
     Workload {
         name: "script_call_small_args",
@@ -891,18 +825,6 @@ const POST_COLLECTION_WORKLOADS: &[Workload] = &[
     Workload {
         name: "gc_pacing",
         mode: ExecutionMode::GcPacing,
-        source: r#"
-fn main() {
-    let total = 0;
-    for batch in 0..24 {
-        let values = [];
-        for item in 0..16 {
-            values.push("gc".repeat((item % 4) + 1));
-        }
-        total += values.len() + batch;
-    }
-    return total;
-}
-"#,
+        source: include_str!("../fixtures/baseline/gc_pacing.vela"),
     },
 ];

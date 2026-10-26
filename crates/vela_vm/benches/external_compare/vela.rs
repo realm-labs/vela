@@ -10,6 +10,7 @@ use vela_vm::owned_value::OwnedValue;
 
 use super::cache_support::BenchInlineCaches;
 use super::config::BenchParams;
+use super::preflight;
 use super::support::{BenchResult, bytes_checksum, mix, summarize, value_checksum};
 use super::test_compile_support::compile_test_program_with_registry;
 use super::workloads::Workload;
@@ -19,6 +20,52 @@ pub(crate) struct VelaRuntime {
 }
 
 impl VelaRuntime {
+    pub(crate) fn preflight(
+        &self,
+        workload: &Workload,
+        cache_enabled: bool,
+    ) -> Result<(), Box<dyn Error>> {
+        let registry = vela_stdlib::standard_registry()?;
+        let program = compile_test_program_with_registry(
+            SourceId::new(1),
+            workload.vela,
+            registry.compile_view(),
+        )
+        .map_err(|error| format!("{error:?}"))?;
+        let program = link_program_for_vm(&self.vm, &program)?;
+        let caches = cache_enabled.then(|| BenchInlineCaches::new(program.cache_layout().len()));
+        for iterations in preflight::ITERATIONS {
+            let mut host = vela_vm::HostExecution { state_values: None };
+            let mut budget =
+                vela_vm::budget::ExecutionBudget::new(1_000_000, 16 * 1024 * 1024, 256);
+            let value = self.vm.run_linked_program_host_budget_call(
+                vela_vm::LinkedProgramHostBudgetCall {
+                    artifact: &program,
+                    entry: "main",
+                    args: &[OwnedValue::i64(iterations as i64)],
+                    host: &mut host,
+                    budget: &mut budget,
+                    inline_caches: caches
+                        .as_ref()
+                        .map(|cache| cache as &dyn vela_vm::VmInlineCaches),
+                    bytecode_profiler: None,
+                },
+            )?;
+            let OwnedValue::Scalar(vela_common::ScalarValue::I64(actual)) = value else {
+                return Err(
+                    format!("{} preflight expected i64, got {value:?}", workload.name).into(),
+                );
+            };
+            preflight::validate(
+                if cache_enabled { "vela-cache" } else { "vela" },
+                workload.name,
+                iterations,
+                actual,
+            )?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn new() -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             vm: Vm::new().with_standard_natives(),

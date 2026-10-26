@@ -1,0 +1,7 @@
+
+state calls: i64 = 0;
+
+pub fn actor_turn(value: i64) -> i64 {
+    calls += 1;
+    return calls + value;
+}

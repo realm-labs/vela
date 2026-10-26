@@ -1,77 +1,21 @@
+import examples from './playground-examples.json';
+
 export type PlaygroundExample = {
   title: string;
   entry: string;
   source: string;
 };
 
-export const PLAYGROUND_EXAMPLES: PlaygroundExample[] = [
-  {
-    title: 'Level reward',
-    entry: 'main',
-    source: `struct Reward {
-    enabled: bool,
-    base: i64,
-    multiplier: i64,
-}
+const sources = import.meta.glob<string>('./playground/*.vela', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
 
-fn score_reward(reward) {
-    if !reward.enabled {
-        return 0;
-    }
-    return reward.base * reward.multiplier;
-}
-
-fn main() {
-    let reward = Reward {
-        enabled: true,
-        base: 12,
-        multiplier: 3,
-    };
-    return score_reward(reward) + 4;
-}`,
-  },
-  {
-    title: 'Collections',
-    entry: 'main',
-    source: `fn main() {
-    let rewards = { "gold": 10, "gem": 3, "xp": 25 };
-    let tags = set::from_array(["daily", "vip", "daily"]);
-    let total = rewards["gold"] + rewards["xp"];
-
-    if tags.has("vip") && rewards.has("gem") {
-        return total + tags.len();
-    }
-    return total;
-}`,
-  },
-  {
-    title: 'Methods',
-    entry: 'main',
-    source: `struct DamageResult {
-    actor: String,
-    applied: i64,
-}
-
-impl DamageResult {
-    fn score(self, bonus) -> i64 {
-        return self.applied + bonus;
-    }
-}
-
-fn main() {
-    let result = DamageResult {
-        actor: "knight",
-        applied: 42,
-    };
-    return result.score(8);
-}`,
-  },
-  {
-    title: 'Runtime error',
-    entry: 'main',
-    source: `fn main() {
-    let before = 10;
-    return before / 0;
-}`,
-  },
-];
+export const PLAYGROUND_EXAMPLES: PlaygroundExample[] = examples.map(
+  ({ title, entry, sourceFile }) => {
+    const source = sources[`./playground/${sourceFile}`];
+    if (source === undefined) throw new Error(`Missing playground source: ${sourceFile}`);
+    return { title, entry, source };
+  }
+);

@@ -1,7 +1,8 @@
 {
   "scripts": {
     "dev": "astro dev",
-    "build": "astro check && astro build",
+    "build": "astro check && astro build && node ./scripts/check-playground-build.mjs",
+    "test:playground": "node ./scripts/check-playground-native.mjs",
     "preview": "astro preview",
     "test:syntax": "node ./scripts/check-vela-highlighting.mjs",
     "test:docs": "node ./scripts/check-doc-placeholders.mjs && node --test ./scripts/check-reduced-surface.test.mjs"

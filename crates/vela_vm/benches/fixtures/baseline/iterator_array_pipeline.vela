@@ -1,0 +1,17 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let values = [1, 2, 3, 4, 5, 6, 7, 8];
+        let collected = values
+            .iter()
+            .filter(|value| value % 2 == 0)
+            .map(|value| value * 3 + tick - tick)
+            .collect_array();
+        if collected.len() != 4 || collected[0] != 6 || collected[3] != 24 {
+            return 0;
+        }
+        total += collected.sum();
+    }
+    return total;
+}

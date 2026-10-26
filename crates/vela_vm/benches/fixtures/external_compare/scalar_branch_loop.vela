@@ -1,0 +1,23 @@
+
+fn run_once() {
+    let total = 0;
+    for value in 0..200 {
+        if value % 3 == 0 {
+            total += value * 2;
+            continue;
+        }
+        if value > 180 {
+            break;
+        }
+        total += (value * 5) % 17;
+    }
+    return total;
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}

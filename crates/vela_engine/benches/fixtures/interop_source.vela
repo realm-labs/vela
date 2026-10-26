@@ -1,0 +1,5 @@
+
+pub fn generated_target(value: i64) -> i64 { return value + 1; }
+fn child(value: i64) -> i64 { return value + 1; }
+fn scalar_entry(value: i64) -> i64 { return bench::scalar(value); }
+fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }

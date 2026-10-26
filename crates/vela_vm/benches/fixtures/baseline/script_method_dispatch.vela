@@ -1,0 +1,27 @@
+
+struct Account {
+    balance: i64,
+    tier: i64,
+}
+
+impl Account {
+    fn score(self, bonus) -> i64 {
+        return self.balance + self.tier + bonus;
+    }
+
+    fn boosted(self, bonus, multiplier) -> i64 {
+        return self.score(bonus) * multiplier;
+    }
+}
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let account = Account {
+            balance: tick + 10,
+            tier: tick % 5,
+        };
+        total += account.score(3) + account.boosted(1, 2);
+    }
+    return total;
+}

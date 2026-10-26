@@ -1,0 +1,29 @@
+
+struct Player { id: i64, level: i64 }
+
+fn run_once() {
+    let alice = Player { id: 1, level: 10 };
+    let bob = Player { id: 2, level: 20 };
+    let alice_copy = Player { id: 1, level: 10 };
+    let scores = {"seed": 0};
+    scores.clear();
+    scores.set(alice, 3);
+    scores.set(bob, 8);
+    let total = 0;
+    for tick in 0..96 {
+        alice.level += 1;
+        scores.set(alice, scores.get_or(alice, 0) + tick % 5);
+        if scores.has(alice) && scores.has(bob) && !scores.has(alice_copy) {
+            total += scores.get_or(alice, 0) + scores.get_or(bob, 0) + alice.level % 7;
+        }
+    }
+    return total;
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}

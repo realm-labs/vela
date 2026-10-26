@@ -20,7 +20,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF08 | Complete | [CLI/WASM/examples evidence](test-input-sf08.md): full UI-C, bounded processes/temp ownership and public routes; 29 CLI, 14 WASM, 29 example tests per lane. |
 | SF09 | Complete | [Tooling source evidence](test-input-sf09.md): 196 literal sites / 97 fixtures, unchanged identities; LS 771 plus two ignored, LSP 842 library + seven binary + ten stdio per lane. |
 | SF10 | Complete | [Matrix reader evidence](test-input-sf10.md): 198 source documents / 515 references / 94 JSON fixtures; all 218 resolved trees unchanged. Strict Rust/JS parity and direct-reader corrections pass. |
-| SF11–SF12 | Pending | No acceptance claimed. |
+| SF11 | Complete | [Workload/fuzz evidence](test-input-sf11-workloads.md) and [site/query evidence](test-input-sf11-consumers.md): exact authored sources, semantic preflight, six queries, bounded launchers and CI selection. |
+| SF12 | In progress | Final gates, residual audit and documented environmental limits. |
 
 ## SF00 — Census And Ownership
 

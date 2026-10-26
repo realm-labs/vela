@@ -1,0 +1,23 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let data = b"\x01\x02\x03\x04\xff";
+        let middle = data.slice(1, 4);
+        let decoded = result::unwrap_or(bytes::from_hex("00ff"), b"bad");
+        let hex = data.to_hex();
+
+        if data.get(4) != 255u8
+            || data.read_u32_le(0) != 0x04030201u32
+            || data.read_u32_be(0) != 0x01020304u32
+            || middle != b"\x02\x03\x04"
+            || decoded != b"\x00\xff"
+            || hex != "01020304ff"
+        {
+            return 0;
+        }
+
+        total += 10 + tick - tick;
+    }
+    return total;
+}

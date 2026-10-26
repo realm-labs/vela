@@ -1,10 +1,34 @@
+#[path = "../benches/external_compare/bounded_process.rs"]
+mod bounded_process;
+#[allow(dead_code)]
+#[path = "../benches/baseline/cache_support.rs"]
+mod cache_support;
 #[allow(dead_code)]
 #[path = "../benches/external_compare/config.rs"]
 mod config;
+#[allow(dead_code)]
+#[path = "../benches/external_compare/embedded.rs"]
+mod embedded;
+#[path = "../benches/external_compare/preflight.rs"]
+mod preflight;
+#[allow(dead_code)]
+#[path = "../benches/external_compare/process.rs"]
+mod process;
+#[path = "../benches/external_compare/report.rs"]
+mod report;
+#[path = "../benches/external_compare/runner.rs"]
+mod runner;
+#[allow(dead_code)]
+#[path = "../benches/external_compare/support.rs"]
+mod support;
+#[allow(dead_code)]
+#[path = "../benches/external_compare/vela.rs"]
+mod vela;
 #[path = "../benches/external_compare/version.rs"]
 mod version;
 #[path = "../benches/external_compare/workloads.rs"]
 mod workloads;
+use crate::test_compile_support;
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -251,6 +275,260 @@ fn embedded_workload_checksums_match() {
 }
 
 #[test]
+fn semantic_preflight_covers_exactly_the_current_workloads() {
+    let actual = workloads::all_workloads()
+        .map(|workload| workload.name)
+        .collect::<BTreeSet<_>>();
+    let expected = preflight::EXPECTED
+        .iter()
+        .map(|(name, _)| *name)
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected);
+    assert_eq!(expected.len(), 22);
+    assert_eq!(expected.len(), preflight::EXPECTED.len());
+    for (name, once) in preflight::EXPECTED {
+        for iterations in preflight::ITERATIONS {
+            let expected = once * iterations as i64;
+            preflight::validate("contract", name, iterations, expected)
+                .expect("independent expected value should pass");
+            assert!(preflight::validate("contract", name, iterations, expected + 1).is_err());
+        }
+    }
+    assert!(preflight::validate("contract", "unknown", 1, 0).is_err());
+    assert!(preflight::validate("contract", "array_scan", 3, 0).is_err());
+}
+
+#[test]
+fn semantic_preflight_validates_all_embedded_runtimes_and_cache_modes() {
+    let vela = vela::VelaRuntime::new().expect("Vela preflight runtime");
+    let lua = embedded::LuaRuntime::new();
+    let rhai = embedded::RhaiRuntime::new();
+    for workload in workloads::all_workloads() {
+        vela.preflight(workload, false)
+            .expect("Vela semantic result");
+        vela.preflight(workload, true)
+            .expect("cached Vela semantic result");
+        lua.preflight(workload).expect("Lua semantic result");
+        rhai.preflight(workload).expect("Rhai semantic result");
+    }
+}
+
+#[test]
+fn semantic_preflight_rejects_wrong_embedded_results_before_mixing() {
+    let original = workloads::all_workloads()
+        .next()
+        .expect("nonempty workloads");
+    let wrong = workloads::Workload {
+        vela: "fn main(iterations: i64) { return 0; }",
+        lua: "function run(iterations) return 0 end",
+        rhai: "fn run(iterations) { 0 }",
+        ..*original
+    };
+    let vela = vela::VelaRuntime::new().expect("Vela preflight runtime");
+    assert!(
+        vela.preflight(&wrong, false)
+            .expect_err("incorrect raw result must fail")
+            .to_string()
+            .contains("expected=11940 actual=0")
+    );
+    assert!(vela.preflight(&wrong, true).is_err());
+    assert!(embedded::LuaRuntime::new().preflight(&wrong).is_err());
+    assert!(embedded::RhaiRuntime::new().preflight(&wrong).is_err());
+    for lua in [
+        "function run(iterations) return 11940 * iterations + 0.75 end",
+        "function run(iterations) return tostring(11940 * iterations) end",
+    ] {
+        let wrong_type = workloads::Workload { lua, ..*original };
+        let error = embedded::LuaRuntime::new()
+            .preflight(&wrong_type)
+            .expect_err("Lua preflight must reject coercible non-integer values");
+        assert!(
+            error.to_string().contains("expected Lua Integer"),
+            "{error}"
+        );
+    }
+    let wrong_type = workloads::Workload {
+        vela: "fn main(iterations: i64) { return false; }",
+        ..*original
+    };
+    assert!(
+        vela.preflight(&wrong_type, false)
+            .expect_err("incorrect result type must fail")
+            .to_string()
+            .contains("expected i64")
+    );
+}
+
+#[test]
+fn semantic_preflight_enforces_embedded_execution_limits() {
+    let original = workloads::all_workloads()
+        .next()
+        .expect("nonempty workloads");
+    let looping = workloads::Workload {
+        vela: "fn spin(value: i64) -> i64 { return spin(value); } fn main(iterations: i64) -> i64 { return spin(iterations); }",
+        lua: "function run(iterations) while true do end end",
+        rhai: "fn run(iterations) { loop {} }",
+        ..*original
+    };
+    let vela = vela::VelaRuntime::new().expect("Vela preflight runtime");
+    for cache_enabled in [false, true] {
+        let error = vela
+            .preflight(&looping, cache_enabled)
+            .expect_err("recursion must exhaust budget");
+        let error = error
+            .downcast_ref::<vela_vm::error::VmError>()
+            .expect("runtime error, not compile rejection");
+        assert_eq!(
+            error.kind(),
+            vela_vm::error::VmErrorKind::BudgetExceeded {
+                budget: vela_vm::budget::ExecutionBudgetKind::CallDepth,
+                limit: 256,
+            }
+        );
+    }
+    let lua_error = embedded::LuaRuntime::new()
+        .preflight(&looping)
+        .expect_err("Lua loop must exhaust hook budget");
+    assert!(
+        lua_error
+            .to_string()
+            .contains("preflight instruction limit exceeded"),
+        "{lua_error}"
+    );
+    let rhai_error = embedded::RhaiRuntime::new()
+        .preflight(&looping)
+        .expect_err("Rhai loop must exhaust operation budget");
+    assert!(
+        rhai_error
+            .to_string()
+            .to_lowercase()
+            .contains("too many operations"),
+        "{rhai_error}"
+    );
+}
+
+#[test]
+fn semantic_preflight_validates_available_process_runtimes_and_rejects_failures() {
+    let original = workloads::all_workloads()
+        .next()
+        .expect("nonempty workloads");
+    for runtime in process::process_runtimes() {
+        let Some(command) = runtime
+            .locate()
+            .expect("available runtime must have a valid version")
+        else {
+            eprintln!("{} unavailable: optional preflight skipped", runtime.name);
+            continue;
+        };
+        for workload in workloads::all_workloads() {
+            runtime
+                .preflight(&command, workload)
+                .unwrap_or_else(|error| panic!("{} {}: {error}", runtime.name, workload.name));
+        }
+        for (node, python, message) in [
+            ("console.log('0')", "print(0)", "semantic preflight"),
+            (
+                "console.log('not a number')",
+                "print('not a number')",
+                "invalid checksum",
+            ),
+            ("process.exit(7)", "raise SystemExit(7)", "process exited"),
+            ("invalid syntax !", "invalid syntax !", "process exited"),
+        ] {
+            let wrong = workloads::Workload {
+                node,
+                python,
+                ..*original
+            };
+            let error = runtime
+                .preflight(&command, &wrong)
+                .expect_err("selected runtime failure must propagate")
+                .to_string();
+            assert!(error.contains(message), "{}: {error}", runtime.name);
+        }
+    }
+}
+
+#[test]
+fn unavailable_runtime_is_distinct_from_required_selection() {
+    let mut runtime = process::process_runtimes().remove(0);
+    runtime.commands = &["vela-sf11-deliberately-nonexistent-runtime"];
+    assert!(
+        runtime
+            .locate()
+            .expect("missing command is not a probe failure")
+            .is_none()
+    );
+    let optional = config::BenchConfig::from_iter(std::iter::empty()).expect("default selection");
+    assert!(!optional.runtime_required("node"));
+    let selected =
+        config::BenchConfig::from_iter(["--runtime=node", "--preflight-only"].map(str::to_owned))
+            .expect("explicit Node selection");
+    assert!(selected.runtime_required("node"));
+    assert!(selected.preflight_only);
+}
+
+#[cfg(unix)]
+#[test]
+fn process_capture_bounds_time_and_both_output_streams() {
+    use std::process::Command;
+    use std::time::Duration;
+    let output = bounded_process::output(
+        Command::new("sh").args(["-c", "printf 42; printf warning >&2; exit 7"]),
+        Duration::from_secs(2),
+    )
+    .expect("bounded capture should retain nonzero exit status");
+    assert_eq!(output.status.code(), Some(7));
+    assert_eq!(output.stdout, b"42");
+    assert_eq!(output.stderr, b"warning");
+    for script in [
+        "while :; do printf 0123456789; done",
+        "while :; do printf 0123456789 >&2; done",
+    ] {
+        let error = bounded_process::output(
+            Command::new("sh").args(["-c", script]),
+            Duration::from_secs(2),
+        )
+        .expect_err("excessive output must fail");
+        assert!(error.to_string().contains("64 KiB"), "{error}");
+    }
+    let error = bounded_process::output(
+        Command::new("sh").args(["-c", "while :; do :; done"]),
+        Duration::from_millis(50),
+    )
+    .expect_err("nonterminating child must time out");
+    assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+}
+
+#[test]
+fn node_version_parser_accepts_only_stable_release_versions() {
+    for valid in ["v22.20.0", "v24.0.1\n", " v0.12.18\r\n"] {
+        assert!(version::node_version_text_is_supported(valid), "{valid:?}");
+    }
+    for invalid in [
+        "",
+        "not-a-node-version",
+        "22.20.0",
+        "v22",
+        "v22.20",
+        "v22.20.0.1",
+        "v22..0",
+        "v22.20.x",
+        "v022.20.0",
+        "v22.20.0-nightly",
+        "v22.20.0 extra",
+        "v22.20.0\nv24.0.0",
+        "\"v22.20.0\"",
+        "v２２.20.0",
+    ] {
+        assert!(
+            !version::node_version_text_is_supported(invalid),
+            "{invalid:?}"
+        );
+    }
+}
+
+#[test]
 fn python_version_parser_accepts_only_python3_versions() {
     assert_eq!(
         version::python_major_from_version_text("Python 3.14.5"),
@@ -279,7 +557,8 @@ fn external_compare_config_accepts_profile_parameters() {
         ]
         .into_iter()
         .map(str::to_owned),
-    );
+    )
+    .expect("supported runtime selectors");
 
     assert_eq!(config.params.iterations, 12_345);
     assert_eq!(config.params.repeats, 4);

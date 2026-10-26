@@ -1,0 +1,20 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores: Array<i64> = [1, 2, 3];
+        let tick_value: Any = tick;
+        let bonus_value: Any = 5;
+        let raid_value: Any = 8;
+        scores.push(tick_value);
+        scores.push(bonus_value);
+        scores.push(raid_value);
+
+        if scores.len() != 6 || scores[3] != tick || scores[5] != 8 {
+            return 0;
+        }
+
+        total += scores.sum();
+    }
+    return total;
+}

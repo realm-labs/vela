@@ -1,0 +1,10 @@
+fn main() {
+    let rewards = { "gold": 10, "gem": 3, "xp": 25 };
+    let tags = set::from_array(["daily", "vip", "daily"]);
+    let total = rewards["gold"] + rewards["xp"];
+
+    if tags.has("vip") && rewards.has("gem") {
+        return total + tags.len();
+    }
+    return total;
+}

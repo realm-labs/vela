@@ -1,0 +1,19 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let count = 0;
+        let seen_v = 0;
+        for byte in "Vela".bytes() {
+            count += 1;
+            if byte == 86u8 {
+                seen_v += 1;
+            }
+        }
+        if count != 4 || seen_v != 1 {
+            return 0;
+        }
+        total += count + seen_v + tick - tick;
+    }
+    return total;
+}

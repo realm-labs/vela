@@ -1,0 +1,29 @@
+
+struct Player { id: i64, level: i64 }
+
+fn run_once() {
+    let total = 0;
+    for tick in 0..96 {
+        let alice = Player { id: 1, level: 10 };
+        let bob = Player { id: 2, level: 20 };
+        let alice_copy = Player { id: 1, level: 10 };
+        let active = set::from_array([]);
+        active.add(alice);
+        active.add(bob);
+        active.add(alice);
+        active.remove(bob);
+        alice.level += 1;
+        if active.has(alice) && !active.has(bob) && !active.has(alice_copy) {
+            total += active.len() + alice.level % 7 + tick % 5;
+        }
+    }
+    return total;
+}
+
+fn main(iterations: i64) {
+    let checksum = 0;
+    for iteration in 0..iterations {
+        checksum += run_once();
+    }
+    return checksum;
+}

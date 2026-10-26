@@ -16,12 +16,7 @@ const DEFAULT_ITERATIONS: usize = 10_000;
 const QUICK_ITERATIONS: usize = 1_000;
 const STABLE_ITERATIONS: usize = 100_000;
 
-const SOURCE: &str = r#"
-pub fn generated_target(value: i64) -> i64 { return value + 1; }
-fn child(value: i64) -> i64 { return value + 1; }
-fn scalar_entry(value: i64) -> i64 { return bench::scalar(value); }
-fn round_trip_entry(value: i64) -> i64 { return bench::round_trip(value); }
-"#;
+const SOURCE: &str = include_str!("fixtures/interop_source.vela");
 
 #[export(path = "bench::scalar")]
 pub fn scalar(value: i64) -> i64 {

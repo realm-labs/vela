@@ -1,0 +1,4 @@
+fn main() {
+    let before = 10;
+    return before / 0;
+}

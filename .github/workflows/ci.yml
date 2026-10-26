@@ -121,6 +121,60 @@ jobs:
       - name: Check fuzz targets
         run: cargo check --manifest-path fuzz/Cargo.toml --bins --all-features --locked
 
+  test-input-consumers:
+    name: Test input consumers
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-input-consumers-${{ hashFiles('Cargo.lock') }}
+      - name: Install site and existing grammar dependencies
+        timeout-minutes: 5
+        run: |
+          npm --prefix site ci
+          npm --prefix editors/tree-sitter-vela install --no-save --package-lock=false tree-sitter-cli@0.25.10
+      - name: Test bounded process and exact-selection guards
+        timeout-minutes: 2
+        run: node --test site/scripts/playground-process.test.mjs site/scripts/check-playground-native.test.mjs editors/zed/scripts/query-process.test.js
+      - name: Compile native site test
+        timeout-minutes: 10
+        run: cargo test -p vela_playground_wasm --test site_examples --no-run --locked
+      - name: Execute actual site examples
+        timeout-minutes: 4
+        run: npm --prefix site run test:playground
+      - name: Check site sources and emitted payloads
+        timeout-minutes: 5
+        run: |
+          npm --prefix site run test:docs
+          npm --prefix site run test:syntax
+          npm --prefix site run build
+      - name: Execute grammar and all shipped queries
+        timeout-minutes: 3
+        run: |
+          npm --prefix editors/tree-sitter-vela test
+          npm --prefix editors/tree-sitter-vela run parse:fixtures
+          npm --prefix editors/tree-sitter-vela run test:queries
+      - name: Check workload results outside timing windows
+        timeout-minutes: 10
+        run: cargo bench -p vela_vm --bench external_compare --locked -- --preflight-only --runtime=vela,vela-cache,lua54,rhai,node,python3
+
   fuzz:
     name: Fuzz
     runs-on: ubuntu-latest

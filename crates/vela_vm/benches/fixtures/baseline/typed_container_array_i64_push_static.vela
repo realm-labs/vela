@@ -1,0 +1,17 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores: Array<i64> = [1, 2, 3];
+        scores.push(tick);
+        scores.push(5);
+        scores.push(8);
+
+        if scores.len() != 6 || scores[3] != tick || scores[5] != 8 {
+            return 0;
+        }
+
+        total += scores.sum();
+    }
+    return total;
+}

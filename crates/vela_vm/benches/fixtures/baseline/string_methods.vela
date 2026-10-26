@@ -1,0 +1,62 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..80 {
+        let label = "quest.done";
+        let upper = label.to_upper();
+        let replaced = label.replace(".", "_");
+        let repeated = "ab".repeat(3);
+        let parts = "alpha,beta".split(",");
+        let (pair_key, pair_value) = "count=3".split_once("=").unwrap_or(("", ""));
+        let lines = "alpha\nbeta".split_lines();
+        let words = "alpha beta".split_whitespace();
+        let sliced = "hello".slice(1, 4);
+        let ch = '\0';
+        let ch_index = 0;
+        for candidate in "quest" {
+            if ch_index == 1 {
+                ch = candidate;
+            }
+            ch_index += 1;
+        }
+        let found = "daily_quest".find("quest").unwrap_or(-1);
+        let stripped_prefix = "event:quest".strip_prefix("event:").unwrap_or("");
+        let stripped_suffix = "quest.done".strip_suffix(".done").unwrap_or("");
+        let parsed = "42".parse_i64().unwrap_or(0);
+        let parsed_bool = "true".parse_bool().unwrap_or(false);
+
+        if upper != "QUEST.DONE"
+            || replaced != "quest_done"
+            || repeated != "ababab"
+            || parts.len() != 2
+            || pair_key != "count"
+            || pair_value != "3"
+            || lines.len() != 2
+            || words.len() != 2
+            || sliced != "ell"
+            || ch != 'u'
+            || found != 6
+            || stripped_prefix != "quest"
+            || stripped_suffix != "quest"
+            || parsed != 42
+            || !parsed_bool
+        {
+            return 0;
+        }
+
+        total += upper.len()
+            + replaced.len()
+            + repeated.len()
+            + parts.join("").len()
+            + pair_key.len()
+            + pair_value.len()
+            + lines.join("").len()
+            + words.join("").len()
+            + sliced.len()
+            + if ch == 'u' { 1 } else { 0 }
+            + found
+            + parsed
+            + tick - tick;
+    }
+    return total;
+}

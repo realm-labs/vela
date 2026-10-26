@@ -1,0 +1,29 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let scores = {
+            "daily": 3,
+            "raid": 8,
+            "boss": 13,
+            "event": 5,
+        };
+        let key_len = 0;
+        for key in scores.keys() {
+            key_len += key.len();
+        }
+        let value_sum = 0;
+        for value in scores.values() {
+            value_sum += value;
+        }
+        let entry_total = 0;
+        for entry in scores.entries() {
+            entry_total += entry.key.len() + entry.value;
+        }
+        if key_len != 18 || value_sum != 29 || entry_total != 47 {
+            return 0;
+        }
+        total += key_len + value_sum + entry_total + tick - tick;
+    }
+    return total;
+}

@@ -1,0 +1,12 @@
+
+fn main() {
+    let total = 0;
+    for batch in 0..24 {
+        let values = [];
+        for item in 0..16 {
+            values.push("gc".repeat((item % 4) + 1));
+        }
+        total += values.len() + batch;
+    }
+    return total;
+}

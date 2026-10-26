@@ -1,0 +1,21 @@
+struct Reward {
+    enabled: bool,
+    base: i64,
+    multiplier: i64,
+}
+
+fn score_reward(reward) {
+    if !reward.enabled {
+        return 0;
+    }
+    return reward.base * reward.multiplier;
+}
+
+fn main() {
+    let reward = Reward {
+        enabled: true,
+        base: 12,
+        multiplier: 3,
+    };
+    return score_reward(reward) + 4;
+}

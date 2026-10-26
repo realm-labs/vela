@@ -1,0 +1,20 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let sum = 0;
+        for score in bench::scores() {
+            sum += score;
+        }
+        let boosted = bench::scores()
+            .filter(|score| score > 3)
+            .map(|score| score + tick - tick + 1)
+            .collect_array()
+            .sum();
+        if sum != 31 || boosted != 29 {
+            return 0;
+        }
+        total += sum + boosted;
+    }
+    return total;
+}

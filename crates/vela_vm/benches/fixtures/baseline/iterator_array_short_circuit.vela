@@ -1,0 +1,15 @@
+
+fn main() {
+    let total = 0;
+    for tick in 0..96 {
+        let values = [tick + 1, tick + 2, tick + 3, tick + 4, tick + 5, tick + 6];
+        let any_high = values.iter().any(|value| value >= tick + 5);
+        let all_positive = values.iter().all(|value| value > tick);
+        let found = values.iter().find(|value| value % 5 == 0).unwrap_or(0);
+        if !any_high || !all_positive || found == 0 {
+            return 0;
+        }
+        total += found + tick - tick;
+    }
+    return total;
+}

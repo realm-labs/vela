@@ -1,0 +1,13 @@
+
+#[event("monster.kill")]
+fn on_kill(player) {
+    return player + 30;
+}
+
+fn helper(value) {
+    return value + 2;
+}
+
+fn main() {
+    return on_kill(1);
+}

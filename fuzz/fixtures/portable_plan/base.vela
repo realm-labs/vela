@@ -1,0 +1,1 @@
+fn branch(value: i64) -> i64 { if value < 10 { return value + 1; } return value; } fn main(limit: i64) -> i64 { let total = 0; for item in 0..limit { total += item + 1 - 1; } return branch(total); }
