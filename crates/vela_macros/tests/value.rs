@@ -286,19 +286,7 @@ fn derived_enum_round_trips_through_real_vela_match() {
         .build()
         .expect("derived enum binding should seal");
     let program = engine
-        .compile_source(
-            r#"
-fn increase(value: host::GrantDecision) {
-    return match value {
-        host::GrantDecision::Pending => host::GrantDecision::Pending,
-        host::GrantDecision::Accepted { total, item } => host::GrantDecision::Accepted {
-            total: total + 3,
-            item: item,
-        },
-    };
-}
-"#,
-        )
+        .compile_source(include_str!("fixtures/values/enum_round_trip.vela"))
         .expect("derived enum schema should compile");
     let codec = engine
         .type_bindings()

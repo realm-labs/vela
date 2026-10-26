@@ -16,7 +16,8 @@ or portable format change is authorized. Pending stages are not accepted.
 | SF04 | Complete | [MIR/compiler evidence](test-input-sf04.md): 48 source inputs, 12 MIR expectations, eight UI-S cases; 650 default / 666 all-feature tests. |
 | SF05 | Complete | [VM/reflection evidence](test-input-sf05.md): 106 sites into 104 owner fixtures plus shared set input; VM 872/882 and reflection 57/57, unchanged test discovery. |
 | SF06 | Complete | [Engine/reload evidence](test-input-sf06.md): 101 fixtures, four formatter and portable route comparisons; 620 default / 632 all-feature tests. |
-| SF07–SF12 | Pending | No acceptance claimed. |
+| SF07 | Complete | [Macro/bindgen evidence](test-input-sf07.md): 301-byte enum fixture; 83 tests including 27 trybuild cases per lane and isolated source-tree checks. |
+| SF08–SF12 | Pending | No acceptance claimed. |
 
 ## SF00 — Census And Ownership
 

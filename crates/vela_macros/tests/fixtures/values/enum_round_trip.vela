@@ -1,0 +1,10 @@
+
+fn increase(value: host::GrantDecision) {
+    return match value {
+        host::GrantDecision::Pending => host::GrantDecision::Pending,
+        host::GrantDecision::Accepted { total, item } => host::GrantDecision::Accepted {
+            total: total + 3,
+            item: item,
+        },
+    };
+}
